@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import type { Placement, Shift } from "../../domain/types";
 import { buildTimesheet, timesheetToCsv } from "../../logic/timesheet";
 import { downloadCsv } from "../download";
@@ -212,6 +213,25 @@ export function TimesheetExport({
                   {showActions && (
                     <td className="px-4 py-2.5 print:hidden">
                       <div className="flex justify-end gap-1">
+                        <Link
+                          to={`/planner?date=${r.date}`}
+                          aria-label={`View ${r.date} in the planner`}
+                          title="View in planner"
+                          className="rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={1.6}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="h-4 w-4"
+                            aria-hidden="true"
+                          >
+                            <path d="M8 3v4m8-4v4M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" />
+                          </svg>
+                        </Link>
                         {onMarkWorked && r.status === "PLANNED" && (
                           <button
                             type="button"

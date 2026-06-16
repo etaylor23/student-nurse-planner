@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -26,6 +27,9 @@ export function PlannerPage() {
   const { placements } = usePlacements();
   const { shifts, summary, reload: reloadShifts } = useShifts();
   const { saveShift, deleteShift, markWorked } = useShiftActions();
+  const [searchParams] = useSearchParams();
+  // Deep-link target, e.g. /planner?date=2026-06-18 (from a timesheet row).
+  const initialDate = searchParams.get("date") ?? undefined;
   const [editing, setEditing] = useState<Editing>(null);
   // Live draft for the calendar highlight; kept in step with the form's fields.
   const [draft, setDraft] = useState<NewShift | null>(null);
@@ -241,6 +245,7 @@ export function PlannerPage() {
             <FullCalendar
               plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
               initialView="timeGridWeek"
+              initialDate={initialDate}
               firstDay={1}
               headerToolbar={{
                 left: "prev,next today",
