@@ -57,6 +57,13 @@ export function HoursLogPage() {
     await reloadShifts();
   };
 
+  const markWorked = async (id: string) => {
+    const name = window.prompt("Name the registered nurse you worked with:")?.trim();
+    if (!name) return;
+    await repo.updateShift(id, { status: "COMPLETED", supervisingRnName: name });
+    await reloadShifts();
+  };
+
   const findShift = (id: string) => shifts.find((s) => s.id === id);
   const isEditing = editing !== null && editing !== "new";
 
@@ -122,6 +129,7 @@ export function HoursLogPage() {
             const shift = findShift(id);
             if (shift) void removeShift(shift);
           }}
+          onMarkWorked={markWorked}
         />
       </div>
 

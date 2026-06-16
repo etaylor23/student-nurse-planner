@@ -22,12 +22,14 @@ export function TimesheetExport({
   className,
   onEdit,
   onDelete,
+  onMarkWorked,
 }: {
   shifts: Shift[];
   placements: Placement[];
   className?: string;
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
+  onMarkWorked?: (id: string) => void;
 }) {
   const [placementFilter, setPlacementFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -45,7 +47,7 @@ export function TimesheetExport({
   });
 
   const rows = buildTimesheet(filtered, placements);
-  const showActions = !!(onEdit || onDelete);
+  const showActions = !!(onEdit || onDelete || onMarkWorked);
   const isFiltered = !!(placementFilter || statusFilter || fromDate || toDate);
   const clearFilters = () => {
     setPlacementFilter("");
@@ -202,6 +204,28 @@ export function TimesheetExport({
                   {showActions && (
                     <td className="px-4 py-2.5 print:hidden">
                       <div className="flex justify-end gap-1">
+                        {onMarkWorked && r.status === "PLANNED" && (
+                          <button
+                            type="button"
+                            onClick={() => onMarkWorked(r.id)}
+                            aria-label={`Mark ${r.date} shift as worked`}
+                            title="Mark as worked"
+                            className="rounded-md p-1.5 text-slate-400 transition hover:bg-emerald-50 hover:text-emerald-700"
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth={1.8}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="h-4 w-4"
+                              aria-hidden="true"
+                            >
+                              <path d="m5 13 4 4L19 7" />
+                            </svg>
+                          </button>
+                        )}
                         {onEdit && (
                           <button
                             type="button"
