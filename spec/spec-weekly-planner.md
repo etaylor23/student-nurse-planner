@@ -38,8 +38,11 @@ and is **not** used by the client-only `.ics` snapshot export. See
   24-hour times over the **full 00:00–24:00 grid** (covers night shifts; they span
   midnight), with a now-indicator. Shifts render as chips coloured by status
   (planned = slate, counted = emerald, simulated = sky). On wide screens the
-  add/edit form sits in a **sticky side panel** beside the calendar, updating as
-  you click each period; on narrow screens it stacks below.
+  add/edit form sits in a **sticky side panel** (~25% wide) beside the calendar,
+  updating as you click each period; on narrow screens it stacks full-width below.
+  A new (unsaved) shift shows a **persistent draft highlight** on the grid while
+  you configure it, so the dragged-out block doesn't vanish when the form is
+  focused; it clears on save/cancel.
 - **Quick-add** — click a day → the shift form prefilled to that date, creating a
   `PLANNED` shift (reuses `ShiftForm` via an `initialDate` prop). **Click-drag
   across time slots** (week/day, Outlook-style) prefills the start/end times too,

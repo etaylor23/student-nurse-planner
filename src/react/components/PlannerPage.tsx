@@ -41,6 +41,21 @@ export function PlannerPage() {
     extendedProps: { shift: s },
   }));
 
+  // A persistent "draft" highlight while a NEW shift is being configured in the
+  // side panel, so the dragged-out block doesn't vanish when the form is focused.
+  const draftEvent: EventInput | null =
+    editing && !isShift(editing)
+      ? {
+          id: "__draft__",
+          start: shiftStart(editing),
+          end: shiftEnd(editing),
+          allDay: isAllDay(editing),
+          display: "background",
+          classNames: ["ev-draft"],
+        }
+      : null;
+  const calendarEvents = draftEvent ? [...events, draftEvent] : events;
+
   const submitShift = async (draft: ShiftDraft) => {
     const editingId = editing && isShift(editing) ? editing.id : null;
     const duplicate = shifts.some(
@@ -203,7 +218,7 @@ export function PlannerPage() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
         <Panel
           title="Your shifts"
           hint="Click a day or drag across hours to add · drag a shift to move · click to edit"
@@ -247,7 +262,7 @@ export function PlannerPage() {
               slotMinTime="00:00:00"
               slotMaxTime="24:00:00"
               dayMaxEvents
-              events={events}
+              events={calendarEvents}
               eventContent={(arg) => {
                 const shift = arg.event.extendedProps.shift as Shift | undefined;
                 return shift ? renderChip(shift, arg.timeText) : undefined;

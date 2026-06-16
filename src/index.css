@@ -157,3 +157,8 @@
   background: #e0f2fe;
   color: #0369a1;
 }
+/* Draft highlight for a not-yet-saved shift being configured in the side panel */
+.fc-theme-wrap .fc-bg-event.ev-draft {
+  background-color: #10b981; /* emerald-500 */
+  opacity: 0.16;
+}
