@@ -34,7 +34,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
             to={item.path}
             onClick={onNavigate}
             className={({ isActive }) =>
-              "group/link flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors " +
+              "group/link flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 " +
               (isActive
                 ? "bg-emerald-50 font-medium text-emerald-700"
                 : "text-slate-600 hover:bg-slate-100 hover:text-slate-900")
@@ -116,10 +116,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
       {/* ---------- Desktop fly-over (lg+) ---------- */}
       {/* The group IS the left margin hover strip; the panel floats out of it
-          on hover and stays open while the pointer is over the panel itself. */}
+          on hover OR when a nav link inside it receives keyboard focus, and
+          stays open while the pointer/focus is within it. */}
       <div className="group fixed inset-y-0 left-0 z-40 hidden w-20 lg:block xl:w-24">
         {/* Discoverable handle, fades out as the panel slides in. */}
-        <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 transition-opacity duration-200 group-hover:opacity-0">
+        <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 transition-opacity duration-200 group-hover:opacity-0 group-focus-within:opacity-0">
           <span className="flex h-11 w-7 flex-col items-center justify-center gap-1 rounded-full border border-slate-200 bg-white/80 shadow-sm backdrop-blur">
             <span className="h-0.5 w-3.5 rounded bg-slate-400" />
             <span className="h-0.5 w-3.5 rounded bg-slate-400" />
@@ -127,7 +128,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </span>
         </div>
 
-        <aside className="absolute inset-y-0 left-0 flex w-80 -translate-x-full flex-col overflow-y-auto border-r border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur transition-transform duration-300 ease-out group-hover:translate-x-0">
+        <aside className="absolute inset-y-0 left-0 flex w-80 -translate-x-full flex-col overflow-y-auto border-r border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur transition-transform duration-300 ease-out group-hover:translate-x-0 group-focus-within:translate-x-0">
           <PanelContents />
         </aside>
       </div>
