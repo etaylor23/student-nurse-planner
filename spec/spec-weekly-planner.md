@@ -38,8 +38,10 @@ and is **not** used by the client-only `.ics` snapshot export. See
   24-hour times, with a now-indicator. Shifts render as chips coloured by status
   (planned = slate, counted = emerald, simulated = sky).
 - **Quick-add** — click a day → the shift form prefilled to that date, creating a
-  `PLANNED` shift (reuses `ShiftForm` via an `initialDate` prop). Click a shift to
-  edit; **drag to reschedule** (duration preserved, so stored hours stay valid).
+  `PLANNED` shift (reuses `ShiftForm` via an `initialDate` prop). **Click-drag
+  across time slots** (week/day, Outlook-style) prefills the start/end times too,
+  so the counted hours are set from the selection. Click a shift to edit; **drag
+  to reschedule** (duration preserved, so stored hours stay valid).
 - **Mark complete** — one-click on a planned shift → enter RN name →
   `COMPLETED` → counts in the hours log. Same bridge as the hours-log timesheet.
 - **`.ics` export** — "Add to calendar" downloads a snapshot the student imports
