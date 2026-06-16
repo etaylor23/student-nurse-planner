@@ -8,6 +8,7 @@ import {
 } from "../../domain/types";
 import { computeNetHours } from "../../logic/hours";
 import { resolveBreakMins } from "../../logic/breakRules";
+import { composeShiftTimes, formatHumanDate } from "../../logic/calendar";
 import { useBreakRules } from "../hooks";
 import { btnGhost, btnPrimary, inputCls } from "./ui";
 
@@ -71,8 +72,10 @@ export function ShiftForm({
 
   const [date, setDate] = useState(initial?.date ?? initialDate ?? todayIso());
   const [placementId, setPlacementId] = useState(initial?.placementId ?? initialPlacementId ?? "");
-  const [startTime, setStartTime] = useState(initial?.startTime ?? initialStartTime ?? "");
-  const [endTime, setEndTime] = useState(initial?.endTime ?? initialEndTime ?? "");
+  const [startTime, setStartTime] = useState(
+    initial?.startAt?.slice(11, 16) ?? initialStartTime ?? "",
+  );
+  const [endTime, setEndTime] = useState(initial?.endAt?.slice(11, 16) ?? initialEndTime ?? "");
   const [shiftType, setShiftType] = useState<ShiftType>(initial?.shiftType ?? "LONG_DAY");
   const [entryMode, setEntryMode] = useState<"NET" | "RAW">(initial?.entryMode ?? "RAW");
   const [grossHours, setGrossHours] = useState(
@@ -98,6 +101,9 @@ export function ShiftForm({
   }, [date, startTime, endTime, onDraftChange]);
 
   const derivedMins = durationFromTimes(startTime, endTime);
+  // Absolute start/end datetimes for storage + the overnight notice.
+  const composedTimes = composeShiftTimes(date, startTime || undefined, endTime || undefined);
+  const endsNextDay = !!composedTimes.endAt && composedTimes.endAt.slice(0, 10) !== date;
   const rawMins = derivedMins ?? Math.round((parseFloat(grossHours) || 0) * 60);
   const resolvedBreak = useMemo(() => resolveBreakMins(rawMins, rules), [rawMins, rules]);
   const breakOverrideNum = breakOverride === "" ? undefined : parseInt(breakOverride, 10);
@@ -134,8 +140,8 @@ export function ShiftForm({
     const draft: ShiftDraft = {
       date,
       placementId: placementId || undefined,
-      startTime: entryMode === "RAW" && derivedMins != null ? startTime : undefined,
-      endTime: entryMode === "RAW" && derivedMins != null ? endTime : undefined,
+      startAt: entryMode === "RAW" && derivedMins != null ? composedTimes.startAt : undefined,
+      endAt: entryMode === "RAW" && derivedMins != null ? composedTimes.endAt : undefined,
       shiftType,
       entryMode,
       rawDurationMins: entryMode === "RAW" ? rawMins : undefined,
@@ -157,7 +163,7 @@ export function ShiftForm({
       >
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {field(
-            "Date",
+            "Start date",
             <input
               type="date"
               value={date}
@@ -242,6 +248,23 @@ export function ShiftForm({
                 />,
               )}
             </div>
+            {endsNextDay && (
+              <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.8}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-3.5 w-3.5 shrink-0"
+                  aria-hidden="true"
+                >
+                  <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+                </svg>
+                Overnight — finishes {formatHumanDate(composedTimes.endAt!.slice(0, 10))}
+              </p>
+            )}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {field(
                 "Shift length (hours)",

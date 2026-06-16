@@ -6,7 +6,15 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { EventInput } from "@fullcalendar/core";
 import { SHIFT_TYPE_LABEL, type Shift } from "../../domain/types";
-import { hhmm, isAllDay, isoDate, shiftEnd, shiftStart } from "../../logic/calendar";
+import {
+  clampResizeSpan,
+  composeShiftTimes,
+  hhmm,
+  isAllDay,
+  isoDate,
+  shiftEnd,
+  shiftStart,
+} from "../../logic/calendar";
 import { computeNetHours } from "../../logic/hours";
 import { buildIcs } from "../../logic/ics";
 import { usePlacements, useShifts, useBreakRules } from "../hooks";
@@ -79,13 +87,17 @@ export function PlannerPage() {
   }));
 
   // A persistent, live "draft" highlight while a NEW shift is being configured —
-  // driven by `draft`, which the form updates as its date/times change.
-  const draftEvent: EventInput | null = draft
+  // driven by `draft`, which the form updates as its date/times change. Compose
+  // absolute datetimes so an overnight draft renders across midnight.
+  const draftShift = draft
+    ? { date: draft.date, ...composeShiftTimes(draft.date, draft.startTime, draft.endTime) }
+    : null;
+  const draftEvent: EventInput | null = draftShift
     ? {
         id: "__draft__",
-        start: shiftStart(draft),
-        end: shiftEnd(draft),
-        allDay: isAllDay(draft),
+        start: shiftStart(draftShift),
+        end: shiftEnd(draftShift),
+        allDay: isAllDay(draftShift),
         display: "background",
         classNames: ["ev-draft"],
       }
@@ -105,41 +117,44 @@ export function PlannerPage() {
     if (await markWorked(id)) close();
   };
 
+  const at = (d: Date) => `${isoDate(d)}T${hhmm(d)}`;
+
   // Drag-to-reschedule: duration is preserved by FullCalendar, so the stored
-  // netHours stays valid — we only move the date (and times, if timed).
+  // netHours stays valid — we only move the start date and the start/end datetimes.
   const applyMove = async (shift: Shift, start: Date, allDay: boolean, end: Date | null) => {
     const patch: Partial<Omit<Shift, "id" | "userId" | "createdAt">> = { date: isoDate(start) };
-    if (!allDay) {
-      patch.startTime = hhmm(start);
-      if (end) patch.endTime = hhmm(end);
+    if (allDay) {
+      patch.startAt = undefined;
+      patch.endAt = undefined;
+    } else {
+      patch.startAt = at(start);
+      patch.endAt = end ? at(end) : undefined;
     }
     await repo.updateShift(shift.id, patch);
     await reloadShifts();
   };
 
   // Drag the edge to change duration: recompute the counted hours + break for the
-  // new span (treated as RAW, so the band rules apply) so the hours stay correct.
-  // The shift model stores clock times and infers the overnight crossing from
-  // endTime <= startTime, so it can only represent spans up to 24h. Refuse a
-  // longer drag rather than silently collapsing e.g. a 25h span into a 1h shift.
-  const applyResize = async (shift: Shift, start: Date, end: Date): Promise<boolean> => {
-    const rawDurationMins = Math.round((end.getTime() - start.getTime()) / 60000);
-    if (rawDurationMins > 24 * 60) {
-      window.alert("A shift can't be longer than 24 hours — resize it to a shorter span.");
-      return false;
-    }
+  // new span (treated as RAW, so the band rules apply). The span is clamped to 24h
+  // from the start hour — a nurse shift is never longer, and it stops a stray drag
+  // (e.g. out to 25h) producing a nonsensical shift.
+  const applyResize = async (shift: Shift, start: Date, end: Date) => {
+    const origStartMs = shift.startAt ? new Date(shift.startAt).getTime() : start.getTime();
+    const { startMs, endMs } = clampResizeSpan(origStartMs, start.getTime(), end.getTime());
+    const s = new Date(startMs);
+    const e = new Date(endMs);
+    const rawDurationMins = Math.round((endMs - startMs) / 60000);
     const { netHours, breakMins } = computeNetHours({ entryMode: "RAW", rawDurationMins }, rules);
     await repo.updateShift(shift.id, {
       entryMode: "RAW",
-      date: isoDate(start),
-      startTime: hhmm(start),
-      endTime: hhmm(end),
+      date: isoDate(s),
+      startAt: at(s),
+      endAt: at(e),
       rawDurationMins,
       breakMins,
       netHours,
     });
     await reloadShifts();
-    return true;
   };
 
   const renderChip = (shift: Shift, timeText: string) => {
@@ -355,11 +370,9 @@ export function PlannerPage() {
               eventResize={(arg) => {
                 const ev = arg.event;
                 const shift = ev.extendedProps.shift as Shift | undefined;
-                if (shift && !ev.allDay && ev.start && ev.end) {
-                  void applyResize(shift, ev.start, ev.end).then((ok) => {
-                    if (!ok) arg.revert();
-                  });
-                } else arg.revert();
+                if (shift && !ev.allDay && ev.start && ev.end)
+                  void applyResize(shift, ev.start, ev.end);
+                else arg.revert();
               }}
             />
           </div>

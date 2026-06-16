@@ -33,20 +33,28 @@ describe("buildIcs", () => {
   });
 
   it("timed shift uses floating local datetimes (no Z)", () => {
-    const ics = buildIcs([shift({ startTime: "07:30", endTime: "20:00" })], placements, STAMP);
+    const ics = buildIcs(
+      [shift({ startAt: "2026-06-10T07:30", endAt: "2026-06-10T20:00" })],
+      placements,
+      STAMP,
+    );
     expect(ics).toContain("DTSTART:20260610T073000");
     expect(ics).toContain("DTEND:20260610T200000");
     expect(ics).not.toContain("DTSTART:20260610T073000Z");
   });
 
   it("overnight shift ends on the next day", () => {
-    const ics = buildIcs([shift({ startTime: "20:00", endTime: "08:00" })], placements, STAMP);
+    const ics = buildIcs(
+      [shift({ startAt: "2026-06-10T20:00", endAt: "2026-06-11T08:00" })],
+      placements,
+      STAMP,
+    );
     expect(ics).toContain("DTSTART:20260610T200000");
     expect(ics).toContain("DTEND:20260611T080000");
   });
 
   it("shift with no times is all-day with an exclusive next-day end", () => {
-    const ics = buildIcs([shift({ startTime: undefined, endTime: undefined })], placements, STAMP);
+    const ics = buildIcs([shift({ startAt: undefined, endAt: undefined })], placements, STAMP);
     expect(ics).toContain("DTSTART;VALUE=DATE:20260610");
     expect(ics).toContain("DTEND;VALUE=DATE:20260611");
   });

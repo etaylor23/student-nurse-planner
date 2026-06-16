@@ -32,8 +32,8 @@ export function buildTimesheet(shifts: Shift[], placements: Placement[]): Timesh
       return {
         id: s.id,
         date: s.date,
-        startTime: s.startTime ?? "",
-        endTime: s.endTime ?? "",
+        startTime: s.startAt?.slice(11, 16) ?? "",
+        endTime: s.endAt?.slice(11, 16) ?? "",
         placement: p?.name ?? "—",
         setting: p?.settingType ?? "",
         shiftType: s.shiftType,

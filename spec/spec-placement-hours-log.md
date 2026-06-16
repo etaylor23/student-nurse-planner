@@ -27,7 +27,9 @@ Logs placement shifts and tracks progress toward the NMC practice-hours target.
 `Placement`, `Shift`, `BreakRule` — see `spec-architecture.md`. Notable:
 `Shift.entryMode` (NET/RAW), `rawDurationMins`, `breakMins`, `netHours`
 (derived/stored), `isSimulated`, `status` (PLANNED/COMPLETED),
-`supervisingRnName`.
+`supervisingRnName`. Timed shifts store **absolute datetimes** `startAt`/`endAt`
+(local ISO, e.g. `2026-06-16T19:00`); `date` is the **start date**. Worked minutes
+are the difference `endAt − startAt`, so overnight shifts are exact (no 24h cap).
 
 ## Screens (built)
 
@@ -36,8 +38,9 @@ Logs placement shifts and tracks progress toward the NMC practice-hours target.
   headroom under the 600 cap), planned (not counted); cap warning when reached.
 - **Placements** — quick add (name + optional setting) and an editable list
   (inline rename, delete; delete warns when shifts reference the placement).
-- **Log a shift** — form: date, placement, **optional start/end times that
-  auto-derive the shift length (handles overnight)**, shift type, NET-or-RAW
+- **Log a shift** — form: **start date**, placement, **optional start/end times
+  that auto-derive the shift length** (an overnight pair shows a *"finishes
+  {date}"* notice and stores the end on the next day), shift type, NET-or-RAW
   entry with a live "counts as X h after a Y-min break" preview, simulated
   toggle, worked-&-complete toggle that requires the RN name, notes. Editing a
   shift reuses the same form. A **completed shift opens locked** (read-only) with an

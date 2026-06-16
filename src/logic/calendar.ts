@@ -27,9 +27,38 @@ export function isoAddDays(iso: string, n: number): string {
   return isoDate(d);
 }
 
-/** A shift with no start time is treated as an all-day event. */
-export function isAllDay(shift: Pick<Shift, "startTime">): boolean {
-  return !shift.startTime;
+/** A shift with no start datetime is treated as an all-day event. */
+export function isAllDay(shift: Pick<Shift, "startAt">): boolean {
+  return !shift.startAt;
+}
+
+/**
+ * Whole minutes between a shift's start and end datetimes (0 if either is unset).
+ * `startAt`/`endAt` are local datetimes (no zone), so `new Date()` parses them in
+ * local time and the difference is the true worked span — including overnight,
+ * with no 24h cap.
+ */
+export function shiftMinutes(shift: Pick<Shift, "startAt" | "endAt">): number {
+  if (!shift.startAt || !shift.endAt) return 0;
+  return Math.round((new Date(shift.endAt).getTime() - new Date(shift.startAt).getTime()) / 60000);
+}
+
+/**
+ * Compose `startAt`/`endAt` datetimes from a start date + optional clock times.
+ * For entry convenience the end rolls onto the next day when `endTime <= startTime`
+ * (a night shift), so the stored end datetime carries the real date. Shared by the
+ * shift form (storage) and the planner draft highlight.
+ */
+export function composeShiftTimes(
+  date: string,
+  startTime?: string,
+  endTime?: string,
+): { startAt?: string; endAt?: string } {
+  if (!startTime) return {};
+  const startAt = `${date}T${startTime}`;
+  if (!endTime) return { startAt };
+  const endDate = endTime <= startTime ? isoAddDays(date, 1) : date;
+  return { startAt, endAt: `${endDate}T${endTime}` };
 }
 
 /** "2026-06-18" → "Thu 18 Jun" for display (e.g. timesheet rows, audit summaries). */
@@ -41,21 +70,38 @@ export function formatHumanDate(iso: string): string {
     .replace(",", "");
 }
 
+/**
+ * Clamp a resized span to at most `maxMins` (default 24h) by moving whichever edge
+ * was dragged. Within the limit it's returned unchanged; otherwise the start edge
+ * (if it's the one that moved) is pulled to `end − max`, else the end edge is pushed
+ * to `start + max`. Pure (epoch millis) so it's unit-testable.
+ */
+export function clampResizeSpan(
+  origStartMs: number,
+  newStartMs: number,
+  newEndMs: number,
+  maxMins = 24 * 60,
+): { startMs: number; endMs: number } {
+  const maxMs = maxMins * 60000;
+  if (newEndMs - newStartMs <= maxMs) return { startMs: newStartMs, endMs: newEndMs };
+  if (newStartMs !== origStartMs) return { startMs: newEndMs - maxMs, endMs: newEndMs };
+  return { startMs: newStartMs, endMs: newStartMs + maxMs };
+}
+
 /** FullCalendar/ICS start: timed → "YYYY-MM-DDTHH:MM:00"; all-day → "YYYY-MM-DD". */
-export function shiftStart(shift: Pick<Shift, "date" | "startTime">): string {
-  return shift.startTime ? `${shift.date}T${shift.startTime}:00` : shift.date;
+export function shiftStart(shift: Pick<Shift, "date" | "startAt">): string {
+  return shift.startAt ? `${shift.startAt}:00` : shift.date;
 }
 
 /**
  * End boundary:
  * - all-day → exclusive next day "YYYY-MM-DD",
- * - timed with endTime → "YYYY-MM-DDTHH:MM:00", rolling to the next day when the
- *   end is at/before the start (overnight shift),
- * - timed without endTime → undefined (open-ended).
+ * - timed with endAt → "YYYY-MM-DDTHH:MM:00" (the end datetime carries its own
+ *   date, so overnight spans are exact — no inference, no 24h cap),
+ * - timed without endAt → undefined (open-ended).
  */
-export function shiftEnd(shift: Pick<Shift, "date" | "startTime" | "endTime">): string | undefined {
-  if (!shift.startTime) return isoAddDays(shift.date, 1);
-  if (!shift.endTime) return undefined;
-  const endDate = shift.endTime <= shift.startTime ? isoAddDays(shift.date, 1) : shift.date;
-  return `${endDate}T${shift.endTime}:00`;
+export function shiftEnd(shift: Pick<Shift, "date" | "startAt" | "endAt">): string | undefined {
+  if (!shift.startAt) return isoAddDays(shift.date, 1);
+  if (!shift.endAt) return undefined;
+  return `${shift.endAt}:00`;
 }

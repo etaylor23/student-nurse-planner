@@ -53,10 +53,10 @@ and is **not** used by the client-only `.ics` snapshot export. See
   times too, so the counted hours are set from the selection. Click a shift to
   edit; **drag
   to reschedule** (duration preserved) or **drag its edge to resize** (the counted
-  hours and break recompute for the new span). Resize is capped at **24h** — the
-  shift model stores clock times and infers the overnight crossing from
-  `endTime <= startTime`, so a longer drag is refused rather than collapsing (a
-  25h span would otherwise read as a 1h same-day shift).
+  hours and break recompute for the new span). Timed shifts store absolute
+  `startAt`/`endAt` datetimes, so overnight shifts render correctly across midnight;
+  resize **clamps to 24h from the start** (a nurse shift is never longer, and it
+  stops a stray drag producing a nonsensical span).
 - **Mark complete** — one-click on a planned shift → enter RN name →
   `COMPLETED` → counts in the hours log. Same bridge as the hours-log timesheet.
 - **Locked when complete** — a `COMPLETED` shift shows a **padlock** on its chip and

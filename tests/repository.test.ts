@@ -1,4 +1,5 @@
 import "fake-indexeddb/auto";
+import Dexie from "dexie";
 import { beforeEach, describe, expect, it } from "vitest";
 import { DexieRepository, LOCAL_USER_ID } from "../src/data/dexie/dexieRepository";
 import { PlannerDb } from "../src/data/dexie/db";
@@ -112,6 +113,50 @@ describe("DexieRepository", () => {
     const forShift1 = await r.listLogItems(user.id, { entityType: "SHIFT", entityId: "shift-1" });
     expect(forShift1.map((i) => i.id)).toEqual(["l2", "l1"]);
     expect(forShift1.every((i) => i.entityId === "shift-1")).toBe(true);
+  });
+
+  it("migrates v2 shift times (startTime/endTime) to startAt/endAt on upgrade to v3", async () => {
+    const name = "test-migrate-" + Math.random().toString(36).slice(2);
+    // Create the DB at the old (v2) schema and insert old-shape shifts.
+    const old = new Dexie(name);
+    old.version(1).stores({
+      users: "id",
+      breakRules: "id, userId, orderIndex",
+      placements: "id, userId, createdAt",
+      shifts: "id, userId, [userId+date], status",
+    });
+    old.version(2).stores({ logItems: "id, userId, [entityType+entityId], createdAt" });
+    await old.open();
+    const base = {
+      userId: "u",
+      date: "2026-06-10",
+      shiftType: "LONG_DAY",
+      entryMode: "RAW",
+      netHours: 11.5,
+      isSimulated: false,
+      status: "PLANNED",
+      createdAt: "",
+      updatedAt: "",
+    };
+    await old.table("shifts").bulkPut([
+      { ...base, id: "day", startTime: "07:30", endTime: "20:00" },
+      { ...base, id: "night", startTime: "20:00", endTime: "08:00" },
+      { ...base, id: "allday", entryMode: "NET", netHours: 8 },
+    ]);
+    old.close();
+
+    // Re-open at v3 via PlannerDb → triggers the upgrade.
+    const repo = new DexieRepository(new PlannerDb(name));
+    const byId = Object.fromEntries((await repo.listShifts("u")).map((s) => [s.id, s]));
+    expect(byId.day.startAt).toBe("2026-06-10T07:30");
+    expect(byId.day.endAt).toBe("2026-06-10T20:00");
+    expect(byId.night.startAt).toBe("2026-06-10T20:00");
+    expect(byId.night.endAt).toBe("2026-06-11T08:00"); // overnight rolled to next day
+    expect(byId.allday.startAt).toBeUndefined();
+    expect(byId.allday.endAt).toBeUndefined();
+    // Old fields are dropped.
+    expect((byId.day as unknown as Record<string, unknown>).startTime).toBeUndefined();
+    expect((byId.day as unknown as Record<string, unknown>).endTime).toBeUndefined();
   });
 
   it("prefers user-specific break rules over defaults when present", async () => {

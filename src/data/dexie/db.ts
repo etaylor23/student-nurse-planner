@@ -1,5 +1,6 @@
 import Dexie, { type Table } from "dexie";
 import type { BreakRule, LogItem, Placement, Shift, User } from "../../domain/types";
+import { isoAddDays } from "../../logic/calendar";
 
 /**
  * IndexedDB schema for the PoC. Indexes are chosen for the queries the
@@ -25,5 +26,33 @@ export class PlannerDb extends Dexie {
     this.version(2).stores({
       logItems: "id, userId, [entityType+entityId], createdAt",
     });
+    // v3 moves shifts to absolute start/end datetimes (startAt/endAt), so the
+    // worked span is end − start instead of an overnight inference that capped
+    // shifts at 24h. Indexes are unchanged; existing rows migrate in place.
+    this.version(3)
+      .stores({ shifts: "id, userId, [userId+date], status" })
+      .upgrade(async (tx) => {
+        await tx
+          .table("shifts")
+          .toCollection()
+          .modify((shift) => {
+            const s = shift as {
+              date: string;
+              startTime?: string;
+              endTime?: string;
+              startAt?: string;
+              endAt?: string;
+            };
+            if (s.startTime) {
+              s.startAt = `${s.date}T${s.startTime}`;
+              if (s.endTime) {
+                const endDate = s.endTime <= s.startTime ? isoAddDays(s.date, 1) : s.date;
+                s.endAt = `${endDate}T${s.endTime}`;
+              }
+            }
+            delete s.startTime;
+            delete s.endTime;
+          });
+      });
   }
 }
