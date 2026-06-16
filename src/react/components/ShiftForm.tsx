@@ -36,13 +36,17 @@ export function ShiftForm({
   placements,
   initial,
   initialDate,
+  initialStartTime,
+  initialEndTime,
   onSubmit,
   onCancel,
 }: {
   placements: Placement[];
   initial?: Shift;
-  /** Default date for a NEW shift (used only when `initial` is absent). */
+  /** Defaults for a NEW shift (used only when `initial` is absent). */
   initialDate?: string;
+  initialStartTime?: string;
+  initialEndTime?: string;
   onSubmit: (draft: ShiftDraft) => void | Promise<void>;
   onCancel?: () => void;
 }) {
@@ -50,8 +54,8 @@ export function ShiftForm({
 
   const [date, setDate] = useState(initial?.date ?? initialDate ?? todayIso());
   const [placementId, setPlacementId] = useState(initial?.placementId ?? "");
-  const [startTime, setStartTime] = useState(initial?.startTime ?? "");
-  const [endTime, setEndTime] = useState(initial?.endTime ?? "");
+  const [startTime, setStartTime] = useState(initial?.startTime ?? initialStartTime ?? "");
+  const [endTime, setEndTime] = useState(initial?.endTime ?? initialEndTime ?? "");
   const [shiftType, setShiftType] = useState<ShiftType>(initial?.shiftType ?? "LONG_DAY");
   const [entryMode, setEntryMode] = useState<"NET" | "RAW">(initial?.entryMode ?? "RAW");
   const [grossHours, setGrossHours] = useState(

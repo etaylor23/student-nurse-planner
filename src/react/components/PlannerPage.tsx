@@ -13,7 +13,8 @@ import { downloadText } from "../download";
 import { ShiftForm, type ShiftDraft } from "./ShiftForm";
 import { PageHero, Panel, btnGhostSm } from "./ui";
 
-type Editing = Shift | { date: string } | null;
+type NewShift = { date: string; startTime?: string; endTime?: string };
+type Editing = Shift | NewShift | null;
 const isShift = (e: Exclude<Editing, null>): e is Shift => "id" in e;
 
 const eventClass = (s: Shift) =>
@@ -180,12 +181,26 @@ export function PlannerPage() {
             slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
             editable
             eventDurationEditable={false}
+            selectable
+            selectMirror
+            selectMinDistance={5}
             slotMinTime="06:00:00"
             slotMaxTime="23:00:00"
             dayMaxEvents
             events={events}
             eventContent={(arg) => renderChip(arg.event.extendedProps.shift as Shift, arg.timeText)}
             dateClick={(arg) => setEditing({ date: arg.dateStr.slice(0, 10) })}
+            select={(arg) =>
+              setEditing(
+                arg.allDay
+                  ? { date: isoDate(arg.start) }
+                  : {
+                      date: isoDate(arg.start),
+                      startTime: hhmm(arg.start),
+                      endTime: hhmm(arg.end),
+                    },
+              )
+            }
             eventClick={(arg) => setEditing(arg.event.extendedProps.shift as Shift)}
             eventDrop={(arg) => {
               const ev = arg.event;
@@ -223,10 +238,16 @@ export function PlannerPage() {
               )}
             </div>
             <ShiftForm
-              key={isShift(editing) ? `edit-${editing.id}` : `new-${editing.date}`}
+              key={
+                isShift(editing)
+                  ? `edit-${editing.id}`
+                  : `new-${editing.date}-${editing.startTime ?? ""}-${editing.endTime ?? ""}`
+              }
               placements={placements}
               initial={isShift(editing) ? editing : undefined}
               initialDate={isShift(editing) ? undefined : editing.date}
+              initialStartTime={isShift(editing) ? undefined : editing.startTime}
+              initialEndTime={isShift(editing) ? undefined : editing.endTime}
               onSubmit={submitShift}
               onCancel={() => setEditing(null)}
             />
