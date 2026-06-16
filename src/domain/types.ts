@@ -40,6 +40,8 @@ export interface Shift {
   userId: string;
   placementId?: string;
   date: string; // ISO date of the shift
+  startTime?: string; // "HH:MM" clock-in (optional); may roll past midnight
+  endTime?: string; // "HH:MM" clock-out (optional)
   shiftType: ShiftType;
   entryMode: HoursEntryMode;
   rawDurationMins?: number; // present when entryMode === "RAW"

@@ -18,6 +18,17 @@ export type ShiftDraft = Omit<Shift, "id" | "userId" | "createdAt" | "updatedAt"
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
+/** Minutes between two "HH:MM" times; rolls past midnight for night shifts. */
+function durationFromTimes(start: string, end: string): number | null {
+  if (!start || !end) return null;
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+  if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return null;
+  let mins = eh * 60 + em - (sh * 60 + sm);
+  if (mins <= 0) mins += 24 * 60; // crossed midnight
+  return mins;
+}
+
 function field(label: string, control: React.ReactNode, hint?: string) {
   return (
     <label className="block">
@@ -43,6 +54,8 @@ export function ShiftForm({
 
   const [date, setDate] = useState(initial?.date ?? todayIso());
   const [placementId, setPlacementId] = useState(initial?.placementId ?? "");
+  const [startTime, setStartTime] = useState(initial?.startTime ?? "");
+  const [endTime, setEndTime] = useState(initial?.endTime ?? "");
   const [shiftType, setShiftType] = useState<ShiftType>(initial?.shiftType ?? "LONG_DAY");
   const [entryMode, setEntryMode] = useState<"NET" | "RAW">(initial?.entryMode ?? "RAW");
   const [grossHours, setGrossHours] = useState(
@@ -60,7 +73,8 @@ export function ShiftForm({
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [error, setError] = useState<string | null>(null);
 
-  const rawMins = Math.round((parseFloat(grossHours) || 0) * 60);
+  const derivedMins = durationFromTimes(startTime, endTime);
+  const rawMins = derivedMins ?? Math.round((parseFloat(grossHours) || 0) * 60);
   const resolvedBreak = useMemo(() => resolveBreakMins(rawMins, rules), [rawMins, rules]);
   const breakOverrideNum = breakOverride === "" ? undefined : parseInt(breakOverride, 10);
 
@@ -92,6 +106,8 @@ export function ShiftForm({
     const draft: ShiftDraft = {
       date,
       placementId: placementId || undefined,
+      startTime: entryMode === "RAW" && derivedMins != null ? startTime : undefined,
+      endTime: entryMode === "RAW" && derivedMins != null ? endTime : undefined,
       shiftType,
       entryMode,
       rawDurationMins: entryMode === "RAW" ? rawMins : undefined,
@@ -167,32 +183,58 @@ export function ShiftForm({
       </div>
 
       {entryMode === "RAW" ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {field(
-            "Shift length (hours)",
-            <input
-              type="number"
-              min="0"
-              step="0.25"
-              value={grossHours}
-              onChange={(e) => setGrossHours(e.target.value)}
-              className={inputCls}
-            />,
-            "Clock-in to clock-out, before breaks.",
-          )}
-          {field(
-            "Break (minutes)",
-            <input
-              type="number"
-              min="0"
-              step="5"
-              placeholder={`${resolvedBreak} (auto)`}
-              value={breakOverride}
-              onChange={(e) => setBreakOverride(e.target.value)}
-              className={inputCls}
-            />,
-            `Auto for this length: ${resolvedBreak} min. Leave blank to use it.`,
-          )}
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {field(
+              "Start time",
+              <input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className={inputCls}
+              />,
+              "Optional — fills in the length for you.",
+            )}
+            {field(
+              "End time",
+              <input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className={inputCls}
+              />,
+            )}
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {field(
+              "Shift length (hours)",
+              <input
+                type="number"
+                min="0"
+                step="0.25"
+                value={derivedMins != null ? String(Math.round((derivedMins / 60) * 100) / 100) : grossHours}
+                onChange={(e) => setGrossHours(e.target.value)}
+                disabled={derivedMins != null}
+                className={derivedMins != null ? `${inputCls} bg-slate-50 text-slate-500` : inputCls}
+              />,
+              derivedMins != null
+                ? `Worked out from ${startTime}–${endTime}.`
+                : "Clock-in to clock-out, before breaks.",
+            )}
+            {field(
+              "Break (minutes)",
+              <input
+                type="number"
+                min="0"
+                step="5"
+                placeholder={`${resolvedBreak} (auto)`}
+                value={breakOverride}
+                onChange={(e) => setBreakOverride(e.target.value)}
+                className={inputCls}
+              />,
+              `Auto for this length: ${resolvedBreak} min. Leave blank to use it.`,
+            )}
+          </div>
         </div>
       ) : (
         field(

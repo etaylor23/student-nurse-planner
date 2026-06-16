@@ -4,6 +4,8 @@ export interface TimesheetRow {
   /** Shift id, for row-level actions (not exported to CSV). */
   id: string;
   date: string;
+  startTime: string;
+  endTime: string;
   placement: string;
   setting: string;
   shiftType: string;
@@ -30,6 +32,8 @@ export function buildTimesheet(shifts: Shift[], placements: Placement[]): Timesh
       return {
         id: s.id,
         date: s.date,
+        startTime: s.startTime ?? "",
+        endTime: s.endTime ?? "",
         placement: p?.name ?? "—",
         setting: p?.settingType ?? "",
         shiftType: s.shiftType,
@@ -45,6 +49,8 @@ export function buildTimesheet(shifts: Shift[], placements: Placement[]): Timesh
 
 const HEADERS: Array<[keyof TimesheetRow, string]> = [
   ["date", "Date"],
+  ["startTime", "Start"],
+  ["endTime", "End"],
   ["placement", "Placement"],
   ["setting", "Setting"],
   ["shiftType", "Shift type"],
