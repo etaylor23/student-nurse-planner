@@ -308,6 +308,10 @@ model RevisionSession {
 - **Practice-hours progress:** `Σ netHours` over `COMPLETED` shifts `/ 2300`.
   Simulated hours are a **subset** of that total and tracked against the **600**
   cap (warn at/over the cap).
+- **Pace projection:** shifts-to-go from the average completed-shift length; an
+  estimated finish date from counted-hours-per-week over the completed date span.
+- **Hours by placement:** `netHours` grouped by `placementId` (counted vs
+  planned), with a "No placement" bucket.
 - **Competency gap surfacing:** flag any `ProficiencyProgress` where
   `status ≠ ACHIEVED` and (`targetPart ≤ user.currentPart` if set, else
   `user.currentPart == user.totalParts`); escalate near end of the current part.

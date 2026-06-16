@@ -31,9 +31,9 @@ Logs placement shifts and tracks progress toward the NMC practice-hours target.
 
 ## Screens (built)
 
-- **Hours summary** — progress bar toward 2,300; stat cards: counted, remaining,
-  simulated (with headroom under the 600 cap), planned (not counted); cap
-  warning when reached.
+- **Hours summary** — progress bar toward 2,300; a pace line ("≈ N shifts to go ·
+  on track for <month year>"); stat cards: counted, remaining, simulated (with
+  headroom under the 600 cap), planned (not counted); cap warning when reached.
 - **Placements** — quick add (name + optional setting) and an editable list
   (inline rename, delete; delete warns when shifts reference the placement).
 - **Log a shift** — form: date, placement, **optional start/end times that
@@ -43,8 +43,12 @@ Logs placement shifts and tracks progress toward the NMC practice-hours target.
   shift reuses the same form.
 - **Break rules** — an editable per-user band table ("shifts up to N h → M min
   break") that overrides the built-in defaults, with reset-to-defaults.
-- **Timesheet** — table (newest first) with **per-row edit/delete** and CSV
-  export (incl. start/end) + print/PDF.
+- **Timesheet** — filterable table (by placement, status, date range), newest
+  first, with friendly dates ("Thu 18 Jun"), a simulated badge, and **per-row
+  edit / delete / mark-worked**; CSV export (incl. start/end, respects the active
+  filter) + print/PDF.
+- **Hours by placement** — counted (and planned) hours grouped per ward/team,
+  each with a per-placement CSV export.
 
 ## Derived logic
 
@@ -52,12 +56,18 @@ Logs placement shifts and tracks progress toward the NMC practice-hours target.
   unless overridden; never negative.
 - Totals: `Σ netHours` of `COMPLETED` shifts → /2300; simulated subset → /600.
 - Only `COMPLETED` shifts count; `COMPLETED` requires `supervisingRnName`.
+- Hours by placement: group `netHours` by `placementId` (COMPLETED → counted,
+  else planned), with a "No placement" bucket.
+- Pace projection: shifts-to-go from the average completed-shift length; finish
+  date from counted-hours-per-week over the completed date span.
+- Guardrails: block shifts counting > 24 h; warn on a duplicate date + placement.
 
 ## Tests (passing)
 
 Break-band boundaries; 12.5h→11.5h and override; NET passthrough; never-negative;
-summary (completed-only, simulated-subset, 600 cap, progress clamp); timesheet
-build + CSV escaping; Dexie repository round-trip (fake-indexeddb).
+summary (completed-only, simulated-subset, 600 cap, progress clamp); hours by
+placement (grouping, counted vs planned); pace projection (shifts-to-go, weekly
+pace); timesheet build + CSV escaping; Dexie repository round-trip (fake-indexeddb).
 
 ## Built since slice 1
 
@@ -68,9 +78,15 @@ build + CSV escaping; Dexie repository round-trip (fake-indexeddb).
 - **Start/end times** — optional per shift; auto-derive the length, handling
   overnight shifts. PoC stores them as `"HH:MM"` strings (canonical model uses
   `DateTime?`).
+- **Timesheet filtering** — by placement, status and date range; CSV respects it.
+- **One-click mark-worked** — flip a planned shift to counted (prompts for the RN).
+- **Per-placement breakdown + export** — hours grouped per ward/team.
+- **Pace projection** — shifts-to-go and an estimated finish date in the hero.
+- **Display polish** — friendly dates, a simulated badge.
+- **Guardrails** — block > 24 h shifts; warn on duplicate date + placement.
 
 ## Not yet built (future)
 
-- Filter/group the timesheet by placement or date range.
+- Group the timesheet by month, or show a running total per row.
 - A break-rule editor lives on the hours screen; a dedicated settings area could
   consolidate it with other preferences later.
