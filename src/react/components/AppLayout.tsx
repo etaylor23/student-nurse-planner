@@ -99,6 +99,7 @@ function PanelContents({ onNavigate }: { onNavigate?: () => void }) {
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [desktopOpen, setDesktopOpen] = useState(false);
   const location = useLocation();
 
   // Close the mobile drawer whenever the route changes.
@@ -115,12 +116,23 @@ export function AppLayout({ children }: { children: ReactNode }) {
       />
 
       {/* ---------- Desktop fly-over (lg+) ---------- */}
-      {/* The group IS the left margin hover strip; the panel floats out of it
-          on hover OR when a nav link inside it receives keyboard focus, and
-          stays open while the pointer/focus is within it. */}
-      <div className="group fixed inset-y-0 left-0 z-40 hidden w-20 lg:block xl:w-24">
+      {/* A left-margin strip; the panel slides out of it on hover OR when a nav
+          link inside receives keyboard focus. State-driven (mouse + focus) so it
+          works regardless of CSS-variable quirks; closes when both leave. */}
+      <div
+        className="fixed inset-y-0 left-0 z-40 hidden w-20 lg:block xl:w-24"
+        onMouseEnter={() => setDesktopOpen(true)}
+        onMouseLeave={() => setDesktopOpen(false)}
+        onFocus={() => setDesktopOpen(true)}
+        onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDesktopOpen(false);
+        }}
+      >
         {/* Discoverable handle, fades out as the panel slides in. */}
-        <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 transition-opacity duration-200 group-hover:opacity-0 group-focus-within:opacity-0">
+        <div
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 transition-opacity duration-200"
+          style={{ opacity: desktopOpen ? 0 : 1 }}
+        >
           <span className="flex h-11 w-7 flex-col items-center justify-center gap-1 rounded-full border border-slate-200 bg-white/80 shadow-sm backdrop-blur">
             <span className="h-0.5 w-3.5 rounded bg-slate-400" />
             <span className="h-0.5 w-3.5 rounded bg-slate-400" />
@@ -128,7 +140,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </span>
         </div>
 
-        <aside className="absolute inset-y-0 left-0 flex w-80 -translate-x-full flex-col overflow-y-auto border-r border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur transition-transform duration-300 ease-out group-hover:translate-x-0 group-focus-within:translate-x-0">
+        <aside
+          className="absolute inset-y-0 flex w-80 flex-col overflow-y-auto border-r border-slate-200 bg-white/95 p-4 shadow-xl backdrop-blur"
+          style={{ left: desktopOpen ? 0 : "-20rem", transition: "left 300ms ease" }}
+        >
           <PanelContents />
         </aside>
       </div>
