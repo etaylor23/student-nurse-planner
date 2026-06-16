@@ -330,8 +330,9 @@ model RevisionSession {
   `(rawDurationMins − breakMins) / 60`, where `breakMins` is resolved from the
   `BreakRule` band matching `rawDurationMins` (overridable). Never negative. For a
   timed shift `rawDurationMins = endAt − startAt`: the PoC stores `startAt`/`endAt`
-  as **local ISO datetimes** (mirroring the canonical `DateTime?`), so overnight
-  spans are exact and there's no 24h inference cap. `date` is the start date.
+  as **full UTC ISO timestamps** (`toISOString()`, mirroring the canonical
+  `DateTime?`), so overnight spans are exact and there's no 24h inference cap. Wall
+  clock for display is derived in local time; `date` is the local start date.
 - **Practice-hours progress:** `Σ netHours` over `COMPLETED` shifts `/ 2300`.
   Simulated hours are a **subset** of that total and tracked against the **600**
   cap (warn at/over the cap).

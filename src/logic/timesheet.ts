@@ -1,4 +1,5 @@
 import type { Placement, Shift } from "../domain/types";
+import { hhmm } from "./calendar";
 
 export interface TimesheetRow {
   /** Shift id, for row-level actions (not exported to CSV). */
@@ -32,8 +33,8 @@ export function buildTimesheet(shifts: Shift[], placements: Placement[]): Timesh
       return {
         id: s.id,
         date: s.date,
-        startTime: s.startAt?.slice(11, 16) ?? "",
-        endTime: s.endAt?.slice(11, 16) ?? "",
+        startTime: s.startAt ? hhmm(new Date(s.startAt)) : "",
+        endTime: s.endAt ? hhmm(new Date(s.endAt)) : "",
         placement: p?.name ?? "—",
         setting: p?.settingType ?? "",
         shiftType: s.shiftType,

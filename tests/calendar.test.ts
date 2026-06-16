@@ -53,35 +53,41 @@ describe("shift → event boundaries", () => {
     expect(shiftEnd(s)).toBe("2026-06-11");
   });
 
-  it("timed shift: datetime start/end on the same day", () => {
-    const s = shift({ startAt: "2026-06-10T07:30", endAt: "2026-06-10T20:00" });
+  it("timed shift: passes through the full ISO start/end instants", () => {
+    const s = shift({ startAt: "2026-06-10T06:30:00.000Z", endAt: "2026-06-10T19:00:00.000Z" });
     expect(isAllDay(s)).toBe(false);
-    expect(shiftStart(s)).toBe("2026-06-10T07:30:00");
-    expect(shiftEnd(s)).toBe("2026-06-10T20:00:00");
+    expect(shiftStart(s)).toBe("2026-06-10T06:30:00.000Z");
+    expect(shiftEnd(s)).toBe("2026-06-10T19:00:00.000Z");
   });
 
-  it("overnight shift: end carries the next day's date", () => {
-    const s = shift({ startAt: "2026-06-10T20:00", endAt: "2026-06-11T08:00" });
-    expect(shiftEnd(s)).toBe("2026-06-11T08:00:00");
+  it("overnight shift: end instant carries the next day", () => {
+    const s = shift({ startAt: "2026-06-10T19:00:00.000Z", endAt: "2026-06-11T07:00:00.000Z" });
+    expect(shiftEnd(s)).toBe("2026-06-11T07:00:00.000Z");
   });
 
   it("timed shift without an end is open-ended", () => {
-    const s = shift({ startAt: "2026-06-10T07:30", endAt: undefined });
+    const s = shift({ startAt: "2026-06-10T06:30:00.000Z", endAt: undefined });
     expect(shiftEnd(s)).toBeUndefined();
   });
 });
 
 describe("shiftMinutes", () => {
   it("is the true span — same-day", () => {
-    expect(shiftMinutes({ startAt: "2026-06-10T07:30", endAt: "2026-06-10T20:00" })).toBe(750);
+    expect(
+      shiftMinutes({ startAt: "2026-06-10T07:30:00.000Z", endAt: "2026-06-10T20:00:00.000Z" }),
+    ).toBe(750);
   });
   it("is the true span — overnight (no 24h cap)", () => {
-    expect(shiftMinutes({ startAt: "2026-06-10T20:00", endAt: "2026-06-11T08:00" })).toBe(720);
+    expect(
+      shiftMinutes({ startAt: "2026-06-10T20:00:00.000Z", endAt: "2026-06-11T08:00:00.000Z" }),
+    ).toBe(720);
     // 7pm day 1 → 8pm day 2 is genuinely 25h, not 1h.
-    expect(shiftMinutes({ startAt: "2026-06-10T19:00", endAt: "2026-06-11T20:00" })).toBe(25 * 60);
+    expect(
+      shiftMinutes({ startAt: "2026-06-10T19:00:00.000Z", endAt: "2026-06-11T20:00:00.000Z" }),
+    ).toBe(25 * 60);
   });
   it("is 0 when either end is missing", () => {
-    expect(shiftMinutes({ startAt: "2026-06-10T07:30", endAt: undefined })).toBe(0);
+    expect(shiftMinutes({ startAt: "2026-06-10T07:30:00.000Z", endAt: undefined })).toBe(0);
     expect(shiftMinutes({ startAt: undefined, endAt: undefined })).toBe(0);
   });
 });
@@ -117,22 +123,37 @@ describe("clampResizeSpan", () => {
 });
 
 describe("composeShiftTimes", () => {
+  // Asserts on local wall-clock (round-trip) so it's independent of the runner's
+  // timezone — the stored value is a full UTC ISO string.
+  const localParts = (iso: string) => {
+    const d = new Date(iso);
+    return { date: d.getDate(), h: d.getHours(), min: d.getMinutes() };
+  };
+
   it("no start time → no datetimes (all-day)", () => {
     expect(composeShiftTimes("2026-06-10")).toEqual({});
   });
-  it("start only → open-ended start datetime", () => {
-    expect(composeShiftTimes("2026-06-10", "07:30")).toEqual({ startAt: "2026-06-10T07:30" });
+
+  it("produces a full UTC ISO timestamp", () => {
+    const { startAt } = composeShiftTimes("2026-06-10", "07:30");
+    expect(startAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
   });
+
+  it("start only → open-ended start at the right local time", () => {
+    const { startAt, endAt } = composeShiftTimes("2026-06-10", "07:30");
+    expect(endAt).toBeUndefined();
+    expect(localParts(startAt!)).toEqual({ date: 10, h: 7, min: 30 });
+  });
+
   it("same-day when end is after start", () => {
-    expect(composeShiftTimes("2026-06-10", "07:30", "20:00")).toEqual({
-      startAt: "2026-06-10T07:30",
-      endAt: "2026-06-10T20:00",
-    });
+    const { startAt, endAt } = composeShiftTimes("2026-06-10", "07:30", "20:00");
+    expect(localParts(startAt!)).toEqual({ date: 10, h: 7, min: 30 });
+    expect(localParts(endAt!)).toEqual({ date: 10, h: 20, min: 0 });
   });
+
   it("rolls the end to the next day for a night shift", () => {
-    expect(composeShiftTimes("2026-06-10", "20:00", "08:00")).toEqual({
-      startAt: "2026-06-10T20:00",
-      endAt: "2026-06-11T08:00",
-    });
+    const { startAt, endAt } = composeShiftTimes("2026-06-10", "20:00", "08:00");
+    expect(localParts(startAt!)).toEqual({ date: 10, h: 20, min: 0 });
+    expect(localParts(endAt!)).toEqual({ date: 11, h: 8, min: 0 }); // next day
   });
 });

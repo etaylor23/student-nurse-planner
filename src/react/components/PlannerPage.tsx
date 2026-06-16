@@ -21,6 +21,7 @@ import { usePlacements, useShifts, useBreakRules } from "../hooks";
 import { useShiftActions } from "../ShiftsContext";
 import { useRepository } from "../RepositoryContext";
 import { downloadText } from "../download";
+import { ActivityLog } from "./ActivityLog";
 import { ShiftForm, type ShiftDraft } from "./ShiftForm";
 import { ShiftHistory } from "./ShiftHistory";
 import { PageHero, Panel, btnGhostSm, btnPrimary } from "./ui";
@@ -117,7 +118,8 @@ export function PlannerPage() {
     if (await markWorked(id)) close();
   };
 
-  const at = (d: Date) => `${isoDate(d)}T${hhmm(d)}`;
+  // Store a dragged moment as a full UTC ISO instant.
+  const at = (d: Date) => d.toISOString();
 
   // Drag-to-reschedule: duration is preserved by FullCalendar, so the stored
   // netHours stays valid — we only move the start date and the start/end datetimes.
@@ -395,6 +397,8 @@ export function PlannerPage() {
 
         <div className="xl:sticky xl:top-6 xl:self-start">{sidebar}</div>
       </div>
+
+      <ActivityLog />
     </div>
   );
 }

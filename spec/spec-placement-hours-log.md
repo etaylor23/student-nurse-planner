@@ -28,8 +28,9 @@ Logs placement shifts and tracks progress toward the NMC practice-hours target.
 `Shift.entryMode` (NET/RAW), `rawDurationMins`, `breakMins`, `netHours`
 (derived/stored), `isSimulated`, `status` (PLANNED/COMPLETED),
 `supervisingRnName`. Timed shifts store **absolute datetimes** `startAt`/`endAt`
-(local ISO, e.g. `2026-06-16T19:00`); `date` is the **start date**. Worked minutes
-are the difference `endAt − startAt`, so overnight shifts are exact (no 24h cap).
+(full UTC ISO, e.g. `2026-06-16T18:00:00.000Z`); `date` is the local **start
+date**. Worked minutes are the difference `endAt − startAt`, so overnight shifts
+are exact (no 24h cap).
 
 ## Screens (built)
 

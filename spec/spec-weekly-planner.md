@@ -68,6 +68,9 @@ and is **not** used by the client-only `.ics` snapshot export. See
   into Google / Apple / Outlook.
 - **Deep link** — `/planner?date=YYYY-MM-DD` opens the week containing that date,
   used by the timesheet's "view in planner" row action.
+- **Activity feed** — a global **Activity** panel at the bottom lists every shift
+  action (created / completed / reactivated / deleted …) newest-first. See
+  `spec-activity-log.md`.
 
 ## Derived logic
 

@@ -43,11 +43,27 @@ export function shiftMinutes(shift: Pick<Shift, "startAt" | "endAt">): number {
   return Math.round((new Date(shift.endAt).getTime() - new Date(shift.startAt).getTime()) / 60000);
 }
 
+/** Build a full UTC ISO timestamp (e.g. "2026-06-16T18:00:00.000Z") from a local
+ * date + "HH:MM" clock time. Constructed via local parts, so the instant matches
+ * the wall-clock the user entered. */
+export function localDateTimeToIso(dateIso: string, time: string): string {
+  const [y, m, d] = dateIso.split("-").map(Number);
+  const [h, min] = time.split(":").map(Number);
+  return new Date(y, m - 1, d, h, min).toISOString();
+}
+
+/** Convert a legacy local "YYYY-MM-DDTHH:MM" datetime (no zone) to a full UTC ISO
+ * string. Used by the v3→v4 migration. */
+export function localIsoToUtc(localIso: string): string {
+  const [d, t = "00:00"] = localIso.split("T");
+  return localDateTimeToIso(d, t);
+}
+
 /**
- * Compose `startAt`/`endAt` datetimes from a start date + optional clock times.
- * For entry convenience the end rolls onto the next day when `endTime <= startTime`
- * (a night shift), so the stored end datetime carries the real date. Shared by the
- * shift form (storage) and the planner draft highlight.
+ * Compose `startAt`/`endAt` as full UTC ISO timestamps from a start date + optional
+ * clock times. For entry convenience the end rolls onto the next day when
+ * `endTime <= startTime` (a night shift), so the stored end carries the real date.
+ * Shared by the shift form (storage) and the planner draft highlight.
  */
 export function composeShiftTimes(
   date: string,
@@ -55,10 +71,10 @@ export function composeShiftTimes(
   endTime?: string,
 ): { startAt?: string; endAt?: string } {
   if (!startTime) return {};
-  const startAt = `${date}T${startTime}`;
+  const startAt = localDateTimeToIso(date, startTime);
   if (!endTime) return { startAt };
   const endDate = endTime <= startTime ? isoAddDays(date, 1) : date;
-  return { startAt, endAt: `${endDate}T${endTime}` };
+  return { startAt, endAt: localDateTimeToIso(endDate, endTime) };
 }
 
 /** "2026-06-18" → "Thu 18 Jun" for display (e.g. timesheet rows, audit summaries). */
@@ -88,20 +104,20 @@ export function clampResizeSpan(
   return { startMs: newStartMs, endMs: newStartMs + maxMs };
 }
 
-/** FullCalendar/ICS start: timed → "YYYY-MM-DDTHH:MM:00"; all-day → "YYYY-MM-DD". */
+/** FullCalendar/ICS start: timed → the full ISO `startAt` instant (FullCalendar
+ * renders it in local time); all-day → the "YYYY-MM-DD" date. */
 export function shiftStart(shift: Pick<Shift, "date" | "startAt">): string {
-  return shift.startAt ? `${shift.startAt}:00` : shift.date;
+  return shift.startAt ?? shift.date;
 }
 
 /**
  * End boundary:
  * - all-day → exclusive next day "YYYY-MM-DD",
- * - timed with endAt → "YYYY-MM-DDTHH:MM:00" (the end datetime carries its own
- *   date, so overnight spans are exact — no inference, no 24h cap),
+ * - timed with endAt → the full ISO `endAt` instant (carries its own date, so
+ *   overnight spans are exact — no inference, no 24h cap),
  * - timed without endAt → undefined (open-ended).
  */
 export function shiftEnd(shift: Pick<Shift, "date" | "startAt" | "endAt">): string | undefined {
   if (!shift.startAt) return isoAddDays(shift.date, 1);
-  if (!shift.endAt) return undefined;
-  return `${shift.endAt}:00`;
+  return shift.endAt ?? undefined;
 }

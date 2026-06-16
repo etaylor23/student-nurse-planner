@@ -32,25 +32,24 @@ describe("buildIcs", () => {
     expect(ics).toContain("UID:s1@student-nurse-planner");
   });
 
-  it("timed shift uses floating local datetimes (no Z)", () => {
+  it("timed shift emits UTC datetimes from the stored instants", () => {
     const ics = buildIcs(
-      [shift({ startAt: "2026-06-10T07:30", endAt: "2026-06-10T20:00" })],
+      [shift({ startAt: "2026-06-10T07:30:00.000Z", endAt: "2026-06-10T20:00:00.000Z" })],
       placements,
       STAMP,
     );
-    expect(ics).toContain("DTSTART:20260610T073000");
-    expect(ics).toContain("DTEND:20260610T200000");
-    expect(ics).not.toContain("DTSTART:20260610T073000Z");
+    expect(ics).toContain("DTSTART:20260610T073000Z");
+    expect(ics).toContain("DTEND:20260610T200000Z");
   });
 
   it("overnight shift ends on the next day", () => {
     const ics = buildIcs(
-      [shift({ startAt: "2026-06-10T20:00", endAt: "2026-06-11T08:00" })],
+      [shift({ startAt: "2026-06-10T20:00:00.000Z", endAt: "2026-06-11T08:00:00.000Z" })],
       placements,
       STAMP,
     );
-    expect(ics).toContain("DTSTART:20260610T200000");
-    expect(ics).toContain("DTEND:20260611T080000");
+    expect(ics).toContain("DTSTART:20260610T200000Z");
+    expect(ics).toContain("DTEND:20260611T080000Z");
   });
 
   it("shift with no times is all-day with an exclusive next-day end", () => {

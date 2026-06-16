@@ -1,6 +1,6 @@
 import Dexie, { type Table } from "dexie";
 import type { BreakRule, LogItem, Placement, Shift, User } from "../../domain/types";
-import { isoAddDays } from "../../logic/calendar";
+import { isoAddDays, localIsoToUtc } from "../../logic/calendar";
 
 /**
  * IndexedDB schema for the PoC. Indexes are chosen for the queries the
@@ -52,6 +52,20 @@ export class PlannerDb extends Dexie {
             }
             delete s.startTime;
             delete s.endTime;
+          });
+      });
+    // v4 normalises startAt/endAt to full UTC ISO timestamps (toISOString form),
+    // converting the v3 local "YYYY-MM-DDTHH:MM" datetimes in place.
+    this.version(4)
+      .stores({ shifts: "id, userId, [userId+date], status" })
+      .upgrade(async (tx) => {
+        await tx
+          .table("shifts")
+          .toCollection()
+          .modify((shift) => {
+            const s = shift as { startAt?: string; endAt?: string };
+            if (s.startAt) s.startAt = localIsoToUtc(s.startAt);
+            if (s.endAt) s.endAt = localIsoToUtc(s.endAt);
           });
       });
   }

@@ -8,7 +8,7 @@ import {
 } from "../../domain/types";
 import { computeNetHours } from "../../logic/hours";
 import { resolveBreakMins } from "../../logic/breakRules";
-import { composeShiftTimes, formatHumanDate } from "../../logic/calendar";
+import { composeShiftTimes, formatHumanDate, hhmm, isoAddDays } from "../../logic/calendar";
 import { useBreakRules } from "../hooks";
 import { btnGhost, btnPrimary, inputCls } from "./ui";
 
@@ -73,9 +73,11 @@ export function ShiftForm({
   const [date, setDate] = useState(initial?.date ?? initialDate ?? todayIso());
   const [placementId, setPlacementId] = useState(initial?.placementId ?? initialPlacementId ?? "");
   const [startTime, setStartTime] = useState(
-    initial?.startAt?.slice(11, 16) ?? initialStartTime ?? "",
+    initial?.startAt ? hhmm(new Date(initial.startAt)) : (initialStartTime ?? ""),
   );
-  const [endTime, setEndTime] = useState(initial?.endAt?.slice(11, 16) ?? initialEndTime ?? "");
+  const [endTime, setEndTime] = useState(
+    initial?.endAt ? hhmm(new Date(initial.endAt)) : (initialEndTime ?? ""),
+  );
   const [shiftType, setShiftType] = useState<ShiftType>(initial?.shiftType ?? "LONG_DAY");
   const [entryMode, setEntryMode] = useState<"NET" | "RAW">(initial?.entryMode ?? "RAW");
   const [grossHours, setGrossHours] = useState(
@@ -101,9 +103,11 @@ export function ShiftForm({
   }, [date, startTime, endTime, onDraftChange]);
 
   const derivedMins = durationFromTimes(startTime, endTime);
-  // Absolute start/end datetimes for storage + the overnight notice.
+  // Absolute UTC start/end timestamps for storage.
   const composedTimes = composeShiftTimes(date, startTime || undefined, endTime || undefined);
-  const endsNextDay = !!composedTimes.endAt && composedTimes.endAt.slice(0, 10) !== date;
+  // The end rolls onto the next day exactly when the end clock time is at/before
+  // the start (matches composeShiftTimes), so the notice doesn't need UTC parsing.
+  const endsNextDay = !!startTime && !!endTime && endTime <= startTime;
   const rawMins = derivedMins ?? Math.round((parseFloat(grossHours) || 0) * 60);
   const resolvedBreak = useMemo(() => resolveBreakMins(rawMins, rules), [rawMins, rules]);
   const breakOverrideNum = breakOverride === "" ? undefined : parseInt(breakOverride, 10);
@@ -262,7 +266,7 @@ export function ShiftForm({
                 >
                   <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
                 </svg>
-                Overnight — finishes {formatHumanDate(composedTimes.endAt!.slice(0, 10))}
+                Overnight — finishes {formatHumanDate(isoAddDays(date, 1))}
               </p>
             )}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

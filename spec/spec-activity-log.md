@@ -1,4 +1,4 @@
-# Spec — Activity Log & Shift Locking  (Status: PLANNED)
+# Spec — Activity Log & Shift Locking  (Status: BUILT)
 
 A generic **audit trail** — a history of what the student has done, in the style
 of Jira's issue history — plus the **locking** of completed shifts that the trail
@@ -73,6 +73,9 @@ so logging lives in one place and can't be bypassed by one of the two views.
   in the timesheet row; completed calendar events are not draggable/resizable.
 - **History** — below the shift editor, a **History** list shows that shift's
   `LogItem`s newest-first (a dot, the summary, and a timestamp), like Jira.
+- **Activity feed** — the planner has a global **Activity** panel at the bottom
+  listing every `LogItem` across all shifts, newest-first (the home for deleted
+  shifts' history too). Both lists reuse a shared `LogList` renderer.
 
 ## Repository
 
@@ -88,9 +91,9 @@ listLogItems(userId, filter?: { entityType?; entityId? }): Promise<LogItem[]>; /
 
 ## Not yet built (future)
 
-- **Global activity stream** — one screen listing every `LogItem` across entities
-  (the home for deleted-entity history). v1 only surfaces per-shift history.
 - **Field-level diffs** — Jira-style "changed start 07:00 → 08:00"; v1 summaries are
   whole-action sentences.
+- **Filter / paginate the activity feed** — it currently lists every entry; a busy
+  log would want date/action filters or a "show more".
 - **Logging other entities** — placements, reflections, skill sign-offs reuse the
   same `LogItem` table when those features add audit needs.

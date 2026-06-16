@@ -11,12 +11,10 @@ import { isAllDay, shiftEnd, shiftStart } from "./calendar";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-/** Floating-local stamp: "2026-06-10T07:30:00" -> "20260610T073000". */
-const toIcsDateTime = (iso: string) => iso.replace(/[-:]/g, "");
 /** Date-only stamp: "2026-06-10" -> "20260610". */
 const toIcsDate = (iso: string) => iso.replace(/-/g, "");
 
-/** UTC DTSTAMP "YYYYMMDDTHHMMSSZ". */
+/** UTC stamp "YYYYMMDDTHHMMSSZ" from a Date. */
 function utcStamp(d: Date): string {
   return (
     `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}` +
@@ -42,8 +40,9 @@ function eventLines(shift: Shift, placementName: string | undefined, stamp: stri
     lines.push(`DTSTART;VALUE=DATE:${toIcsDate(start)}`);
     if (end) lines.push(`DTEND;VALUE=DATE:${toIcsDate(end)}`);
   } else {
-    lines.push(`DTSTART:${toIcsDateTime(start)}`);
-    if (end) lines.push(`DTEND:${toIcsDateTime(end)}`);
+    // start/end are full UTC ISO instants → emit UTC datetimes ("…Z").
+    lines.push(`DTSTART:${utcStamp(new Date(start))}`);
+    if (end) lines.push(`DTEND:${utcStamp(new Date(end))}`);
   }
 
   const typeLabel = SHIFT_TYPE_LABEL[shift.shiftType];

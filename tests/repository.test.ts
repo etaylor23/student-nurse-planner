@@ -115,7 +115,7 @@ describe("DexieRepository", () => {
     expect(forShift1.every((i) => i.entityId === "shift-1")).toBe(true);
   });
 
-  it("migrates v2 shift times (startTime/endTime) to startAt/endAt on upgrade to v3", async () => {
+  it("migrates v2 shift times (startTime/endTime) to full UTC ISO startAt/endAt", async () => {
     const name = "test-migrate-" + Math.random().toString(36).slice(2);
     // Create the DB at the old (v2) schema and insert old-shape shifts.
     const old = new Dexie(name);
@@ -145,13 +145,19 @@ describe("DexieRepository", () => {
     ]);
     old.close();
 
-    // Re-open at v3 via PlannerDb → triggers the upgrade.
+    // Re-open at v4 via PlannerDb → runs the v3 then v4 upgrades.
     const repo = new DexieRepository(new PlannerDb(name));
     const byId = Object.fromEntries((await repo.listShifts("u")).map((s) => [s.id, s]));
-    expect(byId.day.startAt).toBe("2026-06-10T07:30");
-    expect(byId.day.endAt).toBe("2026-06-10T20:00");
-    expect(byId.night.startAt).toBe("2026-06-10T20:00");
-    expect(byId.night.endAt).toBe("2026-06-11T08:00"); // overnight rolled to next day
+    // Stored as full UTC ISO; assert the local wall-clock round-trips (TZ-safe).
+    const lp = (iso: string) => {
+      const d = new Date(iso);
+      return { date: d.getDate(), h: d.getHours(), min: d.getMinutes() };
+    };
+    expect(byId.day.startAt).toMatch(/Z$/);
+    expect(lp(byId.day.startAt!)).toEqual({ date: 10, h: 7, min: 30 });
+    expect(lp(byId.day.endAt!)).toEqual({ date: 10, h: 20, min: 0 });
+    expect(lp(byId.night.startAt!)).toEqual({ date: 10, h: 20, min: 0 });
+    expect(lp(byId.night.endAt!)).toEqual({ date: 11, h: 8, min: 0 }); // overnight → next day
     expect(byId.allday.startAt).toBeUndefined();
     expect(byId.allday.endAt).toBeUndefined();
     // Old fields are dropped.

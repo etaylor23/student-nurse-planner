@@ -47,9 +47,9 @@ export interface Shift {
   id: string;
   userId: string;
   placementId?: string;
-  date: string; // ISO date the shift starts on (what it's counted/grouped against)
-  startAt?: string; // local ISO datetime "YYYY-MM-DDTHH:MM" clock-in (optional)
-  endAt?: string; // local ISO datetime clock-out; its date may be the next day (nights)
+  date: string; // local ISO date the shift starts on (what it's counted/grouped against)
+  startAt?: string; // full UTC ISO timestamp clock-in (optional), e.g. "2026-06-16T18:00:00.000Z"
+  endAt?: string; // full UTC ISO timestamp clock-out; may fall on the next day (nights)
   shiftType: ShiftType;
   entryMode: HoursEntryMode;
   rawDurationMins?: number; // present when entryMode === "RAW"
