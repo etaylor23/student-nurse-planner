@@ -1,20 +1,11 @@
 import { useState } from "react";
 import type { Placement, Shift } from "../../domain/types";
 import { buildTimesheet, timesheetToCsv } from "../../logic/timesheet";
+import { downloadCsv } from "../download";
 import { Panel, btnGhostSm } from "./ui";
 
 const filterCtl =
   "rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25";
-
-function downloadCsv(filename: string, csv: string) {
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 export function TimesheetExport({
   shifts,

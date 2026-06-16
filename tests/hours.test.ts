@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { computeNetHours, summariseHours } from "../src/logic/hours";
+import { computeNetHours, hoursByPlacement, summariseHours } from "../src/logic/hours";
 import { defaultBreakRules } from "../src/logic/breakRules";
-import type { Shift } from "../src/domain/types";
+import type { Placement, Shift } from "../src/domain/types";
 
 const rules = defaultBreakRules();
 
@@ -90,5 +90,29 @@ describe("summariseHours", () => {
     const s = summariseHours([shift({ netHours: 2500, isSimulated: false })]);
     expect(s.progressFraction).toBe(1);
     expect(s.remainingHours).toBe(0);
+  });
+});
+
+describe("hoursByPlacement", () => {
+  const placements: Placement[] = [
+    { id: "p1", userId: "u", name: "Ward 7", createdAt: "" },
+    { id: "p2", userId: "u", name: "Community", createdAt: "" },
+  ];
+
+  it("groups counted vs planned hours by placement, names resolved, sorted desc", () => {
+    const rows = hoursByPlacement(
+      [
+        shift({ placementId: "p1", netHours: 11.5, status: "COMPLETED" }),
+        shift({ placementId: "p1", netHours: 7.5, status: "PLANNED" }),
+        shift({ placementId: "p2", netHours: 20, status: "COMPLETED" }),
+        shift({ placementId: undefined, netHours: 5, status: "COMPLETED" }),
+      ],
+      placements,
+    );
+    expect(rows[0]).toMatchObject({ name: "Community", counted: 20, shiftCount: 1 });
+    const ward7 = rows.find((r) => r.placementId === "p1")!;
+    expect(ward7).toMatchObject({ name: "Ward 7", counted: 11.5, planned: 7.5, shiftCount: 2 });
+    const none = rows.find((r) => r.placementId === null)!;
+    expect(none).toMatchObject({ name: "No placement", counted: 5 });
   });
 });

@@ -3,6 +3,7 @@ import {
   SIMULATED_HOURS_CAP,
   type BreakRule,
   type HoursEntryMode,
+  type Placement,
   type Shift,
 } from "../domain/types";
 import { resolveBreakMins } from "./breakRules";
@@ -98,4 +99,41 @@ export function summariseHours(shifts: Shift[]): HoursSummary {
     targetHours: PRACTICE_HOURS_TARGET,
     simulatedCap: SIMULATED_HOURS_CAP,
   };
+}
+
+export interface PlacementHours {
+  placementId: string | null; // null = shifts with no placement set
+  name: string;
+  counted: number; // hours from COMPLETED shifts
+  planned: number; // hours from PLANNED shifts
+  shiftCount: number;
+}
+
+/**
+ * Hours grouped by placement (counted vs planned), resolving names. Shifts with
+ * no placement are bucketed under "No placement". Sorted by counted hours desc.
+ */
+export function hoursByPlacement(shifts: Shift[], placements: Placement[]): PlacementHours[] {
+  const nameById = new Map(placements.map((p) => [p.id, p.name]));
+  const byKey = new Map<string, PlacementHours>();
+
+  for (const s of shifts) {
+    const key = s.placementId ?? "__none__";
+    let row = byKey.get(key);
+    if (!row) {
+      row = {
+        placementId: s.placementId ?? null,
+        name: s.placementId ? (nameById.get(s.placementId) ?? "Unknown placement") : "No placement",
+        counted: 0,
+        planned: 0,
+        shiftCount: 0,
+      };
+      byKey.set(key, row);
+    }
+    row.shiftCount += 1;
+    if (s.status === "COMPLETED") row.counted = round2(row.counted + s.netHours);
+    else row.planned = round2(row.planned + s.netHours);
+  }
+
+  return [...byKey.values()].sort((a, b) => b.counted - a.counted);
 }

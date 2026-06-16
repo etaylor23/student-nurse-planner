@@ -4,6 +4,7 @@ import { usePlacements, useShifts } from "../hooks";
 import { useRepository } from "../RepositoryContext";
 import { BreakRulesEditor } from "./BreakRulesEditor";
 import { HoursSummaryPanel } from "./HoursSummaryPanel";
+import { PlacementBreakdown } from "./PlacementBreakdown";
 import { PlacementManager } from "./PlacementManager";
 import { ShiftForm, type ShiftDraft } from "./ShiftForm";
 import { TimesheetExport } from "./TimesheetExport";
@@ -133,13 +134,12 @@ export function HoursLogPage() {
         />
       </div>
 
-      <Panel
-        title="Break rules"
-        hint="How long a break is deducted before a shift counts"
-        className="lg:w-1/2"
-      >
-        <BreakRulesEditor />
-      </Panel>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <PlacementBreakdown shifts={shifts} placements={placements} />
+        <Panel title="Break rules" hint="How long a break is deducted before a shift counts">
+          <BreakRulesEditor />
+        </Panel>
+      </div>
     </div>
   );
 }
