@@ -7,8 +7,9 @@ import interactionPlugin from "@fullcalendar/interaction";
 import type { EventInput } from "@fullcalendar/core";
 import { SHIFT_TYPE_LABEL, type Shift } from "../../domain/types";
 import { hhmm, isAllDay, isoDate, shiftEnd, shiftStart } from "../../logic/calendar";
+import { computeNetHours } from "../../logic/hours";
 import { buildIcs } from "../../logic/ics";
-import { usePlacements, useShifts } from "../hooks";
+import { usePlacements, useShifts, useBreakRules } from "../hooks";
 import { useShiftActions } from "../ShiftsContext";
 import { useRepository } from "../RepositoryContext";
 import { downloadText } from "../download";
@@ -27,6 +28,7 @@ export function PlannerPage() {
   const { placements } = usePlacements();
   const { shifts, summary, reload: reloadShifts } = useShifts();
   const { saveShift, deleteShift, markWorked } = useShiftActions();
+  const { rules } = useBreakRules();
   const [searchParams] = useSearchParams();
   // Deep-link target, e.g. /planner?date=2026-06-18 (from a timesheet row).
   const initialDate = searchParams.get("date") ?? undefined;
@@ -98,6 +100,23 @@ export function PlannerPage() {
       if (end) patch.endTime = hhmm(end);
     }
     await repo.updateShift(shift.id, patch);
+    await reloadShifts();
+  };
+
+  // Drag the edge to change duration: recompute the counted hours + break for the
+  // new span (treated as RAW, so the band rules apply) so the hours stay correct.
+  const applyResize = async (shift: Shift, start: Date, end: Date) => {
+    const rawDurationMins = Math.round((end.getTime() - start.getTime()) / 60000);
+    const { netHours, breakMins } = computeNetHours({ entryMode: "RAW", rawDurationMins }, rules);
+    await repo.updateShift(shift.id, {
+      entryMode: "RAW",
+      date: isoDate(start),
+      startTime: hhmm(start),
+      endTime: hhmm(end),
+      rawDurationMins,
+      breakMins,
+      netHours,
+    });
     await reloadShifts();
   };
 
@@ -258,7 +277,6 @@ export function PlannerPage() {
               eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
               slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
               editable
-              eventDurationEditable={false}
               selectable
               selectMirror
               selectMinDistance={5}
@@ -290,6 +308,13 @@ export function PlannerPage() {
                 const ev = arg.event;
                 const shift = ev.extendedProps.shift as Shift | undefined;
                 if (shift && ev.start) void applyMove(shift, ev.start, ev.allDay, ev.end);
+              }}
+              eventResize={(arg) => {
+                const ev = arg.event;
+                const shift = ev.extendedProps.shift as Shift | undefined;
+                if (shift && !ev.allDay && ev.start && ev.end)
+                  void applyResize(shift, ev.start, ev.end);
+                else arg.revert();
               }}
             />
           </div>
