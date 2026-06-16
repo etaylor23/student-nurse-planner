@@ -65,7 +65,9 @@ export function ShiftForm({
     initial && initial.entryMode === "NET" ? String(initial.netHours) : "",
   );
   const [breakOverride, setBreakOverride] = useState(
-    initial?.entryMode === "RAW" && initial.breakMins !== undefined ? String(initial.breakMins) : "",
+    initial?.entryMode === "RAW" && initial.breakMins !== undefined
+      ? String(initial.breakMins)
+      : "",
   );
   const [isSimulated, setIsSimulated] = useState(initial?.isSimulated ?? false);
   const [completed, setCompleted] = useState(initial?.status === "COMPLETED");
@@ -126,7 +128,12 @@ export function ShiftForm({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {field(
           "Date",
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputCls} />,
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className={inputCls}
+          />,
         )}
         {field(
           "Placement",
@@ -212,10 +219,16 @@ export function ShiftForm({
                 type="number"
                 min="0"
                 step="0.25"
-                value={derivedMins != null ? String(Math.round((derivedMins / 60) * 100) / 100) : grossHours}
+                value={
+                  derivedMins != null
+                    ? String(Math.round((derivedMins / 60) * 100) / 100)
+                    : grossHours
+                }
                 onChange={(e) => setGrossHours(e.target.value)}
                 disabled={derivedMins != null}
-                className={derivedMins != null ? `${inputCls} bg-slate-50 text-slate-500` : inputCls}
+                className={
+                  derivedMins != null ? `${inputCls} bg-slate-50 text-slate-500` : inputCls
+                }
               />,
               derivedMins != null
                 ? `Worked out from ${startTime}–${endTime}.`

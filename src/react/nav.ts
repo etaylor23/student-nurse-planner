@@ -26,5 +26,4 @@ export const NAV_ITEMS: NavItem[] = [
 ];
 
 /** First enabled route — `/` and unknown paths redirect here. */
-export const DEFAULT_ROUTE =
-  NAV_ITEMS.find((item) => item.enabled)?.path ?? "/placement-hours";
+export const DEFAULT_ROUTE = NAV_ITEMS.find((item) => item.enabled)?.path ?? "/placement-hours";

@@ -70,8 +70,6 @@ function escapeCsv(value: string): string {
 /** Render timesheet rows as a CSV string (header + data). */
 export function timesheetToCsv(rows: TimesheetRow[]): string {
   const head = HEADERS.map(([, label]) => escapeCsv(label)).join(",");
-  const body = rows.map((r) =>
-    HEADERS.map(([key]) => escapeCsv(String(r[key]))).join(","),
-  );
+  const body = rows.map((r) => HEADERS.map(([key]) => escapeCsv(String(r[key]))).join(","));
   return [head, ...body].join("\n");
 }

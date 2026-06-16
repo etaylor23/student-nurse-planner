@@ -37,15 +37,30 @@ export function HoursSummaryPanel({ summary }: { summary: HoursSummary }) {
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTile dot="bg-emerald-500" label="Counted" value={`${summary.practiceHours} h`} sub={`${pct}% of goal`} />
-        <StatTile dot="bg-slate-300" label="Remaining" value={`${summary.remainingHours} h`} sub="to reach goal" />
+        <StatTile
+          dot="bg-emerald-500"
+          label="Counted"
+          value={`${summary.practiceHours} h`}
+          sub={`${pct}% of goal`}
+        />
+        <StatTile
+          dot="bg-slate-300"
+          label="Remaining"
+          value={`${summary.remainingHours} h`}
+          sub="to reach goal"
+        />
         <StatTile
           dot="bg-sky-500"
           label="Simulated"
           value={`${summary.simulatedHours} h`}
           sub={`${summary.simulatedRemaining} h under ${summary.simulatedCap} cap`}
         />
-        <StatTile dot="bg-amber-500" label="Planned" value={`${summary.plannedHours} h`} sub="not counted yet" />
+        <StatTile
+          dot="bg-amber-500"
+          label="Planned"
+          value={`${summary.plannedHours} h`}
+          sub="not counted yet"
+        />
       </div>
 
       {summary.simulatedCapReached && (

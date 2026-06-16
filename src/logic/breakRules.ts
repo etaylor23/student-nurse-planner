@@ -12,7 +12,14 @@ import { newId } from "../domain/ids";
 export function defaultBreakRules(): BreakRule[] {
   return [
     { id: newId(), userId: null, minShiftMins: 0, maxShiftMins: 360, breakMins: 0, orderIndex: 0 },
-    { id: newId(), userId: null, minShiftMins: 361, maxShiftMins: 540, breakMins: 30, orderIndex: 1 },
+    {
+      id: newId(),
+      userId: null,
+      minShiftMins: 361,
+      maxShiftMins: 540,
+      breakMins: 30,
+      orderIndex: 1,
+    },
     {
       id: newId(),
       userId: null,

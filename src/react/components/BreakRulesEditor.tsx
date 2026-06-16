@@ -33,7 +33,9 @@ export function BreakRulesEditor() {
     const sorted = [...rules].sort((a, b) => a.orderIndex - b.orderIndex);
     const last = sorted[sorted.length - 1];
     setThresholds(
-      sorted.slice(0, -1).map((r) => ({ upto: String(r.maxShiftMins / 60), brk: String(r.breakMins) })),
+      sorted
+        .slice(0, -1)
+        .map((r) => ({ upto: String(r.maxShiftMins / 60), brk: String(r.breakMins) })),
     );
     setAboveBrk(String(last.breakMins));
   }, [rules]);
@@ -129,7 +131,16 @@ export function BreakRulesEditor() {
                   aria-label="Remove band"
                   className="rounded-md p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.6}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-4 w-4"
+                    aria-hidden="true"
+                  >
                     <path d="M5 12h14" />
                   </svg>
                 </button>

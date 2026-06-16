@@ -46,10 +46,7 @@ describe("buildTimesheet", () => {
 
 describe("timesheetToCsv", () => {
   it("escapes commas and quotes", () => {
-    const rows = buildTimesheet(
-      [shift({ supervisingRnName: 'Smith, "Jo"' })],
-      placements,
-    );
+    const rows = buildTimesheet([shift({ supervisingRnName: 'Smith, "Jo"' })], placements);
     const csv = timesheetToCsv(rows);
     expect(csv.split("\n")[0]).toContain("Date");
     expect(csv).toContain('"Smith, ""Jo"""');
