@@ -1,4 +1,5 @@
 import type { LogItem } from "../../domain/types";
+import { groupLogItems } from "../../logic/logGroups";
 
 /** Dot colour per action, so a log reads at a glance. */
 const DOT: Record<string, string> = {
@@ -22,21 +23,40 @@ function formatTimestamp(iso: string): string {
   });
 }
 
-/** A newest-first list of audit entries — a coloured dot, the summary, a timestamp.
- * Shared by the per-shift history and the global activity feed. */
-export function LogList({ items }: { items: LogItem[] }) {
+/**
+ * A newest-first list of audit entries, grouped by save event. Each group shows a
+ * coloured dot, a header, and one line per change. `showLabel` (the global activity
+ * feed) makes the header the shift's label (so you can tell which shift it was);
+ * otherwise (per-shift history) the header is the timestamp.
+ */
+export function LogList({ items, showLabel = false }: { items: LogItem[]; showLabel?: boolean }) {
+  const groups = groupLogItems(items);
   return (
-    <ul className="space-y-3">
-      {items.map((it) => (
-        <li key={it.id} className="flex gap-2.5 text-sm">
+    <ul className="space-y-3.5">
+      {groups.map((g) => (
+        <li key={g.key} className="flex gap-2.5 text-sm">
           <span
             className={
-              "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full " + (DOT[it.action] ?? "bg-slate-300")
+              "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full " +
+              (DOT[g.entries[0].action] ?? "bg-slate-300")
             }
           />
-          <div className="min-w-0">
-            <p className="text-slate-700">{it.summary}</p>
-            <p className="text-xs text-slate-400">{formatTimestamp(it.createdAt)}</p>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="truncate font-medium text-slate-700">
+                {showLabel ? (g.entityLabel ?? "Shift") : formatTimestamp(g.at)}
+              </span>
+              {showLabel && (
+                <span className="shrink-0 text-xs text-slate-400">{formatTimestamp(g.at)}</span>
+              )}
+            </div>
+            <ul className="mt-0.5 space-y-0.5">
+              {g.entries.map((e) => (
+                <li key={e.id} className="text-slate-600">
+                  {e.summary}
+                </li>
+              ))}
+            </ul>
           </div>
         </li>
       ))}

@@ -76,8 +76,10 @@ export interface LogItem {
   userId: string;
   entityType: string; // "SHIFT" today; generic for future entities
   entityId: string; // kept even if the underlying entity is later deleted
+  entityLabel?: string; // human descriptor at action time, e.g. "Ward 7 · Thu 18 Jun"
   action: string; // e.g. "SHIFT_COMPLETED", "SHIFT_REACTIVATED"
   summary: string; // human-readable line shown in the history
+  batchId?: string; // groups entries written in one save event
   createdAt: string; // ISO timestamp
 }
 

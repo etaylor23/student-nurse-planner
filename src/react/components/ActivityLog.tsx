@@ -35,7 +35,7 @@ export function ActivityLog() {
           Nothing yet — log, complete or edit a shift and it'll show here.
         </p>
       ) : (
-        <LogList items={items} />
+        <LogList items={items} showLabel />
       )}
     </Panel>
   );

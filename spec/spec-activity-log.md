@@ -40,11 +40,13 @@ there is an honest history of who-did-what-when behind the hours.
 interface LogItem {
   id: string;
   userId: string;
-  entityType: string; // "SHIFT" today; generic for future entities
-  entityId: string;   // the shift id (kept even if the shift is later deleted)
-  action: string;     // e.g. "SHIFT_COMPLETED", "SHIFT_REACTIVATED"
-  summary: string;    // human line shown in the history
-  createdAt: string;  // ISO timestamp
+  entityType: string;   // "SHIFT" today; generic for future entities
+  entityId: string;     // the shift id (kept even if the shift is later deleted)
+  entityLabel?: string; // shift's label at action time ("Ward 7 · Thu 18 Jun")
+  action: string;       // e.g. "SHIFT_COMPLETED", "SHIFT_REACTIVATED"
+  summary: string;      // human line shown in the history
+  batchId?: string;     // groups the entries written in one save event
+  createdAt: string;    // ISO timestamp
 }
 ```
 
@@ -77,10 +79,14 @@ entries).
 - **Lock icon** — completed shifts show a small padlock on their calendar chip and
   in the timesheet row; completed calendar events are not draggable/resizable.
 - **History** — below the shift editor, a **History** list shows that shift's
-  `LogItem`s newest-first (a dot, the summary, and a timestamp), like Jira.
+  changes newest-first, **grouped by save event** (one timestamped group per save,
+  with a line per changed field), like Jira.
 - **Activity feed** — the planner has a global **Activity** panel at the bottom
-  listing every `LogItem` across all shifts, newest-first (the home for deleted
-  shifts' history too). Both lists reuse a shared `LogList` renderer.
+  listing every change across all shifts, newest-first and grouped by save event.
+  Each group is headed by the shift's **label** (`entityLabel` — placement · date,
+  captured at action time) so you can tell which shift it was, even after the date
+  changes or the shift is deleted. Both lists reuse a shared `LogList` renderer that
+  groups by `batchId` (`logic/logGroups.ts`).
 
 ## Repository
 

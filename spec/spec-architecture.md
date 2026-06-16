@@ -93,13 +93,15 @@ model User {
 
 // ---------- Activity log (generic audit trail) ----------
 model LogItem {                // entity-agnostic; v1 logs shifts, extends later
-  id         String   @id @default(cuid())
-  userId     String
-  entityType String          // "SHIFT" today; e.g. PLACEMENT / REFLECTION later
-  entityId   String          // kept even if the entity is later deleted
-  action     String          // e.g. "SHIFT_COMPLETED", "SHIFT_REACTIVATED"
-  summary    String          // human line shown in the history
-  createdAt  DateTime @default(now())
+  id          String   @id @default(cuid())
+  userId      String
+  entityType  String          // "SHIFT" today; e.g. PLACEMENT / REFLECTION later
+  entityId    String          // kept even if the entity is later deleted
+  entityLabel String?         // human label at action time ("Ward 7 · Thu 18 Jun")
+  action      String          // e.g. "SHIFT_COMPLETED", "SHIFT_REACTIVATED"
+  summary     String          // human line shown in the history
+  batchId     String?         // groups the entries written in one save event
+  createdAt   DateTime @default(now())
   @@index([userId, createdAt])
   @@index([entityType, entityId])
 }

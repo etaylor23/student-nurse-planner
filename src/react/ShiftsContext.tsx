@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import type { Shift, ShiftDraft } from "../domain/types";
+import { newId } from "../domain/ids";
 import { formatHumanDate } from "../logic/calendar";
 import { diffShift } from "../logic/shiftDiff";
 import {
@@ -73,24 +74,54 @@ export function useShiftActions() {
   const { repo, user } = useRepository();
   const { shifts, reload } = useShifts();
 
+  // A shift's human label at action time, e.g. "Ward 7 · Thu 18 Jun". Stored on the
+  // LogItem so the activity feed can identify the shift even after its date changes
+  // or it's deleted.
+  const placeMap = async (): Promise<Map<string, string>> => {
+    if (!user) return new Map();
+    return new Map((await repo.listPlacements(user.id)).map((p) => [p.id, p.name]));
+  };
+  const shiftLabel = (s: Shift, names: Map<string, string>): string => {
+    const date = formatHumanDate(s.date);
+    const name = s.placementId ? names.get(s.placementId) : undefined;
+    return name ? `${name} · ${date}` : date;
+  };
+
   // Append a shift audit entry (no-op if there's no user yet).
-  const log = async (entityId: string, action: string, summary: string) => {
+  const log = async (
+    entityId: string,
+    action: string,
+    summary: string,
+    opts?: { entityLabel?: string; batchId?: string },
+  ) => {
     if (!user) return;
-    await repo.createLogItem({ userId: user.id, entityType: "SHIFT", entityId, action, summary });
+    await repo.createLogItem({
+      userId: user.id,
+      entityType: "SHIFT",
+      entityId,
+      entityLabel: opts?.entityLabel,
+      action,
+      summary,
+      batchId: opts?.batchId,
+    });
   };
 
   // The single place that records WHAT changed on an edit: one LogItem per field,
-  // "{field}: {before} → {after}". Used by every edit path (form save in either
-  // view, and the planner's drag/resize), so the trail can't diverge.
+  // "{field}: {before} → {after}", all sharing a batchId so they group as one save.
+  // Used by every edit path (form save in either view, and the planner's
+  // drag/resize), so the trail can't diverge.
   const logFieldChanges = async (before: Shift, after: Shift) => {
     if (!user) return;
-    // Only resolve placement names when the placement actually changed.
-    const placeName =
-      before.placementId !== after.placementId
-        ? new Map((await repo.listPlacements(user.id)).map((p) => [p.id, p.name]))
-        : new Map<string, string>();
-    for (const c of diffShift(before, after, placeName)) {
-      await log(after.id, "SHIFT_UPDATED", `${c.label}: ${c.from} → ${c.to}`);
+    const names = await placeMap();
+    const changes = diffShift(before, after, names);
+    if (changes.length === 0) return;
+    const entityLabel = shiftLabel(after, names);
+    const batchId = newId();
+    for (const c of changes) {
+      await log(after.id, "SHIFT_UPDATED", `${c.label}: ${c.from} → ${c.to}`, {
+        entityLabel,
+        batchId,
+      });
     }
   };
 
@@ -112,14 +143,19 @@ export function useShiftActions() {
     if (editingId) saved = await repo.updateShift(editingId, draft);
     else if (user) saved = await repo.createShift({ ...draft, userId: user.id });
     if (saved) {
-      const when = formatHumanDate(saved.date);
       if (saved.status === "COMPLETED" && before?.status !== "COMPLETED") {
+        const names = await placeMap();
         const rn = saved.supervisingRnName ? ` (with ${saved.supervisingRnName})` : "";
-        await log(saved.id, "SHIFT_COMPLETED", `Marked the ${when} shift as worked${rn}`);
+        await log(saved.id, "SHIFT_COMPLETED", `Marked as worked${rn}`, {
+          entityLabel: shiftLabel(saved, names),
+        });
       } else if (editingId && before) {
         await logFieldChanges(before, saved); // one entry per changed field
       } else if (!editingId) {
-        await log(saved.id, "SHIFT_CREATED", `Logged a shift on ${when}`);
+        const names = await placeMap();
+        await log(saved.id, "SHIFT_CREATED", "Logged the shift", {
+          entityLabel: shiftLabel(saved, names),
+        });
       }
     }
     await reload();
@@ -128,8 +164,11 @@ export function useShiftActions() {
 
   const deleteShift = async (shift: Shift): Promise<boolean> => {
     if (!window.confirm(`Delete the ${shift.date} shift? This can't be undone.`)) return false;
+    const names = await placeMap();
     await repo.deleteShift(shift.id);
-    await log(shift.id, "SHIFT_DELETED", `Deleted the ${formatHumanDate(shift.date)} shift`);
+    await log(shift.id, "SHIFT_DELETED", "Deleted the shift", {
+      entityLabel: shiftLabel(shift, names),
+    });
     await reload();
     return true;
   };
@@ -138,11 +177,10 @@ export function useShiftActions() {
     const name = window.prompt("Name the registered nurse you worked with:")?.trim();
     if (!name) return false;
     const saved = await repo.updateShift(id, { status: "COMPLETED", supervisingRnName: name });
-    await log(
-      saved.id,
-      "SHIFT_COMPLETED",
-      `Marked the ${formatHumanDate(saved.date)} shift as worked (with ${name})`,
-    );
+    const names = await placeMap();
+    await log(saved.id, "SHIFT_COMPLETED", `Marked as worked (with ${name})`, {
+      entityLabel: shiftLabel(saved, names),
+    });
     await reload();
     return true;
   };
@@ -159,11 +197,10 @@ export function useShiftActions() {
       return false;
     }
     const saved = await repo.updateShift(shift.id, { status: "PLANNED" });
-    await log(
-      saved.id,
-      "SHIFT_REACTIVATED",
-      `Reactivated the ${formatHumanDate(saved.date)} shift`,
-    );
+    const names = await placeMap();
+    await log(saved.id, "SHIFT_REACTIVATED", "Reactivated the shift", {
+      entityLabel: shiftLabel(saved, names),
+    });
     await reload();
     return true;
   };
