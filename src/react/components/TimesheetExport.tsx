@@ -1,6 +1,10 @@
+import { useState } from "react";
 import type { Placement, Shift } from "../../domain/types";
 import { buildTimesheet, timesheetToCsv } from "../../logic/timesheet";
 import { Panel, btnGhostSm } from "./ui";
+
+const filterCtl =
+  "rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-700 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25";
 
 function downloadCsv(filename: string, csv: string) {
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -25,8 +29,30 @@ export function TimesheetExport({
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
 }) {
-  const rows = buildTimesheet(shifts, placements);
+  const [placementFilter, setPlacementFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+
+  const filtered = shifts.filter((s) => {
+    if (placementFilter === "none" && s.placementId) return false;
+    if (placementFilter && placementFilter !== "none" && s.placementId !== placementFilter)
+      return false;
+    if (statusFilter && s.status !== statusFilter) return false;
+    if (fromDate && s.date < fromDate) return false;
+    if (toDate && s.date > toDate) return false;
+    return true;
+  });
+
+  const rows = buildTimesheet(filtered, placements);
   const showActions = !!(onEdit || onDelete);
+  const isFiltered = !!(placementFilter || statusFilter || fromDate || toDate);
+  const clearFilters = () => {
+    setPlacementFilter("");
+    setStatusFilter("");
+    setFromDate("");
+    setToDate("");
+  };
 
   return (
     <Panel
@@ -48,6 +74,59 @@ export function TimesheetExport({
         </div>
       }
     >
+      {shifts.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 print:hidden">
+          <select
+            value={placementFilter}
+            onChange={(e) => setPlacementFilter(e.target.value)}
+            className={filterCtl}
+            aria-label="Filter by placement"
+          >
+            <option value="">All placements</option>
+            {placements.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+            <option value="none">No placement</option>
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className={filterCtl}
+            aria-label="Filter by status"
+          >
+            <option value="">Any status</option>
+            <option value="COMPLETED">Counted</option>
+            <option value="PLANNED">Planned</option>
+          </select>
+          <input
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            className={filterCtl}
+            aria-label="From date"
+          />
+          <span className="text-xs text-slate-400">to</span>
+          <input
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            className={filterCtl}
+            aria-label="To date"
+          />
+          {isFiltered && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="text-xs font-medium text-emerald-600"
+            >
+              Clear ({rows.length} of {shifts.length})
+            </button>
+          )}
+        </div>
+      )}
+
       {rows.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-200 py-12 text-center">
           <svg
@@ -62,8 +141,23 @@ export function TimesheetExport({
           >
             <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" />
           </svg>
-          <p className="text-sm font-medium text-slate-500">No shifts logged yet</p>
-          <p className="text-xs text-slate-400">They'll appear here once you log one.</p>
+          {shifts.length > 0 ? (
+            <>
+              <p className="text-sm font-medium text-slate-500">No shifts match these filters</p>
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="text-xs font-medium text-emerald-600"
+              >
+                Clear filters
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-medium text-slate-500">No shifts logged yet</p>
+              <p className="text-xs text-slate-400">They'll appear here once you log one.</p>
+            </>
+          )}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl ring-1 ring-slate-200/70">
