@@ -31,44 +31,48 @@ export function PlacementPalette({ placements }: { placements: Placement[] }) {
       title="Placements"
       hint="Drag one onto the calendar to plan a 2-hour shift, then tweak it"
     >
-      {placements.length === 0 ? (
-        <p className="text-sm text-slate-400">
-          No placements yet — add them on the placement hours log and they'll appear here to drag.
-        </p>
-      ) : (
-        <div
-          ref={ref}
-          className="grid gap-2"
-          style={{
-            gridTemplateColumns: `repeat(${Math.min(placements.length, 6)}, minmax(0, 1fr))`,
-          }}
-        >
-          {placements.map((p) => (
-            <div
-              key={p.id}
-              data-placement-id={p.id}
-              data-name={p.name}
-              title={`Drag "${p.name}" onto the calendar`}
-              className="flex cursor-grab items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50/50 active:cursor-grabbing"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="h-3.5 w-3.5 shrink-0 text-slate-300"
-                aria-hidden="true"
+      {/* The Draggable attaches to this stable wrapper on mount and delegates to
+          the chips via itemSelector, so it works even though the chips render
+          after placements load asynchronously. */}
+      <div ref={ref}>
+        {placements.length === 0 ? (
+          <p className="text-sm text-slate-400">
+            No placements yet — add them on the placement hours log and they'll appear here to drag.
+          </p>
+        ) : (
+          <div
+            className="grid gap-2"
+            style={{
+              gridTemplateColumns: `repeat(${Math.min(placements.length, 6)}, minmax(0, 1fr))`,
+            }}
+          >
+            {placements.map((p) => (
+              <div
+                key={p.id}
+                data-placement-id={p.id}
+                data-name={p.name}
+                title={`Drag "${p.name}" onto the calendar`}
+                className="flex cursor-grab items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50/50 active:cursor-grabbing"
               >
-                <circle cx="9" cy="6" r="1.4" />
-                <circle cx="15" cy="6" r="1.4" />
-                <circle cx="9" cy="12" r="1.4" />
-                <circle cx="15" cy="12" r="1.4" />
-                <circle cx="9" cy="18" r="1.4" />
-                <circle cx="15" cy="18" r="1.4" />
-              </svg>
-              <span className="truncate">{p.name}</span>
-            </div>
-          ))}
-        </div>
-      )}
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="h-3.5 w-3.5 shrink-0 text-slate-300"
+                  aria-hidden="true"
+                >
+                  <circle cx="9" cy="6" r="1.4" />
+                  <circle cx="15" cy="6" r="1.4" />
+                  <circle cx="9" cy="12" r="1.4" />
+                  <circle cx="15" cy="12" r="1.4" />
+                  <circle cx="9" cy="18" r="1.4" />
+                  <circle cx="15" cy="18" r="1.4" />
+                </svg>
+                <span className="truncate">{p.name}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </Panel>
   );
 }
