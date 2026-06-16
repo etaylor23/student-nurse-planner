@@ -125,7 +125,11 @@ export function HoursLogPage() {
         />
       </div>
 
-      <Panel title="Break rules" hint="How long a break is deducted before a shift counts">
+      <Panel
+        title="Break rules"
+        hint="How long a break is deducted before a shift counts"
+        className="lg:w-1/2"
+      >
         <BreakRulesEditor />
       </Panel>
     </div>
