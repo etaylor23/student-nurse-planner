@@ -339,7 +339,9 @@ model RevisionSession {
 
 1. Core + Placement hours log — **built** (incl. shift & placement edit/delete,
    break-rule editor, optional start/end times, keyboard-accessible nav).
-2. Weekly shift planner (PLANNED→COMPLETED + `.ics`).
+2. Weekly shift planner — **built** (FullCalendar over the shared `Shift`;
+   quick-add, drag-reschedule, PLANNED→COMPLETED, `.ics` snapshot export; live
+   feed deferred — needs a backend).
 3. Competency tracker (proficiency seed + `EvidenceLink`).
 4. Reflection (`EvidenceLink`).
 5. Clinical skills (Annexe B seed + `EvidenceLink`).
@@ -347,8 +349,11 @@ model RevisionSession {
 
 ## App shell & routing
 
-- `react-router-dom` v7. `nav.ts` holds the ordered nav config with an `enabled`
-  flag per feature; disabled items render as non-clickable with a "Soon" badge.
+- `react-router-dom` v7. `nav.ts` holds `NAV_SECTIONS` — ordered "suites of
+  views", each with optional `heading` and items carrying an `enabled` flag;
+  disabled items render non-clickable with a "Soon" badge. `NAV_ITEMS` /
+  `DEFAULT_ROUTE` are derived from the sections. (Built suite: "Shifts & hours" =
+  placement hours log + weekly planner.)
 - `AppLayout` renders the fly-over nav (desktop: a left-margin strip whose panel
   opens on hover **or** keyboard focus — state-driven for reliability across
   Tailwind builds; mobile: state-driven drawer + menu button + backdrop) and the
