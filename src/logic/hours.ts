@@ -137,3 +137,42 @@ export function hoursByPlacement(shifts: Shift[], placements: Placement[]): Plac
 
   return [...byKey.values()].sort((a, b) => b.counted - a.counted);
 }
+
+export interface Projection {
+  shiftsToGo: number | null; // remaining hours / average completed-shift length
+  perWeek: number | null; // average counted hours per week so far
+  finishDate: string | null; // ISO date estimate at the current pace
+}
+
+/**
+ * Estimate how much is left and, from the pace so far, when the 2300-hour target
+ * might be reached. Pure: pass today's ISO date. Returns nulls when there isn't
+ * enough history (no completed shifts) or the goal is already met.
+ */
+export function projectCompletion(shifts: Shift[], todayIso: string): Projection {
+  const completed = shifts.filter((s) => s.status === "COMPLETED");
+  const counted = round2(completed.reduce((sum, s) => sum + s.netHours, 0));
+  const remaining = Math.max(0, PRACTICE_HOURS_TARGET - counted);
+  if (completed.length === 0 || remaining === 0) {
+    return { shiftsToGo: null, perWeek: null, finishDate: null };
+  }
+
+  const avgLen = counted / completed.length;
+  const shiftsToGo = avgLen > 0 ? Math.ceil(remaining / avgLen) : null;
+
+  let perWeek: number | null = null;
+  let finishDate: string | null = null;
+  const dates = completed.map((s) => s.date).sort();
+  const spanDays =
+    (new Date(dates[dates.length - 1]).getTime() - new Date(dates[0]).getTime()) / 86_400_000;
+  if (spanDays >= 1) {
+    perWeek = round2(counted / (spanDays / 7));
+    if (perWeek > 0) {
+      const finish = new Date(todayIso);
+      finish.setDate(finish.getDate() + Math.ceil((remaining / perWeek) * 7));
+      finishDate = finish.toISOString().slice(0, 10);
+    }
+  }
+
+  return { shiftsToGo, perWeek, finishDate };
+}

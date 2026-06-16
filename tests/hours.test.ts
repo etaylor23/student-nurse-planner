@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { computeNetHours, hoursByPlacement, summariseHours } from "../src/logic/hours";
+import {
+  computeNetHours,
+  hoursByPlacement,
+  projectCompletion,
+  summariseHours,
+} from "../src/logic/hours";
 import { defaultBreakRules } from "../src/logic/breakRules";
 import type { Placement, Shift } from "../src/domain/types";
 
@@ -114,5 +119,28 @@ describe("hoursByPlacement", () => {
     expect(ward7).toMatchObject({ name: "Ward 7", counted: 11.5, planned: 7.5, shiftCount: 2 });
     const none = rows.find((r) => r.placementId === null)!;
     expect(none).toMatchObject({ name: "No placement", counted: 5 });
+  });
+});
+
+describe("projectCompletion", () => {
+  it("returns nulls with no completed shifts", () => {
+    expect(projectCompletion([shift({ status: "PLANNED", netHours: 10 })], "2026-06-16")).toEqual({
+      shiftsToGo: null,
+      perWeek: null,
+      finishDate: null,
+    });
+  });
+
+  it("estimates shifts-to-go and a finish date from pace", () => {
+    const p = projectCompletion(
+      [
+        shift({ date: "2026-06-01", netHours: 11.5, status: "COMPLETED" }),
+        shift({ date: "2026-06-08", netHours: 11.5, status: "COMPLETED" }),
+      ],
+      "2026-06-08",
+    );
+    expect(p.perWeek).toBe(23); // 23 h over a 7-day span
+    expect(p.shiftsToGo).toBe(Math.ceil((2300 - 23) / 11.5));
+    expect(p.finishDate).toBeTruthy();
   });
 });

@@ -1,7 +1,19 @@
-import type { HoursSummary } from "../../logic/hours";
+import type { HoursSummary, Projection } from "../../logic/hours";
 import { PageHero, StatTile } from "./ui";
 
-export function HoursSummaryPanel({ summary }: { summary: HoursSummary }) {
+function formatMonthYear(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+}
+
+export function HoursSummaryPanel({
+  summary,
+  projection,
+}: {
+  summary: HoursSummary;
+  projection?: Projection;
+}) {
   const pct = Math.round(summary.progressFraction * 100);
   const target = summary.targetHours.toLocaleString();
 
@@ -35,6 +47,13 @@ export function HoursSummaryPanel({ summary }: { summary: HoursSummary }) {
           <div className="absolute inset-x-0 top-0 h-1/2 rounded-t-full bg-white/25" />
         </div>
       </div>
+
+      {projection?.shiftsToGo != null && (
+        <p className="mt-2 text-xs text-slate-400">
+          ≈ {projection.shiftsToGo.toLocaleString()} shifts to go
+          {projection.finishDate && <> · on track for {formatMonthYear(projection.finishDate)}</>}
+        </p>
+      )}
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatTile

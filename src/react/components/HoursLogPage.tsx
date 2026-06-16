@@ -13,7 +13,7 @@ import { Panel } from "./ui";
 export function HoursLogPage() {
   const { repo, user, loading } = useRepository();
   const { placements, reload: reloadPlacements } = usePlacements();
-  const { shifts, summary, reload: reloadShifts } = useShifts();
+  const { shifts, summary, projection, reload: reloadShifts } = useShifts();
   // null = form closed, "new" = adding, Shift = editing that shift.
   const [editing, setEditing] = useState<Shift | "new" | null>(null);
 
@@ -70,7 +70,7 @@ export function HoursLogPage() {
 
   return (
     <div className="space-y-6">
-      <HoursSummaryPanel summary={summary} />
+      <HoursSummaryPanel summary={summary} projection={projection} />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div className="min-w-0 space-y-6 xl:col-span-1">

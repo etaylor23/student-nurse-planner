@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { BreakRule, Placement, Shift } from "../domain/types";
-import { summariseHours, type HoursSummary } from "../logic/hours";
+import {
+  projectCompletion,
+  summariseHours,
+  type HoursSummary,
+  type Projection,
+} from "../logic/hours";
 import { useRepository } from "./RepositoryContext";
 
 export function useBreakRules(): { rules: BreakRule[]; reload: () => Promise<void> } {
@@ -49,6 +54,8 @@ export function useShifts() {
   }, [reload]);
 
   const summary: HoursSummary = useMemo(() => summariseHours(shifts), [shifts]);
+  const today = new Date().toISOString().slice(0, 10);
+  const projection: Projection = useMemo(() => projectCompletion(shifts, today), [shifts, today]);
 
-  return { shifts, summary, reload };
+  return { shifts, summary, projection, reload };
 }
