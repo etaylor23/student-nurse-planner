@@ -32,6 +32,15 @@ export function isAllDay(shift: Pick<Shift, "startTime">): boolean {
   return !shift.startTime;
 }
 
+/** "2026-06-18" → "Thu 18 Jun" for display (e.g. timesheet rows, audit summaries). */
+export function formatHumanDate(iso: string): string {
+  const d = new Date(`${iso}T00:00:00`);
+  if (isNaN(d.getTime())) return iso;
+  return d
+    .toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })
+    .replace(",", "");
+}
+
 /** FullCalendar/ICS start: timed → "YYYY-MM-DDTHH:MM:00"; all-day → "YYYY-MM-DD". */
 export function shiftStart(shift: Pick<Shift, "date" | "startTime">): string {
   return shift.startTime ? `${shift.date}T${shift.startTime}:00` : shift.date;
