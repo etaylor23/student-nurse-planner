@@ -15,7 +15,7 @@ export function HoursLogPage() {
   const { repo, user, loading } = useRepository();
   const { placements, reload: reloadPlacements } = usePlacements();
   const { shifts, summary, projection } = useShifts();
-  const { saveShift, deleteShift, markWorked } = useShiftActions();
+  const { saveShift, deleteShift, markWorked, reactivateShift } = useShiftActions();
   // null = form closed, "new" = adding, Shift = editing that shift.
   const [editing, setEditing] = useState<Shift | "new" | null>(null);
 
@@ -57,6 +57,10 @@ export function HoursLogPage() {
   // Default a new shift to the most recent shift's placement.
   const lastPlacementId = shifts.find((s) => s.placementId)?.placementId;
   const isEditing = editing !== null && editing !== "new";
+  // Re-read the edited shift from the live list so its lock state stays current.
+  const editingShift =
+    editing && editing !== "new" ? (shifts.find((s) => s.id === editing.id) ?? editing) : null;
+  const locked = editingShift?.status === "COMPLETED";
 
   return (
     <div className="space-y-6">
@@ -75,16 +79,31 @@ export function HoursLogPage() {
 
           <Panel
             step={isEditing ? undefined : "2"}
-            title={isEditing ? "Edit shift" : "Log a shift"}
-            hint={isEditing ? "Update the details below" : "Add the hours you worked"}
+            title={locked ? "Locked shift" : isEditing ? "Edit shift" : "Log a shift"}
+            hint={
+              locked
+                ? "Unlock to make changes"
+                : isEditing
+                  ? "Update the details below"
+                  : "Add the hours you worked"
+            }
           >
             {editing ? (
               <ShiftForm
+                key={
+                  editing === "new"
+                    ? "new"
+                    : editingShift
+                      ? `edit-${editingShift.id}-${editingShift.status}`
+                      : "none"
+                }
                 placements={placements}
-                initial={editing === "new" ? undefined : editing}
+                initial={editingShift ?? undefined}
                 initialPlacementId={editing === "new" ? lastPlacementId : undefined}
+                locked={locked}
                 onSubmit={submitShift}
                 onCancel={() => setEditing(null)}
+                onUnlock={editingShift ? () => void reactivateShift(editingShift) : undefined}
               />
             ) : (
               <button

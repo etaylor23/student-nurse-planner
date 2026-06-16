@@ -27,7 +27,7 @@ export function PlannerPage() {
   const { repo, user, loading } = useRepository();
   const { placements } = usePlacements();
   const { shifts, summary, reload: reloadShifts } = useShifts();
-  const { saveShift, deleteShift, markWorked } = useShiftActions();
+  const { saveShift, deleteShift, markWorked, reactivateShift } = useShiftActions();
   const { rules } = useBreakRules();
   const [searchParams] = useSearchParams();
   // Deep-link target, e.g. /planner?date=2026-06-18 (from a timesheet row).
@@ -58,12 +58,21 @@ export function PlannerPage() {
   // newest-date first) — usually you're still at the same ward.
   const lastPlacementId = shifts.find((s) => s.placementId)?.placementId;
 
+  // The target being edited: a live shift (re-read from the list so its lock
+  // state stays current after a mutation) or a new-shift draft.
+  const editingShift =
+    editing && isShift(editing) ? (shifts.find((s) => s.id === editing.id) ?? editing) : null;
+  const newShift = editing && !isShift(editing) ? editing : null;
+  const locked = editingShift?.status === "COMPLETED";
+
   const events: EventInput[] = shifts.map((s) => ({
     id: s.id,
     start: shiftStart(s),
     end: shiftEnd(s),
     allDay: isAllDay(s),
     classNames: [eventClass(s)],
+    // A completed shift is locked: no drag or resize on the grid.
+    editable: s.status !== "COMPLETED",
     extendedProps: { shift: s },
   }));
 
@@ -134,7 +143,7 @@ export function PlannerPage() {
           </div>
           <div className="truncate text-[10px] opacity-60">{SHIFT_TYPE_LABEL[shift.shiftType]}</div>
         </div>
-        {shift.status === "PLANNED" && (
+        {shift.status === "PLANNED" ? (
           <button
             type="button"
             onMouseDown={(e) => e.stopPropagation()}
@@ -158,6 +167,25 @@ export function PlannerPage() {
               <path d="m5 13 4 4L19 7" />
             </svg>
           </button>
+        ) : (
+          <span
+            aria-label="Locked"
+            title="Counted toward your hours — unlock to edit"
+            className="shrink-0 p-0.5 opacity-70"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2.2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-3 w-3"
+            >
+              <rect x="5" y="11" width="14" height="9" rx="2" />
+              <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+            </svg>
+          </span>
         )}
       </div>
     );
@@ -165,23 +193,21 @@ export function PlannerPage() {
 
   const sidebar = editing ? (
     <Panel
-      title={isShift(editing) ? "Edit shift" : "New shift"}
-      hint={isShift(editing) ? undefined : "Fill in the details and save"}
+      title={locked ? "Locked shift" : editingShift ? "Edit shift" : "New shift"}
+      hint={editingShift ? undefined : "Fill in the details and save"}
       action={
-        isShift(editing) ? (
+        editingShift && !locked ? (
           <div className="flex gap-3">
-            {editing.status === "PLANNED" && (
-              <button
-                type="button"
-                onClick={() => void completeShift(editing.id)}
-                className="text-xs font-medium text-emerald-600"
-              >
-                Mark worked
-              </button>
-            )}
             <button
               type="button"
-              onClick={() => void removeShift(editing)}
+              onClick={() => void completeShift(editingShift.id)}
+              className="text-xs font-medium text-emerald-600"
+            >
+              Mark worked
+            </button>
+            <button
+              type="button"
+              onClick={() => void removeShift(editingShift)}
               className="text-xs font-medium text-rose-600"
             >
               Delete
@@ -192,19 +218,21 @@ export function PlannerPage() {
     >
       <ShiftForm
         key={
-          isShift(editing)
-            ? `edit-${editing.id}`
-            : `new-${editing.date}-${editing.startTime ?? ""}-${editing.endTime ?? ""}`
+          editingShift
+            ? `edit-${editingShift.id}-${editingShift.status}`
+            : `new-${newShift?.date}-${newShift?.startTime ?? ""}-${newShift?.endTime ?? ""}`
         }
         placements={placements}
-        initial={isShift(editing) ? editing : undefined}
-        initialDate={isShift(editing) ? undefined : editing.date}
-        initialStartTime={isShift(editing) ? undefined : editing.startTime}
-        initialEndTime={isShift(editing) ? undefined : editing.endTime}
-        initialPlacementId={isShift(editing) ? undefined : lastPlacementId}
-        onDraftChange={isShift(editing) ? undefined : setDraft}
+        initial={editingShift ?? undefined}
+        initialDate={editingShift ? undefined : newShift?.date}
+        initialStartTime={editingShift ? undefined : newShift?.startTime}
+        initialEndTime={editingShift ? undefined : newShift?.endTime}
+        initialPlacementId={editingShift ? undefined : lastPlacementId}
+        locked={locked}
+        onDraftChange={editingShift ? undefined : setDraft}
         onSubmit={submitShift}
         onCancel={close}
+        onUnlock={editingShift ? () => void reactivateShift(editingShift) : undefined}
       />
     </Panel>
   ) : (
