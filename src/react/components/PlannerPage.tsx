@@ -322,6 +322,21 @@ export function PlannerPage() {
               }}
             />
           </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-sm bg-slate-300" />
+              Planned
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-sm bg-emerald-400" />
+              Counted
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-sm bg-sky-400" />
+              Simulated
+            </span>
+          </div>
         </Panel>
 
         <div className="xl:sticky xl:top-6 xl:self-start">{sidebar}</div>
