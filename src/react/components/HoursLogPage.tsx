@@ -8,6 +8,7 @@ import { HoursSummaryPanel } from "./HoursSummaryPanel";
 import { PlacementBreakdown } from "./PlacementBreakdown";
 import { PlacementManager } from "./PlacementManager";
 import { ShiftForm, type ShiftDraft } from "./ShiftForm";
+import { ShiftHistory } from "./ShiftHistory";
 import { TimesheetExport } from "./TimesheetExport";
 import { Panel } from "./ui";
 
@@ -125,6 +126,7 @@ export function HoursLogPage() {
                 New shift
               </button>
             )}
+            {editingShift && <ShiftHistory shift={editingShift} />}
           </Panel>
         </div>
 

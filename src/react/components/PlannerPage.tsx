@@ -14,6 +14,7 @@ import { useShiftActions } from "../ShiftsContext";
 import { useRepository } from "../RepositoryContext";
 import { downloadText } from "../download";
 import { ShiftForm, type ShiftDraft } from "./ShiftForm";
+import { ShiftHistory } from "./ShiftHistory";
 import { PageHero, Panel, btnGhostSm, btnPrimary } from "./ui";
 
 type NewShift = { date: string; startTime?: string; endTime?: string };
@@ -234,6 +235,7 @@ export function PlannerPage() {
         onCancel={close}
         onUnlock={editingShift ? () => void reactivateShift(editingShift) : undefined}
       />
+      {editingShift && <ShiftHistory shift={editingShift} />}
     </Panel>
   ) : (
     <Panel title="Add a shift" hint="Pick a time on the calendar">
