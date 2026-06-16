@@ -244,5 +244,18 @@ export function useShiftActions() {
     return true;
   };
 
-  return { saveShift, deleteShift, markWorked, reactivateShift, editShift, copyShift };
+  // Create a shift directly, no duplicate prompt — for quick drag-drop from the
+  // placement palette. Logged like any new shift.
+  const addShift = async (draft: ShiftDraft): Promise<boolean> => {
+    if (!user) return false;
+    const saved = await repo.createShift({ ...draft, userId: user.id });
+    const names = await placeMap();
+    await log(saved.id, "SHIFT_CREATED", "Added the shift", {
+      entityLabel: shiftLabel(saved, names),
+    });
+    await reload();
+    return true;
+  };
+
+  return { saveShift, deleteShift, markWorked, reactivateShift, editShift, copyShift, addShift };
 }

@@ -65,6 +65,12 @@ and is **not** used by the client-only `.ics` snapshot export. See
   on a planned chip (next to the tick) duplicate the shift at the same time as a new
   `PLANNED` shift (no RN — it hasn't been worked), so it can be **dragged to another
   day**. Logged as "Copied the shift".
+- **Placements palette** — above the calendar, the user's placements show as
+  prebuilt **drag-and-drop chips** (FullCalendar `Draggable` + `droppable`). Dragging
+  one onto the grid creates a **2-hour `PLANNED`** shift for it at the drop time
+  (then editable/draggable). The chips use a CSS grid of `min(count, 6)` equal
+  columns, so they fill the full width and size dynamically (4 → 25% each, max 6 per
+  row).
 - **Locked when complete** — a `COMPLETED` shift shows a **padlock** on its chip and
   **can't be dragged or resized**; opening it shows a read-only form with an
   **Unlock to edit** button (reactivates it → `PLANNED`). Each shift's editor lists

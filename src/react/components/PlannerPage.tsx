@@ -17,11 +17,13 @@ import {
 } from "../../logic/calendar";
 import { computeNetHours } from "../../logic/hours";
 import { buildIcs } from "../../logic/ics";
+import { droppedShiftDraft } from "../../logic/shiftDraft";
 import { usePlacements, useShifts, useBreakRules } from "../hooks";
 import { useShiftActions } from "../ShiftsContext";
 import { useRepository } from "../RepositoryContext";
 import { downloadText } from "../download";
 import { ActivityLog } from "./ActivityLog";
+import { PlacementPalette } from "./PlacementPalette";
 import { ShiftForm, type ShiftDraft } from "./ShiftForm";
 import { ShiftHistory } from "./ShiftHistory";
 import { PageHero, Panel, btnGhostSm, btnPrimary } from "./ui";
@@ -37,7 +39,7 @@ export function PlannerPage() {
   const { user, loading } = useRepository();
   const { placements } = usePlacements();
   const { shifts, summary } = useShifts();
-  const { saveShift, deleteShift, markWorked, reactivateShift, editShift, copyShift } =
+  const { saveShift, deleteShift, markWorked, reactivateShift, editShift, copyShift, addShift } =
     useShiftActions();
   const { rules } = useBreakRules();
   const [searchParams] = useSearchParams();
@@ -356,6 +358,8 @@ export function PlannerPage() {
         }
       />
 
+      <PlacementPalette placements={placements} />
+
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
         <Panel
           title="Your shifts"
@@ -394,6 +398,7 @@ export function PlannerPage() {
               eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
               slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
               editable
+              droppable
               selectable
               selectMirror
               selectMinDistance={5}
@@ -432,6 +437,14 @@ export function PlannerPage() {
                 if (shift && !ev.allDay && ev.start && ev.end)
                   void applyResize(shift, ev.start, ev.end);
                 else arg.revert();
+              }}
+              eventReceive={(info) => {
+                // A placement chip was dropped → create a 2h planned shift, then
+                // remove FullCalendar's temporary event (we render from our store).
+                const placementId = info.event.extendedProps.placementId as string | undefined;
+                const start = info.event.start;
+                info.event.remove();
+                if (start) void addShift(droppedShiftDraft(start, 120, placementId, rules));
               }}
             />
           </div>
