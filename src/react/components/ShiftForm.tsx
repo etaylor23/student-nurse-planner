@@ -105,6 +105,10 @@ export function ShiftForm({
       setError("Enter shift hours greater than zero.");
       return;
     }
+    if (preview.netHours > 24) {
+      setError("That's more than 24 hours — double-check the shift length.");
+      return;
+    }
     const draft: ShiftDraft = {
       date,
       placementId: placementId || undefined,

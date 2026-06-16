@@ -42,6 +42,19 @@ export function HoursLogPage() {
   };
 
   const submitShift = async (draft: ShiftDraft) => {
+    const editingId = editing && editing !== "new" ? editing.id : null;
+    const duplicate = shifts.some(
+      (s) =>
+        s.id !== editingId &&
+        s.date === draft.date &&
+        (s.placementId ?? "") === (draft.placementId ?? ""),
+    );
+    if (
+      duplicate &&
+      !window.confirm("You already logged a shift on this date at this placement. Add it anyway?")
+    ) {
+      return;
+    }
     if (editing && editing !== "new") {
       await repo.updateShift(editing.id, draft);
     } else {
