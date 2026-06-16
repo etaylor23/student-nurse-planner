@@ -44,16 +44,21 @@ and is **not** used by the client-only `.ics` snapshot export. See
   vanish when the form is focused, and it's two-way — editing the form's date/
   start/end moves and resizes the highlight, and dragging on the grid fills the
   form. It clears on save/cancel. Event chips show the **placement** (ward/team)
-  alongside the time and shift type.
+  alongside the time and shift type, and a small **Planned / Counted / Simulated**
+  legend sits under the grid.
 - **Quick-add** — click a day → the shift form prefilled to that date, creating a
-  `PLANNED` shift (reuses `ShiftForm` via an `initialDate` prop). **Click-drag
-  across time slots** (week/day, Outlook-style) prefills the start/end times too,
-  so the counted hours are set from the selection. Click a shift to edit; **drag
-  to reschedule** (duration preserved, so stored hours stay valid).
+  `PLANNED` shift (reuses `ShiftForm`, defaulting to your most recent placement).
+  **Click-drag across time slots** (week/day, Outlook-style) prefills the start/end
+  times too, so the counted hours are set from the selection. Click a shift to
+  edit; **drag
+  to reschedule** (duration preserved) or **drag its edge to resize** (the counted
+  hours and break recompute for the new span).
 - **Mark complete** — one-click on a planned shift → enter RN name →
   `COMPLETED` → counts in the hours log. Same bridge as the hours-log timesheet.
 - **`.ics` export** — "Add to calendar" downloads a snapshot the student imports
   into Google / Apple / Outlook.
+- **Deep link** — `/planner?date=YYYY-MM-DD` opens the week containing that date,
+  used by the timesheet's "view in planner" row action.
 
 ## Derived logic
 
@@ -69,12 +74,11 @@ and is **not** used by the client-only `.ics` snapshot export. See
   client-only PoC ships a downloadable `.ics` snapshot instead. Two-way sync
   (Google API first) remains a later phase.
 - Recurring shift patterns/templates (descoped).
-- In-grid resize to change a shift's duration (duration edits go through the
-  form so hours recompute in one place).
 
 ## Build notes
 
-- Because the planner and hours log share `Shift`, a shift created in either
-  place appears in both; they can't drift out of sync (verified end-to-end).
-- The two views each own a `useShifts()` instance; the hours log refreshes on
-  navigation (they're never open at once under one router outlet).
+- The planner and hours log share one app-level `ShiftsProvider` (a single
+  in-memory `Shift` source via `useShifts`) and the `useShiftActions` mutations
+  (create/update/delete/mark-worked + duplicate guard), so a change in either
+  reflects in both instantly — one source, no per-page fetch, no drift. See
+  `spec-architecture.md`.

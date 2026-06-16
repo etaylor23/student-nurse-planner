@@ -42,10 +42,11 @@ Logs placement shifts and tracks progress toward the NMC practice-hours target.
   toggle, worked-&-complete toggle that requires the RN name, notes. Editing a
   shift reuses the same form.
 - **Break rules** — an editable per-user band table ("shifts up to N h → M min
-  break") that overrides the built-in defaults, with reset-to-defaults.
+  break") that overrides the built-in defaults, with reset-to-defaults; shown as a
+  compact range table, ~half width on large screens.
 - **Timesheet** — filterable table (by placement, status, date range), newest
   first, with friendly dates ("Thu 18 Jun"), a simulated badge, and **per-row
-  edit / delete / mark-worked**; CSV export (incl. start/end, respects the active
+  view-in-planner / edit / delete / mark-worked**; CSV export (incl. start/end, respects the active
   filter) + print/PDF.
 - **Hours by placement** — counted (and planned) hours grouped per ward/team,
   each with a per-placement CSV export.

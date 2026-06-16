@@ -45,6 +45,13 @@ interface Repository {
 context. To move to a backend: implement `Repository` against the API and pass
 `<RepositoryProvider repo={new RestRepository(...)}>`.
 
+`ShiftsProvider` holds the one in-memory `Shift` list (plus the derived hours
+summary and pace projection) shared by every view via `useShifts()`, so a change
+in the hours log or the planner reflects in both — one fetch, no drift.
+`useShiftActions()` centralises the shift mutations (create / update / delete /
+mark-worked, with the duplicate-shift guard) so those flows can't diverge between
+views. (Placements and break rules use their own hooks the same way.)
+
 ## Canonical data model (Prisma — target/remote shape)
 
 ```prisma
@@ -340,8 +347,8 @@ model RevisionSession {
 1. Core + Placement hours log — **built** (incl. shift & placement edit/delete,
    break-rule editor, optional start/end times, keyboard-accessible nav).
 2. Weekly shift planner — **built** (FullCalendar over the shared `Shift`;
-   quick-add, drag-reschedule, PLANNED→COMPLETED, `.ics` snapshot export; live
-   feed deferred — needs a backend).
+   quick-add, click-drag-to-create, drag-reschedule & resize, PLANNED→COMPLETED,
+   `.ics` snapshot export; live feed deferred — needs a backend).
 3. Competency tracker (proficiency seed + `EvidenceLink`).
 4. Reflection (`EvidenceLink`).
 5. Clinical skills (Annexe B seed + `EvidenceLink`).
