@@ -25,6 +25,21 @@ export function PlannerPage() {
   const { placements } = usePlacements();
   const { shifts, summary, reload: reloadShifts } = useShifts();
   const [editing, setEditing] = useState<Editing>(null);
+  // Live draft for the calendar highlight; kept in step with the form's fields.
+  const [draft, setDraft] = useState<NewShift | null>(null);
+
+  const openNew = (ns: NewShift) => {
+    setEditing(ns);
+    setDraft(ns);
+  };
+  const openEdit = (shift: Shift) => {
+    setEditing(shift);
+    setDraft(null);
+  };
+  const close = () => {
+    setEditing(null);
+    setDraft(null);
+  };
 
   if (loading || !user) {
     return <div className="text-sm text-slate-500">Loading…</div>;
@@ -41,19 +56,18 @@ export function PlannerPage() {
     extendedProps: { shift: s },
   }));
 
-  // A persistent "draft" highlight while a NEW shift is being configured in the
-  // side panel, so the dragged-out block doesn't vanish when the form is focused.
-  const draftEvent: EventInput | null =
-    editing && !isShift(editing)
-      ? {
-          id: "__draft__",
-          start: shiftStart(editing),
-          end: shiftEnd(editing),
-          allDay: isAllDay(editing),
-          display: "background",
-          classNames: ["ev-draft"],
-        }
-      : null;
+  // A persistent, live "draft" highlight while a NEW shift is being configured —
+  // driven by `draft`, which the form updates as its date/times change.
+  const draftEvent: EventInput | null = draft
+    ? {
+        id: "__draft__",
+        start: shiftStart(draft),
+        end: shiftEnd(draft),
+        allDay: isAllDay(draft),
+        display: "background",
+        classNames: ["ev-draft"],
+      }
+    : null;
   const calendarEvents = draftEvent ? [...events, draftEvent] : events;
 
   const submitShift = async (draft: ShiftDraft) => {
@@ -72,13 +86,13 @@ export function PlannerPage() {
     }
     if (editingId) await repo.updateShift(editingId, draft);
     else await repo.createShift({ ...draft, userId: user.id });
-    setEditing(null);
+    close();
     await reloadShifts();
   };
 
   const removeShift = async (shift: Shift) => {
     if (!window.confirm(`Delete the ${shift.date} shift? This can't be undone.`)) return;
-    setEditing(null);
+    close();
     await repo.deleteShift(shift.id);
     await reloadShifts();
   };
@@ -87,7 +101,7 @@ export function PlannerPage() {
     const name = window.prompt("Name the registered nurse you worked with:")?.trim();
     if (!name) return;
     await repo.updateShift(id, { status: "COMPLETED", supervisingRnName: name });
-    setEditing(null);
+    close();
     await reloadShifts();
   };
 
@@ -106,11 +120,14 @@ export function PlannerPage() {
   const renderChip = (shift: Shift, timeText: string) => {
     const name = shift.placementId ? placementName.get(shift.placementId) : undefined;
     return (
-      <div className="flex items-center gap-1 px-1 py-0.5 text-[11px] leading-tight">
-        <span className="min-w-0 truncate">
-          {timeText && <span className="font-medium">{timeText} </span>}
-          {name ?? SHIFT_TYPE_LABEL[shift.shiftType]}
-        </span>
+      <div className="flex items-start gap-1 overflow-hidden px-1 py-0.5 text-[11px] leading-tight">
+        <div className="min-w-0 flex-1">
+          {timeText && <div className="truncate font-semibold tabular-nums">{timeText}</div>}
+          <div className="truncate font-medium">
+            {name ?? <span className="opacity-60">No placement</span>}
+          </div>
+          <div className="truncate text-[10px] opacity-60">{SHIFT_TYPE_LABEL[shift.shiftType]}</div>
+        </div>
         {shift.status === "PLANNED" && (
           <button
             type="button"
@@ -121,7 +138,7 @@ export function PlannerPage() {
             }}
             aria-label="Mark worked"
             title="Mark worked"
-            className="ml-auto shrink-0 rounded p-0.5 hover:bg-black/5"
+            className="shrink-0 rounded p-0.5 hover:bg-black/5"
           >
             <svg
               viewBox="0 0 24 24"
@@ -178,8 +195,9 @@ export function PlannerPage() {
         initialDate={isShift(editing) ? undefined : editing.date}
         initialStartTime={isShift(editing) ? undefined : editing.startTime}
         initialEndTime={isShift(editing) ? undefined : editing.endTime}
+        onDraftChange={isShift(editing) ? undefined : setDraft}
         onSubmit={submitShift}
-        onCancel={() => setEditing(null)}
+        onCancel={close}
       />
     </Panel>
   ) : (
@@ -190,7 +208,7 @@ export function PlannerPage() {
       </p>
       <button
         type="button"
-        onClick={() => setEditing({ date: isoDate(new Date()) })}
+        onClick={() => openNew({ date: isoDate(new Date()) })}
         className={`${btnPrimary} mt-4`}
       >
         New shift
@@ -267,9 +285,9 @@ export function PlannerPage() {
                 const shift = arg.event.extendedProps.shift as Shift | undefined;
                 return shift ? renderChip(shift, arg.timeText) : undefined;
               }}
-              dateClick={(arg) => setEditing({ date: arg.dateStr.slice(0, 10) })}
+              dateClick={(arg) => openNew({ date: arg.dateStr.slice(0, 10) })}
               select={(arg) =>
-                setEditing(
+                openNew(
                   arg.allDay
                     ? { date: isoDate(arg.start) }
                     : {
@@ -281,7 +299,7 @@ export function PlannerPage() {
               }
               eventClick={(arg) => {
                 const shift = arg.event.extendedProps.shift as Shift | undefined;
-                if (shift) setEditing(shift);
+                if (shift) openEdit(shift);
               }}
               eventDrop={(arg) => {
                 const ev = arg.event;

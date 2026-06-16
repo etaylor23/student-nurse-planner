@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { SHIFT_TYPE_LABEL, type Placement, type Shift, type ShiftType } from "../../domain/types";
 import { computeNetHours } from "../../logic/hours";
 import { resolveBreakMins } from "../../logic/breakRules";
@@ -38,6 +38,7 @@ export function ShiftForm({
   initialDate,
   initialStartTime,
   initialEndTime,
+  onDraftChange,
   onSubmit,
   onCancel,
 }: {
@@ -47,6 +48,8 @@ export function ShiftForm({
   initialDate?: string;
   initialStartTime?: string;
   initialEndTime?: string;
+  /** Fires as date/start/end change so a live calendar draft can follow along. */
+  onDraftChange?: (d: { date: string; startTime?: string; endTime?: string }) => void;
   onSubmit: (draft: ShiftDraft) => void | Promise<void>;
   onCancel?: () => void;
 }) {
@@ -74,6 +77,11 @@ export function ShiftForm({
   const [rnName, setRnName] = useState(initial?.supervisingRnName ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [error, setError] = useState<string | null>(null);
+
+  // Keep the calendar draft highlight in sync with the date/time fields.
+  useEffect(() => {
+    onDraftChange?.({ date, startTime: startTime || undefined, endTime: endTime || undefined });
+  }, [date, startTime, endTime, onDraftChange]);
 
   const derivedMins = durationFromTimes(startTime, endTime);
   const rawMins = derivedMins ?? Math.round((parseFloat(grossHours) || 0) * 60);

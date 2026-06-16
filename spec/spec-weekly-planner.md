@@ -40,9 +40,11 @@ and is **not** used by the client-only `.ics` snapshot export. See
   (planned = slate, counted = emerald, simulated = sky). On wide screens the
   add/edit form sits in a **sticky side panel** (~25% wide) beside the calendar,
   updating as you click each period; on narrow screens it stacks full-width below.
-  A new (unsaved) shift shows a **persistent draft highlight** on the grid while
-  you configure it, so the dragged-out block doesn't vanish when the form is
-  focused; it clears on save/cancel.
+  A new (unsaved) shift shows a **live draft highlight** on the grid: it doesn't
+  vanish when the form is focused, and it's two-way — editing the form's date/
+  start/end moves and resizes the highlight, and dragging on the grid fills the
+  form. It clears on save/cancel. Event chips show the **placement** (ward/team)
+  alongside the time and shift type.
 - **Quick-add** — click a day → the shift form prefilled to that date, creating a
   `PLANNED` shift (reuses `ShiftForm` via an `initialDate` prop). **Click-drag
   across time slots** (week/day, Outlook-style) prefills the start/end times too,
