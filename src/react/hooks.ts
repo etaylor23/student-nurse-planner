@@ -1,12 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { BreakRule, Placement, Shift } from "../domain/types";
-import {
-  projectCompletion,
-  summariseHours,
-  type HoursSummary,
-  type Projection,
-} from "../logic/hours";
+import { useCallback, useEffect, useState } from "react";
+import type { BreakRule, Placement } from "../domain/types";
 import { useRepository } from "./RepositoryContext";
+
+// Shifts now live in a shared provider; re-exported here so existing imports keep working.
+export { useShifts, ShiftsProvider } from "./ShiftsContext";
 
 export function useBreakRules(): { rules: BreakRule[]; reload: () => Promise<void> } {
   const { repo, user } = useRepository();
@@ -38,24 +35,4 @@ export function usePlacements() {
   }, [reload]);
 
   return { placements, reload };
-}
-
-export function useShifts() {
-  const { repo, user } = useRepository();
-  const [shifts, setShifts] = useState<Shift[]>([]);
-
-  const reload = useCallback(async () => {
-    if (!user) return;
-    setShifts(await repo.listShifts(user.id));
-  }, [repo, user]);
-
-  useEffect(() => {
-    void reload();
-  }, [reload]);
-
-  const summary: HoursSummary = useMemo(() => summariseHours(shifts), [shifts]);
-  const today = new Date().toISOString().slice(0, 10);
-  const projection: Projection = useMemo(() => projectCompletion(shifts, today), [shifts, today]);
-
-  return { shifts, summary, projection, reload };
 }
