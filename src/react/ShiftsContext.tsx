@@ -9,6 +9,7 @@ import {
 } from "react";
 import type { Shift, ShiftDraft } from "../domain/types";
 import { formatHumanDate } from "../logic/calendar";
+import { diffShift } from "../logic/shiftDiff";
 import {
   projectCompletion,
   summariseHours,
@@ -78,6 +79,21 @@ export function useShiftActions() {
     await repo.createLogItem({ userId: user.id, entityType: "SHIFT", entityId, action, summary });
   };
 
+  // The single place that records WHAT changed on an edit: one LogItem per field,
+  // "{field}: {before} → {after}". Used by every edit path (form save in either
+  // view, and the planner's drag/resize), so the trail can't diverge.
+  const logFieldChanges = async (before: Shift, after: Shift) => {
+    if (!user) return;
+    // Only resolve placement names when the placement actually changed.
+    const placeName =
+      before.placementId !== after.placementId
+        ? new Map((await repo.listPlacements(user.id)).map((p) => [p.id, p.name]))
+        : new Map<string, string>();
+    for (const c of diffShift(before, after, placeName)) {
+      await log(after.id, "SHIFT_UPDATED", `${c.label}: ${c.from} → ${c.to}`);
+    }
+  };
+
   const saveShift = async (draft: ShiftDraft, editingId: string | null): Promise<boolean> => {
     const duplicate = shifts.some(
       (s) =>
@@ -100,9 +116,9 @@ export function useShiftActions() {
       if (saved.status === "COMPLETED" && before?.status !== "COMPLETED") {
         const rn = saved.supervisingRnName ? ` (with ${saved.supervisingRnName})` : "";
         await log(saved.id, "SHIFT_COMPLETED", `Marked the ${when} shift as worked${rn}`);
-      } else if (editingId) {
-        await log(saved.id, "SHIFT_UPDATED", `Edited the ${when} shift`);
-      } else {
+      } else if (editingId && before) {
+        await logFieldChanges(before, saved); // one entry per changed field
+      } else if (!editingId) {
         await log(saved.id, "SHIFT_CREATED", `Logged a shift on ${when}`);
       }
     }
@@ -152,5 +168,16 @@ export function useShiftActions() {
     return true;
   };
 
-  return { saveShift, deleteShift, markWorked, reactivateShift };
+  // Apply a direct field patch (the planner's drag-move / resize) and log the
+  // field-level diff — the same central trail as a form save.
+  const editShift = async (
+    before: Shift,
+    patch: Partial<Omit<Shift, "id" | "userId" | "createdAt">>,
+  ): Promise<void> => {
+    const saved = await repo.updateShift(before.id, patch);
+    await logFieldChanges(before, saved);
+    await reload();
+  };
+
+  return { saveShift, deleteShift, markWorked, reactivateShift, editShift };
 }

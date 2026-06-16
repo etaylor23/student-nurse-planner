@@ -56,13 +56,18 @@ Stored in its own IndexedDB store (Dexie version 2), indexed by `userId` and by
 | action              | when                                              | example summary                              |
 | ------------------- | ------------------------------------------------- | -------------------------------------------- |
 | `SHIFT_CREATED`     | a new shift is logged (still planned)             | "Logged a shift on Thu 18 Jun"               |
-| `SHIFT_UPDATED`     | an unlocked shift's details are edited            | "Edited the Thu 18 Jun shift"                |
+| `SHIFT_UPDATED`     | an unlocked shift's field is edited (one per field) | "Start time: 19:00 → 20:00"                |
 | `SHIFT_COMPLETED`   | a shift is marked as worked (mark-worked or form) | "Marked the Thu 18 Jun shift as worked (with Jo Smith)" |
 | `SHIFT_REACTIVATED` | a completed shift is unlocked                     | "Reactivated the Thu 18 Jun shift"           |
 | `SHIFT_DELETED`     | a shift is deleted                                | "Deleted the Thu 18 Jun shift"               |
 
 All shift mutations funnel through `useShiftActions` (see `spec-architecture.md`),
-so logging lives in one place and can't be bypassed by one of the two views.
+so logging lives in one place and can't be bypassed by one of the two views. An
+**edit** — a form save in either view, or the planner's drag/resize — records **one
+`LogItem` per changed field** (`{field}: {before} → {after}`), computed by diffing
+the previous shift against the saved one (pure `logic/shiftDiff.ts`). Status
+transitions are excluded (they have their own `SHIFT_COMPLETED`/`SHIFT_REACTIVATED`
+entries).
 
 ## Screens / UX
 
@@ -91,8 +96,6 @@ listLogItems(userId, filter?: { entityType?; entityId? }): Promise<LogItem[]>; /
 
 ## Not yet built (future)
 
-- **Field-level diffs** — Jira-style "changed start 07:00 → 08:00"; v1 summaries are
-  whole-action sentences.
 - **Filter / paginate the activity feed** — it currently lists every entry; a busy
   log would want date/action filters or a "show more".
 - **Logging other entities** — placements, reflections, skill sign-offs reuse the

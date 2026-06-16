@@ -34,10 +34,10 @@ const eventClass = (s: Shift) =>
   s.isSimulated ? "ev-sim" : s.status === "COMPLETED" ? "ev-counted" : "ev-planned";
 
 export function PlannerPage() {
-  const { repo, user, loading } = useRepository();
+  const { user, loading } = useRepository();
   const { placements } = usePlacements();
-  const { shifts, summary, reload: reloadShifts } = useShifts();
-  const { saveShift, deleteShift, markWorked, reactivateShift } = useShiftActions();
+  const { shifts, summary } = useShifts();
+  const { saveShift, deleteShift, markWorked, reactivateShift, editShift } = useShiftActions();
   const { rules } = useBreakRules();
   const [searchParams] = useSearchParams();
   // Deep-link target, e.g. /planner?date=2026-06-18 (from a timesheet row).
@@ -132,8 +132,7 @@ export function PlannerPage() {
       patch.startAt = at(start);
       patch.endAt = end ? at(end) : undefined;
     }
-    await repo.updateShift(shift.id, patch);
-    await reloadShifts();
+    await editShift(shift, patch);
   };
 
   // Drag the edge to change duration: recompute the counted hours + break for the
@@ -147,7 +146,7 @@ export function PlannerPage() {
     const e = new Date(endMs);
     const rawDurationMins = Math.round((endMs - startMs) / 60000);
     const { netHours, breakMins } = computeNetHours({ entryMode: "RAW", rawDurationMins }, rules);
-    await repo.updateShift(shift.id, {
+    await editShift(shift, {
       entryMode: "RAW",
       date: isoDate(s),
       startAt: at(s),
@@ -156,7 +155,6 @@ export function PlannerPage() {
       breakMins,
       netHours,
     });
-    await reloadShifts();
   };
 
   const renderChip = (shift: Shift, timeText: string) => {
