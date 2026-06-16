@@ -40,14 +40,17 @@ Logs placement shifts and tracks progress toward the NMC practice-hours target.
   auto-derive the shift length (handles overnight)**, shift type, NET-or-RAW
   entry with a live "counts as X h after a Y-min break" preview, simulated
   toggle, worked-&-complete toggle that requires the RN name, notes. Editing a
-  shift reuses the same form.
+  shift reuses the same form. A **completed shift opens locked** (read-only) with an
+  **Unlock to edit** button, and the editor lists that shift's **history**
+  (created / completed / reactivated …) — see `spec-activity-log.md`.
 - **Break rules** — an editable per-user band table ("shifts up to N h → M min
   break") that overrides the built-in defaults, with reset-to-defaults; shown as a
   compact range table, ~half width on large screens.
 - **Timesheet** — filterable table (by placement, status, date range), newest
   first, with friendly dates ("Thu 18 Jun"), a simulated badge, and **per-row
   view-in-planner / edit / delete / mark-worked**; CSV export (incl. start/end, respects the active
-  filter) + print/PDF.
+  filter) + print/PDF. **Completed rows show a padlock and hide delete** (unlock in
+  the editor first).
 - **Hours by placement** — counted (and planned) hours grouped per ward/team,
   each with a per-placement CSV export.
 
@@ -62,6 +65,8 @@ Logs placement shifts and tracks progress toward the NMC practice-hours target.
 - Pace projection: shifts-to-go from the average completed-shift length; finish
   date from counted-hours-per-week over the completed date span.
 - Guardrails: block shifts counting > 24 h; warn on a duplicate date + placement.
+- Lock & audit: a `COMPLETED` shift is locked (read-only, no delete) until
+  reactivated; every shift lifecycle action is recorded — see `spec-activity-log.md`.
 
 ## Tests (passing)
 

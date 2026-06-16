@@ -38,6 +38,8 @@ interface Repository {
   createShift(input): Promise<Shift>;
   updateShift(id, patch): Promise<Shift>;
   deleteShift(id): Promise<void>;
+  createLogItem(input): Promise<LogItem>;                 // append an audit entry
+  listLogItems(userId, filter?): Promise<LogItem[]>;      // newest first; filter by entity
 }
 ```
 
@@ -49,8 +51,10 @@ context. To move to a backend: implement `Repository` against the API and pass
 summary and pace projection) shared by every view via `useShifts()`, so a change
 in the hours log or the planner reflects in both — one fetch, no drift.
 `useShiftActions()` centralises the shift mutations (create / update / delete /
-mark-worked, with the duplicate-shift guard) so those flows can't diverge between
-views. (Placements and break rules use their own hooks the same way.)
+mark-worked / reactivate, with the duplicate-shift guard) so those flows can't
+diverge between views — and it's the single place that appends `LogItem` audit
+entries (see `spec-activity-log.md`). (Placements and break rules use their own
+hooks the same way.)
 
 ## Canonical data model (Prisma — target/remote shape)
 
@@ -85,6 +89,19 @@ model User {
   targetRegistrationDate DateTime?
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt
+}
+
+// ---------- Activity log (generic audit trail) ----------
+model LogItem {                // entity-agnostic; v1 logs shifts, extends later
+  id         String   @id @default(cuid())
+  userId     String
+  entityType String          // "SHIFT" today; e.g. PLACEMENT / REFLECTION later
+  entityId   String          // kept even if the entity is later deleted
+  action     String          // e.g. "SHIFT_COMPLETED", "SHIFT_REACTIVATED"
+  summary    String          // human line shown in the history
+  createdAt  DateTime @default(now())
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
 }
 
 // ---------- Competency tracker ----------
@@ -315,6 +332,11 @@ model RevisionSession {
 - **Practice-hours progress:** `Σ netHours` over `COMPLETED` shifts `/ 2300`.
   Simulated hours are a **subset** of that total and tracked against the **600**
   cap (warn at/over the cap).
+- **Shift lock & audit:** a `COMPLETED` shift is **locked** — read-only fields, no
+  calendar drag/resize, no delete — until **reactivated** (`COMPLETED → PLANNED`,
+  which preserves the RN name/hours). Completing, reactivating, creating, editing
+  and deleting a shift each append a `LogItem` (all via `useShiftActions`, the single
+  mutation point). See `spec-activity-log.md`.
 - **Pace projection:** shifts-to-go from the average completed-shift length; an
   estimated finish date from counted-hours-per-week over the completed date span.
 - **Hours by placement:** `netHours` grouped by `placementId` (counted vs

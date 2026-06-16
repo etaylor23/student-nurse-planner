@@ -55,6 +55,11 @@ and is **not** used by the client-only `.ics` snapshot export. See
   hours and break recompute for the new span).
 - **Mark complete** — one-click on a planned shift → enter RN name →
   `COMPLETED` → counts in the hours log. Same bridge as the hours-log timesheet.
+- **Locked when complete** — a `COMPLETED` shift shows a **padlock** on its chip and
+  **can't be dragged or resized**; opening it shows a read-only form with an
+  **Unlock to edit** button (reactivates it → `PLANNED`). Each shift's editor lists
+  its **history** (created / completed / reactivated …) newest-first. See
+  `spec-activity-log.md`.
 - **`.ics` export** — "Add to calendar" downloads a snapshot the student imports
   into Google / Apple / Outlook.
 - **Deep link** — `/planner?date=YYYY-MM-DD` opens the week containing that date,
