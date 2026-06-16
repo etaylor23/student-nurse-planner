@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -45,6 +45,16 @@ export function PlannerPage() {
   const [editing, setEditing] = useState<Editing>(null);
   // Live draft for the calendar highlight; kept in step with the form's fields.
   const [draft, setDraft] = useState<NewShift | null>(null);
+
+  // Backspace/Delete on a selected event deletes it (same as the Delete button).
+  // A single stable listener reads the latest state via this ref (set on each render
+  // below), so there's no stale closure and we don't re-subscribe every render.
+  const deleteKeyHandler = useRef<(e: KeyboardEvent) => void>(() => {});
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => deleteKeyHandler.current(e);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const openNew = (ns: NewShift) => {
     setEditing(ns);
@@ -116,6 +126,17 @@ export function PlannerPage() {
 
   const completeShift = async (id: string) => {
     if (await markWorked(id)) close();
+  };
+
+  // Delete the selected (unlocked) shift on Backspace/Delete — unless the user is
+  // typing in a form field. Locked (completed) shifts have no Delete, so skip them.
+  deleteKeyHandler.current = (e: KeyboardEvent) => {
+    if (e.key !== "Backspace" && e.key !== "Delete") return;
+    if (!editingShift || locked) return;
+    const t = e.target as HTMLElement | null;
+    if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return;
+    e.preventDefault();
+    void removeShift(editingShift);
   };
 
   // Store a dragged moment as a full UTC ISO instant.
@@ -233,6 +254,7 @@ export function PlannerPage() {
             <button
               type="button"
               onClick={() => void removeShift(editingShift)}
+              title="Delete (Backspace)"
               className="text-xs font-medium text-rose-600"
             >
               Delete
