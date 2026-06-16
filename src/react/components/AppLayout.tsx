@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { NAV_ITEMS, type NavItem } from "../nav";
+import { NAV_SECTIONS, type NavItem } from "../nav";
 
 /** Minimal line icons keyed by nav path. Inherit color + size from the parent. */
 const ICONS: Record<string, ReactNode> = {
@@ -24,39 +24,56 @@ const ICONS: Record<string, ReactNode> = {
   "/revision": <path d="M12 4 3 9l9 5 9-5-9-5Zm0 10v6m-5-9v4a5 3 0 0 0 10 0v-4" />,
 };
 
+function NavItemLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
+  if (!item.enabled) {
+    return (
+      <span
+        aria-disabled="true"
+        className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-400"
+      >
+        <NavIcon item={item} />
+        <span className="truncate">{item.label}</span>
+        <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-400">
+          Soon
+        </span>
+      </span>
+    );
+  }
+  return (
+    <NavLink
+      to={item.path}
+      onClick={onNavigate}
+      className={({ isActive }) =>
+        "group/link flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 " +
+        (isActive
+          ? "bg-emerald-50 font-medium text-emerald-700"
+          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900")
+      }
+    >
+      <NavIcon item={item} />
+      <span className="truncate">{item.label}</span>
+    </NavLink>
+  );
+}
+
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav aria-label="Primary" className="flex flex-col gap-1">
-      {NAV_ITEMS.map((item) =>
-        item.enabled ? (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            onClick={onNavigate}
-            className={({ isActive }) =>
-              "group/link flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 " +
-              (isActive
-                ? "bg-emerald-50 font-medium text-emerald-700"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900")
-            }
-          >
-            <NavIcon item={item} />
-            <span className="truncate">{item.label}</span>
-          </NavLink>
-        ) : (
-          <span
-            key={item.path}
-            aria-disabled="true"
-            className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-400"
-          >
-            <NavIcon item={item} />
-            <span className="truncate">{item.label}</span>
-            <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-400">
-              Soon
-            </span>
-          </span>
-        ),
-      )}
+      {NAV_SECTIONS.map((section, i) => (
+        <div
+          key={section.heading ?? `section-${i}`}
+          className={i > 0 ? "mt-4 flex flex-col gap-1" : "flex flex-col gap-1"}
+        >
+          {section.heading && (
+            <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              {section.heading}
+            </p>
+          )}
+          {section.items.map((item) => (
+            <NavItemLink key={item.path} item={item} onNavigate={onNavigate} />
+          ))}
+        </div>
+      ))}
     </nav>
   );
 }
