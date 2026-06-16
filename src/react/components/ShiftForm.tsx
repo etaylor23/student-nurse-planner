@@ -1,18 +1,11 @@
 import React, { useMemo, useState } from "react";
-import type { Placement, Shift, ShiftType } from "../../domain/types";
+import { SHIFT_TYPE_LABEL, type Placement, type Shift, type ShiftType } from "../../domain/types";
 import { computeNetHours } from "../../logic/hours";
 import { resolveBreakMins } from "../../logic/breakRules";
 import { useBreakRules } from "../hooks";
 import { btnGhost, btnPrimary, inputCls } from "./ui";
 
 const SHIFT_TYPES: ShiftType[] = ["EARLY", "LATE", "NIGHT", "LONG_DAY", "OTHER"];
-const SHIFT_TYPE_LABEL: Record<ShiftType, string> = {
-  EARLY: "Early",
-  LATE: "Late",
-  NIGHT: "Night",
-  LONG_DAY: "Long day",
-  OTHER: "Other",
-};
 
 export type ShiftDraft = Omit<Shift, "id" | "userId" | "createdAt" | "updatedAt">;
 
@@ -42,17 +35,20 @@ function field(label: string, control: React.ReactNode, hint?: string) {
 export function ShiftForm({
   placements,
   initial,
+  initialDate,
   onSubmit,
   onCancel,
 }: {
   placements: Placement[];
   initial?: Shift;
+  /** Default date for a NEW shift (used only when `initial` is absent). */
+  initialDate?: string;
   onSubmit: (draft: ShiftDraft) => void | Promise<void>;
   onCancel?: () => void;
 }) {
   const { rules } = useBreakRules();
 
-  const [date, setDate] = useState(initial?.date ?? todayIso());
+  const [date, setDate] = useState(initial?.date ?? initialDate ?? todayIso());
   const [placementId, setPlacementId] = useState(initial?.placementId ?? "");
   const [startTime, setStartTime] = useState(initial?.startTime ?? "");
   const [endTime, setEndTime] = useState(initial?.endTime ?? "");

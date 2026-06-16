@@ -4,6 +4,14 @@
 export type NursingField = "ADULT"; // extend later
 export type ProgrammeType = "BSC_3YR" | "MSC_2YR" | "APPRENTICE" | "OTHER";
 export type ShiftType = "EARLY" | "LATE" | "NIGHT" | "LONG_DAY" | "OTHER";
+/** Human labels for shift types (shared by the form, calendar events and .ics). */
+export const SHIFT_TYPE_LABEL: Record<ShiftType, string> = {
+  EARLY: "Early",
+  LATE: "Late",
+  NIGHT: "Night",
+  LONG_DAY: "Long day",
+  OTHER: "Other",
+};
 export type HoursEntryMode = "NET" | "RAW";
 export type ShiftStatus = "PLANNED" | "COMPLETED";
 
