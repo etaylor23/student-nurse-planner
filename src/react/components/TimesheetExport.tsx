@@ -187,7 +187,15 @@ export function TimesheetExport({
                   <td className="px-4 py-2.5">{r.placement}</td>
                   <td className="px-4 py-2.5">{r.shiftType}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{r.netHours}</td>
-                  <td className="px-4 py-2.5">{r.simulated}</td>
+                  <td className="px-4 py-2.5">
+                    {r.simulated === "Yes" ? (
+                      <span className="rounded-full bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700 ring-1 ring-sky-100">
+                        Sim
+                      </span>
+                    ) : (
+                      <span className="text-slate-300">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-2.5">{r.supervisingRn || "—"}</td>
                   <td className="px-4 py-2.5">
                     <span
