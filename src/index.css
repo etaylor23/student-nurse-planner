@@ -157,6 +157,15 @@
   background: #e0f2fe;
   color: #0369a1;
 }
+/* The event currently open in the editor — a clear "active/selected" state that
+   stands out over any status colour. */
+.fc-theme-wrap .fc-event.ev-active {
+  background: #10b981; /* emerald-500 */
+  color: #ffffff;
+  box-shadow:
+    0 0 0 2px #ffffff,
+    0 0 0 4px #10b981; /* halo so the selection pops over the grid */
+}
 /* Draft highlight for a not-yet-saved shift being configured in the side panel */
 .fc-theme-wrap .fc-bg-event.ev-draft {
   background-color: #10b981; /* emerald-500 */

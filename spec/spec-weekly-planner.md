@@ -45,14 +45,18 @@ and is **not** used by the client-only `.ics` snapshot export. See
   start/end moves and resizes the highlight, and dragging on the grid fills the
   form. It clears on save/cancel. Event chips show the **placement** (ward/team)
   alongside the time and shift type, and a small **Planned / Counted / Simulated**
-  legend sits under the grid.
+  legend sits under the grid. The shift open in the editor shows an **active
+  highlight** (emerald) on the grid so the selection is obvious.
 - **Quick-add** — click a day → the shift form prefilled to that date, creating a
   `PLANNED` shift (reuses `ShiftForm`, defaulting to your most recent placement).
   **Click-drag across time slots** (week/day, Outlook-style) prefills the start/end
   times too, so the counted hours are set from the selection. Click a shift to
   edit; **drag
   to reschedule** (duration preserved) or **drag its edge to resize** (the counted
-  hours and break recompute for the new span).
+  hours and break recompute for the new span). Resize is capped at **24h** — the
+  shift model stores clock times and infers the overnight crossing from
+  `endTime <= startTime`, so a longer drag is refused rather than collapsing (a
+  25h span would otherwise read as a 1h same-day shift).
 - **Mark complete** — one-click on a planned shift → enter RN name →
   `COMPLETED` → counts in the hours log. Same bridge as the hours-log timesheet.
 - **Locked when complete** — a `COMPLETED` shift shows a **padlock** on its chip and

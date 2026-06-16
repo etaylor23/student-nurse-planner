@@ -71,7 +71,8 @@ export function PlannerPage() {
     start: shiftStart(s),
     end: shiftEnd(s),
     allDay: isAllDay(s),
-    classNames: [eventClass(s)],
+    // Highlight the event currently open in the editor as the active selection.
+    classNames: [eventClass(s), editingShift?.id === s.id ? "ev-active" : ""].filter(Boolean),
     // A completed shift is locked: no drag or resize on the grid.
     editable: s.status !== "COMPLETED",
     extendedProps: { shift: s },
@@ -118,8 +119,15 @@ export function PlannerPage() {
 
   // Drag the edge to change duration: recompute the counted hours + break for the
   // new span (treated as RAW, so the band rules apply) so the hours stay correct.
-  const applyResize = async (shift: Shift, start: Date, end: Date) => {
+  // The shift model stores clock times and infers the overnight crossing from
+  // endTime <= startTime, so it can only represent spans up to 24h. Refuse a
+  // longer drag rather than silently collapsing e.g. a 25h span into a 1h shift.
+  const applyResize = async (shift: Shift, start: Date, end: Date): Promise<boolean> => {
     const rawDurationMins = Math.round((end.getTime() - start.getTime()) / 60000);
+    if (rawDurationMins > 24 * 60) {
+      window.alert("A shift can't be longer than 24 hours — resize it to a shorter span.");
+      return false;
+    }
     const { netHours, breakMins } = computeNetHours({ entryMode: "RAW", rawDurationMins }, rules);
     await repo.updateShift(shift.id, {
       entryMode: "RAW",
@@ -131,6 +139,7 @@ export function PlannerPage() {
       netHours,
     });
     await reloadShifts();
+    return true;
   };
 
   const renderChip = (shift: Shift, timeText: string) => {
@@ -346,9 +355,11 @@ export function PlannerPage() {
               eventResize={(arg) => {
                 const ev = arg.event;
                 const shift = ev.extendedProps.shift as Shift | undefined;
-                if (shift && !ev.allDay && ev.start && ev.end)
-                  void applyResize(shift, ev.start, ev.end);
-                else arg.revert();
+                if (shift && !ev.allDay && ev.start && ev.end) {
+                  void applyResize(shift, ev.start, ev.end).then((ok) => {
+                    if (!ok) arg.revert();
+                  });
+                } else arg.revert();
               }}
             />
           </div>
