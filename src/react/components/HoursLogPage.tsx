@@ -24,6 +24,21 @@ export function HoursLogPage() {
     await reloadPlacements();
   };
 
+  const updatePlacement = async (id: string, patch: { name: string; settingType?: string }) => {
+    await repo.updatePlacement(id, patch);
+    await reloadPlacements();
+  };
+
+  const removePlacement = async (id: string) => {
+    const usedByShift = shifts.some((s) => s.placementId === id);
+    const message = usedByShift
+      ? "Delete this placement? Shifts logged against it keep their hours but will show no placement."
+      : "Delete this placement?";
+    if (!window.confirm(message)) return;
+    await repo.deletePlacement(id);
+    await reloadPlacements();
+  };
+
   const submitShift = async (draft: ShiftDraft) => {
     if (editing && editing !== "new") {
       await repo.updateShift(editing.id, draft);
@@ -51,7 +66,12 @@ export function HoursLogPage() {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div className="min-w-0 space-y-6 xl:col-span-1">
           <Panel step="1" title="Placements" hint="Wards or teams you're on">
-            <PlacementManager placements={placements} onCreate={createPlacement} />
+            <PlacementManager
+              placements={placements}
+              onCreate={createPlacement}
+              onUpdate={updatePlacement}
+              onDelete={removePlacement}
+            />
           </Panel>
 
           <Panel
