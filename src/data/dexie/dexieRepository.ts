@@ -1,5 +1,5 @@
 import type { Repository } from "../repository";
-import type { BreakRule, Placement, Shift, User } from "../../domain/types";
+import type { BreakRule, LogInput, LogItem, Placement, Shift, User } from "../../domain/types";
 import { newId, nowIso } from "../../domain/ids";
 import { defaultBreakRules } from "../../logic/breakRules";
 import { PlannerDb } from "./db";
@@ -143,5 +143,24 @@ export class DexieRepository implements Repository {
 
   async deleteShift(id: string): Promise<void> {
     await this.db.shifts.delete(id);
+  }
+
+  async createLogItem(input: LogInput): Promise<LogItem> {
+    const item: LogItem = { ...input, id: newId(), createdAt: nowIso() };
+    await this.db.logItems.put(item);
+    return item;
+  }
+
+  async listLogItems(
+    userId: string,
+    filter?: { entityType?: string; entityId?: string },
+  ): Promise<LogItem[]> {
+    let rows = await this.db.logItems.where("userId").equals(userId).toArray();
+    if (filter?.entityType) rows = rows.filter((r) => r.entityType === filter.entityType);
+    if (filter?.entityId) rows = rows.filter((r) => r.entityId === filter.entityId);
+    // Newest first.
+    return rows.sort((a, b) =>
+      a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0,
+    );
   }
 }

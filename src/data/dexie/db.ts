@@ -1,5 +1,5 @@
 import Dexie, { type Table } from "dexie";
-import type { BreakRule, Placement, Shift, User } from "../../domain/types";
+import type { BreakRule, LogItem, Placement, Shift, User } from "../../domain/types";
 
 /**
  * IndexedDB schema for the PoC. Indexes are chosen for the queries the
@@ -10,6 +10,7 @@ export class PlannerDb extends Dexie {
   breakRules!: Table<BreakRule, string>;
   placements!: Table<Placement, string>;
   shifts!: Table<Shift, string>;
+  logItems!: Table<LogItem, string>;
 
   constructor(name = "nurse-planner") {
     super(name);
@@ -19,6 +20,10 @@ export class PlannerDb extends Dexie {
       breakRules: "id, userId, orderIndex",
       placements: "id, userId, createdAt",
       shifts: "id, userId, [userId+date], status",
+    });
+    // v2 adds the generic activity log; existing v1 databases upgrade in place.
+    this.version(2).stores({
+      logItems: "id, userId, [entityType+entityId], createdAt",
     });
   }
 }

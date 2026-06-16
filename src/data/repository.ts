@@ -1,4 +1,4 @@
-import type { BreakRule, Placement, Shift, User } from "../domain/types";
+import type { BreakRule, LogInput, LogItem, Placement, Shift, User } from "../domain/types";
 
 /**
  * Storage-agnostic contract for the Core + hours-log slice.
@@ -41,4 +41,13 @@ export interface Repository {
     patch: Partial<Omit<Shift, "id" | "userId" | "createdAt">>,
   ): Promise<Shift>;
   deleteShift(id: string): Promise<void>;
+
+  // ---- Activity log (generic audit trail) ----
+  /** Append an audit entry. Log items are never updated or deleted by the app. */
+  createLogItem(input: LogInput): Promise<LogItem>;
+  /** A user's audit entries, newest first; optionally scoped to one entity. */
+  listLogItems(
+    userId: string,
+    filter?: { entityType?: string; entityId?: string },
+  ): Promise<LogItem[]>;
 }

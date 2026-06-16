@@ -8,6 +8,18 @@ function freshRepo() {
   return new DexieRepository(new PlannerDb("test-" + Math.random().toString(36).slice(2)));
 }
 
+function mkLog(id: string, userId: string, entityId: string, createdAt: string) {
+  return {
+    id,
+    userId,
+    entityType: "SHIFT",
+    entityId,
+    action: "SHIFT_CREATED",
+    summary: "",
+    createdAt,
+  };
+}
+
 describe("DexieRepository", () => {
   let repo: DexieRepository;
   beforeEach(() => {
@@ -65,6 +77,41 @@ describe("DexieRepository", () => {
     expect(updated.status).toBe("COMPLETED");
     expect(updated.supervisingRnName).toBe("Pat Lee");
     expect(updated.updatedAt).not.toBe("");
+  });
+
+  it("stamps id + createdAt when appending a log item", async () => {
+    const user = await repo.getCurrentUser();
+    const item = await repo.createLogItem({
+      userId: user.id,
+      entityType: "SHIFT",
+      entityId: "shift-x",
+      action: "SHIFT_CREATED",
+      summary: "Logged a shift",
+    });
+    expect(item.id).toBeTruthy();
+    expect(item.createdAt).toBeTruthy();
+    const listed = await repo.listLogItems(user.id);
+    expect(listed).toHaveLength(1);
+    expect(listed[0].id).toBe(item.id);
+  });
+
+  it("lists log items newest first, scoped by entity", async () => {
+    const db = new PlannerDb("test-log-" + Math.random().toString(36).slice(2));
+    const r = new DexieRepository(db);
+    const user = await r.getCurrentUser();
+    // Direct puts with explicit timestamps so the ordering check is deterministic.
+    await db.logItems.bulkPut([
+      mkLog("l1", user.id, "shift-1", "2026-06-16T09:00:00.000Z"),
+      mkLog("l2", user.id, "shift-1", "2026-06-16T10:00:00.000Z"),
+      mkLog("l3", user.id, "shift-2", "2026-06-16T09:30:00.000Z"),
+    ]);
+
+    const all = await r.listLogItems(user.id);
+    expect(all.map((i) => i.id)).toEqual(["l2", "l3", "l1"]); // newest first across entities
+
+    const forShift1 = await r.listLogItems(user.id, { entityType: "SHIFT", entityId: "shift-1" });
+    expect(forShift1.map((i) => i.id)).toEqual(["l2", "l1"]);
+    expect(forShift1.every((i) => i.entityId === "shift-1")).toBe(true);
   });
 
   it("prefers user-specific break rules over defaults when present", async () => {

@@ -67,6 +67,24 @@ export interface Shift {
 export type ShiftDraft = Omit<Shift, "id" | "userId" | "createdAt" | "updatedAt">;
 
 /**
+ * A generic, entity-agnostic audit-trail entry — a history of what the user did,
+ * in the style of Jira's issue history. v1 logs shift lifecycle actions; the same
+ * shape extends to other entities later. See spec-activity-log.md.
+ */
+export interface LogItem {
+  id: string;
+  userId: string;
+  entityType: string; // "SHIFT" today; generic for future entities
+  entityId: string; // kept even if the underlying entity is later deleted
+  action: string; // e.g. "SHIFT_COMPLETED", "SHIFT_REACTIVATED"
+  summary: string; // human-readable line shown in the history
+  createdAt: string; // ISO timestamp
+}
+
+/** A log entry to append — the store stamps id + createdAt. */
+export type LogInput = Omit<LogItem, "id" | "createdAt">;
+
+/**
  * Configurable break-deduction band. A raw shift duration that falls in
  * [minShiftMins, maxShiftMins] has `breakMins` deducted before counting.
  * `userId === null` denotes the built-in default table.
