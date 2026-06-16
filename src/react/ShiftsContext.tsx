@@ -216,5 +216,33 @@ export function useShiftActions() {
     await reload();
   };
 
-  return { saveShift, deleteShift, markWorked, reactivateShift, editShift };
+  // Duplicate a shift at the same time (to then drag elsewhere). The copy is always
+  // PLANNED with no RN — it hasn't been worked — so it never double-counts hours.
+  const copyShift = async (shift: Shift): Promise<boolean> => {
+    if (!user) return false;
+    const draft: ShiftDraft = {
+      date: shift.date,
+      placementId: shift.placementId,
+      startAt: shift.startAt,
+      endAt: shift.endAt,
+      shiftType: shift.shiftType,
+      entryMode: shift.entryMode,
+      rawDurationMins: shift.rawDurationMins,
+      breakMins: shift.breakMins,
+      netHours: shift.netHours,
+      isSimulated: shift.isSimulated,
+      status: "PLANNED",
+      supervisingRnName: undefined,
+      notes: shift.notes,
+    };
+    const saved = await repo.createShift({ ...draft, userId: user.id });
+    const names = await placeMap();
+    await log(saved.id, "SHIFT_CREATED", "Copied the shift", {
+      entityLabel: shiftLabel(saved, names),
+    });
+    await reload();
+    return true;
+  };
+
+  return { saveShift, deleteShift, markWorked, reactivateShift, editShift, copyShift };
 }

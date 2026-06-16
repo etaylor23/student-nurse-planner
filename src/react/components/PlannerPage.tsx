@@ -37,7 +37,8 @@ export function PlannerPage() {
   const { user, loading } = useRepository();
   const { placements } = usePlacements();
   const { shifts, summary } = useShifts();
-  const { saveShift, deleteShift, markWorked, reactivateShift, editShift } = useShiftActions();
+  const { saveShift, deleteShift, markWorked, reactivateShift, editShift, copyShift } =
+    useShiftActions();
   const { rules } = useBreakRules();
   const [searchParams] = useSearchParams();
   // Deep-link target, e.g. /planner?date=2026-06-18 (from a timesheet row).
@@ -189,50 +190,78 @@ export function PlannerPage() {
           </div>
           <div className="truncate text-[10px] opacity-60">{SHIFT_TYPE_LABEL[shift.shiftType]}</div>
         </div>
-        {shift.status === "PLANNED" ? (
-          <button
-            type="button"
-            onMouseDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation();
-              void completeShift(shift.id);
-            }}
-            aria-label="Mark worked"
-            title="Mark worked"
-            className="shrink-0 rounded p-0.5 hover:bg-black/5"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2.4}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-3 w-3"
+        <div className="flex shrink-0 items-center gap-0.5">
+          {shift.status === "PLANNED" && (
+            <button
+              type="button"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                void copyShift(shift);
+              }}
+              aria-label="Make a copy"
+              title="Make a copy (then drag it)"
+              className="rounded p-0.5 hover:bg-black/5"
             >
-              <path d="m5 13 4 4L19 7" />
-            </svg>
-          </button>
-        ) : (
-          <span
-            aria-label="Locked"
-            title="Counted toward your hours — unlock to edit"
-            className="shrink-0 p-0.5 opacity-70"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2.2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-3 w-3"
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-3 w-3"
+              >
+                <rect x="9" y="9" width="11" height="11" rx="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+            </button>
+          )}
+          {shift.status === "PLANNED" ? (
+            <button
+              type="button"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                void completeShift(shift.id);
+              }}
+              aria-label="Mark worked"
+              title="Mark worked"
+              className="rounded p-0.5 hover:bg-black/5"
             >
-              <rect x="5" y="11" width="14" height="9" rx="2" />
-              <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-            </svg>
-          </span>
-        )}
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.4}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-3 w-3"
+              >
+                <path d="m5 13 4 4L19 7" />
+              </svg>
+            </button>
+          ) : (
+            <span
+              aria-label="Locked"
+              title="Counted toward your hours — unlock to edit"
+              className="p-0.5 opacity-70"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-3 w-3"
+              >
+                <rect x="5" y="11" width="14" height="9" rx="2" />
+                <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+              </svg>
+            </span>
+          )}
+        </div>
       </div>
     );
   };
@@ -250,6 +279,14 @@ export function PlannerPage() {
               className="text-xs font-medium text-emerald-600"
             >
               Mark worked
+            </button>
+            <button
+              type="button"
+              onClick={() => void copyShift(editingShift)}
+              title="Duplicate this shift — then drag the copy to another day"
+              className="text-xs font-medium text-slate-600"
+            >
+              Make a copy
             </button>
             <button
               type="button"

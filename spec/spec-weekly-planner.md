@@ -61,6 +61,10 @@ and is **not** used by the client-only `.ics` snapshot export. See
   stops a stray drag producing a nonsensical span).
 - **Mark complete** — one-click on a planned shift → enter RN name →
   `COMPLETED` → counts in the hours log. Same bridge as the hours-log timesheet.
+- **Make a copy** — a button in the editor (next to *Mark worked*) and a copy icon
+  on a planned chip (next to the tick) duplicate the shift at the same time as a new
+  `PLANNED` shift (no RN — it hasn't been worked), so it can be **dragged to another
+  day**. Logged as "Copied the shift".
 - **Locked when complete** — a `COMPLETED` shift shows a **padlock** on its chip and
   **can't be dragged or resized**; opening it shows a read-only form with an
   **Unlock to edit** button (reactivates it → `PLANNED`). Each shift's editor lists
