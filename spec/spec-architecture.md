@@ -27,6 +27,8 @@ interface Repository {
   getCurrentUser(): Promise<User>;
   updateUser(patch): Promise<User>;
   getBreakRules(userId): Promise<BreakRule[]>; // user rules, else defaults
+  saveBreakRules(userId, rules): Promise<BreakRule[]>; // replace user band table
+  resetBreakRules(userId): Promise<void>;              // revert to the defaults
   listPlacements(userId): Promise<Placement[]>;
   createPlacement(input): Promise<Placement>;
   updatePlacement(id, patch): Promise<Placement>;
@@ -331,7 +333,8 @@ model RevisionSession {
 
 ## Build order
 
-1. Core + Placement hours log — **built.**
+1. Core + Placement hours log — **built** (incl. shift & placement edit/delete,
+   break-rule editor, optional start/end times, keyboard-accessible nav).
 2. Weekly shift planner (PLANNED→COMPLETED + `.ics`).
 3. Competency tracker (proficiency seed + `EvidenceLink`).
 4. Reflection (`EvidenceLink`).
@@ -342,8 +345,14 @@ model RevisionSession {
 
 - `react-router-dom` v7. `nav.ts` holds the ordered nav config with an `enabled`
   flag per feature; disabled items render as non-clickable with a "Soon" badge.
-- `AppLayout` renders the fly-over nav (desktop: CSS `group-hover` on a left
-  margin strip; mobile: state-driven drawer + menu button + backdrop) and the
+- `AppLayout` renders the fly-over nav (desktop: a left-margin strip whose panel
+  opens on hover **or** keyboard focus — state-driven for reliability across
+  Tailwind builds; mobile: state-driven drawer + menu button + backdrop) and the
   ultra-wide content container (`lg:px-20 xl:px-24`).
+- Shared UI primitives live in `react/components/ui.tsx` (`PageHero`, `Panel`,
+  `StatTile`, the `card` box, button/input tokens): every white widget is full
+  width on mobile and customises its width on larger screens via `col-span-*`.
+  Layout grids start at `grid-cols-1` and wrappers use `min-w-0` so a wide child
+  (e.g. a table) can't force horizontal overflow.
 - `App.tsx`: `/` and `*` redirect to the first enabled route
   (`DEFAULT_ROUTE` = `/placement-hours`).
