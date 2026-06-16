@@ -60,6 +60,34 @@ export class DexieRepository implements Repository {
     return defaults.sort((a, b) => a.orderIndex - b.orderIndex);
   }
 
+  async saveBreakRules(
+    userId: string,
+    rules: Array<Pick<BreakRule, "minShiftMins" | "maxShiftMins" | "breakMins">>,
+  ): Promise<BreakRule[]> {
+    await this.ensureSeed();
+    await this.clearUserBreakRules(userId);
+    const created: BreakRule[] = rules.map((r, i) => ({
+      id: newId(),
+      userId,
+      minShiftMins: r.minShiftMins,
+      maxShiftMins: r.maxShiftMins,
+      breakMins: r.breakMins,
+      orderIndex: i,
+    }));
+    await this.db.breakRules.bulkPut(created);
+    return created;
+  }
+
+  async resetBreakRules(userId: string): Promise<void> {
+    await this.clearUserBreakRules(userId);
+  }
+
+  /** Delete the user's own break rules (leaves the global defaults untouched). */
+  private async clearUserBreakRules(userId: string): Promise<void> {
+    const own = await this.db.breakRules.where("userId").equals(userId).toArray();
+    if (own.length > 0) await this.db.breakRules.bulkDelete(own.map((r) => r.id));
+  }
+
   async listPlacements(userId: string): Promise<Placement[]> {
     return this.db.placements.where("userId").equals(userId).reverse().sortBy("createdAt");
   }

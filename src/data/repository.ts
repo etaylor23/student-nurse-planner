@@ -15,6 +15,16 @@ export interface Repository {
   // ---- Break rules ----
   /** Returns the user's rules if present, otherwise the built-in defaults. */
   getBreakRules(userId: string): Promise<BreakRule[]>;
+  /**
+   * Replace the user's custom break-rule band table. The bands are stored in
+   * the given order (orderIndex assigned by position). Pass the full table.
+   */
+  saveBreakRules(
+    userId: string,
+    rules: Array<Pick<BreakRule, "minShiftMins" | "maxShiftMins" | "breakMins">>,
+  ): Promise<BreakRule[]>;
+  /** Remove the user's custom band table so the built-in defaults apply again. */
+  resetBreakRules(userId: string): Promise<void>;
 
   // ---- Placements ----
   listPlacements(userId: string): Promise<Placement[]>;

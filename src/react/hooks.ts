@@ -3,14 +3,20 @@ import type { BreakRule, Placement, Shift } from "../domain/types";
 import { summariseHours, type HoursSummary } from "../logic/hours";
 import { useRepository } from "./RepositoryContext";
 
-export function useBreakRules(): BreakRule[] {
+export function useBreakRules(): { rules: BreakRule[]; reload: () => Promise<void> } {
   const { repo, user } = useRepository();
   const [rules, setRules] = useState<BreakRule[]>([]);
-  useEffect(() => {
+
+  const reload = useCallback(async () => {
     if (!user) return;
-    repo.getBreakRules(user.id).then(setRules);
+    setRules(await repo.getBreakRules(user.id));
   }, [repo, user]);
-  return rules;
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  return { rules, reload };
 }
 
 export function usePlacements() {

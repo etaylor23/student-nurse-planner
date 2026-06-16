@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Shift } from "../../domain/types";
 import { usePlacements, useShifts } from "../hooks";
 import { useRepository } from "../RepositoryContext";
+import { BreakRulesEditor } from "./BreakRulesEditor";
 import { HoursSummaryPanel } from "./HoursSummaryPanel";
 import { PlacementManager } from "./PlacementManager";
 import { ShiftForm, type ShiftDraft } from "./ShiftForm";
@@ -123,6 +124,10 @@ export function HoursLogPage() {
           }}
         />
       </div>
+
+      <Panel title="Break rules" hint="How long a break is deducted before a shift counts">
+        <BreakRulesEditor />
+      </Panel>
     </div>
   );
 }

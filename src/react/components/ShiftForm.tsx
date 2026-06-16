@@ -39,7 +39,7 @@ export function ShiftForm({
   onSubmit: (draft: ShiftDraft) => void | Promise<void>;
   onCancel?: () => void;
 }) {
-  const rules = useBreakRules();
+  const { rules } = useBreakRules();
 
   const [date, setDate] = useState(initial?.date ?? todayIso());
   const [placementId, setPlacementId] = useState(initial?.placementId ?? "");
