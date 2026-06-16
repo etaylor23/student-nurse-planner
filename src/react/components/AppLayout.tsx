@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { NAV_SECTIONS, type NavItem } from "../nav";
 
 /** Minimal line icons keyed by nav path. Inherit color + size from the parent. */
@@ -98,13 +98,8 @@ function NavIcon({ item }: { item: NavItem }) {
 function PanelContents({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
-      <div className="flex items-center gap-2.5 px-3 pb-6 pt-1">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-sm font-semibold text-white">
-          SN
-        </span>
-        <span className="text-sm font-semibold tracking-tight text-slate-900">
-          Student Nurse Planner
-        </span>
+      <div className="px-3 pb-4 pt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+        Menu
       </div>
       <NavList onNavigate={onNavigate} />
       <p className="mt-auto px-3 pt-6 text-xs leading-relaxed text-slate-400">
@@ -132,12 +127,42 @@ export function AppLayout({ children }: { children: ReactNode }) {
         className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-gradient-to-b from-emerald-50/70 via-emerald-50/10 to-transparent"
       />
 
+      {/* ---------- Top header bar (full-bleed, edge to edge) ---------- */}
+      <header className="sticky top-0 z-50 flex h-14 items-center gap-2 border-b border-slate-200/70 bg-white/80 px-4 backdrop-blur-md sm:px-6">
+        <button
+          type="button"
+          onClick={() => setMobileOpen(true)}
+          className="-ml-1 flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 lg:hidden"
+          aria-label="Open navigation"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.75}
+            strokeLinecap="round"
+            className="h-5 w-5"
+            aria-hidden="true"
+          >
+            <path d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <Link to="/" className="flex items-center gap-2.5" aria-label="Student Nurse Planner home">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-sm font-semibold text-white shadow-sm">
+            SN
+          </span>
+          <span className="text-[15px] font-semibold tracking-tight text-slate-900">
+            Student Nurse Planner
+          </span>
+        </Link>
+      </header>
+
       {/* ---------- Desktop fly-over (lg+) ---------- */}
       {/* A left-margin strip; the panel slides out of it on hover OR when a nav
           link inside receives keyboard focus. State-driven (mouse + focus) so it
           works regardless of CSS-variable quirks; closes when both leave. */}
       <div
-        className="fixed inset-y-0 left-0 z-40 hidden w-20 lg:block xl:w-24"
+        className="fixed bottom-0 left-0 top-14 z-40 hidden w-20 lg:block xl:w-24"
         onMouseEnter={() => setDesktopOpen(true)}
         onMouseLeave={() => setDesktopOpen(false)}
         onFocus={() => setDesktopOpen(true)}
@@ -165,26 +190,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </aside>
       </div>
 
-      {/* ---------- Mobile menu button + drawer (<lg) ---------- */}
-      <button
-        type="button"
-        onClick={() => setMobileOpen(true)}
-        className="fixed left-4 top-4 z-40 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white shadow-sm lg:hidden"
-        aria-label="Open navigation"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.75}
-          strokeLinecap="round"
-          className="h-5 w-5 text-slate-700"
-          aria-hidden="true"
-        >
-          <path d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
-
+      {/* ---------- Mobile drawer (<lg) — opened from the header button ---------- */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button
@@ -200,9 +206,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       )}
 
       {/* ---------- Ultra-wide content: ~5rem (lg) / 6rem (xl) side margins ---------- */}
-      <main className="relative px-6 py-8 pt-20 sm:px-10 lg:px-20 lg:py-12 lg:pt-12 xl:px-24">
-        {children}
-      </main>
+      <main className="relative px-6 py-8 sm:px-10 lg:px-20 lg:py-12 xl:px-24">{children}</main>
     </div>
   );
 }
