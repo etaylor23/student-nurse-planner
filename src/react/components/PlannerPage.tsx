@@ -54,6 +54,9 @@ export function PlannerPage() {
   }
 
   const placementName = new Map(placements.map((p) => [p.id, p.name]));
+  // Default a new shift to the placement of the most recent shift (listShifts is
+  // newest-date first) — usually you're still at the same ward.
+  const lastPlacementId = shifts.find((s) => s.placementId)?.placementId;
 
   const events: EventInput[] = shifts.map((s) => ({
     id: s.id,
@@ -198,6 +201,7 @@ export function PlannerPage() {
         initialDate={isShift(editing) ? undefined : editing.date}
         initialStartTime={isShift(editing) ? undefined : editing.startTime}
         initialEndTime={isShift(editing) ? undefined : editing.endTime}
+        initialPlacementId={isShift(editing) ? undefined : lastPlacementId}
         onDraftChange={isShift(editing) ? undefined : setDraft}
         onSubmit={submitShift}
         onCancel={close}

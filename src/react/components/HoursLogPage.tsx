@@ -54,6 +54,8 @@ export function HoursLogPage() {
   };
 
   const findShift = (id: string) => shifts.find((s) => s.id === id);
+  // Default a new shift to the most recent shift's placement.
+  const lastPlacementId = shifts.find((s) => s.placementId)?.placementId;
   const isEditing = editing !== null && editing !== "new";
 
   return (
@@ -80,6 +82,7 @@ export function HoursLogPage() {
               <ShiftForm
                 placements={placements}
                 initial={editing === "new" ? undefined : editing}
+                initialPlacementId={editing === "new" ? lastPlacementId : undefined}
                 onSubmit={submitShift}
                 onCancel={() => setEditing(null)}
               />

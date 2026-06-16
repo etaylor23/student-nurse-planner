@@ -44,6 +44,7 @@ export function ShiftForm({
   initialDate,
   initialStartTime,
   initialEndTime,
+  initialPlacementId,
   onDraftChange,
   onSubmit,
   onCancel,
@@ -54,6 +55,7 @@ export function ShiftForm({
   initialDate?: string;
   initialStartTime?: string;
   initialEndTime?: string;
+  initialPlacementId?: string;
   /** Fires as date/start/end change so a live calendar draft can follow along. */
   onDraftChange?: (d: { date: string; startTime?: string; endTime?: string }) => void;
   onSubmit: (draft: ShiftDraft) => void | Promise<void>;
@@ -62,7 +64,7 @@ export function ShiftForm({
   const { rules } = useBreakRules();
 
   const [date, setDate] = useState(initial?.date ?? initialDate ?? todayIso());
-  const [placementId, setPlacementId] = useState(initial?.placementId ?? "");
+  const [placementId, setPlacementId] = useState(initial?.placementId ?? initialPlacementId ?? "");
   const [startTime, setStartTime] = useState(initial?.startTime ?? initialStartTime ?? "");
   const [endTime, setEndTime] = useState(initial?.endTime ?? initialEndTime ?? "");
   const [shiftType, setShiftType] = useState<ShiftType>(initial?.shiftType ?? "LONG_DAY");
