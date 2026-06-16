@@ -8,6 +8,7 @@ import { SHIFT_TYPE_LABEL, type Shift } from "../../domain/types";
 import { hhmm, isAllDay, isoDate, shiftEnd, shiftStart } from "../../logic/calendar";
 import { buildIcs } from "../../logic/ics";
 import { usePlacements, useShifts } from "../hooks";
+import { useShiftActions } from "../ShiftsContext";
 import { useRepository } from "../RepositoryContext";
 import { downloadText } from "../download";
 import { ShiftForm, type ShiftDraft } from "./ShiftForm";
@@ -24,6 +25,7 @@ export function PlannerPage() {
   const { repo, user, loading } = useRepository();
   const { placements } = usePlacements();
   const { shifts, summary, reload: reloadShifts } = useShifts();
+  const { saveShift, deleteShift, markWorked } = useShiftActions();
   const [editing, setEditing] = useState<Editing>(null);
   // Live draft for the calendar highlight; kept in step with the form's fields.
   const [draft, setDraft] = useState<NewShift | null>(null);
@@ -72,37 +74,15 @@ export function PlannerPage() {
 
   const submitShift = async (draft: ShiftDraft) => {
     const editingId = editing && isShift(editing) ? editing.id : null;
-    const duplicate = shifts.some(
-      (s) =>
-        s.id !== editingId &&
-        s.date === draft.date &&
-        (s.placementId ?? "") === (draft.placementId ?? ""),
-    );
-    if (
-      duplicate &&
-      !window.confirm("You already logged a shift on this date at this placement. Add it anyway?")
-    ) {
-      return;
-    }
-    if (editingId) await repo.updateShift(editingId, draft);
-    else await repo.createShift({ ...draft, userId: user.id });
-    close();
-    await reloadShifts();
+    if (await saveShift(draft, editingId)) close();
   };
 
   const removeShift = async (shift: Shift) => {
-    if (!window.confirm(`Delete the ${shift.date} shift? This can't be undone.`)) return;
-    close();
-    await repo.deleteShift(shift.id);
-    await reloadShifts();
+    if (await deleteShift(shift)) close();
   };
 
-  const markWorked = async (id: string) => {
-    const name = window.prompt("Name the registered nurse you worked with:")?.trim();
-    if (!name) return;
-    await repo.updateShift(id, { status: "COMPLETED", supervisingRnName: name });
-    close();
-    await reloadShifts();
+  const completeShift = async (id: string) => {
+    if (await markWorked(id)) close();
   };
 
   // Drag-to-reschedule: duration is preserved by FullCalendar, so the stored
@@ -134,7 +114,7 @@ export function PlannerPage() {
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
-              void markWorked(shift.id);
+              void completeShift(shift.id);
             }}
             aria-label="Mark worked"
             title="Mark worked"
@@ -167,7 +147,7 @@ export function PlannerPage() {
             {editing.status === "PLANNED" && (
               <button
                 type="button"
-                onClick={() => void markWorked(editing.id)}
+                onClick={() => void completeShift(editing.id)}
                 className="text-xs font-medium text-emerald-600"
               >
                 Mark worked

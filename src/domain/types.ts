@@ -63,6 +63,9 @@ export interface Shift {
   updatedAt: string;
 }
 
+/** A shift to create/update — the user-editable fields (server stamps the rest). */
+export type ShiftDraft = Omit<Shift, "id" | "userId" | "createdAt" | "updatedAt">;
+
 /**
  * Configurable break-deduction band. A raw shift duration that falls in
  * [minShiftMins, maxShiftMins] has `breakMins` deducted before counting.

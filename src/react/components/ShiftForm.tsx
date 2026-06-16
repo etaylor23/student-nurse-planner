@@ -1,13 +1,19 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { SHIFT_TYPE_LABEL, type Placement, type Shift, type ShiftType } from "../../domain/types";
+import {
+  SHIFT_TYPE_LABEL,
+  type Placement,
+  type Shift,
+  type ShiftDraft,
+  type ShiftType,
+} from "../../domain/types";
 import { computeNetHours } from "../../logic/hours";
 import { resolveBreakMins } from "../../logic/breakRules";
 import { useBreakRules } from "../hooks";
 import { btnGhost, btnPrimary, inputCls } from "./ui";
 
-const SHIFT_TYPES: ShiftType[] = ["EARLY", "LATE", "NIGHT", "LONG_DAY", "OTHER"];
+export type { ShiftDraft };
 
-export type ShiftDraft = Omit<Shift, "id" | "userId" | "createdAt" | "updatedAt">;
+const SHIFT_TYPES: ShiftType[] = ["EARLY", "LATE", "NIGHT", "LONG_DAY", "OTHER"];
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 

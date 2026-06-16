@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Shift } from "../../domain/types";
 import { usePlacements, useShifts } from "../hooks";
+import { useShiftActions } from "../ShiftsContext";
 import { useRepository } from "../RepositoryContext";
 import { BreakRulesEditor } from "./BreakRulesEditor";
 import { HoursSummaryPanel } from "./HoursSummaryPanel";
@@ -13,7 +14,8 @@ import { Panel } from "./ui";
 export function HoursLogPage() {
   const { repo, user, loading } = useRepository();
   const { placements, reload: reloadPlacements } = usePlacements();
-  const { shifts, summary, projection, reload: reloadShifts } = useShifts();
+  const { shifts, summary, projection } = useShifts();
+  const { saveShift, deleteShift, markWorked } = useShiftActions();
   // null = form closed, "new" = adding, Shift = editing that shift.
   const [editing, setEditing] = useState<Shift | "new" | null>(null);
 
@@ -43,39 +45,12 @@ export function HoursLogPage() {
 
   const submitShift = async (draft: ShiftDraft) => {
     const editingId = editing && editing !== "new" ? editing.id : null;
-    const duplicate = shifts.some(
-      (s) =>
-        s.id !== editingId &&
-        s.date === draft.date &&
-        (s.placementId ?? "") === (draft.placementId ?? ""),
-    );
-    if (
-      duplicate &&
-      !window.confirm("You already logged a shift on this date at this placement. Add it anyway?")
-    ) {
-      return;
-    }
-    if (editing && editing !== "new") {
-      await repo.updateShift(editing.id, draft);
-    } else {
-      await repo.createShift({ ...draft, userId: user.id });
-    }
-    setEditing(null);
-    await reloadShifts();
+    if (await saveShift(draft, editingId)) setEditing(null);
   };
 
   const removeShift = async (shift: Shift) => {
-    if (!window.confirm(`Delete the ${shift.date} shift? This can't be undone.`)) return;
+    if (!(await deleteShift(shift))) return;
     if (editing && editing !== "new" && editing.id === shift.id) setEditing(null);
-    await repo.deleteShift(shift.id);
-    await reloadShifts();
-  };
-
-  const markWorked = async (id: string) => {
-    const name = window.prompt("Name the registered nurse you worked with:")?.trim();
-    if (!name) return;
-    await repo.updateShift(id, { status: "COMPLETED", supervisingRnName: name });
-    await reloadShifts();
   };
 
   const findShift = (id: string) => shifts.find((s) => s.id === id);
@@ -143,7 +118,7 @@ export function HoursLogPage() {
             const shift = findShift(id);
             if (shift) void removeShift(shift);
           }}
-          onMarkWorked={markWorked}
+          onMarkWorked={(id) => void markWorked(id)}
         />
       </div>
 
