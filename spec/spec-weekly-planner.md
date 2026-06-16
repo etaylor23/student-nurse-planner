@@ -35,8 +35,11 @@ and is **not** used by the client-only `.ics` snapshot export. See
 ## Screens (built)
 
 - **Calendar** — FullCalendar week (default) / month / day views, Monday-start,
-  24-hour times, with a now-indicator. Shifts render as chips coloured by status
-  (planned = slate, counted = emerald, simulated = sky).
+  24-hour times over the **full 00:00–24:00 grid** (covers night shifts; they span
+  midnight), with a now-indicator. Shifts render as chips coloured by status
+  (planned = slate, counted = emerald, simulated = sky). On wide screens the
+  add/edit form sits in a **sticky side panel** beside the calendar, updating as
+  you click each period; on narrow screens it stacks below.
 - **Quick-add** — click a day → the shift form prefilled to that date, creating a
   `PLANNED` shift (reuses `ShiftForm` via an `initialDate` prop). **Click-drag
   across time slots** (week/day, Outlook-style) prefills the start/end times too,
