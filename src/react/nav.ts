@@ -34,7 +34,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { path: "/competencies", label: "NMC competency tracker", enabled: false },
       { path: "/reflection", label: "Reflection on practice", enabled: false },
       { path: "/skills", label: "Clinical skills tracker", enabled: false },
-      { path: "/medications", label: "Medication notes", enabled: false },
+      { path: "/medications", label: "Medication notes", enabled: true },
       { path: "/self-care", label: "Self-care checklist", enabled: false },
       { path: "/revision", label: "Revision timetable", enabled: false },
     ],

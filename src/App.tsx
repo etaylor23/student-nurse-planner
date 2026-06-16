@@ -4,6 +4,7 @@ import { ShiftsProvider } from "./react/ShiftsContext";
 import { AppLayout } from "./react/components/AppLayout";
 import { HoursLogPage } from "./react/components/HoursLogPage";
 import { PlannerPage } from "./react/components/PlannerPage";
+import { MedicationNotesPage } from "./react/components/MedicationNotesPage";
 import { DEFAULT_ROUTE } from "./react/nav";
 
 export function App() {
@@ -15,6 +16,7 @@ export function App() {
             <Routes>
               <Route path="/placement-hours" element={<HoursLogPage />} />
               <Route path="/planner" element={<PlannerPage />} />
+              <Route path="/medications" element={<MedicationNotesPage />} />
               {/* `/` and any unknown path land on the first enabled feature. */}
               <Route path="*" element={<Navigate to={DEFAULT_ROUTE} replace />} />
             </Routes>
