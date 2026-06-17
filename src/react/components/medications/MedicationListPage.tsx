@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useMedications } from "../../hooks";
 import { distinctOptions, filterMedications } from "../../../logic/medications";
 import { Panel, btnPrimary } from "../ui";
@@ -11,22 +11,18 @@ const chip = "rounded-full px-2 py-0.5 text-xs font-medium";
 
 export function MedicationListPage() {
   const { medications, conditions } = useMedications();
-  const [params, setParams] = useSearchParams();
-  const q = params.get("q") ?? "";
-  const drugClass = params.get("class") ?? "";
-  const bodySystem = params.get("system") ?? "";
-  const condition = params.get("condition") ?? "";
-
-  const setParam = (key: string, value: string) =>
-    setParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        if (value) next.set(key, value);
-        else next.delete(key);
-        return next;
-      },
-      { replace: true },
-    );
+  // Search + filters are local UI refinements (not in the URL — they don't map to a
+  // clean path; the rest of the app is path-based).
+  const [q, setQ] = useState("");
+  const [drugClass, setDrugClass] = useState("");
+  const [bodySystem, setBodySystem] = useState("");
+  const [condition, setCondition] = useState("");
+  const clearFilters = () => {
+    setQ("");
+    setDrugClass("");
+    setBodySystem("");
+    setCondition("");
+  };
 
   const conditionsByMed = useMemo(() => {
     const m = new Map<string, string[]>();
@@ -64,14 +60,14 @@ export function MedicationListPage() {
           <input
             type="search"
             value={q}
-            onChange={(e) => setParam("q", e.target.value)}
+            onChange={(e) => setQ(e.target.value)}
             placeholder="Search name or brand…"
             className={filterCtl + " min-w-[12rem] flex-1"}
             aria-label="Search medications"
           />
           <select
             value={drugClass}
-            onChange={(e) => setParam("class", e.target.value)}
+            onChange={(e) => setDrugClass(e.target.value)}
             className={filterCtl}
             aria-label="Filter by drug class"
           >
@@ -82,7 +78,7 @@ export function MedicationListPage() {
           </select>
           <select
             value={bodySystem}
-            onChange={(e) => setParam("system", e.target.value)}
+            onChange={(e) => setBodySystem(e.target.value)}
             className={filterCtl}
             aria-label="Filter by body system"
           >
@@ -93,7 +89,7 @@ export function MedicationListPage() {
           </select>
           <select
             value={condition}
-            onChange={(e) => setParam("condition", e.target.value)}
+            onChange={(e) => setCondition(e.target.value)}
             className={filterCtl}
             aria-label="Filter by condition"
           >
@@ -105,7 +101,7 @@ export function MedicationListPage() {
           {isFiltered && (
             <button
               type="button"
-              onClick={() => setParams({}, { replace: true })}
+              onClick={clearFilters}
               className="text-xs font-medium text-emerald-600"
             >
               Clear ({rows.length} of {medications.length})

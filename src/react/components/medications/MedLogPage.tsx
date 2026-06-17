@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   ADMIN_ROUTES,
   MED_LOG_TYPE_LABEL,
@@ -29,8 +29,10 @@ export function MedLogPage() {
   const { shifts } = useShifts();
   const { placements } = usePlacements();
   const { repo, user } = useRepository();
-  const [params, setParams] = useSearchParams();
-  const typeFilter = params.get("type") as MedLogType | null;
+  const { type: typeSlug } = useParams();
+  const navigate = useNavigate();
+  const typeFilter: MedLogType | null =
+    typeSlug === "observed" ? "OBSERVED" : typeSlug === "administered" ? "ADMINISTERED" : null;
 
   const placeName = useMemo(() => new Map(placements.map((p) => [p.id, p.name])), [placements]);
   const medName = useMemo(() => new Map(medications.map((m) => [m.id, m.name])), [medications]);
@@ -184,17 +186,17 @@ export function MedLogPage() {
         action={
           <div className="flex gap-1 rounded-lg bg-slate-100 p-0.5">
             {[
-              { v: "", label: "All" },
-              { v: "OBSERVED", label: "Observed" },
-              { v: "ADMINISTERED", label: "Administered" },
+              { slug: "", label: "All" },
+              { slug: "observed", label: "Observed" },
+              { slug: "administered", label: "Administered" },
             ].map((f) => (
               <button
-                key={f.v}
+                key={f.slug}
                 type="button"
-                onClick={() => setParams(f.v ? { type: f.v } : {}, { replace: true })}
+                onClick={() => navigate(f.slug ? `/medications/log/${f.slug}` : "/medications/log")}
                 className={
                   "rounded-md px-2.5 py-1 text-xs font-medium transition " +
-                  ((typeFilter ?? "") === f.v
+                  ((typeSlug ?? "") === f.slug
                     ? "bg-white text-emerald-700 shadow-sm"
                     : "text-slate-500 hover:text-slate-700")
                 }

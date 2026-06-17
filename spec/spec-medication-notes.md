@@ -47,13 +47,14 @@ medication). See `spec-architecture.md`.
   Linked entries then show in that **shift's details** (planner editor + hours-log
   panel).
 
-## Routing (URL-addressable)
+## Routing (path-based — no query strings)
 
-Nested routes under `/medications/*` (a tabbed shell), so most views/states are
-deep-linkable: `/medications?q&class&system&condition` (list + filters),
-`/medications/new`, `/medications/:id`, `/medications/:id/edit`,
-`/medications/calc?type=`, `/medications/log?type=`. Filters/selection live in the
-URL (`useSearchParams`), so they survive refresh and back/forward.
+Nested routes under `/medications/*` (a tabbed shell), all path-based and
+deep-linkable: `/medications` (list), `/medications/new`, `/medications/:id`,
+`/medications/:id/edit`, `/medications/calc/:type` (`tablet` | `liquid` | `iv-rate`
+| `weight`), `/medications/log/:type` (`observed` | `administered`; bare
+`/medications/log` = all). The list's free-text search + multi-select filters are
+**local UI state** (they don't map cleanly to a path), not in the URL.
 
 ## Build notes
 

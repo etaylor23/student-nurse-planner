@@ -69,7 +69,9 @@ export function MedicationNotesPage() {
         <Route path=":id" element={<MedicationDetailPage />} />
         <Route path=":id/edit" element={<MedicationFormPage />} />
         <Route path="calc" element={<CalcPracticePage />} />
+        <Route path="calc/:type" element={<CalcPracticePage />} />
         <Route path="log" element={<MedLogPage />} />
+        <Route path="log/:type" element={<MedLogPage />} />
         <Route path="*" element={<Navigate to="/medications" replace />} />
       </Routes>
     </div>

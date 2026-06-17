@@ -406,3 +406,8 @@ model RevisionSession {
   (e.g. a table) can't force horizontal overflow.
 - `App.tsx`: `/` and `*` redirect to the first enabled route
   (`DEFAULT_ROUTE` = `/placement-hours`).
+- **Path-based routing — no query strings.** View/selection states are path
+  segments so they're shareable and refresh-safe: e.g. `/planner/:shiftId` (opens a
+  shift's week + editor), `/medications/calc/:type`, `/medications/log/:type`.
+  Free-text/multi-select refinements (the medications list search/filters) are local
+  UI state rather than forced into a path.

@@ -1,16 +1,27 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { CALC_TYPE_LABEL, type CalcType } from "../../../domain/types";
 import { randomCalcDrill } from "../../../logic/calcDrills";
 import { Panel, btnGhostSm, btnPrimary } from "../ui";
 
 const CALC_TYPES = Object.keys(CALC_TYPE_LABEL) as CalcType[];
+const SLUG_BY_TYPE: Record<CalcType, string> = {
+  TABLET_DOSE: "tablet",
+  LIQUID_DOSE: "liquid",
+  IV_RATE: "iv-rate",
+  WEIGHT_BASED: "weight",
+};
+const TYPE_BY_SLUG: Record<string, CalcType> = {
+  tablet: "TABLET_DOSE",
+  liquid: "LIQUID_DOSE",
+  "iv-rate": "IV_RATE",
+  weight: "WEIGHT_BASED",
+};
 
 export function CalcPracticePage() {
-  const [params, setParams] = useSearchParams();
-  const typeParam = params.get("type") as CalcType | null;
-  const calcType: CalcType =
-    typeParam && CALC_TYPES.includes(typeParam) ? typeParam : "TABLET_DOSE";
+  const { type: slug } = useParams();
+  const navigate = useNavigate();
+  const calcType: CalcType = (slug && TYPE_BY_SLUG[slug]) || "TABLET_DOSE";
 
   const [drill, setDrill] = useState(() => randomCalcDrill(calcType));
   const [shown, setShown] = useState(false);
@@ -23,7 +34,7 @@ export function CalcPracticePage() {
     setStats({ correct: 0, total: 0 });
   }, [calcType]);
 
-  const setType = (t: CalcType) => setParams({ type: t }, { replace: true });
+  const setType = (t: CalcType) => navigate(`/medications/calc/${SLUG_BY_TYPE[t]}`);
   const next = () => {
     setDrill(randomCalcDrill(calcType));
     setShown(false);

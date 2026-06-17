@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -30,8 +30,6 @@ import { ShiftMedications } from "./ShiftMedications";
 import { PageHero, Panel, btnGhostSm, btnPrimary } from "./ui";
 
 type NewShift = { date: string; startTime?: string; endTime?: string };
-type Editing = Shift | NewShift | null;
-const isShift = (e: Exclude<Editing, null>): e is Shift => "id" in e;
 
 const eventClass = (s: Shift) =>
   s.isSimulated ? "ev-sim" : s.status === "COMPLETED" ? "ev-counted" : "ev-planned";
@@ -43,16 +41,18 @@ export function PlannerPage() {
   const { saveShift, deleteShift, markWorked, reactivateShift, editShift, copyShift, addShift } =
     useShiftActions();
   const { rules } = useBreakRules();
-  const [searchParams] = useSearchParams();
-  // Deep-link target, e.g. /planner?date=2026-06-18 (from a timesheet row).
-  const initialDate = searchParams.get("date") ?? undefined;
-  const [editing, setEditing] = useState<Editing>(null);
+  // The shift open in the editor is URL-driven (/planner/:shiftId), read live from
+  // the list so its lock state stays current. New-shift drafts are local state.
+  const { shiftId } = useParams();
+  const navigate = useNavigate();
+  const editingShift = shiftId ? (shifts.find((s) => s.id === shiftId) ?? null) : null;
+  const locked = editingShift?.status === "COMPLETED";
+  const [newShift, setNewShift] = useState<NewShift | null>(null);
   // Live draft for the calendar highlight; kept in step with the form's fields.
   const [draft, setDraft] = useState<NewShift | null>(null);
 
-  // Backspace/Delete on a selected event deletes it (same as the Delete button).
-  // A single stable listener reads the latest state via this ref (set on each render
-  // below), so there's no stale closure and we don't re-subscribe every render.
+  // Backspace/Delete on a selected event deletes it (single stable listener that
+  // reads the latest state via this ref, set on each render below).
   const deleteKeyHandler = useRef<(e: KeyboardEvent) => void>(() => {});
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => deleteKeyHandler.current(e);
@@ -60,17 +60,27 @@ export function PlannerPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // When a shift opens (deep-link or click), jump the calendar to its week.
+  const calRef = useRef<FullCalendar>(null);
+  const openShiftDate = editingShift?.date;
+  useEffect(() => {
+    if (openShiftDate) calRef.current?.getApi().gotoDate(openShiftDate);
+  }, [openShiftDate]);
+
   const openNew = (ns: NewShift) => {
-    setEditing(ns);
+    if (shiftId) navigate("/planner");
+    setNewShift(ns);
     setDraft(ns);
   };
   const openEdit = (shift: Shift) => {
-    setEditing(shift);
+    setNewShift(null);
     setDraft(null);
+    navigate(`/planner/${shift.id}`);
   };
   const close = () => {
-    setEditing(null);
+    setNewShift(null);
     setDraft(null);
+    if (shiftId) navigate("/planner");
   };
 
   if (loading || !user) {
@@ -81,13 +91,6 @@ export function PlannerPage() {
   // Default a new shift to the placement of the most recent shift (listShifts is
   // newest-date first) — usually you're still at the same ward.
   const lastPlacementId = shifts.find((s) => s.placementId)?.placementId;
-
-  // The target being edited: a live shift (re-read from the list so its lock
-  // state stays current after a mutation) or a new-shift draft.
-  const editingShift =
-    editing && isShift(editing) ? (shifts.find((s) => s.id === editing.id) ?? editing) : null;
-  const newShift = editing && !isShift(editing) ? editing : null;
-  const locked = editingShift?.status === "COMPLETED";
 
   const events: EventInput[] = shifts.map((s) => ({
     id: s.id,
@@ -120,8 +123,7 @@ export function PlannerPage() {
   const calendarEvents = draftEvent ? [...events, draftEvent] : events;
 
   const submitShift = async (draft: ShiftDraft) => {
-    const editingId = editing && isShift(editing) ? editing.id : null;
-    if (await saveShift(draft, editingId)) close();
+    if (await saveShift(draft, editingShift?.id ?? null)) close();
   };
 
   const removeShift = async (shift: Shift) => {
@@ -269,76 +271,77 @@ export function PlannerPage() {
     );
   };
 
-  const sidebar = editing ? (
-    <Panel
-      title={locked ? "Locked shift" : editingShift ? "Edit shift" : "New shift"}
-      hint={editingShift ? undefined : "Fill in the details and save"}
-      action={
-        editingShift && !locked ? (
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => void completeShift(editingShift.id)}
-              className="text-xs font-medium text-emerald-600"
-            >
-              Mark worked
-            </button>
-            <button
-              type="button"
-              onClick={() => void copyShift(editingShift)}
-              title="Duplicate this shift — then drag the copy to another day"
-              className="text-xs font-medium text-slate-600"
-            >
-              Make a copy
-            </button>
-            <button
-              type="button"
-              onClick={() => void removeShift(editingShift)}
-              title="Delete (Backspace)"
-              className="text-xs font-medium text-rose-600"
-            >
-              Delete
-            </button>
-          </div>
-        ) : undefined
-      }
-    >
-      <ShiftForm
-        key={
-          editingShift
-            ? `edit-${editingShift.id}-${editingShift.status}`
-            : `new-${newShift?.date}-${newShift?.startTime ?? ""}-${newShift?.endTime ?? ""}`
+  const sidebar =
+    editingShift || newShift ? (
+      <Panel
+        title={locked ? "Locked shift" : editingShift ? "Edit shift" : "New shift"}
+        hint={editingShift ? undefined : "Fill in the details and save"}
+        action={
+          editingShift && !locked ? (
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => void completeShift(editingShift.id)}
+                className="text-xs font-medium text-emerald-600"
+              >
+                Mark worked
+              </button>
+              <button
+                type="button"
+                onClick={() => void copyShift(editingShift)}
+                title="Duplicate this shift — then drag the copy to another day"
+                className="text-xs font-medium text-slate-600"
+              >
+                Make a copy
+              </button>
+              <button
+                type="button"
+                onClick={() => void removeShift(editingShift)}
+                title="Delete (Backspace)"
+                className="text-xs font-medium text-rose-600"
+              >
+                Delete
+              </button>
+            </div>
+          ) : undefined
         }
-        placements={placements}
-        initial={editingShift ?? undefined}
-        initialDate={editingShift ? undefined : newShift?.date}
-        initialStartTime={editingShift ? undefined : newShift?.startTime}
-        initialEndTime={editingShift ? undefined : newShift?.endTime}
-        initialPlacementId={editingShift ? undefined : lastPlacementId}
-        locked={locked}
-        onDraftChange={editingShift ? undefined : setDraft}
-        onSubmit={submitShift}
-        onCancel={close}
-        onUnlock={editingShift ? () => void reactivateShift(editingShift) : undefined}
-      />
-      {editingShift && <ShiftMedications shift={editingShift} />}
-      {editingShift && <ShiftHistory shift={editingShift} />}
-    </Panel>
-  ) : (
-    <Panel title="Add a shift" hint="Pick a time on the calendar">
-      <p className="text-sm leading-relaxed text-slate-500">
-        Click a day — or drag across the hours you worked — and it opens here, ready to save. Click
-        an existing shift to edit it.
-      </p>
-      <button
-        type="button"
-        onClick={() => openNew({ date: isoDate(new Date()) })}
-        className={`${btnPrimary} mt-4`}
       >
-        New shift
-      </button>
-    </Panel>
-  );
+        <ShiftForm
+          key={
+            editingShift
+              ? `edit-${editingShift.id}-${editingShift.status}`
+              : `new-${newShift?.date}-${newShift?.startTime ?? ""}-${newShift?.endTime ?? ""}`
+          }
+          placements={placements}
+          initial={editingShift ?? undefined}
+          initialDate={editingShift ? undefined : newShift?.date}
+          initialStartTime={editingShift ? undefined : newShift?.startTime}
+          initialEndTime={editingShift ? undefined : newShift?.endTime}
+          initialPlacementId={editingShift ? undefined : lastPlacementId}
+          locked={locked}
+          onDraftChange={editingShift ? undefined : setDraft}
+          onSubmit={submitShift}
+          onCancel={close}
+          onUnlock={editingShift ? () => void reactivateShift(editingShift) : undefined}
+        />
+        {editingShift && <ShiftMedications shift={editingShift} />}
+        {editingShift && <ShiftHistory shift={editingShift} />}
+      </Panel>
+    ) : (
+      <Panel title="Add a shift" hint="Pick a time on the calendar">
+        <p className="text-sm leading-relaxed text-slate-500">
+          Click a day — or drag across the hours you worked — and it opens here, ready to save.
+          Click an existing shift to edit it.
+        </p>
+        <button
+          type="button"
+          onClick={() => openNew({ date: isoDate(new Date()) })}
+          className={`${btnPrimary} mt-4`}
+        >
+          New shift
+        </button>
+      </Panel>
+    );
 
   return (
     <div className="space-y-6">
@@ -385,9 +388,9 @@ export function PlannerPage() {
         >
           <div className="fc-theme-wrap">
             <FullCalendar
+              ref={calRef}
               plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
               initialView="timeGridWeek"
-              initialDate={initialDate}
               firstDay={1}
               headerToolbar={{
                 left: "prev,next today",

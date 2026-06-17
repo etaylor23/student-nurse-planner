@@ -82,8 +82,11 @@ and is **not** used by the client-only `.ics` snapshot export. See
   `spec-medication-notes.md`.
 - **`.ics` export** — "Add to calendar" downloads a snapshot the student imports
   into Google / Apple / Outlook.
-- **Deep link** — `/planner?date=YYYY-MM-DD` opens the week containing that date,
-  used by the timesheet's "view in planner" row action.
+- **Deep link** — `/planner/:shiftId` opens the week containing that shift **and**
+  its editor. Clicking an event navigates there (so the open shift is in the URL and
+  shareable); closing the editor returns to `/planner`. The timesheet's "view in
+  planner" row action links straight to the shift. Routes are **path-based — no
+  query strings**.
 - **Activity feed** — a global **Activity** panel at the bottom lists every shift
   action (created / completed / reactivated / deleted …) newest-first. See
   `spec-activity-log.md`.

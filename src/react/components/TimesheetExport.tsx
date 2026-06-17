@@ -214,9 +214,9 @@ export function TimesheetExport({
                     <td className="px-4 py-2.5 print:hidden">
                       <div className="flex justify-end gap-1">
                         <Link
-                          to={`/planner?date=${r.date}`}
-                          aria-label={`View ${r.date} in the planner`}
-                          title="View in planner"
+                          to={`/planner/${r.id}`}
+                          aria-label={`Open the ${r.date} shift in the planner`}
+                          title="Open in planner"
                           className="rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
                         >
                           <svg

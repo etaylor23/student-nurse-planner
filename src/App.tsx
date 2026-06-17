@@ -16,6 +16,7 @@ export function App() {
             <Routes>
               <Route path="/placement-hours" element={<HoursLogPage />} />
               <Route path="/planner" element={<PlannerPage />} />
+              <Route path="/planner/:shiftId" element={<PlannerPage />} />
               <Route path="/medications/*" element={<MedicationNotesPage />} />
               {/* `/` and any unknown path land on the first enabled feature. */}
               <Route path="*" element={<Navigate to={DEFAULT_ROUTE} replace />} />
