@@ -1,4 +1,18 @@
-import type { BreakRule, LogInput, LogItem, Placement, Shift, User } from "../domain/types";
+import type {
+  BreakRule,
+  CalcDrill,
+  CalcDrillDraft,
+  LogInput,
+  LogItem,
+  Medication,
+  MedicationCondition,
+  MedicationDraft,
+  MedicationLog,
+  MedicationLogDraft,
+  Placement,
+  Shift,
+  User,
+} from "../domain/types";
 
 /**
  * Storage-agnostic contract for the Core + hours-log slice.
@@ -50,4 +64,29 @@ export interface Repository {
     userId: string,
     filter?: { entityType?: string; entityId?: string },
   ): Promise<LogItem[]>;
+
+  // ---- Medications (study aid) ----
+  listMedications(userId: string): Promise<Medication[]>;
+  getMedication(id: string): Promise<Medication | undefined>;
+  createMedication(input: MedicationDraft & { userId: string }): Promise<Medication>;
+  updateMedication(id: string, patch: Partial<MedicationDraft>): Promise<Medication>;
+  deleteMedication(id: string): Promise<void>;
+
+  // ---- Medication conditions (appendable) ----
+  listMedicationConditions(medicationId: string): Promise<MedicationCondition[]>;
+  /** Every condition across the user's medications (for the list filters). */
+  listConditionsForUser(userId: string): Promise<MedicationCondition[]>;
+  addMedicationCondition(medicationId: string, condition: string): Promise<MedicationCondition>;
+  removeMedicationCondition(id: string): Promise<void>;
+
+  // ---- Medication log (observed/administered; no patient data) ----
+  listMedicationLogs(userId: string): Promise<MedicationLog[]>;
+  createMedicationLog(input: MedicationLogDraft & { userId: string }): Promise<MedicationLog>;
+  deleteMedicationLog(id: string): Promise<void>;
+
+  // ---- Numeracy calc drills (illustrative numbers only) ----
+  listCalcDrills(userId: string, filter?: { medicationId?: string }): Promise<CalcDrill[]>;
+  createCalcDrill(input: CalcDrillDraft & { userId: string }): Promise<CalcDrill>;
+  updateCalcDrill(id: string, patch: Partial<CalcDrillDraft>): Promise<CalcDrill>;
+  deleteCalcDrill(id: string): Promise<void>;
 }

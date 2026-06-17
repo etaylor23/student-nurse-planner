@@ -86,6 +86,113 @@ export interface LogItem {
 /** A log entry to append — the store stamps id + createdAt. */
 export type LogInput = Omit<LogItem, "id" | "createdAt">;
 
+// ---------- Medication notes (study aid — never patient data) ----------
+
+export type MedLogType = "OBSERVED" | "ADMINISTERED";
+export type CalcType = "TABLET_DOSE" | "LIQUID_DOSE" | "IV_RATE" | "WEIGHT_BASED";
+
+export const MED_LOG_TYPE_LABEL: Record<MedLogType, string> = {
+  OBSERVED: "Observed",
+  ADMINISTERED: "Administered",
+};
+
+export const CALC_TYPE_LABEL: Record<CalcType, string> = {
+  TABLET_DOSE: "Tablet dose",
+  LIQUID_DOSE: "Liquid dose",
+  IV_RATE: "IV rate",
+  WEIGHT_BASED: "Weight-based",
+};
+
+/** Starter option lists for the optional, prompted selects (each allows "Other"). */
+export const DRUG_CLASSES = [
+  "Antibiotic",
+  "Analgesic",
+  "Anticoagulant",
+  "Antihypertensive",
+  "Antiemetic",
+  "Bronchodilator",
+  "Corticosteroid",
+  "Diuretic",
+  "Proton-pump inhibitor",
+  "Antidiabetic",
+  "Anticonvulsant",
+  "Antidepressant",
+] as const;
+
+export const BODY_SYSTEMS = [
+  "Cardiovascular",
+  "Respiratory",
+  "Gastrointestinal",
+  "Central nervous system",
+  "Renal / urinary",
+  "Endocrine",
+  "Musculoskeletal",
+  "Infection",
+  "Skin",
+] as const;
+
+export const ADMIN_ROUTES = [
+  "Oral",
+  "IV",
+  "IM",
+  "Subcutaneous",
+  "Topical",
+  "Inhaled",
+  "Rectal",
+  "Sublingual",
+] as const;
+
+/** A medication reference card (generic/BNF name + optional study metadata). */
+export interface Medication {
+  id: string;
+  userId: string;
+  name: string; // generic / BNF name
+  brandNames?: string;
+  drugClass?: string;
+  bodySystem?: string;
+  routes?: string; // comma-separated administration routes
+  keyNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** A condition the med is used for — appendable over time (builds the link). */
+export interface MedicationCondition {
+  id: string;
+  medicationId: string;
+  condition: string;
+  addedAt: string;
+}
+
+/** A personal log of a med observed/administered. Never patient-identifiable. */
+export interface MedicationLog {
+  id: string;
+  userId: string;
+  medicationId?: string;
+  type: MedLogType;
+  date: string; // ISO date
+  route?: string;
+  notes?: string; // no patient-identifiable info
+  createdAt: string;
+}
+
+/** A numeracy practice card — illustrative numbers only, never real drug doses. */
+export interface CalcDrill {
+  id: string;
+  userId: string;
+  medicationId?: string; // association only; numbers are generic
+  calcType: CalcType;
+  prompt: string;
+  answer: string;
+  lastAttempted?: string;
+  lastCorrect?: boolean;
+  createdAt: string;
+}
+
+export type MedicationDraft = Omit<Medication, "id" | "userId" | "createdAt" | "updatedAt">;
+export type MedicationLogDraft = Omit<MedicationLog, "id" | "userId" | "createdAt">;
+export type CalcDrillDraft = Omit<CalcDrill, "id" | "userId" | "createdAt">;
+
 /**
  * Configurable break-deduction band. A raw shift duration that falls in
  * [minShiftMins, maxShiftMins] has `breakMins` deducted before counting.

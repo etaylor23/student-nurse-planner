@@ -1,5 +1,15 @@
 import Dexie, { type Table } from "dexie";
-import type { BreakRule, LogItem, Placement, Shift, User } from "../../domain/types";
+import type {
+  BreakRule,
+  CalcDrill,
+  LogItem,
+  Medication,
+  MedicationCondition,
+  MedicationLog,
+  Placement,
+  Shift,
+  User,
+} from "../../domain/types";
 import { isoAddDays, localIsoToUtc } from "../../logic/calendar";
 
 /**
@@ -12,6 +22,10 @@ export class PlannerDb extends Dexie {
   placements!: Table<Placement, string>;
   shifts!: Table<Shift, string>;
   logItems!: Table<LogItem, string>;
+  medications!: Table<Medication, string>;
+  medicationConditions!: Table<MedicationCondition, string>;
+  medicationLogs!: Table<MedicationLog, string>;
+  calcDrills!: Table<CalcDrill, string>;
 
   constructor(name = "nurse-planner") {
     super(name);
@@ -68,5 +82,13 @@ export class PlannerDb extends Dexie {
             if (s.endAt) s.endAt = localIsoToUtc(s.endAt);
           });
       });
+    // v5 adds the Medication Notes stores (study aid). Additive — existing
+    // databases upgrade in place with no data migration.
+    this.version(5).stores({
+      medications: "id, userId, createdAt",
+      medicationConditions: "id, medicationId, [medicationId+condition]",
+      medicationLogs: "id, userId, medicationId, date",
+      calcDrills: "id, userId, medicationId, calcType",
+    });
   }
 }

@@ -165,6 +165,53 @@ describe("DexieRepository", () => {
     expect((byId.day as unknown as Record<string, unknown>).endTime).toBeUndefined();
   });
 
+  it("round-trips medications, conditions, logs and calc drills", async () => {
+    const user = await repo.getCurrentUser();
+    const med = await repo.createMedication({
+      userId: user.id,
+      name: "Amoxicillin",
+      drugClass: "Antibiotic",
+      bodySystem: "Infection",
+    });
+    expect(med.id).toBeTruthy();
+    expect((await repo.getMedication(med.id))?.name).toBe("Amoxicillin");
+
+    // Appendable conditions (unique-ish per med).
+    await repo.addMedicationCondition(med.id, "Chest infection");
+    await repo.addMedicationCondition(med.id, "Cellulitis");
+    const conds = await repo.listMedicationConditions(med.id);
+    expect(conds.map((c) => c.condition).sort()).toEqual(["Cellulitis", "Chest infection"]);
+
+    // Med log (no patient data).
+    await repo.createMedicationLog({
+      userId: user.id,
+      medicationId: med.id,
+      type: "OBSERVED",
+      date: "2026-06-18",
+      route: "Oral",
+    });
+    const logs = await repo.listMedicationLogs(user.id);
+    expect(logs).toHaveLength(1);
+    expect(logs[0].type).toBe("OBSERVED");
+
+    // Calc drill, scoped by medication.
+    const drill = await repo.createCalcDrill({
+      userId: user.id,
+      medicationId: med.id,
+      calcType: "TABLET_DOSE",
+      prompt: "Stock 250 mg, prescribed 500 mg?",
+      answer: "2 tablets",
+    });
+    const updated = await repo.updateCalcDrill(drill.id, { lastCorrect: true });
+    expect(updated.lastCorrect).toBe(true);
+    expect(await repo.listCalcDrills(user.id, { medicationId: med.id })).toHaveLength(1);
+
+    // Deleting the med cascades its conditions.
+    await repo.deleteMedication(med.id);
+    expect(await repo.getMedication(med.id)).toBeUndefined();
+    expect(await repo.listMedicationConditions(med.id)).toHaveLength(0);
+  });
+
   it("prefers user-specific break rules over defaults when present", async () => {
     const db = new PlannerDb("test-shared");
     // Use a repo that shares a db so we can inject a custom rule.

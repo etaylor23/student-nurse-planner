@@ -1,5 +1,19 @@
 import type { Repository } from "../repository";
-import type { BreakRule, LogInput, LogItem, Placement, Shift, User } from "../../domain/types";
+import type {
+  BreakRule,
+  CalcDrill,
+  CalcDrillDraft,
+  LogInput,
+  LogItem,
+  Medication,
+  MedicationCondition,
+  MedicationDraft,
+  MedicationLog,
+  MedicationLogDraft,
+  Placement,
+  Shift,
+  User,
+} from "../../domain/types";
 import { newId, nowIso } from "../../domain/ids";
 import { defaultBreakRules } from "../../logic/breakRules";
 import { PlannerDb } from "./db";
@@ -162,5 +176,117 @@ export class DexieRepository implements Repository {
     return rows.sort((a, b) =>
       a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0,
     );
+  }
+
+  // ---- Medications ----
+  async listMedications(userId: string): Promise<Medication[]> {
+    const rows = await this.db.medications.where("userId").equals(userId).toArray();
+    return rows.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async getMedication(id: string): Promise<Medication | undefined> {
+    return this.db.medications.get(id);
+  }
+
+  async createMedication(input: MedicationDraft & { userId: string }): Promise<Medication> {
+    const ts = nowIso();
+    const med: Medication = { ...input, id: newId(), createdAt: ts, updatedAt: ts };
+    await this.db.medications.put(med);
+    return med;
+  }
+
+  async updateMedication(id: string, patch: Partial<MedicationDraft>): Promise<Medication> {
+    const current = await this.db.medications.get(id);
+    if (!current) throw new Error(`Medication ${id} not found`);
+    const updated: Medication = { ...current, ...patch, updatedAt: nowIso() };
+    await this.db.medications.put(updated);
+    return updated;
+  }
+
+  async deleteMedication(id: string): Promise<void> {
+    await this.db.medications.delete(id);
+    const conds = await this.db.medicationConditions.where("medicationId").equals(id).toArray();
+    if (conds.length > 0) await this.db.medicationConditions.bulkDelete(conds.map((c) => c.id));
+  }
+
+  // ---- Medication conditions ----
+  async listMedicationConditions(medicationId: string): Promise<MedicationCondition[]> {
+    const rows = await this.db.medicationConditions
+      .where("medicationId")
+      .equals(medicationId)
+      .toArray();
+    return rows.sort((a, b) => (a.addedAt < b.addedAt ? -1 : a.addedAt > b.addedAt ? 1 : 0));
+  }
+
+  async listConditionsForUser(userId: string): Promise<MedicationCondition[]> {
+    const medIds = new Set(
+      (await this.db.medications.where("userId").equals(userId).primaryKeys()) as string[],
+    );
+    const all = await this.db.medicationConditions.toArray();
+    return all.filter((c) => medIds.has(c.medicationId));
+  }
+
+  async addMedicationCondition(
+    medicationId: string,
+    condition: string,
+  ): Promise<MedicationCondition> {
+    const row: MedicationCondition = {
+      id: newId(),
+      medicationId,
+      condition: condition.trim(),
+      addedAt: nowIso(),
+    };
+    await this.db.medicationConditions.put(row);
+    return row;
+  }
+
+  async removeMedicationCondition(id: string): Promise<void> {
+    await this.db.medicationConditions.delete(id);
+  }
+
+  // ---- Medication log ----
+  async listMedicationLogs(userId: string): Promise<MedicationLog[]> {
+    const rows = await this.db.medicationLogs.where("userId").equals(userId).toArray();
+    // Newest date first, then newest created.
+    return rows.sort((a, b) =>
+      a.date !== b.date ? (a.date < b.date ? 1 : -1) : a.createdAt < b.createdAt ? 1 : -1,
+    );
+  }
+
+  async createMedicationLog(
+    input: MedicationLogDraft & { userId: string },
+  ): Promise<MedicationLog> {
+    const log: MedicationLog = { ...input, id: newId(), createdAt: nowIso() };
+    await this.db.medicationLogs.put(log);
+    return log;
+  }
+
+  async deleteMedicationLog(id: string): Promise<void> {
+    await this.db.medicationLogs.delete(id);
+  }
+
+  // ---- Calc drills ----
+  async listCalcDrills(userId: string, filter?: { medicationId?: string }): Promise<CalcDrill[]> {
+    let rows = await this.db.calcDrills.where("userId").equals(userId).toArray();
+    if (filter?.medicationId) rows = rows.filter((r) => r.medicationId === filter.medicationId);
+    return rows.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  }
+
+  async createCalcDrill(input: CalcDrillDraft & { userId: string }): Promise<CalcDrill> {
+    const drill: CalcDrill = { ...input, id: newId(), createdAt: nowIso() };
+    await this.db.calcDrills.put(drill);
+    return drill;
+  }
+
+  async updateCalcDrill(id: string, patch: Partial<CalcDrillDraft>): Promise<CalcDrill> {
+    const current = await this.db.calcDrills.get(id);
+    if (!current) throw new Error(`CalcDrill ${id} not found`);
+    const updated: CalcDrill = { ...current, ...patch };
+    await this.db.calcDrills.put(updated);
+    return updated;
+  }
+
+  async deleteCalcDrill(id: string): Promise<void> {
+    await this.db.calcDrills.delete(id);
   }
 }

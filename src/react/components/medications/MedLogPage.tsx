@@ -1,0 +1,194 @@
+import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { ADMIN_ROUTES, MED_LOG_TYPE_LABEL, type MedLogType } from "../../../domain/types";
+import { formatHumanDate } from "../../../logic/calendar";
+import { useMedicationLogs, useMedications } from "../../hooks";
+import { useRepository } from "../../RepositoryContext";
+import { Panel, btnPrimary, inputCls } from "../ui";
+
+const todayIso = () => new Date().toISOString().slice(0, 10);
+
+export function MedLogPage() {
+  const { logs, reload } = useMedicationLogs();
+  const { medications } = useMedications();
+  const { repo, user } = useRepository();
+  const [params, setParams] = useSearchParams();
+  const typeFilter = params.get("type") as MedLogType | null;
+
+  const [medicationId, setMedicationId] = useState("");
+  const [type, setType] = useState<MedLogType>("OBSERVED");
+  const [date, setDate] = useState(todayIso());
+  const [route, setRoute] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const medName = useMemo(() => new Map(medications.map((m) => [m.id, m.name])), [medications]);
+  const rows = typeFilter ? logs.filter((l) => l.type === typeFilter) : logs;
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    await repo.createMedicationLog({
+      userId: user.id,
+      medicationId: medicationId || undefined,
+      type,
+      date,
+      route: route || undefined,
+      notes: notes.trim() || undefined,
+    });
+    setMedicationId("");
+    setRoute("");
+    setNotes("");
+    setDate(todayIso());
+    await reload();
+  };
+
+  const remove = async (id: string) => {
+    if (!window.confirm("Delete this log entry?")) return;
+    await repo.deleteMedicationLog(id);
+    await reload();
+  };
+
+  return (
+    <div className="space-y-6">
+      <Panel
+        step="1"
+        title="Log a med"
+        hint="Observed or administered — no patient-identifiable info"
+      >
+        <form onSubmit={submit} className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium text-slate-700">Medication</span>
+              <select
+                value={medicationId}
+                onChange={(e) => setMedicationId(e.target.value)}
+                className={inputCls}
+              >
+                <option value="">Not linked</option>
+                {medications.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium text-slate-700">Type</span>
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value as MedLogType)}
+                className={inputCls}
+              >
+                <option value="OBSERVED">Observed</option>
+                <option value="ADMINISTERED">Administered</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium text-slate-700">Date</span>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className={inputCls}
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-medium text-slate-700">Route</span>
+              <select value={route} onChange={(e) => setRoute(e.target.value)} className={inputCls}>
+                <option value="">—</option>
+                {ADMIN_ROUTES.map((r) => (
+                  <option key={r}>{r}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium text-slate-700">Notes</span>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              className={inputCls}
+              placeholder="What you learned — no patient-identifiable information."
+            />
+            <span className="mt-1 block text-xs text-amber-700">
+              Never record anything that could identify a patient.
+            </span>
+          </label>
+          <button type="submit" className={btnPrimary}>
+            Add to log
+          </button>
+        </form>
+      </Panel>
+
+      <Panel
+        title="Your med log"
+        hint="Everything you've observed or administered"
+        action={
+          <div className="flex gap-1 rounded-lg bg-slate-100 p-0.5">
+            {[
+              { v: "", label: "All" },
+              { v: "OBSERVED", label: "Observed" },
+              { v: "ADMINISTERED", label: "Administered" },
+            ].map((f) => (
+              <button
+                key={f.v}
+                type="button"
+                onClick={() => setParams(f.v ? { type: f.v } : {}, { replace: true })}
+                className={
+                  "rounded-md px-2.5 py-1 text-xs font-medium transition " +
+                  ((typeFilter ?? "") === f.v
+                    ? "bg-white text-emerald-700 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700")
+                }
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        }
+      >
+        {rows.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-slate-200 py-10 text-center text-sm text-slate-500">
+            No log entries yet.
+          </p>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {rows.map((l) => (
+              <li key={l.id} className="flex items-center gap-3 py-3">
+                <span
+                  className={
+                    "rounded-full px-2 py-0.5 text-xs font-medium " +
+                    (l.type === "ADMINISTERED"
+                      ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
+                      : "bg-sky-50 text-sky-700 ring-1 ring-sky-100")
+                  }
+                >
+                  {MED_LOG_TYPE_LABEL[l.type]}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-800">
+                    {l.medicationId ? (medName.get(l.medicationId) ?? "Unknown med") : "Unlinked"}
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    {formatHumanDate(l.date)}
+                    {l.route ? ` · ${l.route}` : ""}
+                    {l.notes ? ` · ${l.notes}` : ""}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void remove(l.id)}
+                  aria-label="Delete entry"
+                  className="text-xs font-medium text-rose-600"
+                >
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+    </div>
+  );
+}

@@ -1,4 +1,4 @@
-# Spec — Medication Notes  (Status: IN PROGRESS — nav enabled, scaffold page)
+# Spec — Medication Notes  (Status: BUILT)
 
 A study/reference tool for medications **and** a personal log of meds observed or
 administered. **Explicitly a study aid — never a clinical dosing reference for
@@ -40,11 +40,24 @@ optional association to a medication). See `spec-architecture.md`.
   (tablet / liquid / IV rate / weight-based).
 - **Med log** — observed/administered entries (no patient-identifiable info).
 
+## Routing (URL-addressable)
+
+Nested routes under `/medications/*` (a tabbed shell), so most views/states are
+deep-linkable: `/medications?q&class&system&condition` (list + filters),
+`/medications/new`, `/medications/:id`, `/medications/:id/edit`,
+`/medications/calc?type=`, `/medications/log?type=`. Filters/selection live in the
+URL (`useSearchParams`), so they survive refresh and back/forward.
+
 ## Build notes
 
 - Keep the study-tool framing visible in the UI; never surface real
   drug-specific dosing.
 - `CalcDrill.prompt`/`answer` are generated with illustrative numbers only.
+- The detail page persists each drill's last attempt (`lastAttempted`/
+  `lastCorrect`); the **Calc practice** tab is a fast session loop (accuracy held
+  in memory, no per-attempt rows).
+- **Secondary follow-on:** retrofit the same URL-addressable-state approach to the
+  placement hours log and weekly planner (see the approved plan, Phase B).
 
 ## Connections to shifts & hours (opportunities)
 
@@ -64,8 +77,6 @@ to the placement hours log + weekly planner:
 4. **Activity feed.** `MedicationLog` writes a generic `LogItem`
    (`entityType: "MEDICATION_LOG"`), so med actions appear in the existing Activity
    feed next to shift changes — the audit model is already entity-agnostic.
-5. **Numeracy before a shift (lighter).** Surface a `CalcDrill` prompt on the
-   planner ("practise a calc before your next shift"). Optional, weaker link.
 
 **Recommended first step:** add `placementId`/`shiftId` to `MedicationLog`, then the
 "log a med from a shift" cross-link (#1) — it reuses the planner/timesheet context
