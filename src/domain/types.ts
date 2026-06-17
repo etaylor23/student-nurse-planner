@@ -169,6 +169,7 @@ export interface MedicationLog {
   id: string;
   userId: string;
   medicationId?: string;
+  shiftId?: string; // the shift it was logged during (auto-linked or chosen)
   type: MedLogType;
   date: string; // ISO date
   route?: string;

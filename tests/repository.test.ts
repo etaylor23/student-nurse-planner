@@ -182,10 +182,11 @@ describe("DexieRepository", () => {
     const conds = await repo.listMedicationConditions(med.id);
     expect(conds.map((c) => c.condition).sort()).toEqual(["Cellulitis", "Chest infection"]);
 
-    // Med log (no patient data).
+    // Med log (no patient data) — linked to a shift.
     await repo.createMedicationLog({
       userId: user.id,
       medicationId: med.id,
+      shiftId: "shift-1",
       type: "OBSERVED",
       date: "2026-06-18",
       route: "Oral",
@@ -193,6 +194,10 @@ describe("DexieRepository", () => {
     const logs = await repo.listMedicationLogs(user.id);
     expect(logs).toHaveLength(1);
     expect(logs[0].type).toBe("OBSERVED");
+    expect(logs[0].shiftId).toBe("shift-1");
+    // Queryable by shift.
+    expect(await repo.listMedicationLogsForShift("shift-1")).toHaveLength(1);
+    expect(await repo.listMedicationLogsForShift("other")).toHaveLength(0);
 
     // Calc drill, scoped by medication.
     const drill = await repo.createCalcDrill({

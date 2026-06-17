@@ -253,6 +253,11 @@ export class DexieRepository implements Repository {
     );
   }
 
+  async listMedicationLogsForShift(shiftId: string): Promise<MedicationLog[]> {
+    const rows = await this.db.medicationLogs.where("shiftId").equals(shiftId).toArray();
+    return rows.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  }
+
   async createMedicationLog(
     input: MedicationLogDraft & { userId: string },
   ): Promise<MedicationLog> {

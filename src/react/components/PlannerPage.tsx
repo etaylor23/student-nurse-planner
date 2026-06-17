@@ -26,6 +26,7 @@ import { ActivityLog } from "./ActivityLog";
 import { PlacementPalette } from "./PlacementPalette";
 import { ShiftForm, type ShiftDraft } from "./ShiftForm";
 import { ShiftHistory } from "./ShiftHistory";
+import { ShiftMedications } from "./ShiftMedications";
 import { PageHero, Panel, btnGhostSm, btnPrimary } from "./ui";
 
 type NewShift = { date: string; startTime?: string; endTime?: string };
@@ -320,6 +321,7 @@ export function PlannerPage() {
         onCancel={close}
         onUnlock={editingShift ? () => void reactivateShift(editingShift) : undefined}
       />
+      {editingShift && <ShiftMedications shift={editingShift} />}
       {editingShift && <ShiftHistory shift={editingShift} />}
     </Panel>
   ) : (

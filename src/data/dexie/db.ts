@@ -90,5 +90,9 @@ export class PlannerDb extends Dexie {
       medicationLogs: "id, userId, medicationId, date",
       calcDrills: "id, userId, medicationId, calcType",
     });
+    // v6 links a med log to the shift it happened in (additive index, no migration).
+    this.version(6).stores({
+      medicationLogs: "id, userId, medicationId, shiftId, date",
+    });
   }
 }

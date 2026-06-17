@@ -76,6 +76,10 @@ and is **not** used by the client-only `.ics` snapshot export. See
   **Unlock to edit** button (reactivates it → `PLANNED`). Each shift's editor lists
   its **history** (created / completed / reactivated …) newest-first. See
   `spec-activity-log.md`.
+- **Medications logged in the shift** — the editor also lists any `MedicationLog`
+  entries linked to the shift (auto-linked when logged during its window, or chosen
+  from the last 7 days). Actions are logged against the shift they happen in. See
+  `spec-medication-notes.md`.
 - **`.ics` export** — "Add to calendar" downloads a snapshot the student imports
   into Google / Apple / Outlook.
 - **Deep link** — `/planner?date=YYYY-MM-DD` opens the week containing that date,

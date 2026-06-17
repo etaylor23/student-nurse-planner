@@ -1,28 +1,54 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ADMIN_ROUTES, MED_LOG_TYPE_LABEL, type MedLogType } from "../../../domain/types";
-import { formatHumanDate } from "../../../logic/calendar";
-import { useMedicationLogs, useMedications } from "../../hooks";
+import {
+  ADMIN_ROUTES,
+  MED_LOG_TYPE_LABEL,
+  type MedLogType,
+  type Shift,
+} from "../../../domain/types";
+import { formatHumanDate, hhmm, isoDate } from "../../../logic/calendar";
+import { findCurrentShift, recentShifts } from "../../../logic/shiftContext";
+import { useMedicationLogs, useMedications, usePlacements, useShifts } from "../../hooks";
 import { useRepository } from "../../RepositoryContext";
 import { Panel, btnPrimary, inputCls } from "../ui";
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const todayIso = () => isoDate(new Date());
+
+function shiftLabel(s: Shift, placeName: Map<string, string>): string {
+  const place = s.placementId ? (placeName.get(s.placementId) ?? "Placement") : "No placement";
+  const times =
+    s.startAt && s.endAt
+      ? ` ${hhmm(new Date(s.startAt))}–${hhmm(new Date(s.endAt))}`
+      : " (all day)";
+  return `${formatHumanDate(s.date)} · ${place}${times}`;
+}
 
 export function MedLogPage() {
   const { logs, reload } = useMedicationLogs();
   const { medications } = useMedications();
+  const { shifts } = useShifts();
+  const { placements } = usePlacements();
   const { repo, user } = useRepository();
   const [params, setParams] = useSearchParams();
   const typeFilter = params.get("type") as MedLogType | null;
+
+  const placeName = useMemo(() => new Map(placements.map((p) => [p.id, p.name])), [placements]);
+  const medName = useMemo(() => new Map(medications.map((m) => [m.id, m.name])), [medications]);
+  const currentShift = useMemo(() => findCurrentShift(shifts, Date.now()), [shifts]);
+  const recent = useMemo(() => recentShifts(shifts, todayIso()), [shifts]);
 
   const [medicationId, setMedicationId] = useState("");
   const [type, setType] = useState<MedLogType>("OBSERVED");
   const [date, setDate] = useState(todayIso());
   const [route, setRoute] = useState("");
   const [notes, setNotes] = useState("");
+  // `picked === null` means "auto-follow the current shift" (derived live so it's
+  // right once shifts load); once the user chooses, their pick wins ("" = no shift).
+  const [picked, setPicked] = useState<string | null>(null);
+  const shiftId = picked === null ? (currentShift?.id ?? "") : picked;
 
-  const medName = useMemo(() => new Map(medications.map((m) => [m.id, m.name])), [medications]);
   const rows = typeFilter ? logs.filter((l) => l.type === typeFilter) : logs;
+  const shiftById = useMemo(() => new Map(shifts.map((s) => [s.id, s])), [shifts]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,6 +56,7 @@ export function MedLogPage() {
     await repo.createMedicationLog({
       userId: user.id,
       medicationId: medicationId || undefined,
+      shiftId: shiftId || undefined,
       type,
       date,
       route: route || undefined,
@@ -39,6 +66,7 @@ export function MedLogPage() {
     setRoute("");
     setNotes("");
     setDate(todayIso());
+    setPicked(null); // re-default to the current shift
     await reload();
   };
 
@@ -56,6 +84,35 @@ export function MedLogPage() {
         hint="Observed or administered — no patient-identifiable info"
       >
         <form onSubmit={submit} className="space-y-4">
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium text-slate-700">Shift</span>
+            <select
+              value={shiftId}
+              onChange={(e) => setPicked(e.target.value)}
+              className={inputCls}
+            >
+              <option value="">No shift</option>
+              {recent.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {shiftLabel(s, placeName)}
+                  {s.id === currentShift?.id ? " — now" : ""}
+                </option>
+              ))}
+            </select>
+            <span className="mt-1 block text-xs text-slate-400">
+              {currentShift ? (
+                <span className="text-emerald-700">
+                  You're in a shift now ({shiftLabel(currentShift, placeName)}) — linked
+                  automatically. Change it here if you meant a recent one.
+                </span>
+              ) : recent.length > 0 ? (
+                "Not in a shift — optionally link one from the last 7 days."
+              ) : (
+                "No shifts in the last 7 days to link to."
+              )}
+            </span>
+          </label>
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium text-slate-700">Medication</span>
@@ -154,38 +211,42 @@ export function MedLogPage() {
           </p>
         ) : (
           <ul className="divide-y divide-slate-100">
-            {rows.map((l) => (
-              <li key={l.id} className="flex items-center gap-3 py-3">
-                <span
-                  className={
-                    "rounded-full px-2 py-0.5 text-xs font-medium " +
-                    (l.type === "ADMINISTERED"
-                      ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
-                      : "bg-sky-50 text-sky-700 ring-1 ring-sky-100")
-                  }
-                >
-                  {MED_LOG_TYPE_LABEL[l.type]}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-slate-800">
-                    {l.medicationId ? (medName.get(l.medicationId) ?? "Unknown med") : "Unlinked"}
-                  </p>
-                  <p className="text-xs text-slate-400">
-                    {formatHumanDate(l.date)}
-                    {l.route ? ` · ${l.route}` : ""}
-                    {l.notes ? ` · ${l.notes}` : ""}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void remove(l.id)}
-                  aria-label="Delete entry"
-                  className="text-xs font-medium text-rose-600"
-                >
-                  Delete
-                </button>
-              </li>
-            ))}
+            {rows.map((l) => {
+              const linked = l.shiftId ? shiftById.get(l.shiftId) : undefined;
+              return (
+                <li key={l.id} className="flex items-center gap-3 py-3">
+                  <span
+                    className={
+                      "rounded-full px-2 py-0.5 text-xs font-medium " +
+                      (l.type === "ADMINISTERED"
+                        ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
+                        : "bg-sky-50 text-sky-700 ring-1 ring-sky-100")
+                    }
+                  >
+                    {MED_LOG_TYPE_LABEL[l.type]}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-slate-800">
+                      {l.medicationId ? (medName.get(l.medicationId) ?? "Unknown med") : "Unlinked"}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {formatHumanDate(l.date)}
+                      {l.route ? ` · ${l.route}` : ""}
+                      {linked ? ` · in ${shiftLabel(linked, placeName)}` : ""}
+                      {l.notes ? ` · ${l.notes}` : ""}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void remove(l.id)}
+                    aria-label="Delete entry"
+                    className="text-xs font-medium text-rose-600"
+                  >
+                    Delete
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </Panel>

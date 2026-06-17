@@ -81,6 +81,8 @@ export interface Repository {
 
   // ---- Medication log (observed/administered; no patient data) ----
   listMedicationLogs(userId: string): Promise<MedicationLog[]>;
+  /** Med logs linked to a given shift (shown in the shift's editor). */
+  listMedicationLogsForShift(shiftId: string): Promise<MedicationLog[]>;
   createMedicationLog(input: MedicationLogDraft & { userId: string }): Promise<MedicationLog>;
   deleteMedicationLog(id: string): Promise<void>;
 

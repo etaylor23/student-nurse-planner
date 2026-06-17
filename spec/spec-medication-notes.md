@@ -27,8 +27,9 @@ patient decisions.**
 
 `Medication` (generic/BNF name, optional `drugClass`/`bodySystem`/`routes`,
 `keyNotes`), `MedicationCondition` (appendable conditions), `MedicationLog`
-(`type` OBSERVED/ADMINISTERED, no patient data), `CalcDrill` (generic numbers,
-optional association to a medication). See `spec-architecture.md`.
+(`type` OBSERVED/ADMINISTERED, no patient data, optional **`shiftId`** — the shift
+it was logged during), `CalcDrill` (generic numbers, optional association to a
+medication). See `spec-architecture.md`.
 
 ## Screens
 
@@ -38,7 +39,13 @@ optional association to a medication). See `spec-architecture.md`.
 - **Add medication** → triggers a generic **calc drill**.
 - **Calc practice mode** — flashcards by `calcType`
   (tablet / liquid / IV rate / weight-based).
-- **Med log** — observed/administered entries (no patient-identifiable info).
+- **Med log** — observed/administered entries (no patient-identifiable info). On
+  logging, the entry is **auto-linked to the shift you're currently in** (a timed
+  shift whose start–end window contains "now"). If you're not in a shift you can
+  **optionally pick one from the last 7 days**; if you are, that recent list is
+  still offered so you can **override** the auto-link (it's only a quick helper).
+  Linked entries then show in that **shift's details** (planner editor + hours-log
+  panel).
 
 ## Routing (URL-addressable)
 
@@ -59,25 +66,26 @@ URL (`useSearchParams`), so they survive refresh and back/forward.
 - **Secondary follow-on:** retrofit the same URL-addressable-state approach to the
   placement hours log and weekly planner (see the approved plan, Phase B).
 
-## Connections to shifts & hours (opportunities)
+## Connections to shifts & hours
 
-Med exposure happens **during a shift, on a placement**, so the natural links are
-to the placement hours log + weekly planner:
+**Principle: actions are logged against the shift they happen in.** A shift is the
+unit that ties activity across the platform together — the first instance is med
+logging, and the same shift-association pattern should extend to future logged
+actions (skills, reflections, evidence).
 
-1. **Log a med from a shift (strongest).** A "log a medication" action on a
-   completed shift — the planner chip and the hours-log timesheet row — opens a
-   `MedicationLog` prefilled with that shift's **date + placement**. Same
-   cross-link pattern as the timesheet's existing "view in planner".
-2. **`MedicationLog` gains `placementId` (+ optional `shiftId`).** Today it only
-   has a `date`. Adding the placement (and the specific shift) lets med exposure be
-   grouped **by placement** and tied to where it happened. This is the prerequisite
-   for #1, #3 and #4.
-3. **Placement profile.** The hours-log "hours by placement" breakdown can show
-   meds observed/administered per ward — a richer picture of each placement.
-4. **Activity feed.** `MedicationLog` writes a generic `LogItem`
-   (`entityType: "MEDICATION_LOG"`), so med actions appear in the existing Activity
-   feed next to shift changes — the audit model is already entity-agnostic.
+Built:
 
-**Recommended first step:** add `placementId`/`shiftId` to `MedicationLog`, then the
-"log a med from a shift" cross-link (#1) — it reuses the planner/timesheet context
-and the existing placement-breakdown machinery, and gives the log real provenance.
+1. **Med log ↔ shift (built).** Creating a `MedicationLog` auto-links it to the
+   shift you're in (timed window contains "now"); otherwise you may link one from
+   the **last 7 days**, and you can override the auto-link with a recent shift.
+   `MedicationLog.shiftId` stores it; the shift's editor lists its med logs.
+2. **Placement context (via the shift).** A linked log inherits the shift's
+   placement + date — no separate `placementId` needed; derive it from `shiftId`.
+
+Still open (future):
+
+3. **Placement profile.** The hours-log "hours by placement" breakdown could show
+   meds observed/administered per ward.
+4. **Activity feed.** `MedicationLog` could write a generic `LogItem`
+   (`entityType: "MEDICATION_LOG"`) so med actions appear in the Activity feed next
+   to shift changes — the audit model is already entity-agnostic.

@@ -269,6 +269,7 @@ model MedicationLog {
   id           String     @id @default(cuid())
   userId       String
   medicationId String?
+  shiftId      String?    // the shift it was logged during (auto-linked or chosen)
   type         MedLogType // OBSERVED | ADMINISTERED
   date         DateTime
   route        String?
@@ -343,6 +344,11 @@ model RevisionSession {
   which preserves the RN name/hours). Completing, reactivating, creating, editing
   and deleting a shift each append a `LogItem` (all via `useShiftActions`, the single
   mutation point). See `spec-activity-log.md`.
+- **Actions are logged against a shift.** A shift is the unit that connects activity
+  across the platform. The "current shift" is the timed shift whose `startAt`–`endAt`
+  window contains now; an action logged then auto-links to it (overridable from the
+  last 7 days). First built for `MedicationLog.shiftId`; the same pattern should
+  extend to future logged actions. The shift's editor surfaces what was logged in it.
 - **Pace projection:** shifts-to-go from the average completed-shift length; an
   estimated finish date from counted-hours-per-week over the completed date span.
 - **Hours by placement:** `netHours` grouped by `placementId` (counted vs
