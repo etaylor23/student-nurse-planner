@@ -53,8 +53,9 @@ Nested routes under `/medications/*` (a tabbed shell), all path-based and
 deep-linkable: `/medications` (list), `/medications/new`, `/medications/:id`,
 `/medications/:id/edit`, `/medications/calc/:type` (`tablet` | `liquid` | `iv-rate`
 | `weight`), `/medications/log/:type` (`observed` | `administered`; bare
-`/medications/log` = all). The list's free-text search + multi-select filters are
-**local UI state** (they don't map cleanly to a path), not in the URL.
+`/medications/log` = all). The list's search + filters are **shareable in the path**
+too: `/medications/filter/<key>/<value>/…` (keys `q` | `class` | `system` |
+`condition`, values URL-encoded; `logic/medicationFilters.ts` parses/builds it).
 
 ## Build notes
 

@@ -1,7 +1,13 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useMemo } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMedications } from "../../hooks";
 import { distinctOptions, filterMedications } from "../../../logic/medications";
+import {
+  buildMedFilterPath,
+  isFiltered as anyFilter,
+  parseMedFilters,
+  type MedFilters,
+} from "../../../logic/medicationFilters";
 import { Panel, btnPrimary } from "../ui";
 
 const filterCtl =
@@ -11,18 +17,14 @@ const chip = "rounded-full px-2 py-0.5 text-xs font-medium";
 
 export function MedicationListPage() {
   const { medications, conditions } = useMedications();
-  // Search + filters are local UI refinements (not in the URL — they don't map to a
-  // clean path; the rest of the app is path-based).
-  const [q, setQ] = useState("");
-  const [drugClass, setDrugClass] = useState("");
-  const [bodySystem, setBodySystem] = useState("");
-  const [condition, setCondition] = useState("");
-  const clearFilters = () => {
-    setQ("");
-    setDrugClass("");
-    setBodySystem("");
-    setCondition("");
-  };
+  // Filters are shareable, path-based state (/medications/filter/<key>/<value>…).
+  const params = useParams();
+  const navigate = useNavigate();
+  const filters = parseMedFilters(params["*"]);
+  const { q, drugClass, bodySystem, condition } = filters;
+  const setFilter = (patch: Partial<MedFilters>) =>
+    navigate(buildMedFilterPath({ ...filters, ...patch }), { replace: true });
+  const clearFilters = () => navigate("/medications", { replace: true });
 
   const conditionsByMed = useMemo(() => {
     const m = new Map<string, string[]>();
@@ -43,7 +45,7 @@ export function MedicationListPage() {
     [medications, conditionsByMed, q, drugClass, bodySystem, condition],
   );
 
-  const isFiltered = !!(q || drugClass || bodySystem || condition);
+  const isFiltered = anyFilter(filters);
 
   return (
     <Panel
@@ -60,14 +62,14 @@ export function MedicationListPage() {
           <input
             type="search"
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={(e) => setFilter({ q: e.target.value })}
             placeholder="Search name or brand…"
             className={filterCtl + " min-w-[12rem] flex-1"}
             aria-label="Search medications"
           />
           <select
             value={drugClass}
-            onChange={(e) => setDrugClass(e.target.value)}
+            onChange={(e) => setFilter({ drugClass: e.target.value })}
             className={filterCtl}
             aria-label="Filter by drug class"
           >
@@ -78,7 +80,7 @@ export function MedicationListPage() {
           </select>
           <select
             value={bodySystem}
-            onChange={(e) => setBodySystem(e.target.value)}
+            onChange={(e) => setFilter({ bodySystem: e.target.value })}
             className={filterCtl}
             aria-label="Filter by body system"
           >
@@ -89,7 +91,7 @@ export function MedicationListPage() {
           </select>
           <select
             value={condition}
-            onChange={(e) => setCondition(e.target.value)}
+            onChange={(e) => setFilter({ condition: e.target.value })}
             className={filterCtl}
             aria-label="Filter by condition"
           >
