@@ -88,6 +88,14 @@ export function MedicationDetailPage() {
             <p className="text-sm text-slate-400">{medication.brandNames}</p>
           )}
           <div className="mt-2 flex flex-wrap gap-1.5">
+            {medication.highAlert && (
+              <span
+                className={`${chip} bg-rose-50 text-rose-700 ring-1 ring-rose-100`}
+                title="High-alert medication — heightened risk of harm if used in error"
+              >
+                ⚠ High alert
+              </span>
+            )}
             {medication.drugClass && (
               <span className={`${chip} bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100`}>
                 {medication.drugClass}

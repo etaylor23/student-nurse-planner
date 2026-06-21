@@ -128,7 +128,18 @@ export function MedicationListPage() {
                   to={`/medications/${m.id}`}
                   className="flex h-full flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50/30"
                 >
-                  <p className="font-medium text-slate-900">{m.name}</p>
+                  <p className="font-medium text-slate-900">
+                    {m.name}
+                    {m.highAlert && (
+                      <span
+                        className="ml-1.5 align-middle text-rose-500"
+                        title="High-alert medication"
+                        aria-label="High-alert medication"
+                      >
+                        ⚠
+                      </span>
+                    )}
+                  </p>
                   {m.brandNames && <p className="text-xs text-slate-400">{m.brandNames}</p>}
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {m.drugClass && (

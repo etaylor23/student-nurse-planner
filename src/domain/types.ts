@@ -160,6 +160,7 @@ export interface Medication {
   bodySystem?: string;
   routes?: string; // comma-separated administration routes
   keyNotes?: string;
+  highAlert?: boolean; // study-safety awareness flag (e.g. insulin, anticoagulants, opioids)
   createdAt: string;
   updatedAt: string;
 }

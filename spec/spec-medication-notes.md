@@ -26,7 +26,8 @@ patient decisions.**
 ## Data model
 
 `Medication` (generic/BNF name, optional `drugClass`/`bodySystem`/`routes`,
-`keyNotes`), `MedicationCondition` (appendable conditions), `MedicationLog`
+`keyNotes`, optional **`highAlert`** study-awareness flag), `MedicationCondition`
+(appendable conditions), `MedicationLog`
 (`type` OBSERVED/ADMINISTERED, no patient data, optional **`shiftId`** — the shift
 it was logged during), `CalcDrill` (generic numbers, optional association to a
 medication). See `spec-architecture.md`.

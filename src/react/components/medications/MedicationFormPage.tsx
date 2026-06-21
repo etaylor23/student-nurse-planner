@@ -53,6 +53,7 @@ function MedicationForm({ medication }: { medication?: Medication }) {
     medication?.routes ? medication.routes.split(", ").filter(Boolean) : [],
   );
   const [keyNotes, setKeyNotes] = useState(medication?.keyNotes ?? "");
+  const [highAlert, setHighAlert] = useState(medication?.highAlert ?? false);
   const [firstCondition, setFirstCondition] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -75,6 +76,7 @@ function MedicationForm({ medication }: { medication?: Medication }) {
       bodySystem: bodySystem.trim() || undefined,
       routes: routes.length ? routes.join(", ") : undefined,
       keyNotes: keyNotes.trim() || undefined,
+      highAlert: highAlert || undefined,
     };
 
     if (editing && medication) {
@@ -193,6 +195,22 @@ function MedicationForm({ medication }: { medication?: Medication }) {
             placeholder="BNF-style notes — mechanism, cautions, monitoring…"
           />,
         )}
+
+        <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-3">
+          <input
+            type="checkbox"
+            checked={highAlert}
+            onChange={(e) => setHighAlert(e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500/30"
+          />
+          <span className="text-sm">
+            <span className="font-medium text-slate-700">High-alert medication</span>
+            <span className="mt-0.5 block text-xs text-slate-400">
+              Flags drugs that carry a heightened risk of harm if used in error (e.g. insulin,
+              anticoagulants, opioids) — a study-awareness marker, not clinical advice.
+            </span>
+          </span>
+        </label>
 
         {!editing &&
           field(
