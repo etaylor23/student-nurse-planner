@@ -29,10 +29,10 @@ export function ActivityLog() {
   }, [repo, user, shifts]);
 
   return (
-    <Panel title="Activity" hint="A running history of changes to your shifts">
+    <Panel title="Activity" hint="A running history of what you've done">
       {items.length === 0 ? (
         <p className="text-sm text-slate-400">
-          Nothing yet — log, complete or edit a shift and it'll show here.
+          Nothing yet — log a med, or create, complete or edit a shift, and it'll show here.
         </p>
       ) : (
         <LogList items={items} showLabel />

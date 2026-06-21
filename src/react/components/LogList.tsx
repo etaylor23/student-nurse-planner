@@ -8,6 +8,9 @@ const DOT: Record<string, string> = {
   SHIFT_COMPLETED: "bg-emerald-400",
   SHIFT_REACTIVATED: "bg-amber-400",
   SHIFT_DELETED: "bg-rose-400",
+  MEDICATION_ADDED: "bg-indigo-400",
+  MED_LOGGED: "bg-sky-400",
+  MEDICATION_DELETED: "bg-rose-400",
 };
 
 /** "2026-06-16T14:32:00.000Z" → "16 Jun 2026, 14:32" (local). */

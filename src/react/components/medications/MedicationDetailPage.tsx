@@ -73,6 +73,16 @@ export function MedicationDetailPage() {
     if (!window.confirm(`Delete ${medication.name}? This removes its conditions and drills.`))
       return;
     await repo.deleteMedication(medication.id);
+    if (user) {
+      await repo.createLogItem({
+        userId: user.id,
+        entityType: "MEDICATION",
+        entityId: medication.id,
+        entityLabel: medication.name,
+        action: "MEDICATION_DELETED",
+        summary: `Deleted ${medication.name} from your medications`,
+      });
+    }
     navigate("/medications");
   };
 

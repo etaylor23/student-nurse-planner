@@ -63,7 +63,7 @@ export function MedLogPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    await repo.createMedicationLog({
+    const created = await repo.createMedicationLog({
       userId: user.id,
       medicationId: medicationId || undefined,
       shiftId: shiftId || undefined,
@@ -71,6 +71,17 @@ export function MedLogPage() {
       date,
       route: route || undefined,
       notes: notes.trim() || undefined,
+    });
+    // Audit: med logs are actions-in-a-shift, so they join the global Activity feed.
+    const loggedMed = medicationId ? (medName.get(medicationId) ?? "a medication") : "a medication";
+    const linked = shiftId ? shiftById.get(shiftId) : undefined;
+    await repo.createLogItem({
+      userId: user.id,
+      entityType: "MEDICATION_LOG",
+      entityId: created.id,
+      entityLabel: loggedMed,
+      action: "MED_LOGGED",
+      summary: `${MED_LOG_TYPE_LABEL[type]} ${loggedMed}${linked ? ` in ${shiftLabel(linked, placeName)}` : ""}`,
     });
     setMedicationId("");
     setRoute("");

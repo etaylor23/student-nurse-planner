@@ -95,11 +95,12 @@ Built:
    `MedicationLog.shiftId` stores it; the shift's editor lists its med logs.
 2. **Placement context (via the shift).** A linked log inherits the shift's
    placement + date — no separate `placementId` needed; derive it from `shiftId`.
+3. **Activity feed (built).** Med actions write generic `LogItem`s — `MED_LOGGED`
+   (`entityType: "MEDICATION_LOG"`), `MEDICATION_ADDED` / `MEDICATION_DELETED`
+   (`entityType: "MEDICATION"`) — so they appear in the global Activity feed next to
+   shift changes. The med-log summary names the shift it happened in.
 
 Still open (future):
 
-3. **Placement profile.** The hours-log "hours by placement" breakdown could show
+4. **Placement profile.** The hours-log "hours by placement" breakdown could show
    meds observed/administered per ward.
-4. **Activity feed.** `MedicationLog` could write a generic `LogItem`
-   (`entityType: "MEDICATION_LOG"`) so med actions appear in the Activity feed next
-   to shift changes — the audit model is already entity-agnostic.

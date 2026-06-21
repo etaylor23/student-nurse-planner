@@ -86,6 +86,15 @@ function MedicationForm({ medication }: { medication?: Medication }) {
     }
 
     const saved = await repo.createMedication({ ...draft, userId: user.id });
+    // Audit: surface the new med in the global Activity feed.
+    await repo.createLogItem({
+      userId: user.id,
+      entityType: "MEDICATION",
+      entityId: saved.id,
+      entityLabel: saved.name,
+      action: "MEDICATION_ADDED",
+      summary: `Added ${saved.name} to your medications`,
+    });
     if (firstCondition.trim()) await repo.addMedicationCondition(saved.id, firstCondition);
     // Adding a medication triggers a generic numeracy drill (illustrative numbers).
     const calcType = CALC_TYPES[Math.floor(Math.random() * CALC_TYPES.length)];
