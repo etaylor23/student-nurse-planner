@@ -50,3 +50,18 @@ adult-field, from the official NMC document. See `spec-nmc-foundations.md`.
 
 - Depends on the proficiency seed and `EvidenceLink` existing.
 - `EvidenceLink` is the shared join used by reflection and skills specs too.
+
+## Integrations
+
+_Planned — not built (this feature is SPECCED)._
+
+- **Medication Notes → proficiency evidence (planned).** A med log — especially an
+  **administered** one — is direct evidence for Platform 4 (medicines management)
+  proficiencies, and numeracy/calc accuracy speaks to drug-calculation competence.
+  When `EvidenceLink` lands, extend `EvidenceType` to include **`MED_LOG`** (and
+  optionally a calc-performance source) so a med log can be attached as evidence to
+  a proficiency. This makes "actions logged against a shift" feed the PAD: the same
+  shift-scoped med log that already shows in the Activity feed and per-placement
+  profile also becomes competency evidence — designed in from the start so med logs
+  are evidence-ready. (Reflections and Annexe B skills are the sibling
+  `EvidenceLink` sources; a med log can seed a reflection too.)

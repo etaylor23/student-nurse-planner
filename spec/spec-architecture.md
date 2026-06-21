@@ -408,6 +408,25 @@ model RevisionSession {
   (`DEFAULT_ROUTE` = `/placement-hours`).
 - **Path-based routing — no query strings.** View/selection states are path
   segments so they're shareable and refresh-safe: e.g. `/planner/:shiftId` (opens a
-  shift's week + editor), `/medications/calc/:type`, `/medications/log/:type`.
-  Free-text/multi-select refinements (the medications list search/filters) are local
-  UI state rather than forced into a path.
+  shift's week + editor), `/medications/calc/:type`, `/medications/log/:type`. Even
+  free-text/multi-select refinements (the medications list search/filters) are
+  path-encoded — `/medications/filter/<key>/<value>/…` (URL-encoded values) — so
+  they're deep-linkable too. One-shot prefills that aren't meant to be shareable
+  (e.g. "Log again", "Log a medication" from a shift) ride React Router `state`, not
+  a query string.
+
+## Integrations
+
+This spec defines the shared primitives features integrate _through_, rather than
+holding feature-to-feature wiring itself:
+
+- the generic, entity-agnostic `LogItem` audit trail (any feature can append);
+- **shift-scoped actions** via `MedicationLog.shiftId` — "actions are logged against
+  the shift they happen in", the pattern future logged actions should follow;
+- the planned polymorphic `EvidenceLink` join (proficiency ← reflection | skill |
+  shift | future `MED_LOG`).
+
+Each feature's own **Integrations** section records what it wires to. Built today:
+Medication Notes ↔ Weekly Planner / Placement Hours Log (shift-linked med logs,
+per-placement med counts, "Log a medication" from a shift) and Medication Notes →
+Activity Log (med actions in the feed).

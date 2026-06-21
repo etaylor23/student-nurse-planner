@@ -98,6 +98,14 @@ and is **not** used by the client-only `.ics` snapshot export. See
 - The `.ics` is generated from `Shift` rows (`logic/ics.ts`, tested).
 - Completing a shift is the single bridge to the hours log — no duplicate state.
 
+## Integrations
+
+- **Medication Notes ↔ shift editor (built).** A shift's editor lists the meds
+  logged in it (`ShiftMedications`) and offers a **"Log a medication"** shortcut
+  that opens the med log **pinned to that shift** (via React Router `state`). Med
+  logs auto-link to the shift you're in (`MedicationLog.shiftId`). Med actions also
+  appear in this page's **Activity feed** (see the activity-log spec).
+
 ## Not yet built (future)
 
 - **Live `.ics` subscription feed** — the spec's one-way `webcal://` feed (and

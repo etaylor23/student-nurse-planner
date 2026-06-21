@@ -38,3 +38,7 @@ plus `EvidenceLink` for proficiency/skill links. See `spec-architecture.md`.
 - Lock is a device-level gate in the PoC; with future auth it becomes a real
   per-user privacy control.
 - Depends on `EvidenceLink`.
+
+## Integrations
+
+None yet.

@@ -106,3 +106,11 @@ listLogItems(userId, filter?: { entityType?; entityId? }): Promise<LogItem[]>; /
   log would want date/action filters or a "show more".
 - **Logging other entities** — placements, reflections, skill sign-offs reuse the
   same `LogItem` table when those features add audit needs.
+
+## Integrations
+
+- **Medication Notes → this feed (built).** Adding, logging (observed/administered)
+  and deleting a medication write generic `LogItem`s (`entityType` `MEDICATION` /
+  `MEDICATION_LOG`), so med actions show in the global Activity feed next to shift
+  changes. The med-log line names the shift it happened in. `LogList` carries dot
+  colours for `MEDICATION_ADDED` / `MED_LOGGED` / `MEDICATION_DELETED`.

@@ -19,3 +19,7 @@ is in good shape. No decisions locked yet.
 Keep it supportive, not a guilt/pressure mechanic. Avoid turning self-care into
 another scored obligation. If it surfaces distress, point gently toward real
 support rather than handling it in-app.
+
+## Integrations
+
+None yet.

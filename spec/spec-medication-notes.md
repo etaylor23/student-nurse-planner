@@ -80,7 +80,7 @@ that filter path — one click jumps to "all my antibiotics", etc.
 - **Secondary follow-on:** retrofit the same URL-addressable-state approach to the
   placement hours log and weekly planner (see the approved plan, Phase B).
 
-## Connections to shifts & hours
+## Integrations
 
 **Principle: actions are logged against the shift they happen in.** A shift is the
 unit that ties activity across the platform together — the first instance is med

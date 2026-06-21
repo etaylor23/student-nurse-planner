@@ -37,3 +37,7 @@ proficiencies via `EvidenceLink` (type `SKILL`). See `spec-architecture.md`.
 - Seed from Annexe B (Part 1 + Part 2 procedures) at the adult-field level.
 - `signedOff` is permanent once true — no refresh/expiry logic.
 - Depends on the Annexe B seed and `EvidenceLink`.
+
+## Integrations
+
+None yet.

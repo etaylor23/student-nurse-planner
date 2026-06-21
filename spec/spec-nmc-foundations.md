@@ -77,3 +77,7 @@ The **PAD (Practice Assessment Document) / OAR remains the official signed
 record.** This app is a personal study and organisation aid; its exports (e.g.
 the placement timesheet) are for the student's own use and do not replace formal
 sign-off.
+
+## Integrations
+
+None yet. (Reference document — informs other features rather than wiring to them.)

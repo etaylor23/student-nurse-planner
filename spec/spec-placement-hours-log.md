@@ -100,3 +100,13 @@ pace); timesheet build + CSV escaping; Dexie repository round-trip (fake-indexed
 - Group the timesheet by month, or show a running total per row.
 - A break-rule editor lives on the hours screen; a dedicated settings area could
   consolidate it with other preferences later.
+
+## Integrations
+
+- **Medication Notes → hours by placement (built).** The "Hours by placement" panel
+  shows an "_N_ meds logged" count per ward, tallied from med logs through their
+  linked shift's placement (`medsByPlacement`, pure) — a profile of the meds met at
+  each placement, derived via `MedicationLog.shiftId` (no extra field).
+- **Medication Notes ↔ shift editor (built).** The shift editor here (shared with
+  the planner) lists a shift's logged meds and offers a "Log a medication" shortcut
+  pinned to that shift — see the medication-notes and weekly-planner specs.

@@ -46,3 +46,8 @@ EXAM/ASSIGNMENT/OSCE, `date`, optional `subjectId`), `RevisionTopic`
 
 Baseline `Subject` rows: A&P, Pharmacology, Pathophysiology, NMC Theory,
 Numeracy, OSCE Prep.
+
+## Integrations
+
+None yet. (Planned shift-aware scheduling — excluding windows that overlap a
+`Shift` — is noted under Derived logic.)
