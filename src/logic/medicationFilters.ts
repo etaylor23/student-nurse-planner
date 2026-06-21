@@ -11,7 +11,9 @@ export interface MedFilters {
   condition: string;
 }
 
-const EMPTY: MedFilters = { q: "", drugClass: "", bodySystem: "", condition: "" };
+/** A no-filters state — spread it to build a single-field filter path. */
+export const EMPTY_FILTERS: MedFilters = { q: "", drugClass: "", bodySystem: "", condition: "" };
+const EMPTY = EMPTY_FILTERS;
 
 const KEY_TO_FIELD: Record<string, keyof MedFilters> = {
   q: "q",

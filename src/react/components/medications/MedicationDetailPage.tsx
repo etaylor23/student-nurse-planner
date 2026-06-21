@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { CALC_TYPE_LABEL, type CalcType } from "../../../domain/types";
 import { nowIso } from "../../../domain/ids";
 import { randomCalcDrill } from "../../../logic/calcDrills";
+import { buildMedFilterPath, EMPTY_FILTERS } from "../../../logic/medicationFilters";
 import { useMedication } from "../../hooks";
 import { useRepository } from "../../RepositoryContext";
 import { Panel, btnGhost, btnGhostSm, btnPrimary, inputCls } from "../ui";
@@ -97,12 +98,22 @@ export function MedicationDetailPage() {
               </span>
             )}
             {medication.drugClass && (
-              <span className={`${chip} bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100`}>
+              <Link
+                to={buildMedFilterPath({ ...EMPTY_FILTERS, drugClass: medication.drugClass })}
+                title={`See all ${medication.drugClass}`}
+                className={`${chip} bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 transition hover:ring-emerald-300`}
+              >
                 {medication.drugClass}
-              </span>
+              </Link>
             )}
             {medication.bodySystem && (
-              <span className={`${chip} bg-slate-100 text-slate-600`}>{medication.bodySystem}</span>
+              <Link
+                to={buildMedFilterPath({ ...EMPTY_FILTERS, bodySystem: medication.bodySystem })}
+                title={`See all ${medication.bodySystem}`}
+                className={`${chip} bg-slate-100 text-slate-600 transition hover:bg-slate-200`}
+              >
+                {medication.bodySystem}
+              </Link>
             )}
           </div>
         </div>

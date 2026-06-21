@@ -4,6 +4,7 @@ import { useMedications } from "../../hooks";
 import { distinctOptions, filterMedications } from "../../../logic/medications";
 import {
   buildMedFilterPath,
+  EMPTY_FILTERS,
   isFiltered as anyFilter,
   parseMedFilters,
   type MedFilters,
@@ -123,41 +124,54 @@ export function MedicationListPage() {
           {rows.map((m) => {
             const conds = conditionsByMed.get(m.id) ?? [];
             return (
-              <li key={m.id}>
+              // Stretched-link card: the cover Link makes the whole card open the
+              // detail, while the class/system chips sit above it as filter links.
+              <li
+                key={m.id}
+                className="relative flex h-full flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50/30"
+              >
                 <Link
                   to={`/medications/${m.id}`}
-                  className="flex h-full flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50/30"
-                >
-                  <p className="font-medium text-slate-900">
-                    {m.name}
-                    {m.highAlert && (
-                      <span
-                        className="ml-1.5 align-middle text-rose-500"
-                        title="High-alert medication"
-                        aria-label="High-alert medication"
-                      >
-                        ⚠
-                      </span>
-                    )}
-                  </p>
-                  {m.brandNames && <p className="text-xs text-slate-400">{m.brandNames}</p>}
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {m.drugClass && (
-                      <span
-                        className={`${chip} bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100`}
-                      >
-                        {m.drugClass}
-                      </span>
-                    )}
-                    {m.bodySystem && (
-                      <span className={`${chip} bg-slate-100 text-slate-600`}>{m.bodySystem}</span>
-                    )}
-                  </div>
-                  <p className="mt-2 text-xs text-slate-400">
-                    {conds.length} condition{conds.length === 1 ? "" : "s"}
-                    {m.routes ? ` · ${m.routes}` : ""}
-                  </p>
-                </Link>
+                  className="absolute inset-0 rounded-xl"
+                  aria-label={`Open ${m.name}`}
+                />
+                <p className="font-medium text-slate-900">
+                  {m.name}
+                  {m.highAlert && (
+                    <span
+                      className="ml-1.5 align-middle text-rose-500"
+                      title="High-alert medication"
+                      aria-label="High-alert medication"
+                    >
+                      ⚠
+                    </span>
+                  )}
+                </p>
+                {m.brandNames && <p className="text-xs text-slate-400">{m.brandNames}</p>}
+                <div className="relative z-10 mt-2 flex flex-wrap gap-1.5">
+                  {m.drugClass && (
+                    <Link
+                      to={buildMedFilterPath({ ...EMPTY_FILTERS, drugClass: m.drugClass })}
+                      title={`Filter by ${m.drugClass}`}
+                      className={`${chip} bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 transition hover:ring-emerald-300`}
+                    >
+                      {m.drugClass}
+                    </Link>
+                  )}
+                  {m.bodySystem && (
+                    <Link
+                      to={buildMedFilterPath({ ...EMPTY_FILTERS, bodySystem: m.bodySystem })}
+                      title={`Filter by ${m.bodySystem}`}
+                      className={`${chip} bg-slate-100 text-slate-600 transition hover:bg-slate-200`}
+                    >
+                      {m.bodySystem}
+                    </Link>
+                  )}
+                </div>
+                <p className="mt-2 text-xs text-slate-400">
+                  {conds.length} condition{conds.length === 1 ? "" : "s"}
+                  {m.routes ? ` · ${m.routes}` : ""}
+                </p>
               </li>
             );
           })}

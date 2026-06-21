@@ -60,7 +60,9 @@ deep-linkable: `/medications` (list), `/medications/new`, `/medications/:id`,
 | `weight`), `/medications/log/:type` (`observed` | `administered`; bare
 `/medications/log` = all). The list's search + filters are **shareable in the path**
 too: `/medications/filter/<key>/<value>/…` (keys `q` | `class` | `system` |
-`condition`, values URL-encoded; `logic/medicationFilters.ts` parses/builds it).
+`condition`, values URL-encoded; `logic/medicationFilters.ts` parses/builds it). The
+**class/body-system chips** on the list cards and the detail header are links into
+that filter path — one click jumps to "all my antibiotics", etc.
 
 ## Build notes
 
