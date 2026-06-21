@@ -89,7 +89,13 @@ export type LogInput = Omit<LogItem, "id" | "createdAt">;
 // ---------- Medication notes (study aid — never patient data) ----------
 
 export type MedLogType = "OBSERVED" | "ADMINISTERED";
-export type CalcType = "TABLET_DOSE" | "LIQUID_DOSE" | "IV_RATE" | "WEIGHT_BASED";
+export type CalcType =
+  | "TABLET_DOSE"
+  | "LIQUID_DOSE"
+  | "IV_RATE"
+  | "WEIGHT_BASED"
+  | "INFUSION_DROPS"
+  | "UNIT_CONVERSION";
 
 export const MED_LOG_TYPE_LABEL: Record<MedLogType, string> = {
   OBSERVED: "Observed",
@@ -101,6 +107,8 @@ export const CALC_TYPE_LABEL: Record<CalcType, string> = {
   LIQUID_DOSE: "Liquid dose",
   IV_RATE: "IV rate",
   WEIGHT_BASED: "Weight-based",
+  INFUSION_DROPS: "Drops/min",
+  UNIT_CONVERSION: "Unit conversion",
 };
 
 /** Starter option lists for the optional, prompted selects (each allows "Other"). */

@@ -10,12 +10,16 @@ const SLUG_BY_TYPE: Record<CalcType, string> = {
   LIQUID_DOSE: "liquid",
   IV_RATE: "iv-rate",
   WEIGHT_BASED: "weight",
+  INFUSION_DROPS: "drops",
+  UNIT_CONVERSION: "units",
 };
 const TYPE_BY_SLUG: Record<string, CalcType> = {
   tablet: "TABLET_DOSE",
   liquid: "LIQUID_DOSE",
   "iv-rate": "IV_RATE",
   weight: "WEIGHT_BASED",
+  drops: "INFUSION_DROPS",
+  units: "UNIT_CONVERSION",
 };
 
 export function CalcPracticePage() {
@@ -81,6 +85,9 @@ export function CalcPracticePage() {
             <span className="inline-block rounded-lg bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-100">
               {drill.answer}
             </span>
+            <p className="text-xs text-slate-500">
+              <span className="font-medium text-slate-600">Working:</span> {drill.working}
+            </p>
             <div className="flex gap-2">
               <button type="button" onClick={() => mark(true)} className={btnPrimary}>
                 Got it

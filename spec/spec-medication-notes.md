@@ -37,8 +37,9 @@ medication). See `spec-architecture.md`.
 - **Medication detail** — BNF-style notes; optional class/system/conditions and
   routes; **add a condition** over time.
 - **Add medication** → triggers a generic **calc drill**.
-- **Calc practice mode** — flashcards by `calcType`
-  (tablet / liquid / IV rate / weight-based).
+- **Calc practice mode** — flashcards by `calcType` (tablet / liquid / IV rate /
+  weight-based / drops-per-minute / mg↔microgram unit conversion). Each card can
+  reveal **worked steps** (`working`), not just the final answer.
 - **Med log** — observed/administered entries (no patient-identifiable info). On
   logging, the entry is **auto-linked to the shift you're currently in** (a timed
   shift whose start–end window contains "now"). If you're not in a shift you can
