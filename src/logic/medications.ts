@@ -1,4 +1,4 @@
-import type { Medication, MedicationCondition } from "../domain/types";
+import type { Medication, MedicationCondition, MedicationLog, Shift } from "../domain/types";
 
 export interface MedicationFilter {
   q?: string;
@@ -28,6 +28,38 @@ export function filterMedications(
     }
     return true;
   });
+}
+
+export interface PlacementMedCount {
+  observed: number;
+  administered: number;
+  total: number;
+}
+
+/**
+ * Tally med logs per placement, resolved through each log's linked shift — so each
+ * ward gets a profile of how many meds were observed/administered there. Keyed by
+ * placementId (`null` = the shift had no placement). Pure. Logs with no resolvable
+ * shift are skipped (no placement context to attribute them to).
+ */
+export function medsByPlacement(
+  logs: MedicationLog[],
+  shifts: Shift[],
+): Map<string | null, PlacementMedCount> {
+  const shiftById = new Map(shifts.map((s) => [s.id, s]));
+  const out = new Map<string | null, PlacementMedCount>();
+  for (const log of logs) {
+    if (!log.shiftId) continue;
+    const shift = shiftById.get(log.shiftId);
+    if (!shift) continue;
+    const key = shift.placementId ?? null;
+    const cur = out.get(key) ?? { observed: 0, administered: 0, total: 0 };
+    if (log.type === "ADMINISTERED") cur.administered += 1;
+    else cur.observed += 1;
+    cur.total += 1;
+    out.set(key, cur);
+  }
+  return out;
 }
 
 /** Distinct filter options present in the data (sorted), for the filter selects. */

@@ -1,5 +1,6 @@
 import type { Placement, Shift } from "../../domain/types";
 import { hoursByPlacement } from "../../logic/hours";
+import type { PlacementMedCount } from "../../logic/medications";
 import { buildTimesheet, timesheetToCsv } from "../../logic/timesheet";
 import { downloadCsv } from "../download";
 import { Panel } from "./ui";
@@ -16,10 +17,12 @@ function slugify(name: string): string {
 export function PlacementBreakdown({
   shifts,
   placements,
+  medCounts,
   className,
 }: {
   shifts: Shift[];
   placements: Placement[];
+  medCounts?: Map<string | null, PlacementMedCount>;
   className?: string;
 }) {
   const rows = hoursByPlacement(shifts, placements);
@@ -49,6 +52,12 @@ export function PlacementBreakdown({
                 <div className="text-xs text-slate-400">
                   {r.shiftCount} shift{r.shiftCount === 1 ? "" : "s"}
                   {r.planned > 0 && ` · ${r.planned} h planned`}
+                  {(() => {
+                    const m = medCounts?.get(r.placementId);
+                    return m && m.total > 0
+                      ? ` · ${m.total} med${m.total === 1 ? "" : "s"} logged`
+                      : "";
+                  })()}
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-3">

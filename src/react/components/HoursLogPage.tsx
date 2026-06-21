@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { Shift } from "../../domain/types";
-import { usePlacements, useShifts } from "../hooks";
+import { medsByPlacement } from "../../logic/medications";
+import { useMedicationLogs, usePlacements, useShifts } from "../hooks";
 import { useShiftActions } from "../ShiftsContext";
 import { useRepository } from "../RepositoryContext";
 import { BreakRulesEditor } from "./BreakRulesEditor";
@@ -17,6 +18,8 @@ export function HoursLogPage() {
   const { repo, user, loading } = useRepository();
   const { placements, reload: reloadPlacements } = usePlacements();
   const { shifts, summary, projection } = useShifts();
+  const { logs: medLogs } = useMedicationLogs();
+  const medCounts = useMemo(() => medsByPlacement(medLogs, shifts), [medLogs, shifts]);
   const { saveShift, deleteShift, markWorked, reactivateShift } = useShiftActions();
   // null = form closed, "new" = adding, Shift = editing that shift.
   const [editing, setEditing] = useState<Shift | "new" | null>(null);
@@ -149,7 +152,7 @@ export function HoursLogPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <PlacementBreakdown shifts={shifts} placements={placements} />
+        <PlacementBreakdown shifts={shifts} placements={placements} medCounts={medCounts} />
         <Panel title="Break rules" hint="How long a break is deducted before a shift counts">
           <BreakRulesEditor />
         </Panel>

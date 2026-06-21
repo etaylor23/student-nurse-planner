@@ -101,8 +101,6 @@ Built:
    (`entityType: "MEDICATION_LOG"`), `MEDICATION_ADDED` / `MEDICATION_DELETED`
    (`entityType: "MEDICATION"`) — so they appear in the global Activity feed next to
    shift changes. The med-log summary names the shift it happened in.
-
-Still open (future):
-
-4. **Placement profile.** The hours-log "hours by placement" breakdown could show
-   meds observed/administered per ward.
+4. **Placement profile (built).** The hours-log "hours by placement" breakdown shows
+   a "_N_ meds logged" count per ward, tallied through each log's linked shift
+   (`medsByPlacement`, pure) — so each placement gets a profile of the meds met there.

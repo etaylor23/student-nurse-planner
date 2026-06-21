@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { distinctOptions, filterMedications } from "../src/logic/medications";
-import type { Medication, MedicationCondition } from "../src/domain/types";
+import { distinctOptions, filterMedications, medsByPlacement } from "../src/logic/medications";
+import type { Medication, MedicationCondition, MedicationLog, Shift } from "../src/domain/types";
 
 function med(p: Partial<Medication>): Medication {
   return {
@@ -51,6 +51,36 @@ describe("filterMedications", () => {
   });
   it("combines filters (AND)", () => {
     expect(filterMedications(meds, byMed, { q: "drug", drugClass: "Analgesic" })).toHaveLength(0);
+  });
+});
+
+describe("medsByPlacement", () => {
+  const shift = (id: string, placementId?: string): Shift => ({ id, placementId }) as Shift;
+  const log = (id: string, type: "OBSERVED" | "ADMINISTERED", shiftId?: string): MedicationLog =>
+    ({ id, type, shiftId }) as MedicationLog;
+
+  const shifts = [shift("s1", "ward-a"), shift("s2", "ward-a"), shift("s3")]; // s3: no placement
+
+  it("tallies observed/administered per placement via the linked shift", () => {
+    const m = medsByPlacement(
+      [
+        log("l1", "OBSERVED", "s1"),
+        log("l2", "ADMINISTERED", "s1"),
+        log("l3", "ADMINISTERED", "s2"),
+      ],
+      shifts,
+    );
+    expect(m.get("ward-a")).toEqual({ observed: 1, administered: 2, total: 3 });
+  });
+
+  it("buckets no-placement shifts under null", () => {
+    const m = medsByPlacement([log("l1", "OBSERVED", "s3")], shifts);
+    expect(m.get(null)).toEqual({ observed: 1, administered: 0, total: 1 });
+  });
+
+  it("skips logs with no resolvable shift", () => {
+    const m = medsByPlacement([log("l1", "OBSERVED"), log("l2", "OBSERVED", "missing")], shifts);
+    expect(m.size).toBe(0);
   });
 });
 
