@@ -36,7 +36,9 @@ medication). See `spec-architecture.md`.
 
 - **Medication list** — search; filter by class / body system / condition.
 - **Medication detail** — BNF-style notes; optional class/system/conditions and
-  routes; **add a condition** over time.
+  routes; **add a condition** over time; a **Logged** panel summarising how often
+  you've observed/administered this drug (with a **Log again** shortcut that opens
+  the med log prefilled to it via router state — not a query string).
 - **Add medication** → triggers a generic **calc drill**.
 - **Calc practice mode** — flashcards by `calcType` (tablet / liquid / IV rate /
   weight-based / drops-per-minute / mg↔microgram unit conversion). Each card can

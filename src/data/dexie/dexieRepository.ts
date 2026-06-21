@@ -260,6 +260,14 @@ export class DexieRepository implements Repository {
     return rows.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   }
 
+  async listMedicationLogsForMedication(medicationId: string): Promise<MedicationLog[]> {
+    const rows = await this.db.medicationLogs.where("medicationId").equals(medicationId).toArray();
+    // Newest date first, then newest created.
+    return rows.sort((a, b) =>
+      a.date !== b.date ? (a.date < b.date ? 1 : -1) : a.createdAt < b.createdAt ? 1 : -1,
+    );
+  }
+
   async createMedicationLog(
     input: MedicationLogDraft & { userId: string },
   ): Promise<MedicationLog> {

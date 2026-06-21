@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { CALC_TYPE_LABEL, type CalcType } from "../../../domain/types";
+import { CALC_TYPE_LABEL, MED_LOG_TYPE_LABEL, type CalcType } from "../../../domain/types";
 import { nowIso } from "../../../domain/ids";
+import { formatHumanDate } from "../../../logic/calendar";
 import { randomCalcDrill } from "../../../logic/calcDrills";
 import { buildMedFilterPath, EMPTY_FILTERS } from "../../../logic/medicationFilters";
 import { useMedication } from "../../hooks";
@@ -13,7 +14,7 @@ const chip = "rounded-full px-2 py-0.5 text-xs font-medium";
 
 export function MedicationDetailPage() {
   const { id } = useParams();
-  const { medication, conditions, drills, reload } = useMedication(id);
+  const { medication, conditions, drills, logs, reload } = useMedication(id);
   const { repo, user } = useRepository();
   const navigate = useNavigate();
 
@@ -180,6 +181,54 @@ export function MedicationDetailPage() {
             Add
           </button>
         </form>
+      </Panel>
+
+      <Panel
+        title="Logged"
+        hint="Times you've met this drug on placement"
+        action={
+          <button
+            type="button"
+            onClick={() =>
+              navigate("/medications/log", { state: { prefillMedicationId: medication.id } })
+            }
+            className={btnGhostSm}
+          >
+            Log again
+          </button>
+        }
+      >
+        {logs.length === 0 ? (
+          <p className="text-sm text-slate-400">
+            Not logged yet — use <span className="font-medium text-slate-500">Log again</span> the
+            next time you observe or administer it.
+          </p>
+        ) : (
+          <>
+            <div className="mb-4 flex gap-2 text-sm">
+              <span className="rounded-full bg-sky-50 px-3 py-1 font-medium text-sky-700 ring-1 ring-sky-100">
+                {logs.filter((l) => l.type === "OBSERVED").length} observed
+              </span>
+              <span className="rounded-full bg-emerald-50 px-3 py-1 font-medium text-emerald-700 ring-1 ring-emerald-100">
+                {logs.filter((l) => l.type === "ADMINISTERED").length} administered
+              </span>
+            </div>
+            <ul className="divide-y divide-slate-100">
+              {logs.slice(0, 5).map((l) => (
+                <li key={l.id} className="flex items-center gap-2 py-2 text-sm">
+                  <span className="text-slate-700">{MED_LOG_TYPE_LABEL[l.type]}</span>
+                  <span className="text-xs text-slate-400">
+                    {formatHumanDate(l.date)}
+                    {l.route ? ` · ${l.route}` : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {logs.length > 5 && (
+              <p className="mt-2 text-xs text-slate-400">+{logs.length - 5} more in the med log</p>
+            )}
+          </>
+        )}
       </Panel>
 
       <Panel

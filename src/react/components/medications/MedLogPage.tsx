@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   ADMIN_ROUTES,
   MED_LOG_TYPE_LABEL,
@@ -31,6 +31,13 @@ export function MedLogPage() {
   const { repo, user } = useRepository();
   const { type: typeSlug } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Optional prefill passed via router state (e.g. "Log again" from a med detail,
+  // or "Log a medication" from a shift editor) — not a query string.
+  const prefill = (location.state ?? {}) as {
+    prefillMedicationId?: string;
+    prefillShiftId?: string;
+  };
   const typeFilter: MedLogType | null =
     typeSlug === "observed" ? "OBSERVED" : typeSlug === "administered" ? "ADMINISTERED" : null;
 
@@ -39,14 +46,15 @@ export function MedLogPage() {
   const currentShift = useMemo(() => findCurrentShift(shifts, Date.now()), [shifts]);
   const recent = useMemo(() => recentShifts(shifts, todayIso()), [shifts]);
 
-  const [medicationId, setMedicationId] = useState("");
+  const [medicationId, setMedicationId] = useState(prefill.prefillMedicationId ?? "");
   const [type, setType] = useState<MedLogType>("OBSERVED");
   const [date, setDate] = useState(todayIso());
   const [route, setRoute] = useState("");
   const [notes, setNotes] = useState("");
   // `picked === null` means "auto-follow the current shift" (derived live so it's
   // right once shifts load); once the user chooses, their pick wins ("" = no shift).
-  const [picked, setPicked] = useState<string | null>(null);
+  // A prefilled shift (from a shift editor's "Log a medication") pins that shift.
+  const [picked, setPicked] = useState<string | null>(prefill.prefillShiftId ?? null);
   const shiftId = picked === null ? (currentShift?.id ?? "") : picked;
 
   const rows = typeFilter ? logs.filter((l) => l.type === typeFilter) : logs;

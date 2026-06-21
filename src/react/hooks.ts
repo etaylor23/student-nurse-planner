@@ -68,35 +68,39 @@ export function useMedications() {
   return { medications, conditions, reload };
 }
 
-/** One medication with its conditions + calc drills (the detail view). */
+/** One medication with its conditions, calc drills + its log entries (detail view). */
 export function useMedication(id: string | undefined) {
   const { repo, user } = useRepository();
   const [medication, setMedication] = useState<Medication | undefined>();
   const [conditions, setConditions] = useState<MedicationCondition[]>([]);
   const [drills, setDrills] = useState<CalcDrill[]>([]);
+  const [logs, setLogs] = useState<MedicationLog[]>([]);
 
   const reload = useCallback(async () => {
     if (!user || !id) {
       setMedication(undefined);
       setConditions([]);
       setDrills([]);
+      setLogs([]);
       return;
     }
-    const [med, conds, ds] = await Promise.all([
+    const [med, conds, ds, ls] = await Promise.all([
       repo.getMedication(id),
       repo.listMedicationConditions(id),
       repo.listCalcDrills(user.id, { medicationId: id }),
+      repo.listMedicationLogsForMedication(id),
     ]);
     setMedication(med);
     setConditions(conds);
     setDrills(ds);
+    setLogs(ls);
   }, [repo, user, id]);
 
   useEffect(() => {
     void reload();
   }, [reload]);
 
-  return { medication, conditions, drills, reload };
+  return { medication, conditions, drills, logs, reload };
 }
 
 /** Bounded per-type numeracy accuracy aggregate (drives the practice stats panel). */
