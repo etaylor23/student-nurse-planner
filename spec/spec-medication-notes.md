@@ -92,7 +92,9 @@ Built:
 1. **Med log ↔ shift (built).** Creating a `MedicationLog` auto-links it to the
    shift you're in (timed window contains "now"); otherwise you may link one from
    the **last 7 days**, and you can override the auto-link with a recent shift.
-   `MedicationLog.shiftId` stores it; the shift's editor lists its med logs.
+   `MedicationLog.shiftId` stores it; the shift's editor lists its med logs and
+   offers a **"Log a medication"** shortcut that opens the med log **pinned to that
+   shift** (via router state) — so logging can start from either side.
 2. **Placement context (via the shift).** A linked log inherits the shift's
    placement + date — no separate `placementId` needed; derive it from `shiftId`.
 3. **Activity feed (built).** Med actions write generic `LogItem`s — `MED_LOGGED`

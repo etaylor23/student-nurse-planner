@@ -59,6 +59,15 @@ export function MedLogPage() {
 
   const rows = typeFilter ? logs.filter((l) => l.type === typeFilter) : logs;
   const shiftById = useMemo(() => new Map(shifts.map((s) => [s.id, s])), [shifts]);
+  // Options = recent shifts, plus the currently-selected shift if it's older than
+  // 7 days (e.g. pinned from a shift editor) so it always shows as selected.
+  const selectedShift = shiftId ? shiftById.get(shiftId) : undefined;
+  const shiftOptions = useMemo(() => {
+    if (selectedShift && !recent.some((s) => s.id === selectedShift.id)) {
+      return [selectedShift, ...recent];
+    }
+    return recent;
+  }, [recent, selectedShift]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,7 +122,7 @@ export function MedLogPage() {
               className={inputCls}
             >
               <option value="">No shift</option>
-              {recent.map((s) => (
+              {shiftOptions.map((s) => (
                 <option key={s.id} value={s.id}>
                   {shiftLabel(s, placeName)}
                   {s.id === currentShift?.id ? " — now" : ""}
