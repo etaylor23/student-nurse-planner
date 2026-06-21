@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type {
   BreakRule,
   CalcDrill,
+  CalcStat,
   Medication,
   MedicationCondition,
   MedicationLog,
@@ -96,6 +97,23 @@ export function useMedication(id: string | undefined) {
   }, [reload]);
 
   return { medication, conditions, drills, reload };
+}
+
+/** Bounded per-type numeracy accuracy aggregate (drives the practice stats panel). */
+export function useCalcStats() {
+  const { repo, user } = useRepository();
+  const [stats, setStats] = useState<CalcStat[]>([]);
+
+  const reload = useCallback(async () => {
+    if (!user) return;
+    setStats(await repo.listCalcStats(user.id));
+  }, [repo, user]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  return { stats, reload };
 }
 
 export function useMedicationLogs() {

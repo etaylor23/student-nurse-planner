@@ -217,6 +217,17 @@ describe("DexieRepository", () => {
     expect(await repo.listMedicationConditions(med.id)).toHaveLength(0);
   });
 
+  it("accumulates calc-attempt stats per type (bounded aggregate)", async () => {
+    const user = await repo.getCurrentUser();
+    await repo.recordCalcAttempt(user.id, "IV_RATE", true);
+    await repo.recordCalcAttempt(user.id, "IV_RATE", false);
+    await repo.recordCalcAttempt(user.id, "TABLET_DOSE", true);
+    const stats = await repo.listCalcStats(user.id);
+    expect(stats).toHaveLength(2); // one row per type, not per attempt
+    const iv = stats.find((s) => s.calcType === "IV_RATE");
+    expect(iv).toMatchObject({ attempts: 2, correct: 1 });
+  });
+
   it("prefers user-specific break rules over defaults when present", async () => {
     const db = new PlannerDb("test-shared");
     // Use a repo that shares a db so we can inject a custom rule.

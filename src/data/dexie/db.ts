@@ -2,6 +2,7 @@ import Dexie, { type Table } from "dexie";
 import type {
   BreakRule,
   CalcDrill,
+  CalcStat,
   LogItem,
   Medication,
   MedicationCondition,
@@ -26,6 +27,7 @@ export class PlannerDb extends Dexie {
   medicationConditions!: Table<MedicationCondition, string>;
   medicationLogs!: Table<MedicationLog, string>;
   calcDrills!: Table<CalcDrill, string>;
+  calcStats!: Table<CalcStat, string>;
 
   constructor(name = "nurse-planner") {
     super(name);
@@ -93,6 +95,10 @@ export class PlannerDb extends Dexie {
     // v6 links a med log to the shift it happened in (additive index, no migration).
     this.version(6).stores({
       medicationLogs: "id, userId, medicationId, shiftId, date",
+    });
+    // v7 adds a bounded numeracy-accuracy aggregate (one row per user+calc type).
+    this.version(7).stores({
+      calcStats: "id, userId, calcType",
     });
   }
 }

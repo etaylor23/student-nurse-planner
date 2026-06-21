@@ -198,6 +198,19 @@ export interface CalcDrill {
   createdAt: string;
 }
 
+/**
+ * Running numeracy accuracy per calc type (bounded — one row per user+type, not a
+ * row per attempt). Drives the "your numeracy" panel + weakest-type prompt.
+ */
+export interface CalcStat {
+  id: string; // `${userId}:${calcType}`
+  userId: string;
+  calcType: CalcType;
+  attempts: number;
+  correct: number;
+  lastAttempted: string; // ISO
+}
+
 export type MedicationDraft = Omit<Medication, "id" | "userId" | "createdAt" | "updatedAt">;
 export type MedicationLogDraft = Omit<MedicationLog, "id" | "userId" | "createdAt">;
 export type CalcDrillDraft = Omit<CalcDrill, "id" | "userId" | "createdAt">;

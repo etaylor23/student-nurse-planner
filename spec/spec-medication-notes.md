@@ -39,7 +39,10 @@ medication). See `spec-architecture.md`.
 - **Add medication** → triggers a generic **calc drill**.
 - **Calc practice mode** — flashcards by `calcType` (tablet / liquid / IV rate /
   weight-based / drops-per-minute / mg↔microgram unit conversion). Each card can
-  reveal **worked steps** (`working`), not just the final answer.
+  reveal **worked steps** (`working`), not just the final answer. Two modes:
+  **Practice** (free flashcard loop by type) and **Exam** (a fixed 10-question
+  mixed run, scored against an 80% pass mark and timed). A **"Your numeracy"** panel
+  shows lifetime accuracy per type and flags the **weakest area** to revise.
 - **Med log** — observed/administered entries (no patient-identifiable info). On
   logging, the entry is **auto-linked to the shift you're currently in** (a timed
   shift whose start–end window contains "now"). If you're not in a shift you can
@@ -64,8 +67,11 @@ too: `/medications/filter/<key>/<value>/…` (keys `q` | `class` | `system` |
   drug-specific dosing.
 - `CalcDrill.prompt`/`answer` are generated with illustrative numbers only.
 - The detail page persists each drill's last attempt (`lastAttempted`/
-  `lastCorrect`); the **Calc practice** tab is a fast session loop (accuracy held
-  in memory, no per-attempt rows).
+  `lastCorrect`). The **Calc practice** tab keeps a fast in-session counter **and**
+  persists accuracy to a **bounded `CalcStat` aggregate** — one row per
+  `userId+calcType` (attempts/correct), not a row per attempt — which powers the
+  "Your numeracy" panel + weakest-type prompt. `summariseCalcStats` (pure) derives
+  the per-type accuracy and the weakest area.
 - **Secondary follow-on:** retrofit the same URL-addressable-state approach to the
   placement hours log and weekly planner (see the approved plan, Phase B).
 

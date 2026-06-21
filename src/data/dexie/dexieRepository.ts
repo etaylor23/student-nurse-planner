@@ -3,6 +3,8 @@ import type {
   BreakRule,
   CalcDrill,
   CalcDrillDraft,
+  CalcStat,
+  CalcType,
   LogInput,
   LogItem,
   Medication,
@@ -293,5 +295,25 @@ export class DexieRepository implements Repository {
 
   async deleteCalcDrill(id: string): Promise<void> {
     await this.db.calcDrills.delete(id);
+  }
+
+  // ---- Calc stats (bounded per-type aggregate) ----
+  async listCalcStats(userId: string): Promise<CalcStat[]> {
+    return this.db.calcStats.where("userId").equals(userId).toArray();
+  }
+
+  async recordCalcAttempt(userId: string, calcType: CalcType, correct: boolean): Promise<CalcStat> {
+    const id = `${userId}:${calcType}`;
+    const current = await this.db.calcStats.get(id);
+    const next: CalcStat = {
+      id,
+      userId,
+      calcType,
+      attempts: (current?.attempts ?? 0) + 1,
+      correct: (current?.correct ?? 0) + (correct ? 1 : 0),
+      lastAttempted: nowIso(),
+    };
+    await this.db.calcStats.put(next);
+    return next;
   }
 }

@@ -2,6 +2,8 @@ import type {
   BreakRule,
   CalcDrill,
   CalcDrillDraft,
+  CalcStat,
+  CalcType,
   LogInput,
   LogItem,
   Medication,
@@ -91,4 +93,9 @@ export interface Repository {
   createCalcDrill(input: CalcDrillDraft & { userId: string }): Promise<CalcDrill>;
   updateCalcDrill(id: string, patch: Partial<CalcDrillDraft>): Promise<CalcDrill>;
   deleteCalcDrill(id: string): Promise<void>;
+
+  // ---- Numeracy accuracy (bounded aggregate; one row per user+calc type) ----
+  listCalcStats(userId: string): Promise<CalcStat[]>;
+  /** Record one practice/exam attempt, incrementing the user+type aggregate. */
+  recordCalcAttempt(userId: string, calcType: CalcType, correct: boolean): Promise<CalcStat>;
 }
