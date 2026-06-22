@@ -5,6 +5,8 @@ import type {
   CalcDrillDraft,
   CalcStat,
   CalcType,
+  EvidenceLink,
+  EvidenceLinkDraft,
   LogInput,
   LogItem,
   Medication,
@@ -13,11 +15,16 @@ import type {
   MedicationLog,
   MedicationLogDraft,
   Placement,
+  Proficiency,
+  ProficiencyProgress,
+  ProficiencyStatusChange,
+  ProficiencyStatusEvent,
   Shift,
   User,
 } from "../../domain/types";
 import { newId, nowIso } from "../../domain/ids";
 import { defaultBreakRules } from "../../logic/breakRules";
+import { seedProficiencies } from "../seed/proficiencies";
 import { PlannerDb } from "./db";
 
 /** Stable id for the PoC's single local user. */
@@ -45,13 +52,16 @@ export class DexieRepository implements Repository {
     this.db = db;
   }
 
-  /** Idempotent: create the local user and default break rules if missing. */
+  /** Idempotent: create the local user, default break rules + proficiency list. */
   async ensureSeed(): Promise<void> {
     if (this.seeded) return;
     const existing = await this.db.users.get(LOCAL_USER_ID);
     if (!existing) await this.db.users.put(defaultUser());
     const ruleCount = await this.db.breakRules.count();
     if (ruleCount === 0) await this.db.breakRules.bulkPut(defaultBreakRules());
+    // National NMC proficiency master list (global reference data).
+    const profCount = await this.db.proficiencies.count();
+    if (profCount === 0) await this.db.proficiencies.bulkPut(seedProficiencies);
     this.seeded = true;
   }
 
@@ -323,5 +333,123 @@ export class DexieRepository implements Repository {
     };
     await this.db.calcStats.put(next);
     return next;
+  }
+
+  // ---- NMC proficiencies (global seed reference data) ----
+  async listProficiencies(): Promise<Proficiency[]> {
+    await this.ensureSeed();
+    const rows = await this.db.proficiencies.toArray();
+    return rows.sort((a, b) => a.orderIndex - b.orderIndex);
+  }
+
+  async getProficiency(id: string): Promise<Proficiency | undefined> {
+    await this.ensureSeed();
+    return this.db.proficiencies.get(id);
+  }
+
+  // ---- Proficiency progress + status history ----
+  async listProficiencyProgress(userId: string): Promise<ProficiencyProgress[]> {
+    return this.db.proficiencyProgress.where("userId").equals(userId).toArray();
+  }
+
+  private async findProgress(
+    userId: string,
+    proficiencyId: string,
+  ): Promise<ProficiencyProgress | undefined> {
+    return this.db.proficiencyProgress
+      .where("[userId+proficiencyId]")
+      .equals([userId, proficiencyId])
+      .first();
+  }
+
+  async getProficiencyProgress(
+    userId: string,
+    proficiencyId: string,
+  ): Promise<ProficiencyProgress | undefined> {
+    return this.findProgress(userId, proficiencyId);
+  }
+
+  async setProficiencyStatus(
+    userId: string,
+    proficiencyId: string,
+    change: ProficiencyStatusChange,
+  ): Promise<ProficiencyProgress> {
+    const existing = await this.findProgress(userId, proficiencyId);
+    const progress: ProficiencyProgress = {
+      id: existing?.id ?? newId(),
+      userId,
+      proficiencyId,
+      status: change.status,
+      targetPart: existing?.targetPart,
+      updatedAt: nowIso(),
+    };
+    await this.db.proficiencyProgress.put(progress);
+    const event: ProficiencyStatusEvent = {
+      id: newId(),
+      progressId: progress.id,
+      status: change.status,
+      partIndex: change.partIndex,
+      assessorName: change.assessorName,
+      note: change.note,
+      occurredAt: change.occurredAt,
+      createdAt: nowIso(),
+    };
+    await this.db.proficiencyStatusEvents.put(event);
+    return progress;
+  }
+
+  async setProficiencyTargetPart(
+    userId: string,
+    proficiencyId: string,
+    targetPart: number | undefined,
+  ): Promise<ProficiencyProgress> {
+    const existing = await this.findProgress(userId, proficiencyId);
+    const progress: ProficiencyProgress = {
+      id: existing?.id ?? newId(),
+      userId,
+      proficiencyId,
+      status: existing?.status ?? "NOT_YET_ACHIEVED",
+      targetPart,
+      updatedAt: nowIso(),
+    };
+    await this.db.proficiencyProgress.put(progress);
+    return progress;
+  }
+
+  async listProficiencyStatusEvents(progressId: string): Promise<ProficiencyStatusEvent[]> {
+    const rows = await this.db.proficiencyStatusEvents
+      .where("progressId")
+      .equals(progressId)
+      .toArray();
+    // Newest assessment first; tie-break on creation order.
+    return rows.sort((a, b) =>
+      a.occurredAt !== b.occurredAt
+        ? a.occurredAt < b.occurredAt
+          ? 1
+          : -1
+        : a.createdAt < b.createdAt
+          ? 1
+          : -1,
+    );
+  }
+
+  // ---- Evidence links (polymorphic) ----
+  async listEvidenceLinks(proficiencyId: string): Promise<EvidenceLink[]> {
+    const rows = await this.db.evidenceLinks.where("proficiencyId").equals(proficiencyId).toArray();
+    return rows.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  }
+
+  async listEvidenceLinksForUser(userId: string): Promise<EvidenceLink[]> {
+    return this.db.evidenceLinks.where("userId").equals(userId).toArray();
+  }
+
+  async createEvidenceLink(input: EvidenceLinkDraft & { userId: string }): Promise<EvidenceLink> {
+    const link: EvidenceLink = { ...input, id: newId(), createdAt: nowIso() };
+    await this.db.evidenceLinks.put(link);
+    return link;
+  }
+
+  async deleteEvidenceLink(id: string): Promise<void> {
+    await this.db.evidenceLinks.delete(id);
   }
 }

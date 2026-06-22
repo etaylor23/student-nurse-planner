@@ -101,6 +101,82 @@ export interface LogItem extends Entity, UserOwned, Created {
 /** A log entry to append — the store stamps id + createdAt. */
 export type LogInput = Omit<LogItem, "id" | "createdAt">;
 
+// ---------- NMC Competency tracker ----------
+
+/** Which annexe a proficiency belongs to (NONE = one of the 7 platforms). */
+export type Annexe = "NONE" | "A" | "B";
+
+/** PAD-style progress against a proficiency statement. */
+export type ProficiencyStatus = "NOT_YET_ACHIEVED" | "DEVELOPING" | "ACHIEVED";
+export const PROFICIENCY_STATUS_LABEL: Record<ProficiencyStatus, string> = {
+  NOT_YET_ACHIEVED: "Not yet achieved",
+  DEVELOPING: "Developing",
+  ACHIEVED: "Achieved",
+};
+
+/**
+ * The kind of record attached to a proficiency as evidence (the polymorphic
+ * `EvidenceLink` discriminator). SHIFT and MED_LOG are wired now; REFLECTION and
+ * SKILL are defined ahead of those features being built (stub pickers today).
+ */
+export type EvidenceType = "REFLECTION" | "SKILL" | "SHIFT" | "MED_LOG";
+export const EVIDENCE_TYPE_LABEL: Record<EvidenceType, string> = {
+  REFLECTION: "Reflection",
+  SKILL: "Clinical skill",
+  SHIFT: "Placement shift",
+  MED_LOG: "Medication log",
+};
+
+/**
+ * A single national NMC proficiency statement — global reference/seed data
+ * (not user-owned), shared by every user. Platform items carry `platform` 1..7
+ * with `annexe: "NONE"`; annexe items carry `platform: 0` and `annexe: "A" | "B"`.
+ */
+export interface Proficiency extends Entity {
+  platform: number; // 1..7 for platform items, 0 for annexe items
+  platformTitle: string; // platform title, or annexe (+ part) title
+  annexe: Annexe;
+  code: string; // unique, e.g. "1.1", "A4.1", "B11.7"
+  statement: string;
+  orderIndex: number;
+}
+
+/** A user's current progress against one proficiency (one row per user+proficiency). */
+export interface ProficiencyProgress extends Entity, UserOwned, Updated {
+  proficiencyId: string; // FK → Proficiency
+  status: ProficiencyStatus;
+  targetPart?: number; // optional: sharpens gap warnings
+}
+
+/** A dated status change — the history that preserves reassessment across parts. */
+export interface ProficiencyStatusEvent extends Entity, Created {
+  progressId: string; // FK → ProficiencyProgress (owns it; no own userId)
+  status: ProficiencyStatus;
+  partIndex: number; // the programme part the assessment was made in
+  assessorName?: string;
+  note?: string;
+  occurredAt: string; // ISO date the assessment happened
+}
+
+/** Polymorphic evidence join: proficiency ← reflection | skill | shift | med log. */
+export interface EvidenceLink extends Entity, UserOwned, Created {
+  proficiencyId: string; // FK → Proficiency
+  evidenceType: EvidenceType;
+  evidenceId: string; // Reflection.id | SkillProgress.id | Shift.id | MedicationLog.id
+}
+
+/** An evidence link to create — the store stamps id + createdAt. */
+export type EvidenceLinkDraft = Omit<EvidenceLink, "id" | "userId" | "createdAt">;
+
+/** The fields captured when recording a status change (drives the history event). */
+export interface ProficiencyStatusChange {
+  status: ProficiencyStatus;
+  partIndex: number;
+  occurredAt: string;
+  assessorName?: string;
+  note?: string;
+}
+
 // ---------- Medication notes (study aid — never patient data) ----------
 
 export type MedLogType = "OBSERVED" | "ADMINISTERED";

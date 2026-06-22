@@ -2,11 +2,15 @@ import type {
   BreakRule,
   CalcDrill,
   CalcStat,
+  EvidenceLink,
   LogItem,
   Medication,
   MedicationCondition,
   MedicationLog,
   Placement,
+  Proficiency,
+  ProficiencyProgress,
+  ProficiencyStatusEvent,
   Shift,
   User,
 } from "../domain/types";
@@ -36,6 +40,10 @@ export interface EntityMap {
   medicationLogs: MedicationLog;
   calcDrills: CalcDrill;
   calcStats: CalcStat;
+  proficiencies: Proficiency;
+  proficiencyProgress: ProficiencyProgress;
+  proficiencyStatusEvents: ProficiencyStatusEvent;
+  evidenceLinks: EvidenceLink;
 }
 
 /** The set of persisted store names (single source of truth). */
@@ -60,4 +68,9 @@ export const STORE_INDEXES: Record<StoreName, string> = {
   medicationLogs: "id, userId, medicationId, shiftId, date",
   calcDrills: "id, userId, medicationId, calcType",
   calcStats: "id, userId, calcType",
+  // Reference/seed data (global, not user-owned). `&code` = unique index.
+  proficiencies: "id, platform, annexe, &code, orderIndex",
+  proficiencyProgress: "id, userId, proficiencyId, [userId+proficiencyId], status",
+  proficiencyStatusEvents: "id, progressId, occurredAt",
+  evidenceLinks: "id, userId, proficiencyId, [evidenceType+evidenceId]",
 };

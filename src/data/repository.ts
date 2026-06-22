@@ -4,6 +4,8 @@ import type {
   CalcDrillDraft,
   CalcStat,
   CalcType,
+  EvidenceLink,
+  EvidenceLinkDraft,
   LogInput,
   LogItem,
   Medication,
@@ -12,6 +14,10 @@ import type {
   MedicationLog,
   MedicationLogDraft,
   Placement,
+  Proficiency,
+  ProficiencyProgress,
+  ProficiencyStatusChange,
+  ProficiencyStatusEvent,
   Shift,
   User,
 } from "../domain/types";
@@ -100,4 +106,40 @@ export interface Repository {
   listCalcStats(userId: string): Promise<CalcStat[]>;
   /** Record one practice/exam attempt, incrementing the user+type aggregate. */
   recordCalcAttempt(userId: string, calcType: CalcType, correct: boolean): Promise<CalcStat>;
+
+  // ---- NMC proficiencies (global seed reference data) ----
+  /** The national proficiency master list (seeded on first run). */
+  listProficiencies(): Promise<Proficiency[]>;
+  getProficiency(id: string): Promise<Proficiency | undefined>;
+
+  // ---- Proficiency progress + status history ----
+  listProficiencyProgress(userId: string): Promise<ProficiencyProgress[]>;
+  getProficiencyProgress(
+    userId: string,
+    proficiencyId: string,
+  ): Promise<ProficiencyProgress | undefined>;
+  /**
+   * Record a status change: upserts the user's `ProficiencyProgress` row and
+   * appends a dated `ProficiencyStatusEvent` to its history. Returns the progress row.
+   */
+  setProficiencyStatus(
+    userId: string,
+    proficiencyId: string,
+    change: ProficiencyStatusChange,
+  ): Promise<ProficiencyProgress>;
+  /** Set/clear the optional target-part tag (sharpens gap warnings). */
+  setProficiencyTargetPart(
+    userId: string,
+    proficiencyId: string,
+    targetPart: number | undefined,
+  ): Promise<ProficiencyProgress>;
+  /** A proficiency's status history, newest first. */
+  listProficiencyStatusEvents(progressId: string): Promise<ProficiencyStatusEvent[]>;
+
+  // ---- Evidence links (polymorphic: proficiency ← reflection|skill|shift|med log) ----
+  listEvidenceLinks(proficiencyId: string): Promise<EvidenceLink[]>;
+  /** Every evidence link a user has created (for cross-referencing built screens). */
+  listEvidenceLinksForUser(userId: string): Promise<EvidenceLink[]>;
+  createEvidenceLink(input: EvidenceLinkDraft & { userId: string }): Promise<EvidenceLink>;
+  deleteEvidenceLink(id: string): Promise<void>;
 }

@@ -1,5 +1,4 @@
 import "fake-indexeddb/auto";
-import Dexie from "dexie";
 import { beforeEach, describe, expect, it } from "vitest";
 import { DexieRepository, LOCAL_USER_ID } from "../src/data/dexie/dexieRepository";
 import { PlannerDb } from "../src/data/dexie/db";
@@ -115,55 +114,9 @@ describe("DexieRepository", () => {
     expect(forShift1.every((i) => i.entityId === "shift-1")).toBe(true);
   });
 
-  it("migrates v2 shift times (startTime/endTime) to full UTC ISO startAt/endAt", async () => {
-    const name = "test-migrate-" + Math.random().toString(36).slice(2);
-    // Create the DB at the old (v2) schema and insert old-shape shifts.
-    const old = new Dexie(name);
-    old.version(1).stores({
-      users: "id",
-      breakRules: "id, userId, orderIndex",
-      placements: "id, userId, createdAt",
-      shifts: "id, userId, [userId+date], status",
-    });
-    old.version(2).stores({ logItems: "id, userId, [entityType+entityId], createdAt" });
-    await old.open();
-    const base = {
-      userId: "u",
-      date: "2026-06-10",
-      shiftType: "LONG_DAY",
-      entryMode: "RAW",
-      netHours: 11.5,
-      isSimulated: false,
-      status: "PLANNED",
-      createdAt: "",
-      updatedAt: "",
-    };
-    await old.table("shifts").bulkPut([
-      { ...base, id: "day", startTime: "07:30", endTime: "20:00" },
-      { ...base, id: "night", startTime: "20:00", endTime: "08:00" },
-      { ...base, id: "allday", entryMode: "NET", netHours: 8 },
-    ]);
-    old.close();
-
-    // Re-open at v4 via PlannerDb → runs the v3 then v4 upgrades.
-    const repo = new DexieRepository(new PlannerDb(name));
-    const byId = Object.fromEntries((await repo.listShifts("u")).map((s) => [s.id, s]));
-    // Stored as full UTC ISO; assert the local wall-clock round-trips (TZ-safe).
-    const lp = (iso: string) => {
-      const d = new Date(iso);
-      return { date: d.getDate(), h: d.getHours(), min: d.getMinutes() };
-    };
-    expect(byId.day.startAt).toMatch(/Z$/);
-    expect(lp(byId.day.startAt!)).toEqual({ date: 10, h: 7, min: 30 });
-    expect(lp(byId.day.endAt!)).toEqual({ date: 10, h: 20, min: 0 });
-    expect(lp(byId.night.startAt!)).toEqual({ date: 10, h: 20, min: 0 });
-    expect(lp(byId.night.endAt!)).toEqual({ date: 11, h: 8, min: 0 }); // overnight → next day
-    expect(byId.allday.startAt).toBeUndefined();
-    expect(byId.allday.endAt).toBeUndefined();
-    // Old fields are dropped.
-    expect((byId.day as unknown as Record<string, unknown>).startTime).toBeUndefined();
-    expect((byId.day as unknown as Record<string, unknown>).endTime).toBeUndefined();
-  });
+  // (Removed) The v2→v4 shift-time migration test: the PoC now rebuilds the DB
+  // (renamed store, single version, no `.upgrade` transforms) rather than migrating
+  // existing local databases — see src/data/dexie/db.ts.
 
   it("round-trips medications, conditions, logs and calc drills", async () => {
     const user = await repo.getCurrentUser();
