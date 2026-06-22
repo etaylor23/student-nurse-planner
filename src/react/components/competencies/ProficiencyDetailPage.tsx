@@ -141,6 +141,18 @@ export function ProficiencyDetailPage() {
     return EVIDENCE_TYPE_LABEL[link.evidenceType];
   };
 
+  // Where clicking a piece of evidence goes: a shift opens on the planner (calendar
+  // jumps to its week + the shift editor opens, which shows this competency back);
+  // a med log opens its medication. Stub types have no destination yet.
+  const evidenceHref = (link: EvidenceLink): string | null => {
+    if (link.evidenceType === "SHIFT") return `/planner/${link.evidenceId}`;
+    if (link.evidenceType === "MED_LOG") {
+      const medicationId = logById.get(link.evidenceId)?.medicationId;
+      return medicationId ? `/medications/${medicationId}` : null;
+    }
+    return null;
+  };
+
   const groupLabel =
     proficiency.annexe === "NONE"
       ? `Platform ${proficiency.platform}`
@@ -274,23 +286,36 @@ export function ProficiencyDetailPage() {
               <p className="text-sm text-slate-400">No evidence attached yet.</p>
             ) : (
               <ul className="divide-y divide-slate-100">
-                {links.map((l) => (
-                  <li key={l.id} className="flex items-center gap-3 py-2.5">
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
-                      {EVIDENCE_TYPE_LABEL[l.evidenceType]}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-sm text-slate-700">
-                      {evidenceLabel(l)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => void removeEvidence(l)}
-                      className="text-xs font-medium text-rose-600"
-                    >
-                      Remove
-                    </button>
-                  </li>
-                ))}
+                {links.map((l) => {
+                  const href = evidenceHref(l);
+                  const label = evidenceLabel(l);
+                  return (
+                    <li key={l.id} className="flex items-center gap-3 py-2.5">
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                        {EVIDENCE_TYPE_LABEL[l.evidenceType]}
+                      </span>
+                      {href ? (
+                        <Link
+                          to={href}
+                          className="min-w-0 flex-1 truncate text-sm text-emerald-700 hover:underline"
+                        >
+                          {label}
+                        </Link>
+                      ) : (
+                        <span className="min-w-0 flex-1 truncate text-sm text-slate-700">
+                          {label}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => void removeEvidence(l)}
+                        className="text-xs font-medium text-rose-600"
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             )}
 
