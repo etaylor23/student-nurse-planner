@@ -1,33 +1,27 @@
 import Dexie, { type Table } from "dexie";
-import type {
-  BreakRule,
-  CalcDrill,
-  CalcStat,
-  LogItem,
-  Medication,
-  MedicationCondition,
-  MedicationLog,
-  Placement,
-  Shift,
-  User,
-} from "../../domain/types";
 import { isoAddDays, localIsoToUtc } from "../../logic/calendar";
+import { STORE_INDEXES, type EntityMap } from "../schema";
 
 /**
- * IndexedDB schema for the PoC. Indexes are chosen for the queries the
- * hours log actually runs (by user, and shifts by user+date).
+ * IndexedDB binding for the PoC. The current schema and the table types both come
+ * from the single registry in `../schema.ts` (one source for store↔type↔index), so
+ * they can't drift: each table accessor is typed `Table<EntityMap[name]>` and the
+ * latest version applies `STORE_INDEXES`. The `version()` chain below is historical
+ * — each step migrates an older database forward to the current schema.
  */
 export class PlannerDb extends Dexie {
-  users!: Table<User, string>;
-  breakRules!: Table<BreakRule, string>;
-  placements!: Table<Placement, string>;
-  shifts!: Table<Shift, string>;
-  logItems!: Table<LogItem, string>;
-  medications!: Table<Medication, string>;
-  medicationConditions!: Table<MedicationCondition, string>;
-  medicationLogs!: Table<MedicationLog, string>;
-  calcDrills!: Table<CalcDrill, string>;
-  calcStats!: Table<CalcStat, string>;
+  // Table accessors, typed from the registry. Field names match the STORE_INDEXES
+  // keys (StoreName); any use of a missing/renamed store is a compile error.
+  users!: Table<EntityMap["users"], string>;
+  breakRules!: Table<EntityMap["breakRules"], string>;
+  placements!: Table<EntityMap["placements"], string>;
+  shifts!: Table<EntityMap["shifts"], string>;
+  logItems!: Table<EntityMap["logItems"], string>;
+  medications!: Table<EntityMap["medications"], string>;
+  medicationConditions!: Table<EntityMap["medicationConditions"], string>;
+  medicationLogs!: Table<EntityMap["medicationLogs"], string>;
+  calcDrills!: Table<EntityMap["calcDrills"], string>;
+  calcStats!: Table<EntityMap["calcStats"], string>;
 
   constructor(name = "nurse-planner") {
     super(name);
@@ -97,8 +91,9 @@ export class PlannerDb extends Dexie {
       medicationLogs: "id, userId, medicationId, shiftId, date",
     });
     // v7 adds a bounded numeracy-accuracy aggregate (one row per user+calc type).
-    this.version(7).stores({
-      calcStats: "id, userId, calcType",
-    });
+    // It also restates the complete current schema from the registry, which is the
+    // single source of truth from here on — new stores/indexes land in schema.ts
+    // plus a new version() bump.
+    this.version(7).stores(STORE_INDEXES);
   }
 }
