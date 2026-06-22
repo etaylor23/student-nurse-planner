@@ -23,3 +23,11 @@ support rather than handling it in-app.
 ## Integrations
 
 None yet.
+
+## Data reuse
+
+- **Will reuse (when built):** `User` and the shared `Entity` / `UserOwned` /
+  `Created` bases; `Shift` for any "after a hard shift" prompts.
+
+**Direction:** compose the shared bases and reference shifts by id; add a store only
+via `schema.ts`. See `spec-architecture.md` → Data reuse.

@@ -41,3 +41,12 @@ proficiencies via `EvidenceLink` (type `SKILL`). See `spec-architecture.md`.
 ## Integrations
 
 None yet.
+
+## Data reuse
+
+- **Will reuse:** `EvidenceLink` (type `SKILL`) to attach to proficiencies — the
+  same join reflections and med logs use; `User`; the shared `Entity` / `UserOwned`
+  bases. Shares the Annexe B / proficiency seed with the competency tracker.
+
+**Direction:** reuse `EvidenceLink` and the shared bases; don't duplicate the
+proficiency or evidence structures. See `spec-architecture.md` → Data reuse.

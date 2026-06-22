@@ -51,3 +51,12 @@ Numeracy, OSCE Prep.
 
 None yet. (Planned shift-aware scheduling — excluding windows that overlap a
 `Shift` — is noted under Derived logic.)
+
+## Data reuse
+
+- **Will reuse:** the shared `Shift` rows for shift-aware scheduling and `User`;
+  numeracy weak-areas can read the existing `CalcStat` aggregate rather than a new
+  store. Compose the shared `Entity` / `UserOwned` / `Created` bases for new entities.
+
+**Direction:** read existing `Shift` / `CalcStat` data instead of copying it, and
+relate sessions / topics by id. See `spec-architecture.md` → Data reuse.

@@ -121,3 +121,15 @@ and is **not** used by the client-only `.ics` snapshot export. See
   (create/update/delete/mark-worked + duplicate guard), so a change in either
   reflects in both instantly — one source, no per-page fetch, no drift. See
   `spec-architecture.md`.
+
+## Data reuse
+
+- **Reuses:** the same `Shift` (and `Placement`, `User`) as the hours log — one
+  `ShiftsProvider` + `useShiftActions`, so there is **no per-view shift model**;
+  `LogItem` for activity; `MedicationLog` (by `shiftId`) to list a shift's meds.
+- **Owns:** transient UI-only shapes (e.g. the `NewShift` drag scratch type) that
+  convert into a `ShiftDraft` before saving — never persisted separately.
+
+**Direction:** treat `Shift` as the single shared entity — add fields to it in
+`domain/types.ts` (+ `schema.ts`), not to a planner-local copy — and relate new data
+to a shift by `shiftId`. See `spec-architecture.md` → Data reuse.

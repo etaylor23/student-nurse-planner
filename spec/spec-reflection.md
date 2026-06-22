@@ -42,3 +42,12 @@ plus `EvidenceLink` for proficiency/skill links. See `spec-architecture.md`.
 ## Integrations
 
 None yet.
+
+## Data reuse
+
+- **Will reuse:** `EvidenceLink` (type `REFLECTION`) — the shared evidence join; a
+  reflection can be seeded from a `MedicationLog` / `Shift`. Compose the shared
+  `Entity` / `UserOwned` / `Created` bases.
+
+**Direction:** attach to proficiencies / skills via `EvidenceLink`, not a bespoke
+table, and reference source rows by id. See `spec-architecture.md` → Data reuse.

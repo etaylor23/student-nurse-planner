@@ -81,3 +81,9 @@ sign-off.
 ## Integrations
 
 None yet. (Reference document — informs other features rather than wiring to them.)
+
+## Data reuse
+
+Reference only — this spec defines **no data structures**. Other specs map their
+entities (hours, proficiencies, skills) to the concepts here. See
+`spec-architecture.md` → Data reuse for the shared model and the reuse rules.

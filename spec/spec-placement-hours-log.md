@@ -110,3 +110,16 @@ pace); timesheet build + CSV escaping; Dexie repository round-trip (fake-indexed
 - **Medication Notes ↔ shift editor (built).** The shift editor here (shared with
   the planner) lists a shift's logged meds and offers a "Log a medication" shortcut
   pinned to that shift — see the medication-notes and weekly-planner specs.
+
+## Data reuse
+
+- **Reuses:** `Shift`, `Placement`, `BreakRule`, `User` from `domain/types.ts` (via
+  the shared `Repository` + `ShiftsProvider`), and `LogItem` for the audit trail. The
+  planner shares the **same `Shift` source** — there is no duplicate shift model.
+- **Owns:** computed shapes only (`HoursSummary`, `PlacementHours`, `Projection`,
+  `TimesheetRow`) — derived in `logic/`, never stored.
+
+**Direction:** count and derive from the shared `Shift` / `Placement` rows; never add
+a parallel hours or shift structure. New persisted fields go on the shared entity in
+`domain/types.ts` (+ `schema.ts`), reusing the `Entity` / `UserOwned` / `Created`
+bases. See `spec-architecture.md` → Data reuse.

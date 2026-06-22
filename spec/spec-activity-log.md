@@ -114,3 +114,14 @@ listLogItems(userId, filter?: { entityType?; entityId? }): Promise<LogItem[]>; /
   `MEDICATION_LOG`), so med actions show in the global Activity feed next to shift
   changes. The med-log line names the shift it happened in. `LogList` carries dot
   colours for `MEDICATION_ADDED` / `MED_LOGGED` / `MEDICATION_DELETED`.
+
+## Data reuse
+
+- **Is itself reuse.** `LogItem` is the **shared audit primitive** every feature
+  writes to — entity-agnostic (`entityType` / `entityId` / `entityLabel`), composing
+  the `Entity` / `UserOwned` / `Created` bases. Shifts and medication actions already
+  use it; no feature has its own history table.
+
+**Direction:** a new auditable action appends a `LogItem` (never a per-feature
+history store); point at the source row via `entityType` + `entityId`, and group a
+multi-field save with `batchId`. See `spec-architecture.md` → Data reuse.

@@ -65,3 +65,14 @@ _Planned — not built (this feature is SPECCED)._
   profile also becomes competency evidence — designed in from the start so med logs
   are evidence-ready. (Reflections and Annexe B skills are the sibling
   `EvidenceLink` sources; a med log can seed a reflection too.)
+
+## Data reuse
+
+- **Will reuse:** `User`, `Shift` (placement evidence), and the planned polymorphic
+  `EvidenceLink` — the **one shared evidence join**, also used by reflections, skills
+  and the future `MED_LOG` source. Compose the `Entity` / `UserOwned` / `Created`
+  bases for new entities; share the Annexe B / proficiency seed with the skills spec.
+
+**Direction:** make `EvidenceLink` the single join for every evidence source rather
+than per-source link tables, and reference proficiencies / skills / shifts by id. See
+`spec-architecture.md` → Data reuse.

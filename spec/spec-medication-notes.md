@@ -104,3 +104,17 @@ Built:
 4. **Placement profile (built).** The hours-log "hours by placement" breakdown shows
    a "_N_ meds logged" count per ward, tallied through each log's linked shift
    (`medsByPlacement`, pure) — so each placement gets a profile of the meds met there.
+
+## Data reuse
+
+- **Reuses:** `Shift` / `Placement` (med logs link by `shiftId`; the per-placement
+  profile derives via the shift), `LogItem` (med actions in the Activity feed), and
+  the shared `Entity` / `UserOwned` / `Created` / `Updated` bases for all its entities
+  (`Medication`, `MedicationCondition`, `MedicationLog`, `CalcDrill`, `CalcStat`).
+- **Owns:** the med-specific entities above + computed shapes (`CalcStatsSummary`,
+  `MedFilters`, `PlacementMedCount`) in `logic/`.
+
+**Direction:** link every action to its shift by `shiftId` (the cross-platform
+join), reuse `Medication` rather than copying drug metadata, and add the planned
+competency evidence via `EvidenceLink` (type `MED_LOG`) — not a bespoke link table.
+See `spec-architecture.md` → Data reuse.

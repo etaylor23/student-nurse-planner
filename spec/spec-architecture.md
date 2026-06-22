@@ -430,3 +430,38 @@ Each feature's own **Integrations** section records what it wires to. Built toda
 Medication Notes ↔ Weekly Planner / Placement Hours Log (shift-linked med logs,
 per-placement med counts, "Log a medication" from a shift) and Medication Notes →
 Activity Log (med actions in the feed).
+
+## Data reuse
+
+One model, reused everywhere — there are **no per-screen data structures**. This is
+the master reference; each feature spec has a shorter `Data reuse` section pointing
+back here.
+
+- **Types live once.** Every persisted entity is defined a single time in
+  `src/domain/types.ts` and composes the shared bases — `Entity` (string `id`),
+  `UserOwned` (`userId`), `Created` (`createdAt`), `Updated` (`updatedAt`) — rather
+  than re-declaring those fields. Create/update payloads are **derived**
+  (`Omit<Entity, server-fields>` → `ShiftDraft`, `MedicationDraft`, …), never
+  hand-copied. Computed/view shapes (`HoursSummary`, `CalcStatsSummary`,
+  `TimesheetRow`, `MedFilters`, `PlacementMedCount`) live beside their pure logic in
+  `logic/`, not in the entity model.
+- **Schema ↔ type are linked.** `src/data/schema.ts` is the one registry: `EntityMap`
+  (store name → TS type) and `STORE_INDEXES` (store name → index spec), both keyed by
+  `EntityMap` so the compiler forces a 1:1 mapping. `db.ts` derives its table types
+  and current schema from it — the DB and the model cannot drift.
+- **Entities join by foreign-key id**, never by nesting: `Shift.placementId`,
+  `MedicationLog.shiftId` / `medicationId`, `MedicationCondition.medicationId`,
+  `CalcDrill.medicationId`, `LogItem.entityType`+`entityId`. The planned polymorphic
+  `EvidenceLink` is the canonical many-source join (proficiency ← reflection | skill
+  | shift | future `MED_LOG`).
+- **One swap point.** All access goes through the `Repository` interface; the Dexie
+  binding is the only storage-specific code. Because every row is a flat record of
+  primitives (string id/FK, ISO-8601 date strings, string-union enums, no nested
+  documents), the same shape maps onto a SQL row or a NoSQL document, so the backend
+  can change without touching features.
+
+**Direction — reuse before you add.** Before introducing a field or entity: extend
+the relevant entity in `domain/types.ts`, compose the bases, and relate by FK id.
+Add a store only via `schema.ts` (plus a `db.ts` `version()` bump). Never create a
+screen-local copy of shared data, and keep new entities flat + primitive so they
+stay portable across SQL and NoSQL.
