@@ -31,13 +31,17 @@ export const NAV_SECTIONS: NavSection[] = [
   },
   {
     items: [
-      { path: "/competencies", label: "NMC competency tracker", enabled: false },
+      { path: "/competencies", label: "NMC competency tracker", enabled: true },
       { path: "/reflection", label: "Reflection on practice", enabled: false },
       { path: "/skills", label: "Clinical skills tracker", enabled: false },
       { path: "/medications", label: "Medication notes", enabled: true },
       { path: "/self-care", label: "Self-care checklist", enabled: false },
       { path: "/revision", label: "Revision timetable", enabled: false },
     ],
+  },
+  {
+    heading: "Account",
+    items: [{ path: "/profile", label: "Profile", enabled: true }],
   },
 ];
 

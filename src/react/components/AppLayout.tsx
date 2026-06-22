@@ -22,6 +22,7 @@ const ICONS: Record<string, ReactNode> = {
     <path d="M12 20s-7-4.35-7-9.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 7 3.5C19 15.65 12 20 12 20Z" />
   ),
   "/revision": <path d="M12 4 3 9l9 5 9-5-9-5Zm0 10v6m-5-9v4a5 3 0 0 0 10 0v-4" />,
+  "/profile": <path d="M20 21a8 8 0 1 0-16 0M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />,
 };
 
 function NavItemLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {

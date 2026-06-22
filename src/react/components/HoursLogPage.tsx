@@ -11,6 +11,7 @@ import { PlacementManager } from "./PlacementManager";
 import { ShiftForm, type ShiftDraft } from "./ShiftForm";
 import { ShiftHistory } from "./ShiftHistory";
 import { ShiftMedications } from "./ShiftMedications";
+import { ShiftEvidence } from "./ShiftEvidence";
 import { TimesheetExport } from "./TimesheetExport";
 import { Panel } from "./ui";
 
@@ -131,6 +132,7 @@ export function HoursLogPage() {
               </button>
             )}
             {editingShift && <ShiftMedications shift={editingShift} />}
+            {editingShift && <ShiftEvidence shift={editingShift} />}
             {editingShift && <ShiftHistory shift={editingShift} />}
           </Panel>
         </div>

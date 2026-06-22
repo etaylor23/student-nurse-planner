@@ -7,6 +7,7 @@ import { randomCalcDrill } from "../../../logic/calcDrills";
 import { buildMedFilterPath, EMPTY_FILTERS } from "../../../logic/medicationFilters";
 import { useMedication } from "../../hooks";
 import { useRepository } from "../../RepositoryContext";
+import { MedicationCompetency } from "./MedicationCompetency";
 import { Panel, btnGhost, btnGhostSm, btnPrimary, inputCls } from "../ui";
 
 const CALC_TYPES = Object.keys(CALC_TYPE_LABEL) as CalcType[];
@@ -240,6 +241,8 @@ export function MedicationDetailPage() {
           </>
         )}
       </Panel>
+
+      <MedicationCompetency logIds={logs.map((l) => l.id)} />
 
       <Panel
         title="Numeracy"

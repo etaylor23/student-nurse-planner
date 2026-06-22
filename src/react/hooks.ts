@@ -3,10 +3,14 @@ import type {
   BreakRule,
   CalcDrill,
   CalcStat,
+  EvidenceLink,
   Medication,
   MedicationCondition,
   MedicationLog,
   Placement,
+  Proficiency,
+  ProficiencyProgress,
+  ProficiencyStatusEvent,
 } from "../domain/types";
 import { useRepository } from "./RepositoryContext";
 
@@ -134,4 +138,62 @@ export function useMedicationLogs() {
   }, [reload]);
 
   return { logs, reload };
+}
+
+/** The national proficiency list + the user's progress (overview, detail, gaps). */
+export function useProficiencies() {
+  const { repo, user } = useRepository();
+  const [proficiencies, setProficiencies] = useState<Proficiency[]>([]);
+  const [progress, setProgress] = useState<ProficiencyProgress[]>([]);
+
+  const reload = useCallback(async () => {
+    if (!user) return;
+    const [profs, prog] = await Promise.all([
+      repo.listProficiencies(),
+      repo.listProficiencyProgress(user.id),
+    ]);
+    setProficiencies(profs);
+    setProgress(prog);
+  }, [repo, user]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  return { proficiencies, progress, reload };
+}
+
+/** One proficiency with its progress, dated status history and evidence links. */
+export function useProficiency(id: string | undefined) {
+  const { repo, user } = useRepository();
+  const [proficiency, setProficiency] = useState<Proficiency | undefined>();
+  const [progress, setProgress] = useState<ProficiencyProgress | undefined>();
+  const [events, setEvents] = useState<ProficiencyStatusEvent[]>([]);
+  const [links, setLinks] = useState<EvidenceLink[]>([]);
+
+  const reload = useCallback(async () => {
+    if (!user || !id) {
+      setProficiency(undefined);
+      setProgress(undefined);
+      setEvents([]);
+      setLinks([]);
+      return;
+    }
+    const prof = await repo.getProficiency(id);
+    const prog = await repo.getProficiencyProgress(user.id, id);
+    const [evts, lks] = await Promise.all([
+      prog ? repo.listProficiencyStatusEvents(prog.id) : Promise.resolve([]),
+      repo.listEvidenceLinks(id),
+    ]);
+    setProficiency(prof);
+    setProgress(prog);
+    setEvents(evts);
+    setLinks(lks);
+  }, [repo, user, id]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  return { proficiency, progress, events, links, reload };
 }
