@@ -34,7 +34,7 @@ npx prettier --write <files>
 
 **Quality gate, run before every commit:** typecheck clean · lint **0 errors**
 (3 accepted `react-refresh/only-export-components` warnings — see §5) · tests pass ·
-build OK · prettier. Current: **95 tests pass across 14 files.**
+build OK · prettier. Current: **108 tests pass across 16 files.**
 
 Commit style: focused, granular commits; update specs alongside code; end commit
 messages with the `Co-Authored-By` trailer used throughout the history. Branch off
@@ -83,7 +83,7 @@ compose the bases, relate by FK id; add a store only via `schema.ts` + a `db.ts`
 
 ## 4. What's built vs. specced
 
-**Built (3 screens, all sharing the data layer above):**
+**Built (5 screens + profile, all sharing the data layer above):**
 
 - **Weekly Planner** (`PlannerPage`) — FullCalendar; create/move/resize shifts;
   lock on complete; copy; placement-palette drag-drop; `/planner/:shiftId` opens the
@@ -94,13 +94,22 @@ compose the bases, relate by FK id; add a store only via `schema.ts` + a `db.ts`
 - **Medication Notes** (`MedicationNotesPage`) — reference cards (+ high-alert flag),
   appendable conditions, calc practice with worked steps + exam mode + numeracy
   stats, med log linked to the shift it happened in, path-based list filters,
-  clickable class/system chips.
+  clickable class/system chips. Now also surfaces **competency context** (Platform 4
+  + which proficiencies a med's logs evidence).
+- **NMC Competency Tracker** (`NmcCompetenciesPage` + `components/competencies/*`) —
+  PAD-style tracker over the **219** seeded proficiencies (2024 NMC list): platform
+  overview, platform/annexe detail, proficiency detail (status + dated history +
+  evidence), gaps view. Introduced the polymorphic **`EvidenceLink`** — `SHIFT` and
+  `MED_LOG` evidence are wired; `REFLECTION`/`SKILL` are **stub pickers**. The shift
+  editor now shows "Evidence for N proficiencies".
+- **Profile** (`ProfilePage`, `/profile`) — edits the single `User`; where
+  `currentPart`/`totalParts` (gap surfacing inputs) are set. See `spec-profile.md`.
 
-**Specced, not built:** `spec-competency-tracker.md` (SPECCED),
-`spec-clinical-skills.md` (SPECCED), `spec-reflection.md` (SPECCED),
-`spec-revision-timetable.md` (SPECCED), `spec-self-care.md` (DEFERRED).
-`spec-nmc-foundations.md` is reference only. The polymorphic **`EvidenceLink`** join
-those depend on is documented but **not yet built**.
+**Specced, not built:** `spec-clinical-skills.md` (SPECCED), `spec-reflection.md`
+(SPECCED), `spec-revision-timetable.md` (SPECCED), `spec-self-care.md` (DEFERRED).
+`spec-nmc-foundations.md` is reference only. **`EvidenceLink` is now built**; the
+remaining specs plug into it as new evidence sources (Reflection/Skill stub pickers
+already exist in the tracker, awaiting those features).
 
 ## 5. State of play — things to be aware of
 
@@ -108,10 +117,12 @@ those depend on is documented but **not yet built**.
   user (`LOCAL_USER_ID = "local-user"`, seeded in `DexieRepository`). No auth, no
   sync, no server. Clearing site storage wipes everything; data is per-origin (note:
   the preview harness uses a per-port DB).
-- **Dexie is at v7 with a 7-step migration chain** in `db.ts`. Fresh installs build
-  from the registry; existing browsers migrate forward. The chain **cannot be
-  collapsed** without breaking existing local DBs. Schema change = edit `schema.ts` +
-  add a `version()` bump.
+- **Dexie: rebuild, don't migrate.** `db.ts` now declares the whole current schema at
+  a **single `version(1)`** from the `schema.ts` registry — no `.upgrade` transforms,
+  no historical chain (collapsed from the old v1–v7). The DB name is **`nurse-planner-v2`**
+  so any old `nurse-planner` database is abandoned and a fresh one is built + re-seeded
+  (zero manual steps). Schema change = edit `schema.ts`; if it must reset local data,
+  bump the DB-name suffix. (Local-only PoC — a real backend would migrate.)
 - **3 accepted lint warnings** only: `react-refresh/only-export-components` in
   `RepositoryContext.tsx`, `ShiftsContext.tsx`, `MedicationNotesPage.tsx`. Intentional
   (files export a hook/const beside a component). 0 errors is the bar.
@@ -126,43 +137,41 @@ those depend on is documented but **not yet built**.
 - **Activity feed lists all `LogItem`s unpaginated** — fine now, would want
   date/action filters or "show more" once it grows.
 
-## 6. Recommended next screen — NMC Competency Tracker
+## 6. Recommended next screen — Reflection (Gibbs)
 
-Build `spec-competency-tracker.md` next. Why it's the highest-leverage move:
+The **NMC Competency Tracker is now built** (with the Profile screen), and it
+introduced the polymorphic **`EvidenceLink`** — so the remaining specs no longer have
+to de-risk that join; they just plug in as new evidence sources.
 
-- **It's the spine of a PAD-style tool.** Tracking the NMC proficiencies
-  (not-yet-achieved / developing / achieved, with dated history) is the thing a
-  student nurse most needs around placement, and it ties the rest together.
-- **It establishes `EvidenceLink`** — the polymorphic join (proficiency ←
-  reflection | skill | shift | future `MED_LOG`). **Three** other specs
-  (clinical-skills, reflection, and the medication evidence route) depend on it, so
-  building it first de-risks everything after: each later feature just plugs in as a
-  new evidence source.
-- **It reuses what already exists.** Gap surfacing reads `User.currentPart` /
-  `totalParts` (already on the model); a completed `Shift` is placement evidence; med
-  logs were deliberately designed evidence-ready. Heavy reuse, little new surface.
+Build `spec-reflection.md` next. Why it's the highest-leverage move now:
 
-**Caveat / effort note:** it needs the **national proficiency master list** seeded
-(transcribing the official NMC statements — see `spec-nmc-foundations.md`). That's
-real data-entry grunt work, so budget for it.
+- **High personal value, mostly self-contained.** Guided Gibbs reflective writing is
+  what students reach for around placement; no big seed required.
+- **Plugs straight into `EvidenceLink`.** The tracker already ships a **stub
+  `REFLECTION` picker** — building Reflection means listing reflections in that picker
+  and creating `EvidenceLink{ evidenceType: "REFLECTION", … }`. Additive; the enum and
+  join already exist.
+- **Then Clinical Skills** is the natural follow-on (Annexe B seed — which can reuse
+  the proficiency-seed extraction approach — + the stub `SKILL` picker).
 
-**Lighter alternative if a quick standalone win is wanted:** the **Reflection (Gibbs)**
-screen — high personal value, no big seed, mostly self-contained. It still wants
-`EvidenceLink` for linking, so whichever of the two you build first should be the one
-that introduces `EvidenceLink`.
+No big new surface: reuse `ui.tsx`, the `Repository`/`schema.ts` pattern, and the
+existing `EvidenceLink` store.
 
 ## 7. Backwards-compatible integration points
 
-The golden rule: **everything new is additive.** Don't reshape an existing entity or
-change a built screen's behaviour.
+The rule: **data is additive** — don't reshape an existing entity. **Behaviour
+changes to a built screen are fine when they genuinely improve it** (e.g. the
+competency tracker added "Evidence for N proficiencies" to the shift editor and a
+"Competency evidence" panel to the medication detail).
 
 **General backwards-compat rules:**
-- New stores only via `schema.ts` + a new Dexie `version()` (additive — no `.upgrade`
-  transform needed for a brand-new store/index).
+- New stores: add them to `schema.ts` (the registry drives `db.ts`'s single
+  `version().stores(STORE_INDEXES)`). Per the **rebuild-don't-migrate** policy (§5),
+  there are no `.upgrade` transforms; if a change must reset local data, bump the DB
+  name suffix in `db.ts` rather than adding migration code.
 - New fields on an **existing** entity must be **optional** (`?`) so existing rows
-  stay valid; if the field needs an index, bump a version (additive index, no data
-  transform). Non-indexed optional fields need no version bump at all (that's how
-  `Medication.highAlert` was added).
+  stay valid (that's how `Medication.highAlert` was added). Indexes are query hints in
+  `schema.ts`; with the rebuild policy there's no per-field version bump.
 - Reference existing rows by **FK id**; never duplicate or restructure `Shift`,
   `Placement`, `Medication`, etc.
 - Auditable actions append a `LogItem` (reuse the entity-agnostic shape) rather than
@@ -170,20 +179,21 @@ change a built screen's behaviour.
 - New `Repository` methods are additive to the interface; existing methods unchanged.
 - Reuse the `ui.tsx` furniture + path-based routing conventions.
 
-**Concrete wiring for the Competency Tracker (all additive):**
-1. **→ Shift (existing):** a completed shift is placement evidence. New `EvidenceLink`
-   store references `shiftId`. No change to planner/hours.
-2. **→ MedicationLog (existing):** `EvidenceLink` with type `MED_LOG` references a med
-   log by id. Med logs already exist and carry `shiftId`. No change to Medication
-   Notes.
-3. **→ Activity feed (existing):** proficiency status changes call
+**Competency Tracker wiring (now built — the template for the rest):**
+1. **→ Shift:** a completed shift attaches as `EvidenceLink` (type `SHIFT`); the shift
+   editor surfaces "Evidence for N proficiencies" (`ShiftEvidence.tsx`).
+2. **→ MedicationLog:** `EvidenceLink` (type `MED_LOG`) references a med log by id; the
+   medication detail surfaces the Platform 4 prompt + linked proficiencies
+   (`MedicationCompetency.tsx`).
+3. **→ Activity feed:** status changes + evidence link/unlink call
    `repo.createLogItem({ entityType: "PROFICIENCY", … })` → they appear in the global
-   feed automatically. Just add dot colours for the new actions in `LogList`.
-4. **→ User (existing):** gap surfacing reads `User.currentPart`/`totalParts` — already
-   present, no change.
-5. **New entities** (`Proficiency`, `ProficiencyProgress`, `ProficiencyStatusEvent`,
-   `EvidenceLink`) compose the shared bases and register in `schema.ts` + a new Dexie
-   version. Existing stores untouched.
+   feed; dot colours added in `LogList` (`PROFICIENCY_STATUS_CHANGED`,
+   `EVIDENCE_LINKED`, `EVIDENCE_UNLINKED`, `PROFILE_UPDATED`).
+4. **→ User:** gap surfacing reads `User.currentPart`/`totalParts`, set on the Profile
+   screen.
+5. **Entities** `Proficiency` (global seed), `ProficiencyProgress`,
+   `ProficiencyStatusEvent`, `EvidenceLink` compose the shared bases and register in
+   `schema.ts`. Existing stores untouched.
 
 Reflection and Clinical Skills then attach to proficiencies through the **same**
 `EvidenceLink` (types `REFLECTION` / `SKILL`) — no per-source link tables.
@@ -195,12 +205,15 @@ Reflection and Clinical Skills then attach to proficiencies through the **same**
 | Domain types + shared bases | `src/domain/types.ts` |
 | Store↔type↔index registry | `src/data/schema.ts` |
 | Repository interface (swap point) | `src/data/repository.ts` |
-| Dexie binding + migrations | `src/data/dexie/db.ts`, `src/data/dexie/dexieRepository.ts` |
+| Dexie binding (rebuild, no migrations) | `src/data/dexie/db.ts`, `src/data/dexie/dexieRepository.ts` |
+| Proficiency seed + provenance | `src/data/seed/proficiencies.ts` (generated), `scripts/extract-proficiencies.py` |
 | Shared shift state + mutations | `src/react/ShiftsContext.tsx` (`useShifts`, `useShiftActions`) |
-| Data hooks | `src/react/hooks.ts` |
+| Data hooks | `src/react/hooks.ts` (incl. `useProficiencies`, `useProficiency`) |
+| Competency logic | `src/logic/proficiencies.ts` (platform roll-ups, gap surfacing) |
 | UI furniture | `src/react/components/ui.tsx` |
 | Audit feed | `src/react/components/ActivityLog.tsx`, `LogList.tsx`, `src/logic/logGroups.ts` |
-| Screens | `PlannerPage.tsx`, `HoursLogPage.tsx`, `MedicationNotesPage.tsx` (+ `components/medications/*`) |
+| Screens | `PlannerPage.tsx`, `HoursLogPage.tsx`, `MedicationNotesPage.tsx` (+ `components/medications/*`), `NmcCompetenciesPage.tsx` (+ `components/competencies/*`), `ProfilePage.tsx` |
+| Competency↔built-screen bridges | `src/react/components/ShiftEvidence.tsx`, `components/medications/MedicationCompetency.tsx` |
 | Canonical model + conventions | `spec/spec-architecture.md` |
 
 Each `spec/spec-*.md` carries `Decisions (locked)`, `Data model`, `Integrations`, and

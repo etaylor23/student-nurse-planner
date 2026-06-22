@@ -6,6 +6,12 @@ programme standards. **When seeding the proficiency master list, pull the exact,
 current statements from the official NMC document** rather than relying on this
 summary — the structure is stable but the wording is the NMC's.
 
+**Done (competency tracker):** the proficiency master list is seeded from the
+current **2024 update** of the document (the 30 April 2024 language/layout refresh;
+no content change vs the original "Future nurse" standards). 219 statements were
+transcribed verbatim — see `spec-competency-tracker.md` → Seed data and
+`scripts/extract-proficiencies.py`.
+
 ## Fields of nursing
 
 Four fields: **adult**, mental health, learning disabilities, children's. This

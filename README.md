@@ -42,14 +42,17 @@ these specs describe both what's built and what's next.
 
 | # | Feature | Status |
 |---|---------|--------|
-| 1 | NMC competency tracker | Specced — not built |
-| 2 | Placement hours log | **Built (slice 1)** |
-| 3 | Reflection on practice | Specced — not built |
+| 1 | NMC competency tracker | **Built** (+ Profile screen) |
+| 2 | Placement hours log | **Built** |
+| 3 | Reflection on practice | Specced — next up |
 | 4 | Clinical skills development / skills tracker | Specced — not built |
-| 5 | Weekly shift planner | Specced — next up |
-| 6 | Medication notes | Specced — not built |
+| 5 | Weekly shift planner | **Built** |
+| 6 | Medication notes | **Built** |
 | 7 | Self-care checklist | **Deferred** |
 | 8 | Revision timetable | Specced — not built |
+
+A **Profile / Settings** screen (`spec-profile.md`) was built alongside the competency
+tracker, since gap surfacing needs the student's current programme part.
 
 ## 3. Foundational decisions ("Start here")
 
@@ -174,10 +177,11 @@ react-router-dom 7, Dexie 4, lucide-react, Vitest 2 (+ fake-indexeddb).
 - [`spec-nmc-foundations.md`](./spec-nmc-foundations.md) — the NMC framework
   facts the app is built on (platforms, annexes, hours), and seeding guidance.
 - [`spec-placement-hours-log.md`](./spec-placement-hours-log.md) — **built.**
-- [`spec-weekly-planner.md`](./spec-weekly-planner.md) — **next.**
-- [`spec-competency-tracker.md`](./spec-competency-tracker.md)
-- [`spec-reflection.md`](./spec-reflection.md)
+- [`spec-weekly-planner.md`](./spec-weekly-planner.md) — **built.**
+- [`spec-competency-tracker.md`](./spec-competency-tracker.md) — **built.**
+- [`spec-profile.md`](./spec-profile.md) — **built.**
+- [`spec-medication-notes.md`](./spec-medication-notes.md) — **built.**
+- [`spec-reflection.md`](./spec-reflection.md) — **next.**
 - [`spec-clinical-skills.md`](./spec-clinical-skills.md)
-- [`spec-medication-notes.md`](./spec-medication-notes.md)
 - [`spec-revision-timetable.md`](./spec-revision-timetable.md)
 - [`spec-self-care.md`](./spec-self-care.md) — **deferred.**

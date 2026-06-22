@@ -41,7 +41,12 @@ plus `EvidenceLink` for proficiency/skill links. See `spec-architecture.md`.
 
 ## Integrations
 
-None yet.
+- **Competency Tracker (decision recorded).** The built NMC Competency Tracker ships
+  a **stub** `REFLECTION` evidence picker — a labelled "coming soon" tab on the
+  proficiency detail. When this feature is built, wire that picker to attach real
+  reflections: `EvidenceType` already includes `REFLECTION` and `EvidenceLink` exists,
+  so it's an additive change (list reflections in the picker; create an
+  `EvidenceLink{ evidenceType: "REFLECTION", evidenceId: reflection.id }`).
 
 ## Data reuse
 

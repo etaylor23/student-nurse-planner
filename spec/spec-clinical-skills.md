@@ -40,7 +40,13 @@ proficiencies via `EvidenceLink` (type `SKILL`). See `spec-architecture.md`.
 
 ## Integrations
 
-None yet.
+- **Competency Tracker (decision recorded).** The built NMC Competency Tracker ships
+  a **stub** `SKILL` evidence picker — a labelled "coming soon" tab on the proficiency
+  detail. When this feature is built, wire that picker to attach real skills:
+  `EvidenceType` already includes `SKILL` and `EvidenceLink` exists, so it's additive
+  (list `SkillProgress` in the picker; create an
+  `EvidenceLink{ evidenceType: "SKILL", evidenceId: skillProgress.id }`). The Annexe B
+  seed is shared with the competency tracker's proficiency seed.
 
 ## Data reuse
 

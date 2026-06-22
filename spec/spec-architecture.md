@@ -17,6 +17,12 @@ patterns defined here.
 - **The canonical model is relational** (expressed below as a Prisma schema —
   the target/remote shape). The PoC persists these same entity shapes in
   IndexedDB.
+- **PoC DB policy: rebuild, don't migrate.** `db.ts` declares the whole current
+  schema at a single `version()` from the `schema.ts` registry — no `.upgrade`
+  transforms or historical version chain. A schema change that must reset local data
+  bumps the Dexie **database name** (currently `nurse-planner-v2`) so a fresh DB is
+  built and re-seeded; the old one is abandoned. (This is a local-only PoC; a real
+  backend would migrate, not rebuild.)
 
 ## Repository interface (the swap point)
 
@@ -64,7 +70,7 @@ enum NursingField        { ADULT } // extend: MENTAL_HEALTH, LEARNING_DISABILITI
 enum ProgrammeType       { BSC_3YR MSC_2YR APPRENTICE OTHER }
 enum Annexe              { NONE A B }
 enum ProficiencyStatus   { NOT_YET_ACHIEVED DEVELOPING ACHIEVED }
-enum EvidenceType        { REFLECTION SKILL SHIFT }
+enum EvidenceType        { REFLECTION SKILL SHIFT MED_LOG }
 enum ShiftType           { EARLY LATE NIGHT LONG_DAY OTHER }
 enum HoursEntryMode      { NET RAW }
 enum ShiftStatus         { PLANNED COMPLETED }
@@ -135,12 +141,12 @@ model ProficiencyStatusEvent {  // history → reassessment across parts
   occurredAt   DateTime
   createdAt    DateTime @default(now())
 }
-model EvidenceLink {            // polymorphic: proficiency <- reflection|skill|shift
+model EvidenceLink {            // polymorphic: proficiency <- reflection|skill|shift|med log
   id            String       @id @default(cuid())
   userId        String
   proficiencyId String
   evidenceType  EvidenceType
-  evidenceId    String        // Reflection.id | SkillProgress.id | Shift.id
+  evidenceId    String        // Reflection.id | SkillProgress.id | Shift.id | MedicationLog.id
   createdAt     DateTime     @default(now())
   @@index([evidenceType, evidenceId])
 }
@@ -370,6 +376,8 @@ model RevisionSession {
 1. **Proficiencies** — the national NMC proficiency statements (7 platforms +
    Annexe A + Annexe B), adult-field level, with `code`/`platform`/`orderIndex`.
    Source from the official NMC standards document (see `spec-nmc-foundations`).
+   **Built:** 219 statements seeded from the **2024** document into a committed
+   `src/data/seed/proficiencies.ts`, regenerable via `scripts/extract-proficiencies.py`.
 2. **Skills** — Annexe B baseline list (`source = ANNEXE_B`); students add custom.
 3. **Subjects** — A&P, Pharmacology, Pathophysiology, NMC Theory, Numeracy,
    OSCE Prep (i.e. all except bioscience).
@@ -383,18 +391,26 @@ model RevisionSession {
 2. Weekly shift planner — **built** (FullCalendar over the shared `Shift`;
    quick-add, click-drag-to-create, drag-reschedule & resize, PLANNED→COMPLETED,
    `.ics` snapshot export; live feed deferred — needs a backend).
-3. Competency tracker (proficiency seed + `EvidenceLink`).
+3. Competency tracker (proficiency seed + `EvidenceLink`) — **built** (4 views;
+   `SHIFT`/`MED_LOG` evidence wired, `REFLECTION`/`SKILL` stub pickers; gap surfacing
+   off the profile's current part). Brought with it the **Profile / Settings** screen
+   (`spec-profile.md`) — where `currentPart`/`totalParts` are set.
 4. Reflection (`EvidenceLink`).
 5. Clinical skills (Annexe B seed + `EvidenceLink`).
-6. Medication notes + Revision timetable.
+6. Medication notes — **built** — + Revision timetable.
 
 ## App shell & routing
 
 - `react-router-dom` v7. `nav.ts` holds `NAV_SECTIONS` — ordered "suites of
   views", each with optional `heading` and items carrying an `enabled` flag;
   disabled items render non-clickable with a "Soon" badge. `NAV_ITEMS` /
-  `DEFAULT_ROUTE` are derived from the sections. (Built suite: "Shifts & hours" =
-  placement hours log + weekly planner.)
+  `DEFAULT_ROUTE` are derived from the sections. (Built: "Shifts & hours" =
+  placement hours log + weekly planner; competency tracker + medication notes; an
+  "Account" section = `/profile`.)
+- **Competency tracker routes** (path-based, nested under `/competencies/*`):
+  `/competencies` (platform overview), `/competencies/platform/:group`
+  (`:group` = `1`..`7` | `A` | `B`), `/competencies/proficiency/:id`,
+  `/competencies/gaps`. Profile is a single `/profile` route.
 - `AppLayout` renders the fly-over nav (desktop: a left-margin strip whose panel
   opens on hover **or** keyboard focus — state-driven for reliability across
   Tailwind builds; mobile: state-driven drawer + menu button + backdrop) and the
