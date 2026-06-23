@@ -1,17 +1,23 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  ADMIN_ROUTES,
-  BODY_SYSTEMS,
   CALC_TYPE_LABEL,
-  DRUG_CLASSES,
   type CalcType,
   type Medication,
   type MedicationDraft,
 } from "../../../domain/types";
+import {
+  ADMIN_ROUTES,
+  BODY_SYSTEMS,
+  DRUG_CLASSES,
+  GENERIC_NAMES,
+  MONITORING,
+  SIDE_EFFECTS,
+} from "../../../data/bnf";
 import { randomCalcDrill } from "../../../logic/calcDrills";
 import { useMedication } from "../../hooks";
 import { useRepository } from "../../RepositoryContext";
+import { Autocomplete, TagInput } from "./Autocomplete";
 import { Panel, btnGhost, btnPrimary, inputCls } from "../ui";
 
 const CALC_TYPES = Object.keys(CALC_TYPE_LABEL) as CalcType[];
@@ -52,6 +58,9 @@ function MedicationForm({ medication }: { medication?: Medication }) {
   const [routes, setRoutes] = useState<string[]>(
     medication?.routes ? medication.routes.split(", ").filter(Boolean) : [],
   );
+  const [mechanismOfAction, setMechanismOfAction] = useState(medication?.mechanismOfAction ?? "");
+  const [sideEffects, setSideEffects] = useState(medication?.sideEffects ?? "");
+  const [monitoring, setMonitoring] = useState(medication?.monitoring ?? "");
   const [keyNotes, setKeyNotes] = useState(medication?.keyNotes ?? "");
   const [highAlert, setHighAlert] = useState(medication?.highAlert ?? false);
   const [firstCondition, setFirstCondition] = useState("");
@@ -75,6 +84,9 @@ function MedicationForm({ medication }: { medication?: Medication }) {
       drugClass: drugClass.trim() || undefined,
       bodySystem: bodySystem.trim() || undefined,
       routes: routes.length ? routes.join(", ") : undefined,
+      mechanismOfAction: mechanismOfAction.trim() || undefined,
+      sideEffects: sideEffects.trim() || undefined,
+      monitoring: monitoring.trim() || undefined,
       keyNotes: keyNotes.trim() || undefined,
       highAlert: highAlert || undefined,
     };
@@ -118,12 +130,12 @@ function MedicationForm({ medication }: { medication?: Medication }) {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {field(
             "Generic name",
-            <input
-              type="text"
+            <Autocomplete
               value={name}
-              onChange={(e) => setName(e.target.value)}
-              className={inputCls}
-              placeholder="e.g. Amoxicillin"
+              onChange={setName}
+              options={GENERIC_NAMES}
+              ariaLabel="Generic name"
+              placeholder="e.g. Amoxicillin — type to search"
             />,
           )}
           {field(
@@ -138,37 +150,25 @@ function MedicationForm({ medication }: { medication?: Medication }) {
           )}
           {field(
             "Drug class",
-            <input
-              type="text"
-              list="drug-classes"
+            <Autocomplete
               value={drugClass}
-              onChange={(e) => setDrugClass(e.target.value)}
-              className={inputCls}
-              placeholder="Optional — pick or type"
+              onChange={setDrugClass}
+              options={DRUG_CLASSES}
+              ariaLabel="Drug class"
+              placeholder="Optional — type to search"
             />,
           )}
           {field(
             "Body system",
-            <input
-              type="text"
-              list="body-systems"
+            <Autocomplete
               value={bodySystem}
-              onChange={(e) => setBodySystem(e.target.value)}
-              className={inputCls}
-              placeholder="Optional — pick or type"
+              onChange={setBodySystem}
+              options={BODY_SYSTEMS}
+              ariaLabel="Body system"
+              placeholder="Optional — type to search"
             />,
           )}
         </div>
-        <datalist id="drug-classes">
-          {DRUG_CLASSES.map((c) => (
-            <option key={c} value={c} />
-          ))}
-        </datalist>
-        <datalist id="body-systems">
-          {BODY_SYSTEMS.map((s) => (
-            <option key={s} value={s} />
-          ))}
-        </datalist>
 
         {field(
           "Routes",
@@ -195,13 +195,47 @@ function MedicationForm({ medication }: { medication?: Medication }) {
         )}
 
         {field(
+          "Mechanism of action",
+          <textarea
+            value={mechanismOfAction}
+            onChange={(e) => setMechanismOfAction(e.target.value)}
+            rows={2}
+            className={inputCls}
+            placeholder="How it works — e.g. inhibits bacterial cell-wall synthesis"
+          />,
+        )}
+
+        {field(
+          "Side effects",
+          <TagInput
+            value={sideEffects}
+            onChange={setSideEffects}
+            options={SIDE_EFFECTS}
+            ariaLabel="Side effects"
+            placeholder="Type to search — e.g. Vom… → Vomiting"
+          />,
+          "Type-ahead suggestions from a stubbed BNF list; add your own too.",
+        )}
+
+        {field(
+          "Monitoring",
+          <TagInput
+            value={monitoring}
+            onChange={setMonitoring}
+            options={MONITORING}
+            ariaLabel="Monitoring"
+            placeholder="Type to search — e.g. U&E, INR, blood glucose"
+          />,
+        )}
+
+        {field(
           "Key notes",
           <textarea
             value={keyNotes}
             onChange={(e) => setKeyNotes(e.target.value)}
             rows={4}
             className={inputCls}
-            placeholder="BNF-style notes — mechanism, cautions, monitoring…"
+            placeholder="Anything else worth remembering — cautions, interactions, exam tips…"
           />,
         )}
 

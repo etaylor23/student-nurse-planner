@@ -202,44 +202,10 @@ export const CALC_TYPE_LABEL: Record<CalcType, string> = {
   UNIT_CONVERSION: "Unit conversion",
 };
 
-/** Starter option lists for the optional, prompted selects (each allows "Other"). */
-export const DRUG_CLASSES = [
-  "Antibiotic",
-  "Analgesic",
-  "Anticoagulant",
-  "Antihypertensive",
-  "Antiemetic",
-  "Bronchodilator",
-  "Corticosteroid",
-  "Diuretic",
-  "Proton-pump inhibitor",
-  "Antidiabetic",
-  "Anticonvulsant",
-  "Antidepressant",
-] as const;
-
-export const BODY_SYSTEMS = [
-  "Cardiovascular",
-  "Respiratory",
-  "Gastrointestinal",
-  "Central nervous system",
-  "Renal / urinary",
-  "Endocrine",
-  "Musculoskeletal",
-  "Infection",
-  "Skin",
-] as const;
-
-export const ADMIN_ROUTES = [
-  "Oral",
-  "IV",
-  "IM",
-  "Subcutaneous",
-  "Topical",
-  "Inhaled",
-  "Rectal",
-  "Sublingual",
-] as const;
+// Starter option lists for the optional, prompted fields (generic name, drug class,
+// body system, routes, side effects, monitoring) live in `src/data/bnf.ts` — a local
+// stubbed-BNF value set powering type-ahead suggestions. Every field still accepts
+// free text.
 
 /** A medication reference card (generic/BNF name + optional study metadata). */
 export interface Medication extends Entity, UserOwned, Created, Updated {
@@ -248,6 +214,9 @@ export interface Medication extends Entity, UserOwned, Created, Updated {
   drugClass?: string;
   bodySystem?: string;
   routes?: string; // comma-separated administration routes
+  mechanismOfAction?: string; // free-text — how it works
+  sideEffects?: string; // comma-separated common side effects
+  monitoring?: string; // comma-separated monitoring parameters
   keyNotes?: string;
   highAlert?: boolean; // study-safety awareness flag (e.g. insulin, anticoagulants, opioids)
 }

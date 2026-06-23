@@ -1,11 +1,7 @@
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import {
-  ADMIN_ROUTES,
-  MED_LOG_TYPE_LABEL,
-  type MedLogType,
-  type Shift,
-} from "../../../domain/types";
+import { MED_LOG_TYPE_LABEL, type MedLogType, type Shift } from "../../../domain/types";
+import { ADMIN_ROUTES } from "../../../data/bnf";
 import { formatHumanDate, hhmm, isoDate } from "../../../logic/calendar";
 import { findCurrentShift, recentShifts } from "../../../logic/shiftContext";
 import { useMedicationLogs, useMedications, usePlacements, useShifts } from "../../hooks";

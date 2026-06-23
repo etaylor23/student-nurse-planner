@@ -13,6 +13,60 @@ import { Panel, btnGhost, btnGhostSm, btnPrimary, inputCls } from "../ui";
 const CALC_TYPES = Object.keys(CALC_TYPE_LABEL) as CalcType[];
 const chip = "rounded-full px-2 py-0.5 text-xs font-medium";
 
+const CHIP_TONE = {
+  rose: "bg-rose-50 text-rose-700 ring-rose-100",
+  sky: "bg-sky-50 text-sky-700 ring-sky-100",
+  slate: "bg-slate-100 text-slate-600 ring-slate-200",
+} as const;
+
+/** A free-text pharmacology row (mechanism of action). */
+function NotesRow({ label, value }: { label: string; value?: string }) {
+  return (
+    <div>
+      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</dt>
+      <dd className="mt-0.5 whitespace-pre-wrap text-slate-700">
+        {value ? value : <span className="text-slate-400">Not recorded</span>}
+      </dd>
+    </div>
+  );
+}
+
+/** A comma-separated pharmacology row rendered as tone-coloured chips. */
+function ChipsRow({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value?: string;
+  tone: keyof typeof CHIP_TONE;
+}) {
+  const items = value
+    ? value
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
+  return (
+    <div>
+      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</dt>
+      <dd className="mt-1">
+        {items.length === 0 ? (
+          <span className="text-slate-400">Not recorded</span>
+        ) : (
+          <ul className="flex flex-wrap gap-1.5">
+            {items.map((it) => (
+              <li key={it} className={`${chip} ring-1 ${CHIP_TONE[tone]}`}>
+                {it}
+              </li>
+            ))}
+          </ul>
+        )}
+      </dd>
+    </div>
+  );
+}
+
 export function MedicationDetailPage() {
   const { id } = useParams();
   const { medication, conditions, drills, logs, reload } = useMedication(id);
@@ -139,18 +193,22 @@ export function MedicationDetailPage() {
         </div>
       </div>
 
-      <Panel title="Key notes" hint="Study notes — never real patient dosing">
+      <Panel title="Pharmacology" hint="Study notes — never real patient dosing">
+        <dl className="space-y-3 text-sm">
+          <NotesRow label="Mechanism of action" value={medication.mechanismOfAction} />
+          <ChipsRow label="Side effects" value={medication.sideEffects} tone="rose" />
+          <ChipsRow label="Monitoring" value={medication.monitoring} tone="sky" />
+          <ChipsRow label="Routes" value={medication.routes} tone="slate" />
+        </dl>
+      </Panel>
+
+      <Panel title="Key notes" hint="Anything else worth remembering">
         {medication.keyNotes ? (
           <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
             {medication.keyNotes}
           </p>
         ) : (
           <p className="text-sm text-slate-400">No notes yet — add some via Edit.</p>
-        )}
-        {medication.routes && (
-          <p className="mt-3 text-sm text-slate-500">
-            <span className="font-medium text-slate-700">Routes:</span> {medication.routes}
-          </p>
         )}
       </Panel>
 

@@ -26,7 +26,8 @@ patient decisions.**
 ## Data model
 
 `Medication` (generic/BNF name, optional `drugClass`/`bodySystem`/`routes`,
-`keyNotes`, optional **`highAlert`** study-awareness flag), `MedicationCondition`
+`mechanismOfAction`, comma-separated `sideEffects`/`monitoring`, `keyNotes`, optional
+**`highAlert`** study-awareness flag), `MedicationCondition`
 (appendable conditions), `MedicationLog`
 (`type` OBSERVED/ADMINISTERED, no patient data, optional **`shiftId`** — the shift
 it was logged during), `CalcDrill` (generic numbers, optional association to a
@@ -35,11 +36,18 @@ medication). See `spec-architecture.md`.
 ## Screens
 
 - **Medication list** — search; filter by class / body system / condition.
-- **Medication detail** — BNF-style notes; optional class/system/conditions and
-  routes; **add a condition** over time; a **Logged** panel summarising how often
-  you've observed/administered this drug (with a **Log again** shortcut that opens
-  the med log prefilled to it via router state — not a query string).
-- **Add medication** → triggers a generic **calc drill**.
+- **Medication detail** — a **Pharmacology** panel (mechanism of action, side-effect
+  + monitoring chips, routes) and **Key notes**; optional class/system/conditions;
+  **add a condition** over time; a **Logged** panel summarising how often you've
+  observed/administered this drug (with a **Log again** shortcut that opens the med
+  log prefilled to it via router state — not a query string).
+- **Add / edit medication** → triggers a generic **calc drill** on first add. Fields
+  with a known vocabulary offer **type-ahead, substring-match autocomplete** from a
+  **local stubbed-BNF value set** (`src/data/bnf.ts` — not a clinical reference):
+  generic **name**, **drug class**, **body system** (single-value combobox), and
+  **side effects** + **monitoring** (multi-value chip inputs). Every field still
+  accepts free text. (Replaces the old native `<datalist>`, which only prefix-matched
+  and rendered inconsistently.)
 - **Calc practice mode** — flashcards by `calcType` (tablet / liquid / IV rate /
   weight-based / drops-per-minute / mg↔microgram unit conversion). Each card can
   reveal **worked steps** (`working`), not just the final answer. Two modes:
