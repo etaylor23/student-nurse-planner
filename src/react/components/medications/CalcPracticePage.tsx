@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { CALC_TYPE_LABEL, type CalcType } from "../../../domain/types";
 import { randomCalcDrill } from "../../../logic/calcDrills";
 import { summariseCalcStats, type CalcStatsSummary } from "../../../logic/calcStats";
@@ -94,6 +94,18 @@ export function CalcPracticePage() {
           />
         )}
       </Panel>
+
+      <p className="px-1 text-xs text-slate-400">
+        Accurate drug calculations are NMC competence —{" "}
+        <Link to="/competencies/proficiency/prof_4.14" className="font-medium text-emerald-700">
+          proficiency 4.14
+        </Link>{" "}
+        and{" "}
+        <Link to="/competencies/proficiency/prof_B11.4" className="font-medium text-emerald-700">
+          Annexe B11.4
+        </Link>
+        . Your accuracy shows on those proficiencies.
+      </p>
 
       {summary.total.attempts > 0 && <StatsPanel summary={summary} />}
     </div>

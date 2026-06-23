@@ -242,7 +242,7 @@ export function MedicationDetailPage() {
         )}
       </Panel>
 
-      <MedicationCompetency logIds={logs.map((l) => l.id)} />
+      <MedicationCompetency logs={logs} />
 
       <Panel
         title="Numeracy"

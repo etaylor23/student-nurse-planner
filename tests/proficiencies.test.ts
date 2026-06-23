@@ -6,8 +6,11 @@ import type {
   User,
 } from "../src/domain/types";
 import {
+  evidenceCountByProficiency,
+  isDrugCalcProficiency,
   isEscalating,
   isGap,
+  matchesQuery,
   overallPercentAchieved,
   summarisePlatforms,
   surfaceGaps,
@@ -152,5 +155,37 @@ describe("overallPercentAchieved", () => {
     const profs = [mkProf("1.1", 1, "NONE", 0), mkProf("1.2", 1, "NONE", 1)];
     expect(overallPercentAchieved(profs, [mkProgress("1.1", "ACHIEVED")])).toBe(50);
     expect(overallPercentAchieved([], [])).toBe(0);
+  });
+});
+
+describe("evidenceCountByProficiency", () => {
+  it("counts links per proficiency", () => {
+    const counts = evidenceCountByProficiency([
+      { proficiencyId: "a" },
+      { proficiencyId: "a" },
+      { proficiencyId: "b" },
+    ]);
+    expect(counts.get("a")).toBe(2);
+    expect(counts.get("b")).toBe(1);
+    expect(counts.get("c")).toBeUndefined();
+  });
+});
+
+describe("isDrugCalcProficiency", () => {
+  it("matches 4.14 and B11.4 only", () => {
+    expect(isDrugCalcProficiency("4.14")).toBe(true);
+    expect(isDrugCalcProficiency("B11.4")).toBe(true);
+    expect(isDrugCalcProficiency("1.1")).toBe(false);
+    expect(isDrugCalcProficiency("B11.5")).toBe(false);
+  });
+});
+
+describe("matchesQuery", () => {
+  const p = mkProf("4.14", 4, "NONE", 0); // statement = "statement 4.14"
+  it("matches on code or statement, case-insensitive; empty matches all", () => {
+    expect(matchesQuery(p, "")).toBe(true);
+    expect(matchesQuery(p, "4.14")).toBe(true);
+    expect(matchesQuery(p, "STATEMENT")).toBe(true);
+    expect(matchesQuery(p, "zzz")).toBe(false);
   });
 });

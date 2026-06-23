@@ -10,6 +10,7 @@ import {
   type Shift,
 } from "../../../domain/types";
 import { formatHumanDate, hhmm, isoDate } from "../../../logic/calendar";
+import { isDrugCalcProficiency } from "../../../logic/proficiencies";
 import {
   useMedicationLogs,
   useMedications,
@@ -19,6 +20,7 @@ import {
 } from "../../hooks";
 import { useRepository } from "../../RepositoryContext";
 import { Panel, btnGhostSm, btnPrimary, inputCls } from "../ui";
+import { NumeracyPanel } from "./NumeracyPanel";
 import { SourceCredit, StatusPill } from "./shared";
 
 const STATUSES: ProficiencyStatus[] = ["NOT_YET_ACHIEVED", "DEVELOPING", "ACHIEVED"];
@@ -278,6 +280,8 @@ export function ProficiencyDetailPage() {
               </ol>
             )}
           </Panel>
+
+          {isDrugCalcProficiency(proficiency.code) && <NumeracyPanel />}
         </div>
 
         <div className="min-w-0 space-y-6 xl:col-span-2">

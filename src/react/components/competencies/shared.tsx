@@ -34,6 +34,32 @@ export function ProgressBar({ percent }: { percent: number }) {
   );
 }
 
+/** A small "N evidence" badge for a proficiency row (hidden when zero). */
+export function EvidenceBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700 ring-1 ring-sky-100"
+      title={`${count} piece${count === 1 ? "" : "s"} of evidence attached`}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        className="h-3 w-3"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"
+        />
+      </svg>
+      {count}
+    </span>
+  );
+}
+
 /** Visible provenance for the seeded proficiency list (the NMC's wording). */
 export function SourceCredit() {
   const s = PROFICIENCY_SOURCE;

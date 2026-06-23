@@ -170,3 +170,29 @@ export function overallPercentAchieved(
   const achieved = proficiencies.filter((p) => statusOf(p.id, byProf) === "ACHIEVED").length;
   return Math.round((achieved / proficiencies.length) * 100);
 }
+
+/** How many evidence links each proficiency has (for at-a-glance badges). */
+export function evidenceCountByProficiency(
+  links: { proficiencyId: string }[],
+): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const l of links) m.set(l.proficiencyId, (m.get(l.proficiencyId) ?? 0) + 1);
+  return m;
+}
+
+/**
+ * Proficiencies whose competence is demonstrated by drug-calculation numeracy:
+ * 4.14 ("accuracy when calculating dosages") and Annexe B11.4 ("undertake accurate
+ * drug calculations"). The calc-practice stats surface against these.
+ */
+export const DRUG_CALC_PROFICIENCY_CODES = ["4.14", "B11.4"] as const;
+export function isDrugCalcProficiency(code: string): boolean {
+  return (DRUG_CALC_PROFICIENCY_CODES as readonly string[]).includes(code);
+}
+
+/** Case-insensitive match of a search term against a proficiency's code + statement. */
+export function matchesQuery(p: Proficiency, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return p.code.toLowerCase().includes(q) || p.statement.toLowerCase().includes(q);
+}

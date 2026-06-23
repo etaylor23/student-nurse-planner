@@ -34,10 +34,20 @@ history with `partIndex`, `assessorName`, `note`, `occurredAt`), `EvidenceLink`
 ## Screens
 
 - **Platform overview** — 7 platform cards + Annexe A/B, each with % achieved.
-- **Platform detail** — proficiency list with status pills + target-part tag.
+  **Searchable**: a code/keyword search + status filter switch the cards for a flat
+  result list (each row carries an evidence-count badge).
+- **Platform detail** — proficiency list with status pills, target-part tags, and an
+  evidence-count badge per row.
 - **Proficiency detail** — status + history timeline, attached evidence,
-  add-evidence picker.
+  add-evidence picker. Evidence rows link to their source (a shift → the planner; a
+  med log → its medication). Drug-calc proficiencies (4.14, B11.4) also show a
+  **numeracy** panel with the student's calc-practice accuracy.
 - **Gaps view** — not-yet-achieved / developing, filtered by current part.
+
+**Two-way attach (enhancement):** evidence can be created from where the student
+works, not only from the proficiency detail — the **shift editor** has a "Link a
+proficiency" picker (creates/removes a `SHIFT` link), and the **medication** panel can
+attach any of its logs as a `MED_LOG` link. All via the shared `ProficiencyPicker`.
 
 ## Derived logic
 
@@ -81,6 +91,10 @@ _Built._
   reverse view ("Competency evidence": the Platform 4 prompt + which proficiencies
   this medication's logs evidence). The same shift-scoped med log that shows in the
   Activity feed and per-placement profile now also feeds the PAD.
+- **Numeracy → drug-calc proficiencies (built).** The calc-practice accuracy
+  (`CalcStat`, see `spec-medication-notes.md`) is surfaced on proficiencies **4.14**
+  and **B11.4** as a numeracy panel, and the calc-practice screen credits those two
+  proficiencies. Informational (not an auto `EvidenceLink`).
 - **Activity Log (built).** Status changes (`PROFICIENCY_STATUS_CHANGED`) and
   evidence link/unlink (`EVIDENCE_LINKED` / `EVIDENCE_UNLINKED`) append `LogItem`s →
   they appear in the global feed (dot colours added in `LogList`).

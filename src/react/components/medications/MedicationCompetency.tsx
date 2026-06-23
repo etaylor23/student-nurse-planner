@@ -1,42 +1,69 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import type { Proficiency } from "../../../domain/types";
+import {
+  MED_LOG_TYPE_LABEL,
+  type EvidenceLink,
+  type MedicationLog,
+  type Proficiency,
+} from "../../../domain/types";
+import { formatHumanDate } from "../../../logic/calendar";
 import { useRepository } from "../../RepositoryContext";
+import { ProficiencyPicker } from "../competencies/ProficiencyPicker";
 import { Panel } from "../ui";
 
 /**
  * Competency context for a medication: a study prompt that med administration is
- * Platform 4 (medicines management) territory, plus any proficiencies this med's
- * logs have been attached to as evidence. The two-way view of EvidenceLink on the
- * Medication Notes side. Additive, read-only.
+ * Platform 4 (medicines management) territory, the proficiencies this med's logs
+ * already evidence, and a control to attach a log as evidence. The two-way view of
+ * EvidenceLink on the Medication Notes side.
  */
-export function MedicationCompetency({ logIds }: { logIds: string[] }) {
+export function MedicationCompetency({ logs }: { logs: MedicationLog[] }) {
   const { repo, user } = useRepository();
   const [profs, setProfs] = useState<Proficiency[]>([]);
+  const [links, setLinks] = useState<EvidenceLink[]>([]);
+  const [pickingForLog, setPickingForLog] = useState<string | null>(null);
+  const logIds = logs.map((l) => l.id);
   const key = logIds.join(",");
 
-  useEffect(() => {
-    let active = true;
+  const reload = useCallback(async () => {
     if (!user) return;
-    void (async () => {
-      const ids = new Set(logIds);
-      const [links, all] = await Promise.all([
-        repo.listEvidenceLinksForUser(user.id),
-        repo.listProficiencies(),
-      ]);
-      const profIds = new Set(
-        links
-          .filter((l) => l.evidenceType === "MED_LOG" && ids.has(l.evidenceId))
-          .map((l) => l.proficiencyId),
-      );
-      const matched = all.filter((p) => profIds.has(p.id));
-      if (active) setProfs(matched);
-    })();
-    return () => {
-      active = false;
-    };
-    // `key` re-runs when the set of logs changes.
-  }, [repo, user, key]); // eslint-disable-line react-hooks/exhaustive-deps
+    const ids = new Set(logIds);
+    const [allLinks, all] = await Promise.all([
+      repo.listEvidenceLinksForUser(user.id),
+      repo.listProficiencies(),
+    ]);
+    const medLogLinks = allLinks.filter(
+      (l) => l.evidenceType === "MED_LOG" && ids.has(l.evidenceId),
+    );
+    const profIds = new Set(medLogLinks.map((l) => l.proficiencyId));
+    setLinks(medLogLinks);
+    setProfs(all.filter((p) => profIds.has(p.id)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repo, user, key]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const linkLogToProficiency = async (logId: string, p: Proficiency) => {
+    if (!user) return;
+    await repo.createEvidenceLink({
+      userId: user.id,
+      proficiencyId: p.id,
+      evidenceType: "MED_LOG",
+      evidenceId: logId,
+    });
+    await repo.createLogItem({
+      userId: user.id,
+      entityType: "PROFICIENCY",
+      entityId: p.id,
+      entityLabel: p.code,
+      action: "EVIDENCE_LINKED",
+      summary: `Linked a medication log as evidence for ${p.code}`,
+    });
+    setPickingForLog(null);
+    await reload();
+  };
 
   return (
     <Panel title="Competency evidence" hint="How this feeds your NMC proficiencies">
@@ -45,9 +72,9 @@ export function MedicationCompetency({ logIds }: { logIds: string[] }) {
         <Link to="/competencies/platform/4" className="font-medium text-emerald-700">
           Platform 4 — medicines management
         </Link>
-        , and drug calculations speak to numeracy competence. Attach a med log as evidence from a
-        proficiency's page.
+        , and drug calculations speak to numeracy competence.
       </p>
+
       {profs.length > 0 && (
         <div className="mt-4 border-t border-slate-100 pt-3">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -67,6 +94,46 @@ export function MedicationCompetency({ logIds }: { logIds: string[] }) {
                 </Link>
               </li>
             ))}
+          </ul>
+        </div>
+      )}
+
+      {logs.length > 0 && (
+        <div className="mt-4 border-t border-slate-100 pt-3">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Use a log as evidence
+          </p>
+          <ul className="space-y-1.5">
+            {logs.map((l) => {
+              const alreadyLinked = new Set(
+                links.filter((k) => k.evidenceId === l.id).map((k) => k.proficiencyId),
+              );
+              return (
+                <li key={l.id}>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="min-w-0 flex-1 truncate text-slate-600">
+                      {MED_LOG_TYPE_LABEL[l.type]} · {formatHumanDate(l.date)}
+                    </span>
+                    {pickingForLog === l.id ? null : (
+                      <button
+                        type="button"
+                        onClick={() => setPickingForLog(l.id)}
+                        className="shrink-0 text-xs font-medium text-emerald-600 hover:text-emerald-700"
+                      >
+                        + Link
+                      </button>
+                    )}
+                  </div>
+                  {pickingForLog === l.id && (
+                    <ProficiencyPicker
+                      excludeIds={alreadyLinked}
+                      onPick={(p) => void linkLogToProficiency(l.id, p)}
+                      onClose={() => setPickingForLog(null)}
+                    />
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

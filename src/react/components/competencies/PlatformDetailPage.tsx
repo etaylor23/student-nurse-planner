@@ -1,17 +1,23 @@
 import { Fragment, useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import { PLATFORM_DESCRIPTIONS } from "../../../data/seed/proficiencies";
-import { groupKeyOf, progressByProficiency, statusOf } from "../../../logic/proficiencies";
+import {
+  evidenceCountByProficiency,
+  groupKeyOf,
+  progressByProficiency,
+  statusOf,
+} from "../../../logic/proficiencies";
 import { useProficiencies } from "../../hooks";
 import { Panel, btnGhostSm } from "../ui";
-import { StatusPill } from "./shared";
+import { EvidenceBadge, StatusPill } from "./shared";
 
 /** Platform / annexe detail — the proficiency list with status pills + target tags. */
 export function PlatformDetailPage() {
   const { group } = useParams();
-  const { proficiencies, progress } = useProficiencies();
+  const { proficiencies, progress, evidenceLinks } = useProficiencies();
 
   const byProf = useMemo(() => progressByProficiency(progress), [progress]);
+  const counts = useMemo(() => evidenceCountByProficiency(evidenceLinks), [evidenceLinks]);
   const rows = useMemo(
     () => proficiencies.filter((p) => groupKeyOf(p) === group),
     [proficiencies, group],
@@ -69,7 +75,10 @@ export function PlatformDetailPage() {
                     </span>
                     <span className="min-w-0 flex-1 text-sm text-slate-700">{p.statement}</span>
                     <span className="flex shrink-0 flex-col items-end gap-1">
-                      <StatusPill status={statusOf(p.id, byProf)} />
+                      <span className="flex items-center gap-1.5">
+                        <EvidenceBadge count={counts.get(p.id) ?? 0} />
+                        <StatusPill status={statusOf(p.id, byProf)} />
+                      </span>
                       {progressRow?.targetPart != null && (
                         <span className="text-[10px] font-medium text-slate-400">
                           Target: Part {progressRow.targetPart}

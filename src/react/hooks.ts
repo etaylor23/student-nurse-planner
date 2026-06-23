@@ -140,27 +140,30 @@ export function useMedicationLogs() {
   return { logs, reload };
 }
 
-/** The national proficiency list + the user's progress (overview, detail, gaps). */
+/** The national proficiency list + the user's progress and evidence links. */
 export function useProficiencies() {
   const { repo, user } = useRepository();
   const [proficiencies, setProficiencies] = useState<Proficiency[]>([]);
   const [progress, setProgress] = useState<ProficiencyProgress[]>([]);
+  const [evidenceLinks, setEvidenceLinks] = useState<EvidenceLink[]>([]);
 
   const reload = useCallback(async () => {
     if (!user) return;
-    const [profs, prog] = await Promise.all([
+    const [profs, prog, links] = await Promise.all([
       repo.listProficiencies(),
       repo.listProficiencyProgress(user.id),
+      repo.listEvidenceLinksForUser(user.id),
     ]);
     setProficiencies(profs);
     setProgress(prog);
+    setEvidenceLinks(links);
   }, [repo, user]);
 
   useEffect(() => {
     void reload();
   }, [reload]);
 
-  return { proficiencies, progress, reload };
+  return { proficiencies, progress, evidenceLinks, reload };
 }
 
 /** One proficiency with its progress, dated status history and evidence links. */
