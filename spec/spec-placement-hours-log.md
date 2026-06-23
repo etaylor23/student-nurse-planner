@@ -110,6 +110,14 @@ pace); timesheet build + CSV escaping; Dexie repository round-trip (fake-indexed
 - **Medication Notes ↔ shift editor (built).** The shift editor here (shared with
   the planner) lists a shift's logged meds and offers a "Log a medication" shortcut
   pinned to that shift — see the medication-notes and weekly-planner specs.
+- **NMC Competency Tracker → top gaps (built).** This screen is the landing route
+  (`DEFAULT_ROUTE`), so it surfaces the student's most urgent competency gaps
+  (`TopGaps`, top 3, escalating first) under the hours summary, linking into the gaps
+  view. Renders nothing when there are no gaps for the current part.
+- **NMC Competency Tracker ↔ shift editor (built).** The shift editor (shared with the
+  planner) shows the proficiencies a shift evidences and lets you **link/unlink** a
+  `SHIFT` `EvidenceLink` there (`ShiftEvidence` + the shared `ProficiencyPicker`) — see
+  `spec-competency-tracker.md`.
 
 ## Data reuse
 

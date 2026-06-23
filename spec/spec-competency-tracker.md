@@ -82,6 +82,9 @@ _Built._
 
 - **Profile → gap surfacing (built).** Gap warnings read `User.currentPart` /
   `totalParts`, set on the new Profile screen (`spec-profile.md`).
+- **Landing page → top gaps (built).** The Placement Hours Log (the landing route)
+  surfaces the top 3 gaps (`TopGaps`, escalating first) under the hours summary,
+  linking into the gaps view — so gaps are visible without opening the tracker.
 - **Placement shift → evidence (built).** A completed `Shift` can be attached as
   `EvidenceLink` (type `SHIFT`). The shift editor (planner + hours log) surfaces the
   reverse view — "Evidence for N proficiencies" — linking back into the tracker.

@@ -104,6 +104,12 @@ Built:
 4. **Placement profile (built).** The hours-log "hours by placement" breakdown shows
    a "_N_ meds logged" count per ward, tallied through each log's linked shift
    (`medsByPlacement`, pure) — so each placement gets a profile of the meds met there.
+5. **NMC Competency Tracker (built).** The medication detail's "Competency evidence"
+   panel (`MedicationCompetency`) prompts that med administration is Platform 4
+   territory, lists the proficiencies this med's logs evidence, and lets you **attach a
+   log** as a `MED_LOG` `EvidenceLink` via the shared `ProficiencyPicker`. The
+   **calc-practice** screen credits proficiencies **4.14** and **B11.4**, and the
+   student's calc accuracy (`CalcStat`) is surfaced on those proficiencies.
 
 ## Data reuse
 

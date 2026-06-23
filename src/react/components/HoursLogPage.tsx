@@ -12,6 +12,7 @@ import { ShiftForm, type ShiftDraft } from "./ShiftForm";
 import { ShiftHistory } from "./ShiftHistory";
 import { ShiftMedications } from "./ShiftMedications";
 import { ShiftEvidence } from "./ShiftEvidence";
+import { TopGaps } from "./competencies/TopGaps";
 import { TimesheetExport } from "./TimesheetExport";
 import { Panel } from "./ui";
 
@@ -71,6 +72,8 @@ export function HoursLogPage() {
   return (
     <div className="space-y-6">
       <HoursSummaryPanel summary={summary} projection={projection} />
+
+      <TopGaps />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div className="min-w-0 space-y-6 xl:col-span-1">

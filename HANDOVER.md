@@ -97,11 +97,14 @@ compose the bases, relate by FK id; add a store only via `schema.ts` + a `db.ts`
   clickable class/system chips. Now also surfaces **competency context** (Platform 4
   + which proficiencies a med's logs evidence).
 - **NMC Competency Tracker** (`NmcCompetenciesPage` + `components/competencies/*`) —
-  PAD-style tracker over the **219** seeded proficiencies (2024 NMC list): platform
-  overview, platform/annexe detail, proficiency detail (status + dated history +
-  evidence), gaps view. Introduced the polymorphic **`EvidenceLink`** — `SHIFT` and
-  `MED_LOG` evidence are wired; `REFLECTION`/`SKILL` are **stub pickers**. The shift
-  editor now shows "Evidence for N proficiencies".
+  PAD-style tracker over the **219** seeded proficiencies (2024 NMC list): searchable
+  + status-filtered platform overview (with evidence-count badges), platform/annexe
+  detail, proficiency detail (status + dated history + evidence), gaps view.
+  Introduced the polymorphic **`EvidenceLink`** — `SHIFT` and `MED_LOG` evidence are
+  wired; `REFLECTION`/`SKILL` are **stub pickers**. **Two-way attach**: link a
+  proficiency from the shift editor / attach a med log from the medication panel (via
+  the shared `ProficiencyPicker`). Drug-calc proficiencies (4.14, B11.4) show
+  **numeracy** accuracy; the landing page surfaces **top gaps** (`TopGaps`).
 - **Profile** (`ProfilePage`, `/profile`) — edits the single `User`; where
   `currentPart`/`totalParts` (gap surfacing inputs) are set. See `spec-profile.md`.
 
@@ -213,7 +216,8 @@ Reflection and Clinical Skills then attach to proficiencies through the **same**
 | UI furniture | `src/react/components/ui.tsx` |
 | Audit feed | `src/react/components/ActivityLog.tsx`, `LogList.tsx`, `src/logic/logGroups.ts` |
 | Screens | `PlannerPage.tsx`, `HoursLogPage.tsx`, `MedicationNotesPage.tsx` (+ `components/medications/*`), `NmcCompetenciesPage.tsx` (+ `components/competencies/*`), `ProfilePage.tsx` |
-| Competency↔built-screen bridges | `src/react/components/ShiftEvidence.tsx`, `components/medications/MedicationCompetency.tsx` |
+| Competency↔built-screen bridges | `src/react/components/ShiftEvidence.tsx`, `components/medications/MedicationCompetency.tsx`, `components/competencies/TopGaps.tsx` (landing-page gaps) |
+| Shared competency widgets | `components/competencies/ProficiencyPicker.tsx` (attach picker), `NumeracyPanel.tsx`, `shared.tsx` (`StatusPill` / `EvidenceBadge` / `SourceCredit`) |
 | Canonical model + conventions | `spec/spec-architecture.md` |
 
 Each `spec/spec-*.md` carries `Decisions (locked)`, `Data model`, `Integrations`, and

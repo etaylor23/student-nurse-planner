@@ -105,6 +105,10 @@ and is **not** used by the client-only `.ics` snapshot export. See
   that opens the med log **pinned to that shift** (via React Router `state`). Med
   logs auto-link to the shift you're in (`MedicationLog.shiftId`). Med actions also
   appear in this page's **Activity feed** (see the activity-log spec).
+- **NMC Competency Tracker ↔ shift editor (built).** The same shift editor shows the
+  proficiencies a shift evidences and lets you **link/unlink** a `SHIFT`
+  `EvidenceLink` (`ShiftEvidence` + the shared `ProficiencyPicker`); a proficiency's
+  evidence row deep-links back to `/planner/:shiftId`. See `spec-competency-tracker.md`.
 
 ## Not yet built (future)
 

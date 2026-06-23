@@ -439,13 +439,17 @@ holding feature-to-feature wiring itself:
 - the generic, entity-agnostic `LogItem` audit trail (any feature can append);
 - **shift-scoped actions** via `MedicationLog.shiftId` — "actions are logged against
   the shift they happen in", the pattern future logged actions should follow;
-- the planned polymorphic `EvidenceLink` join (proficiency ← reflection | skill |
-  shift | future `MED_LOG`).
+- the polymorphic `EvidenceLink` join (proficiency ← reflection | skill | shift |
+  med log) — **built**; `EvidenceType` is `REFLECTION | SKILL | SHIFT | MED_LOG`
+  (`SHIFT` / `MED_LOG` wired, `REFLECTION` / `SKILL` stub pickers).
 
 Each feature's own **Integrations** section records what it wires to. Built today:
 Medication Notes ↔ Weekly Planner / Placement Hours Log (shift-linked med logs,
-per-placement med counts, "Log a medication" from a shift) and Medication Notes →
-Activity Log (med actions in the feed).
+per-placement med counts, "Log a medication" from a shift); Medication Notes →
+Activity Log (med actions in the feed); and the **NMC Competency Tracker** wiring
+through `EvidenceLink` (shift + med-log evidence, two-way attach from the shift
+editor / medication detail), `User.currentPart` (gap surfacing + top gaps on the
+landing page), `CalcStat` (numeracy on drug-calc proficiencies), and `LogItem`.
 
 ## Data reuse
 

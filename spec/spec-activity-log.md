@@ -114,6 +114,11 @@ listLogItems(userId, filter?: { entityType?; entityId? }): Promise<LogItem[]>; /
   `MEDICATION_LOG`), so med actions show in the global Activity feed next to shift
   changes. The med-log line names the shift it happened in. `LogList` carries dot
   colours for `MEDICATION_ADDED` / `MED_LOGGED` / `MEDICATION_DELETED`.
+- **NMC Competency Tracker + Profile → this feed (built).** Proficiency status
+  changes (`entityType` `PROFICIENCY`, action `PROFICIENCY_STATUS_CHANGED`), evidence
+  link/unlink (`EVIDENCE_LINKED` / `EVIDENCE_UNLINKED`) and profile edits
+  (`entityType` `PROFILE`, action `PROFILE_UPDATED`) append `LogItem`s and appear in
+  the global feed. `LogList` carries dot colours for each.
 
 ## Data reuse
 
