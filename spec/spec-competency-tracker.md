@@ -105,6 +105,26 @@ _Built._
   pickers ship as stubs until those features are built; the `EvidenceLink` already
   supports them.
 
+## Connections
+
+Where this screen and others feed into each other (built unless marked _(planned)_):
+
+- **↔ Placement Hours Log / Weekly Planner.** A completed shift attaches as a `SHIFT`
+  `EvidenceLink`; the shift editor links/unlinks proficiencies and an evidence row
+  deep-links to `/planner/:shiftId`. The hours-log landing page surfaces the top gaps.
+- **↔ Medication Notes.** Med logs attach as `MED_LOG` evidence; calc accuracy
+  (`CalcStat`) surfaces on drug-calc proficiencies 4.14 / B11.4 (and the calc page
+  credits them).
+- **↔ Profile.** `User.currentPart` / `totalParts` drive gap surfacing + escalation;
+  the gaps / top-gaps views link back to profile.
+- **↔ Reflection** _(planned)_. A reflection attaches as `REFLECTION` evidence — the
+  stub picker is already shipped.
+- **↔ Clinical Skills** _(planned)_. A skill attaches as `SKILL` evidence (stub picker
+  shipped); the two share the Annexe B / proficiency seed.
+- **→ Activity Log.** Status changes + evidence link/unlink append `LogItem`s.
+- **← NMC Foundations** _(reference)_. The proficiency master list derives from the
+  foundations facts.
+
 ## Data reuse
 
 - **Will reuse:** `User`, `Shift` (placement evidence), and the planned polymorphic

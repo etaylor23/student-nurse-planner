@@ -52,6 +52,18 @@ Numeracy, OSCE Prep.
 None yet. (Planned shift-aware scheduling — excluding windows that overlap a
 `Shift` — is noted under Derived logic.)
 
+## Connections _(planned — this feature is SPECCED)_
+
+Where this screen and others will feed into each other:
+
+- **↔ Weekly Planner / Placement Hours Log.** Sessions schedule around the shared
+  `Shift` rows (exclude windows overlapping a shift); the `.ics` export may include
+  revision blocks.
+- **← Medication Notes.** The numeracy weak-area view can read the existing `CalcStat`
+  aggregate rather than its own store.
+- **→ Activity Log.** Completed sessions can append `LogItem`s.
+- **← NMC Foundations** _(reference)_. Baseline subjects come from the foundations facts.
+
 ## Data reuse
 
 - **Will reuse:** the shared `Shift` rows for shift-aware scheduling and `User`;

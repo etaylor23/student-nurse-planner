@@ -451,6 +451,44 @@ through `EvidenceLink` (shift + med-log evidence, two-way attach from the shift
 editor / medication detail), `User.currentPart` (gap surfacing + top gaps on the
 landing page), `CalcStat` (numeracy on drug-calc proficiencies), and `LogItem`.
 
+## Connections
+
+The cross-screen feeds — where two or more screens' functionality flows into each
+other (each feature spec restates its own from its side). Built unless marked
+_(planned)_:
+
+- **Weekly Planner ↔ Placement Hours Log.** One shared `Shift` (`ShiftsProvider` +
+  `useShiftActions`): create / move / resize / complete a shift in either and it shows
+  in both; the hours summary, pace projection and per-placement breakdown recompute
+  from the same rows; the shift editor is the same component on both.
+- **Medication Notes ↔ Planner / Hours Log.** A med log links to the shift it happened
+  in (`MedicationLog.shiftId`); the shift editor lists a shift's logged meds + a "Log a
+  medication" shortcut; the hours-log breakdown counts meds-per-ward through the shift.
+- **Competency Tracker ↔ Planner / Hours Log.** A completed shift attaches as a `SHIFT`
+  `EvidenceLink`; the shift editor shows + links/unlinks the proficiencies it
+  evidences; a proficiency's evidence row deep-links to `/planner/:shiftId`.
+- **Competency Tracker → Placement Hours Log.** The landing page surfaces the top 3
+  gaps (`TopGaps`).
+- **Competency Tracker ↔ Medication Notes.** A med log attaches as a `MED_LOG`
+  `EvidenceLink`; the medication detail shows competency context + an attach control;
+  calc accuracy (`CalcStat`) surfaces on drug-calc proficiencies 4.14 / B11.4 and the
+  calc page credits them.
+- **Competency Tracker ↔ Profile.** Profile's `currentPart` / `totalParts` drive gap
+  surfacing + escalation; the gaps / top-gaps views link back to profile.
+- **Competency Tracker ↔ Reflection / Clinical Skills** _(planned)_. Reflections and
+  skills attach via the same `EvidenceLink` (`REFLECTION` / `SKILL`); stub pickers
+  already exist. Clinical Skills shares the Annexe B / proficiency seed.
+- **Reflection ↔ Clinical Skills** _(planned)_. A reflection can link to a skill (and a
+  proficiency) through `EvidenceLink`; a shift / med log can seed a reflection.
+- **Revision Timetable ↔ Planner / Hours Log** _(planned)_. Shift-aware scheduling
+  excludes windows overlapping a `Shift`; numeracy weak-areas read `CalcStat`.
+- **All screens → Activity Log.** Auditable actions append a generic `LogItem` that
+  renders in the global feed (shifts, med actions, proficiency status + evidence
+  link/unlink, profile updates; future features the same way).
+- **NMC Foundations → Hours Log / Competency / Clinical Skills** _(reference)_. The
+  2,300-hour target, the proficiency master list and the Annexe B baseline derive from
+  the foundations facts.
+
 ## Data reuse
 
 One model, reused everywhere — there are **no per-screen data structures**. This is

@@ -88,6 +88,18 @@ sign-off.
 
 None yet. (Reference document — informs other features rather than wiring to them.)
 
+## Connections
+
+Reference only — it defines **no screen**, but its facts feed several (one-way):
+
+- **→ Placement Hours Log.** The 2,300-hour practice target (and the 600-hour
+  simulated cap).
+- **→ NMC Competency Tracker.** The proficiency master list (7 platforms + Annexe A/B).
+- **→ Clinical Skills.** The Annexe B procedures as the baseline skills list.
+- **→ Profile / Competency Tracker.** Programme "parts" and the nursing field shape the
+  profile fields and the gap logic.
+- **→ Revision Timetable.** The baseline study subjects.
+
 ## Data reuse
 
 Reference only — this spec defines **no data structures**. Other specs map their

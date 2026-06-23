@@ -111,6 +111,21 @@ Built:
    **calc-practice** screen credits proficiencies **4.14** and **B11.4**, and the
    student's calc accuracy (`CalcStat`) is surfaced on those proficiencies.
 
+## Connections
+
+Where this screen and others feed into each other (built unless marked _(planned)_):
+
+- **↔ Weekly Planner / Placement Hours Log.** A med log links to the shift it happened
+  in (`MedicationLog.shiftId`); the shift editor lists logged meds + a "Log a
+  medication" shortcut; the hours-log breakdown counts meds-per-ward.
+- **↔ NMC Competency Tracker.** A med log attaches as a `MED_LOG` `EvidenceLink`; the
+  medication detail shows competency context + an attach control; calc-practice
+  accuracy (`CalcStat`) feeds the numeracy panel on proficiencies 4.14 / B11.4, and the
+  calc page credits them.
+- **↔ Revision Timetable** _(planned)_. The numeracy weak-area view can read the same
+  `CalcStat` aggregate.
+- **→ Activity Log.** Add / log / delete actions append `LogItem`s.
+
 ## Data reuse
 
 - **Reuses:** `Shift` / `Placement` (med logs link by `shiftId`; the per-placement

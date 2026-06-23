@@ -40,6 +40,17 @@ Reuses `User` (`src/domain/types.ts`) — **no new persisted entity**. See
   set meaningfully.
 - **→ Activity Log (built).** `PROFILE_UPDATED` entries appear in the global feed.
 
+## Connections
+
+Where this screen and others feed into each other (built unless marked _(planned)_):
+
+- **↔ NMC Competency Tracker.** `currentPart` / `totalParts` set here drive the
+  tracker's gap surfacing and escalation; the gaps / top-gaps views link back here to
+  change the part.
+- **→ Activity Log.** Saving the profile appends a `PROFILE_UPDATED` `LogItem`.
+- **→ Placement Hours Log / Revision** _(planned use)_. `startDate` /
+  `targetRegistrationDate` are available for future pace / countdown views.
+
 ## Data reuse
 
 - **Reuses:** the single `User` entity and the existing `getCurrentUser` /

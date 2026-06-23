@@ -24,6 +24,16 @@ support rather than handling it in-app.
 
 None yet.
 
+## Connections _(deferred — none built yet)_
+
+Ideas for when this is picked up:
+
+- **← Weekly Planner / Placement Hours Log.** "After a hard shift" prompts could read
+  `Shift` rows (e.g. a debrief nudge following a completed shift).
+- **→ Activity Log.** Any check-ins would append `LogItem`s like every other feature.
+
+No connections are built while this feature is deferred.
+
 ## Data reuse
 
 - **Will reuse (when built):** `User` and the shared `Entity` / `UserOwned` /

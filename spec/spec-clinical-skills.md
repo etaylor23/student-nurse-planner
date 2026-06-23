@@ -48,6 +48,17 @@ proficiencies via `EvidenceLink` (type `SKILL`). See `spec-architecture.md`.
   `EvidenceLink{ evidenceType: "SKILL", evidenceId: skillProgress.id }`). The Annexe B
   seed is shared with the competency tracker's proficiency seed.
 
+## Connections _(planned — this feature is SPECCED)_
+
+Where this screen and others will feed into each other:
+
+- **↔ NMC Competency Tracker.** A logged skill attaches to a proficiency via
+  `EvidenceLink` (`SKILL`); the tracker ships a **stub picker** awaiting this feature.
+  The two share the Annexe B / proficiency seed.
+- **↔ Reflection.** A reflection can link to a skill (same `EvidenceLink`).
+- **→ Activity Log.** Skill stage changes / sign-off will append `LogItem`s.
+- **← NMC Foundations** _(reference)_. The Annexe B procedures are the baseline skills.
+
 ## Data reuse
 
 - **Will reuse:** `EvidenceLink` (type `SKILL`) to attach to proficiencies — the

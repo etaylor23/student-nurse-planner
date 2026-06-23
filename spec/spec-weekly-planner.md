@@ -126,6 +126,22 @@ and is **not** used by the client-only `.ics` snapshot export. See
   reflects in both instantly — one source, no per-page fetch, no drift. See
   `spec-architecture.md`.
 
+## Connections
+
+Where this screen and others feed into each other (built unless marked _(planned)_):
+
+- **↔ Placement Hours Log.** One shared `Shift` via `ShiftsProvider` — changes on the
+  calendar (create / drag / resize / complete) reflect instantly in the hours log, and
+  the shift editor is shared.
+- **↔ Medication Notes.** The shift editor lists meds logged in a shift + a "Log a
+  medication" shortcut (pinned to the shift); med logs carry `shiftId`.
+- **↔ NMC Competency Tracker.** The shift editor shows / links / unlinks the
+  proficiencies a shift evidences (`ShiftEvidence`); a proficiency's evidence row
+  deep-links to `/planner/:shiftId`.
+- **↔ Revision Timetable** _(planned)_. Revision sessions schedule around these shifts;
+  the `.ics` export may include revision blocks.
+- **→ Activity Log.** Shift lifecycle actions append `LogItem`s.
+
 ## Data reuse
 
 - **Reuses:** the same `Shift` (and `Placement`, `User`) as the hours log — one

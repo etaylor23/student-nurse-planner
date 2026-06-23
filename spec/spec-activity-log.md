@@ -120,6 +120,21 @@ listLogItems(userId, filter?: { entityType?; entityId? }): Promise<LogItem[]>; /
   (`entityType` `PROFILE`, action `PROFILE_UPDATED`) append `LogItem`s and appear in
   the global feed. `LogList` carries dot colours for each.
 
+## Connections
+
+The Activity Log is the **hub every screen feeds**: each auditable action appends a
+generic `LogItem` that renders in the one global feed (built unless marked
+_(planned)_).
+
+- **← Weekly Planner / Placement Hours Log.** Shift create / edit / complete /
+  reactivate / delete.
+- **← Medication Notes.** Medication add / delete; med logged (`MED_LOGGED`).
+- **← NMC Competency Tracker.** `PROFICIENCY_STATUS_CHANGED`, `EVIDENCE_LINKED`,
+  `EVIDENCE_UNLINKED`.
+- **← Profile.** `PROFILE_UPDATED`.
+- **← Reflection / Clinical Skills / Revision** _(planned)_. Will append the same way —
+  no new per-feature history store.
+
 ## Data reuse
 
 - **Is itself reuse.** `LogItem` is the **shared audit primitive** every feature

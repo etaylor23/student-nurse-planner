@@ -48,6 +48,18 @@ plus `EvidenceLink` for proficiency/skill links. See `spec-architecture.md`.
   so it's an additive change (list reflections in the picker; create an
   `EvidenceLink{ evidenceType: "REFLECTION", evidenceId: reflection.id }`).
 
+## Connections _(planned — this feature is SPECCED)_
+
+Where this screen and others will feed into each other:
+
+- **↔ NMC Competency Tracker.** A reflection attaches to a proficiency via
+  `EvidenceLink` (`REFLECTION`); the tracker already ships a **stub picker** awaiting
+  this feature.
+- **↔ Clinical Skills.** A reflection can link to a skill (same `EvidenceLink`).
+- **← Medication Notes / Weekly Planner.** A med log or a shift can seed a reflection
+  (reflect on something that happened in a shift).
+- **→ Activity Log.** Reflection create / edit will append `LogItem`s.
+
 ## Data reuse
 
 - **Will reuse:** `EvidenceLink` (type `REFLECTION`) — the shared evidence join; a

@@ -119,6 +119,25 @@ pace); timesheet build + CSV escaping; Dexie repository round-trip (fake-indexed
   `SHIFT` `EvidenceLink` there (`ShiftEvidence` + the shared `ProficiencyPicker`) — see
   `spec-competency-tracker.md`.
 
+## Connections
+
+Where this screen and others feed into each other (built unless marked _(planned)_):
+
+- **↔ Weekly Planner.** Same `Shift` source — a shift logged here appears on the
+  planner calendar and vice-versa; both share the shift editor.
+- **↔ Medication Notes.** Med logs link to a shift (`MedicationLog.shiftId`); the
+  per-placement breakdown counts meds-per-ward, and the shift editor lists a shift's
+  logged meds + a "Log a medication" shortcut.
+- **↔ NMC Competency Tracker.** The shift editor links/unlinks the proficiencies a
+  shift evidences (`ShiftEvidence`); this **landing page** surfaces the top competency
+  gaps (`TopGaps`).
+- **↔ Revision Timetable** _(planned)_. Revision scheduling reads these `Shift` rows to
+  avoid clashing with placement.
+- **→ Activity Log.** Shift create / edit / complete / reactivate / delete append
+  `LogItem`s to the global feed.
+- **← NMC Foundations** _(reference)_. The 2,300-hour practice target comes from the
+  foundations facts.
+
 ## Data reuse
 
 - **Reuses:** `Shift`, `Placement`, `BreakRule`, `User` from `domain/types.ts` (via
