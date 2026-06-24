@@ -9,11 +9,14 @@ import { NmcCompetenciesPage } from "./react/components/NmcCompetenciesPage";
 import { ProfilePage } from "./react/components/ProfilePage";
 import { DEFAULT_ROUTE } from "./react/nav";
 
+// "/" locally, "/student-nurse-planner" on GitHub Pages (from Vite's base).
+const basename = import.meta.env.BASE_URL.replace(/\/$/, "") || "/";
+
 export function App() {
   return (
     <RepositoryProvider>
       <ShiftsProvider>
-        <BrowserRouter>
+        <BrowserRouter basename={basename}>
           <AppLayout>
             <Routes>
               <Route path="/placement-hours" element={<HoursLogPage />} />
