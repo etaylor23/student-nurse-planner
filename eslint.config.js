@@ -6,7 +6,9 @@ import prettier from "eslint-config-prettier";
 import globals from "globals";
 
 export default tseslint.config(
-  { ignores: ["dist", "node_modules"] },
+  // `.claude` holds tooling + git worktrees (which nest a full source copy under
+  // .claude/worktrees/*); never lint those — they break `eslint .` run from the repo root.
+  { ignores: ["dist", "node_modules", ".claude"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
