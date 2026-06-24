@@ -8,6 +8,7 @@ import {
 } from "../../../domain/types";
 import {
   ADMIN_ROUTES,
+  BNF_SOURCE,
   BODY_SYSTEMS,
   DRUG_CLASSES,
   GENERIC_NAMES,
@@ -288,6 +289,20 @@ function MedicationForm({ medication }: { medication?: Medication }) {
             Cancel
           </button>
         </div>
+
+        <p className="border-t border-slate-100 pt-3 text-xs text-slate-400">
+          Name, drug-class and body-system suggestions are real UK data from{" "}
+          <a
+            href={BNF_SOURCE.url}
+            target="_blank"
+            rel="noreferrer"
+            className="font-medium text-slate-500 underline decoration-slate-300 underline-offset-2 hover:text-emerald-700"
+          >
+            {BNF_SOURCE.publisher} {BNF_SOURCE.title}
+          </a>{" "}
+          ({BNF_SOURCE.licence}, {BNF_SOURCE.version}). Side-effect and monitoring suggestions are a
+          curated list. A study aid — not a clinical reference.
+        </p>
       </form>
     </Panel>
   );
