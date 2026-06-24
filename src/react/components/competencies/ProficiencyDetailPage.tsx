@@ -17,6 +17,7 @@ import {
   usePlacements,
   useProficiency,
   useShifts,
+  useSkills,
 } from "../../hooks";
 import { useRepository } from "../../RepositoryContext";
 import { Panel, btnGhostSm, btnPrimary, inputCls } from "../ui";
@@ -41,6 +42,7 @@ export function ProficiencyDetailPage() {
   const { logs } = useMedicationLogs();
   const { medications } = useMedications();
   const { placements } = usePlacements();
+  const { skills } = useSkills();
 
   const placeName = useMemo(
     () => new Map(placements.map((p: Placement) => [p.id, p.name])),
@@ -49,6 +51,7 @@ export function ProficiencyDetailPage() {
   const medName = useMemo(() => new Map(medications.map((m) => [m.id, m.name])), [medications]);
   const shiftById = useMemo(() => new Map(shifts.map((s) => [s.id, s])), [shifts]);
   const logById = useMemo(() => new Map(logs.map((l) => [l.id, l])), [logs]);
+  const skillById = useMemo(() => new Map(skills.map((s) => [s.id, s])), [skills]);
 
   const [status, setStatus] = useState<ProficiencyStatus>("DEVELOPING");
   const [occurredAt, setOccurredAt] = useState(todayIso());
@@ -140,6 +143,10 @@ export function ProficiencyDetailPage() {
       const name = l.medicationId ? (medName.get(l.medicationId) ?? "medication") : "medication";
       return `${name} · ${formatHumanDate(l.date)}`;
     }
+    if (link.evidenceType === "SKILL") {
+      const s = skillById.get(link.evidenceId);
+      return s ? s.name : "Clinical skill (not found)";
+    }
     return EVIDENCE_TYPE_LABEL[link.evidenceType];
   };
 
@@ -152,6 +159,7 @@ export function ProficiencyDetailPage() {
       const medicationId = logById.get(link.evidenceId)?.medicationId;
       return medicationId ? `/medications/${medicationId}` : null;
     }
+    if (link.evidenceType === "SKILL") return `/skills/${link.evidenceId}`;
     return null;
   };
 
@@ -368,17 +376,25 @@ export function ProficiencyDetailPage() {
                     onAdd={(l) => addEvidence("MED_LOG", l.id)}
                   />
                 )}
-                {(evTab === "REFLECTION" || evTab === "SKILL") && (
+                {evTab === "SKILL" && (
+                  <EvidencePicker
+                    rows={skills}
+                    linked={linkedFor("SKILL")}
+                    getId={(s) => s.id}
+                    getLabel={(s) => s.name}
+                    emptyText="No skills yet — open the clinical skills tracker to use one as evidence."
+                    searchPlaceholder="Search skills…"
+                    onAdd={(s) => addEvidence("SKILL", s.id)}
+                  />
+                )}
+                {evTab === "REFLECTION" && (
                   <div className="rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center">
                     <p className="text-sm font-medium text-slate-600">
-                      {EVIDENCE_TYPE_LABEL[evTab]} evidence — coming soon
+                      Reflection evidence — coming soon
                     </p>
                     <p className="mx-auto mt-1 max-w-sm text-xs text-slate-400">
-                      This picker is a stub. It will attach real records once the{" "}
-                      {evTab === "REFLECTION"
-                        ? "Reflection on practice"
-                        : "Clinical skills tracker"}{" "}
-                      feature is built — the evidence link already supports it.
+                      This picker is a stub. It will attach real records once the Reflection on
+                      practice feature is built — the evidence link already supports it.
                     </p>
                   </div>
                 )}
@@ -395,7 +411,10 @@ export function ProficiencyDetailPage() {
   );
 }
 
-/** A compact "pick one to attach" list shared by the shift/med-log evidence tabs. */
+/**
+ * A compact "pick one to attach" list shared by the evidence tabs. Pass
+ * `searchPlaceholder` to add a filter box (used by the skills tab, which is long).
+ */
 function EvidencePicker<T>({
   rows,
   linked,
@@ -403,6 +422,7 @@ function EvidencePicker<T>({
   getLabel,
   emptyText,
   onAdd,
+  searchPlaceholder,
 }: {
   rows: T[];
   linked: Set<string>;
@@ -410,7 +430,9 @@ function EvidencePicker<T>({
   getLabel: (row: T) => string;
   emptyText: string;
   onAdd: (row: T) => void;
+  searchPlaceholder?: string;
 }) {
+  const [q, setQ] = useState("");
   const available = rows.filter((r) => !linked.has(getId(r)));
   if (rows.length === 0) {
     return <p className="text-sm text-slate-400">{emptyText}</p>;
@@ -418,16 +440,30 @@ function EvidencePicker<T>({
   if (available.length === 0) {
     return <p className="text-sm text-slate-400">All of these are already attached.</p>;
   }
+  const filtered = searchPlaceholder
+    ? available.filter((r) => getLabel(r).toLowerCase().includes(q.trim().toLowerCase()))
+    : available;
   return (
-    <ul className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
-      {available.map((r) => (
-        <li key={getId(r)} className="flex items-center gap-2">
-          <span className="min-w-0 flex-1 truncate text-sm text-slate-600">{getLabel(r)}</span>
-          <button type="button" onClick={() => onAdd(r)} className={btnGhostSm}>
-            Attach
-          </button>
-        </li>
-      ))}
-    </ul>
+    <div>
+      {searchPlaceholder && (
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={searchPlaceholder}
+          className={inputCls + " mb-2 py-2"}
+        />
+      )}
+      <ul className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
+        {filtered.map((r) => (
+          <li key={getId(r)} className="flex items-center gap-2">
+            <span className="min-w-0 flex-1 truncate text-sm text-slate-600">{getLabel(r)}</span>
+            <button type="button" onClick={() => onAdd(r)} className={btnGhostSm}>
+              Attach
+            </button>
+          </li>
+        ))}
+        {filtered.length === 0 && <li className="py-2 text-sm text-slate-400">No matches.</li>}
+      </ul>
+    </div>
   );
 }

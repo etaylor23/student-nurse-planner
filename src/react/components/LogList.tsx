@@ -15,6 +15,10 @@ const DOT: Record<string, string> = {
   EVIDENCE_LINKED: "bg-sky-400",
   EVIDENCE_UNLINKED: "bg-rose-400",
   PROFILE_UPDATED: "bg-slate-300",
+  SKILL_STAGE_CHANGED: "bg-amber-400",
+  SKILL_SIGNED_OFF: "bg-emerald-400",
+  SKILL_ADDED: "bg-indigo-400",
+  SKILL_DELETED: "bg-rose-400",
 };
 
 /** "2026-06-16T14:32:00.000Z" → "16 Jun 2026, 14:32" (local). */
