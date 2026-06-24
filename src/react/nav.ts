@@ -30,13 +30,19 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    heading: "Trackers",
     items: [
       { path: "/competencies", label: "NMC competency tracker", enabled: true },
-      { path: "/reflection", label: "Reflection on practice", enabled: false },
       { path: "/skills", label: "Clinical skills tracker", enabled: true },
+    ],
+  },
+  {
+    heading: "Study & wellbeing",
+    items: [
+      { path: "/reflection", label: "Reflection on practice", enabled: false },
       { path: "/medications", label: "Medication notes", enabled: true },
-      { path: "/self-care", label: "Self-care checklist", enabled: false },
       { path: "/revision", label: "Revision timetable", enabled: false },
+      { path: "/self-care", label: "Self-care checklist", enabled: false },
     ],
   },
   {
