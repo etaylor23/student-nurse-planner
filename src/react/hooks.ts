@@ -11,6 +11,8 @@ import type {
   Proficiency,
   ProficiencyProgress,
   ProficiencyStatusEvent,
+  Skill,
+  SkillProgress,
 } from "../domain/types";
 import { useRepository } from "./RepositoryContext";
 
@@ -199,4 +201,48 @@ export function useProficiency(id: string | undefined) {
   }, [reload]);
 
   return { proficiency, progress, events, links, reload };
+}
+
+/** All clinical skills (Annexe B baseline + custom) and the user's progress. */
+export function useSkills() {
+  const { repo, user } = useRepository();
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [progress, setProgress] = useState<SkillProgress[]>([]);
+
+  const reload = useCallback(async () => {
+    if (!user) return;
+    const [sk, pr] = await Promise.all([repo.listSkills(user.id), repo.listSkillProgress(user.id)]);
+    setSkills(sk);
+    setProgress(pr);
+  }, [repo, user]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  return { skills, progress, reload };
+}
+
+/** One skill with the user's progress against it (detail view). */
+export function useSkill(id: string | undefined) {
+  const { repo, user } = useRepository();
+  const [skill, setSkill] = useState<Skill | undefined>();
+  const [progress, setProgress] = useState<SkillProgress | undefined>();
+
+  const reload = useCallback(async () => {
+    if (!user || !id) {
+      setSkill(undefined);
+      setProgress(undefined);
+      return;
+    }
+    const [sk, pr] = await Promise.all([repo.getSkill(id), repo.getSkillProgress(user.id, id)]);
+    setSkill(sk);
+    setProgress(pr);
+  }, [repo, user, id]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  return { skill, progress, reload };
 }

@@ -6,6 +6,7 @@ import { HoursLogPage } from "./react/components/HoursLogPage";
 import { PlannerPage } from "./react/components/PlannerPage";
 import { MedicationNotesPage } from "./react/components/MedicationNotesPage";
 import { NmcCompetenciesPage } from "./react/components/NmcCompetenciesPage";
+import { SkillsPage } from "./react/components/SkillsPage";
 import { ProfilePage } from "./react/components/ProfilePage";
 import { DEFAULT_ROUTE } from "./react/nav";
 
@@ -24,6 +25,7 @@ export function App() {
               <Route path="/planner/:shiftId" element={<PlannerPage />} />
               <Route path="/medications/*" element={<MedicationNotesPage />} />
               <Route path="/competencies/*" element={<NmcCompetenciesPage />} />
+              <Route path="/skills/*" element={<SkillsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               {/* `/` and any unknown path land on the first enabled feature. */}
               <Route path="*" element={<Navigate to={DEFAULT_ROUTE} replace />} />
