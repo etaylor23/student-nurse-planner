@@ -12,6 +12,8 @@ import type {
   ProficiencyProgress,
   ProficiencyStatusEvent,
   Shift,
+  Skill,
+  SkillProgress,
   User,
 } from "../domain/types";
 
@@ -44,6 +46,8 @@ export interface EntityMap {
   proficiencyProgress: ProficiencyProgress;
   proficiencyStatusEvents: ProficiencyStatusEvent;
   evidenceLinks: EvidenceLink;
+  skills: Skill;
+  skillProgress: SkillProgress;
 }
 
 /** The set of persisted store names (single source of truth). */
@@ -73,4 +77,9 @@ export const STORE_INDEXES: Record<StoreName, string> = {
   proficiencyProgress: "id, userId, proficiencyId, [userId+proficiencyId], status",
   proficiencyStatusEvents: "id, progressId, occurredAt",
   evidenceLinks: "id, userId, proficiencyId, [evidenceType+evidenceId]",
+  // Clinical skills. `userId` null = built-in Annexe B baseline (queried by filter,
+  // since IndexedDB doesn't index null keys). `signedOff` is intentionally NOT
+  // indexed — a boolean isn't a valid IndexedDB key; it's filtered in memory.
+  skills: "id, userId, source, category, orderIndex",
+  skillProgress: "id, userId, skillId, [userId+skillId]",
 };

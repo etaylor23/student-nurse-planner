@@ -265,6 +265,61 @@ export type MedicationDraft = Omit<Medication, "id" | "userId" | "createdAt" | "
 export type MedicationLogDraft = Omit<MedicationLog, "id" | "userId" | "createdAt">;
 export type CalcDrillDraft = Omit<CalcDrill, "id" | "userId" | "createdAt">;
 
+// ---------- Clinical skills tracker ----------
+
+/** Where a skill came from: the seeded Annexe B baseline, or one the student added. */
+export type SkillSource = "ANNEXE_B" | "CUSTOM";
+export const SKILL_SOURCE_LABEL: Record<SkillSource, string> = {
+  ANNEXE_B: "Annexe B",
+  CUSTOM: "Custom",
+};
+
+/** Supervised competence stages, in order. No "independent" stage (students-only). */
+export type SkillStage = "OBSERVED" | "ASSISTED" | "PERFORMED_UNDER_SUPERVISION";
+export const SKILL_STAGE_LABEL: Record<SkillStage, string> = {
+  OBSERVED: "Observed",
+  ASSISTED: "Assisted",
+  PERFORMED_UNDER_SUPERVISION: "Performed under supervision",
+};
+/** The stages in progression order (drives the stepper + the "highest stage" logic). */
+export const SKILL_STAGES: SkillStage[] = ["OBSERVED", "ASSISTED", "PERFORMED_UNDER_SUPERVISION"];
+
+/**
+ * A clinical skill to develop. `userId === null` denotes a built-in baseline skill
+ * (the seeded Annexe B procedures, shared by every user — so not `UserOwned`, like
+ * `BreakRule`); a set `userId` is a student's own custom skill. Baseline skills map
+ * 1:1 to an Annexe B proficiency by code (id `skill_B2.1` ↔ proficiency `prof_B2.1`).
+ */
+export interface Skill extends Entity {
+  userId: string | null; // null = built-in Annexe B baseline (so not `UserOwned`, which is non-null)
+  name: string;
+  category: string;
+  source: SkillSource;
+  orderIndex: number;
+}
+
+/**
+ * A user's progress against one skill (one row per user+skill). `signedOff` is
+ * permanent once true — students-only tool, no refresh/expiry path.
+ */
+export interface SkillProgress extends Entity, UserOwned, Updated {
+  skillId: string; // FK → Skill
+  stage: SkillStage;
+  signedOff: boolean; // permanent once true (no un-sign-off path)
+  signOffByName?: string; // who signed it off
+  signOffLocation?: string; // where
+  signOffDate?: string; // ISO date
+  evidenceNote?: string; // what evidence supported it
+}
+
+/** A skill to create — the store stamps the id. */
+export type SkillDraft = Omit<Skill, "id">;
+/** The sign-off fields captured on the detail screen. */
+export type SkillSignOff = Pick<
+  SkillProgress,
+  "signOffByName" | "signOffLocation" | "signOffDate" | "evidenceNote"
+>;
+
 /**
  * Configurable break-deduction band. A raw shift duration that falls in
  * [minShiftMins, maxShiftMins] has `breakMins` deducted before counting.

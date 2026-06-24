@@ -19,6 +19,10 @@ import type {
   ProficiencyStatusChange,
   ProficiencyStatusEvent,
   Shift,
+  Skill,
+  SkillProgress,
+  SkillSignOff,
+  SkillStage,
   User,
 } from "../domain/types";
 
@@ -142,4 +146,21 @@ export interface Repository {
   listEvidenceLinksForUser(userId: string): Promise<EvidenceLink[]>;
   createEvidenceLink(input: EvidenceLinkDraft & { userId: string }): Promise<EvidenceLink>;
   deleteEvidenceLink(id: string): Promise<void>;
+
+  // ---- Clinical skills (Annexe B baseline seed + the user's own custom skills) ----
+  /** Built-in baseline skills (Annexe B) plus the user's custom skills. */
+  listSkills(userId: string): Promise<Skill[]>;
+  getSkill(id: string): Promise<Skill | undefined>;
+  /** Add a student's own custom skill (`source = CUSTOM`). */
+  addCustomSkill(userId: string, input: { name: string; category: string }): Promise<Skill>;
+  /** Delete a custom skill (never a built-in baseline) and the user's progress on it. */
+  deleteCustomSkill(id: string): Promise<void>;
+
+  // ---- Skill progress (per user × skill: stage + permanent sign-off) ----
+  listSkillProgress(userId: string): Promise<SkillProgress[]>;
+  getSkillProgress(userId: string, skillId: string): Promise<SkillProgress | undefined>;
+  /** Upsert the user's stage for a skill, preserving any existing sign-off. */
+  setSkillStage(userId: string, skillId: string, stage: SkillStage): Promise<SkillProgress>;
+  /** Mark a skill signed off — permanent; never clears the flag (no refresh). */
+  signOffSkill(userId: string, skillId: string, signOff: SkillSignOff): Promise<SkillProgress>;
 }

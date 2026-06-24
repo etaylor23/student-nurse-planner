@@ -20,11 +20,16 @@ import type {
   ProficiencyStatusChange,
   ProficiencyStatusEvent,
   Shift,
+  Skill,
+  SkillProgress,
+  SkillSignOff,
+  SkillStage,
   User,
 } from "../../domain/types";
 import { newId, nowIso } from "../../domain/ids";
 import { defaultBreakRules } from "../../logic/breakRules";
 import { seedProficiencies } from "../seed/proficiencies";
+import { seedSkills } from "../seed/skills";
 import { PlannerDb } from "./db";
 
 /** Stable id for the PoC's single local user. */
@@ -62,6 +67,9 @@ export class DexieRepository implements Repository {
     // National NMC proficiency master list (global reference data).
     const profCount = await this.db.proficiencies.count();
     if (profCount === 0) await this.db.proficiencies.bulkPut(seedProficiencies);
+    // Annexe B baseline clinical skills (derived from the proficiencies; global).
+    const skillCount = await this.db.skills.count();
+    if (skillCount === 0) await this.db.skills.bulkPut(seedSkills);
     this.seeded = true;
   }
 
@@ -451,5 +459,104 @@ export class DexieRepository implements Repository {
 
   async deleteEvidenceLink(id: string): Promise<void> {
     await this.db.evidenceLinks.delete(id);
+  }
+
+  // ---- Clinical skills ----
+  async listSkills(userId: string): Promise<Skill[]> {
+    await this.ensureSeed();
+    // Built-ins (userId null, not indexable) via filter; the user's own via index.
+    const builtins = await this.db.skills.filter((s) => s.userId === null).toArray();
+    const own = await this.db.skills.where("userId").equals(userId).toArray();
+    return [...builtins, ...own].sort(
+      (a, b) => a.orderIndex - b.orderIndex || a.name.localeCompare(b.name),
+    );
+  }
+
+  async getSkill(id: string): Promise<Skill | undefined> {
+    await this.ensureSeed();
+    return this.db.skills.get(id);
+  }
+
+  async addCustomSkill(userId: string, input: { name: string; category: string }): Promise<Skill> {
+    await this.ensureSeed();
+    // Order custom skills after every built-in (which top out well below 1000).
+    const ownCount = await this.db.skills.where("userId").equals(userId).count();
+    const skill: Skill = {
+      id: newId(),
+      userId,
+      name: input.name.trim(),
+      category: input.category.trim() || "Custom skills",
+      source: "CUSTOM",
+      orderIndex: 1000 + ownCount,
+    };
+    await this.db.skills.put(skill);
+    return skill;
+  }
+
+  async deleteCustomSkill(id: string): Promise<void> {
+    const skill = await this.db.skills.get(id);
+    if (!skill) return;
+    if (skill.source !== "CUSTOM") throw new Error("Cannot delete a built-in baseline skill");
+    await this.db.skills.delete(id);
+    // Drop any progress rows for it (across users in the PoC's single-user world).
+    const progress = await this.db.skillProgress.where("skillId").equals(id).toArray();
+    if (progress.length > 0) await this.db.skillProgress.bulkDelete(progress.map((p) => p.id));
+  }
+
+  async listSkillProgress(userId: string): Promise<SkillProgress[]> {
+    return this.db.skillProgress.where("userId").equals(userId).toArray();
+  }
+
+  private async findSkillProgress(
+    userId: string,
+    skillId: string,
+  ): Promise<SkillProgress | undefined> {
+    return this.db.skillProgress.where("[userId+skillId]").equals([userId, skillId]).first();
+  }
+
+  async getSkillProgress(userId: string, skillId: string): Promise<SkillProgress | undefined> {
+    return this.findSkillProgress(userId, skillId);
+  }
+
+  async setSkillStage(userId: string, skillId: string, stage: SkillStage): Promise<SkillProgress> {
+    const existing = await this.findSkillProgress(userId, skillId);
+    // Preserve any existing sign-off — changing stage never un-signs-off a skill.
+    const next: SkillProgress = {
+      id: existing?.id ?? newId(),
+      userId,
+      skillId,
+      stage,
+      signedOff: existing?.signedOff ?? false,
+      signOffByName: existing?.signOffByName,
+      signOffLocation: existing?.signOffLocation,
+      signOffDate: existing?.signOffDate,
+      evidenceNote: existing?.evidenceNote,
+      updatedAt: nowIso(),
+    };
+    await this.db.skillProgress.put(next);
+    return next;
+  }
+
+  async signOffSkill(
+    userId: string,
+    skillId: string,
+    signOff: SkillSignOff,
+  ): Promise<SkillProgress> {
+    const existing = await this.findSkillProgress(userId, skillId);
+    // signedOff only ever goes true here — there is no un-sign-off path (no refresh).
+    const next: SkillProgress = {
+      id: existing?.id ?? newId(),
+      userId,
+      skillId,
+      stage: existing?.stage ?? "OBSERVED",
+      signedOff: true,
+      signOffByName: signOff.signOffByName?.trim() || undefined,
+      signOffLocation: signOff.signOffLocation?.trim() || undefined,
+      signOffDate: signOff.signOffDate || undefined,
+      evidenceNote: signOff.evidenceNote?.trim() || undefined,
+      updatedAt: nowIso(),
+    };
+    await this.db.skillProgress.put(next);
+    return next;
   }
 }
