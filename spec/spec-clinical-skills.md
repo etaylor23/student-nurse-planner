@@ -1,4 +1,4 @@
-# Spec — Clinical Skills Tracker  (Status: SPECCED)
+# Spec — Clinical Skills Tracker  (Status: BUILT)
 
 Tracks development of clinical skills through supervised stages to sign-off.
 
@@ -25,38 +25,72 @@ ANNEXE_B/CUSTOM), `SkillProgress` (per user × skill: `stage`, `signedOff`,
 `signOffByName`, `signOffLocation`, `signOffDate`, `evidenceNote`). Links to
 proficiencies via `EvidenceLink` (type `SKILL`). See `spec-architecture.md`.
 
-## Screens
+## Screens (built)
 
-- **Skills list** grouped by category, with a stage badge per skill.
-- **Skill detail** — stage stepper (Observed → Assisted → Performed under
-  supervision) and sign-off capture (name / location / date / evidence).
-- **Add custom skill.**
+Path-based, nested under `/skills/*` (shell `SkillsPage`, components in
+`react/components/skills/*`):
 
-## Build notes
+- **Skills list** (`/skills`, `SkillsListPage`) — searchable + stage/sign-off
+  filtered, grouped by category. Each row a stage badge (or a solid "Signed off"
+  marker) + a "Custom" tag on the student's own skills.
+- **Skill detail** (`/skills/:id`, `SkillDetailPage`) — a clickable stage stepper
+  (Observed → Assisted → Performed under supervision) and a sign-off form
+  (name / location / date / evidence). Once signed off the stepper is **locked** and
+  the sign-off shows as a permanent, captured record. Built-in skills show a "Counts
+  toward proficiency B2.1" link; custom skills can be deleted here.
+- **Add custom skill** (`/skills/new`, `SkillFormPage`) — name + category (an
+  `Autocomplete` over existing categories).
 
-- Seed from Annexe B (Part 1 + Part 2 procedures) at the adult-field level.
-- `signedOff` is permanent once true — no refresh/expiry logic.
-- Depends on the Annexe B seed and `EvidenceLink`.
+## Build notes (built)
 
-## Integrations
+- **Baseline derived from the Annexe B proficiency seed, not re-seeded.** Built-in
+  skills (`source = ANNEXE_B`, `userId = null`) are derived in `data/seed/skills.ts`
+  from `seedProficiencies` rows with `annexe: "B"`, mapped `id = "skill_" + code`,
+  `name = statement`, `category` = the short part name ("Assessing needs" /
+  "Planning & managing care"). `ensureSeed()` bulk-puts them when the `skills` store
+  is empty. This keeps a **1:1 mapping** (`skill_B2.1` ↔ `prof_B2.1`) the connections
+  rely on (`annexeProficiencyIdOf`).
+- `signedOff` is permanent once true — `signOffSkill` only ever sets it true; there
+  is no un-sign-off path. Changing the stage afterwards preserves the sign-off.
+- Additive data layer: `Skill` + `SkillProgress` types, `skills` / `skillProgress`
+  stores added via an **additive Dexie `version(2)`** (no rebuild — preserves live
+  tester data), repository methods, `useSkills`/`useSkill` hooks, and `useSkillActions`
+  (the single mutation point that appends `LogItem`s). Mutations are logged at the
+  action layer, never in the repository.
 
-- **Competency Tracker (decision recorded).** The built NMC Competency Tracker ships
-  a **stub** `SKILL` evidence picker — a labelled "coming soon" tab on the proficiency
-  detail. When this feature is built, wire that picker to attach real skills:
-  `EvidenceType` already includes `SKILL` and `EvidenceLink` exists, so it's additive
-  (list `SkillProgress` in the picker; create an
-  `EvidenceLink{ evidenceType: "SKILL", evidenceId: skillProgress.id }`). The Annexe B
-  seed is shared with the competency tracker's proficiency seed.
+## Integrations (built)
 
-## Connections _(planned — this feature is SPECCED)_
+- **Competency Tracker — `SKILL` evidence picker wired.** The proficiency detail's
+  `SKILL` tab is now a real, searchable picker over the user's skills; attaching one
+  creates `EvidenceLink{ evidenceType: "SKILL", evidenceId: skill.id }` + an
+  `EVIDENCE_LINKED` `LogItem`. **`evidenceId` decision: it points at `Skill.id`** (not
+  `SkillProgress.id`) — a baseline skill always has a `Skill` row but may have no
+  progress yet, and the name/href resolve straight from it. The proficiency detail's
+  `evidenceLabel()` / `evidenceHref()` resolve `SKILL` to the skill name and
+  `/skills/:id`; evidence-count badges + the activity feed pick it up automatically.
+- **Auto-evidence on sign-off.** Because baseline skills map 1:1 to an Annexe B
+  proficiency by code, signing off a baseline skill offers (checkbox, on by default)
+  to create the matching `SKILL` evidence link in one step — so sign-off feeds the PAD.
+  Hidden when the skill is already linked.
+- **Activity Log.** `useSkillActions` appends `SKILL_STAGE_CHANGED`, `SKILL_SIGNED_OFF`,
+  `SKILL_ADDED`, `SKILL_DELETED` (`entityType: "SKILL"`); dot colours added in `LogList`.
 
-Where this screen and others will feed into each other:
+## Connections (built)
 
-- **↔ NMC Competency Tracker.** A logged skill attaches to a proficiency via
-  `EvidenceLink` (`SKILL`); the tracker ships a **stub picker** awaiting this feature.
-  The two share the Annexe B / proficiency seed.
-- **↔ Reflection.** A reflection can link to a skill (same `EvidenceLink`).
-- **→ Activity Log.** Skill stage changes / sign-off will append `LogItem`s.
+Where this screen and others feed into each other:
+
+- **↔ NMC Competency Tracker.** A skill attaches to a proficiency via `EvidenceLink`
+  (`SKILL`) — the real picker on the proficiency detail, and the auto-link on sign-off.
+  The skill detail links back to its proficiency ("Counts toward B2.1"); the
+  proficiency's evidence row deep-links to `/skills/:id`. The two share the Annexe B /
+  proficiency seed (derived, 1:1 by code).
+- **→ Activity Log.** Stage changes, sign-off and custom add/delete append `LogItem`s
+  that render in the global feed.
+- **↔ Reflection** _(planned)_. A reflection will link to a skill via the same
+  `EvidenceLink` once Reflection is built; nothing here hard-couples to it.
+- **↔ Shifts / Placement** _(optional, not built)_. `signOffLocation` is free text; a
+  future enhancement could add an optional `shiftId` so a sign-off references the shift
+  it happened in (the `MedicationLog.shiftId` pattern).
 - **← NMC Foundations** _(reference)_. The Annexe B procedures are the baseline skills.
 
 ## Data reuse

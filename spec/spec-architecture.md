@@ -17,12 +17,16 @@ patterns defined here.
 - **The canonical model is relational** (expressed below as a Prisma schema —
   the target/remote shape). The PoC persists these same entity shapes in
   IndexedDB.
-- **PoC DB policy: rebuild, don't migrate.** `db.ts` declares the whole current
-  schema at a single `version()` from the `schema.ts` registry — no `.upgrade`
-  transforms or historical version chain. A schema change that must reset local data
-  bumps the Dexie **database name** (currently `nurse-planner-v2`) so a fresh DB is
-  built and re-seeded; the old one is abandoned. (This is a local-only PoC; a real
-  backend would migrate, not rebuild.)
+- **PoC DB policy: rebuild, don't migrate — but add stores additively.** `db.ts`
+  derives its schema from the `schema.ts` registry; there are **no `.upgrade`
+  transforms**. A change that must reset local data bumps the Dexie **database name**
+  (currently `nurse-planner-v2`) so a fresh DB is built and re-seeded. Purely **additive**
+  changes (new stores) instead bump the Dexie **`version()`** — `version(1)` is the
+  registry minus the later stores, `version(2)` adds them — so a deployed DB gains the
+  new object stores with **zero data loss** and still no transform code. (Clinical
+  Skills' `skills` / `skillProgress` stores landed this way, preserving live tester
+  data.) Reserve the name-bump/rebuild for changes that drop or reshape existing data.
+  (This is a local-only PoC; a real backend would migrate, not rebuild.)
 
 ## Repository interface (the swap point)
 
@@ -146,7 +150,7 @@ model EvidenceLink {            // polymorphic: proficiency <- reflection|skill|
   userId        String
   proficiencyId String
   evidenceType  EvidenceType
-  evidenceId    String        // Reflection.id | SkillProgress.id | Shift.id | MedicationLog.id
+  evidenceId    String        // Reflection.id | Skill.id | Shift.id | MedicationLog.id
   createdAt     DateTime     @default(now())
   @@index([evidenceType, evidenceId])
 }
@@ -229,7 +233,7 @@ model Skill {                  // userId null = built-in (Annexe B baseline)
   source     SkillSource @default(ANNEXE_B)
   orderIndex Int         @default(0)
 }
-model SkillProgress {
+model SkillProgress {           // SKILL EvidenceLinks point at Skill.id, not this row
   id              String     @id @default(cuid())
   userId          String
   skillId         String
@@ -379,6 +383,8 @@ model RevisionSession {
    **Built:** 219 statements seeded from the **2024** document into a committed
    `src/data/seed/proficiencies.ts`, regenerable via `scripts/extract-proficiencies.py`.
 2. **Skills** — Annexe B baseline list (`source = ANNEXE_B`); students add custom.
+   **Built:** derived in `src/data/seed/skills.ts` from the `annexe: "B"` proficiencies
+   (1:1 by code, `skill_B2.1` ↔ `prof_B2.1`) rather than re-seeded.
 3. **Subjects** — A&P, Pharmacology, Pathophysiology, NMC Theory, Numeracy,
    OSCE Prep (i.e. all except bioscience).
 4. **Default `BreakRule` table** — `0–360min → 0`, `361–540min → 30`,
@@ -396,7 +402,9 @@ model RevisionSession {
    off the profile's current part). Brought with it the **Profile / Settings** screen
    (`spec-profile.md`) — where `currentPart`/`totalParts` are set.
 4. Reflection (`EvidenceLink`).
-5. Clinical skills (Annexe B seed + `EvidenceLink`).
+5. Clinical skills (Annexe B seed + `EvidenceLink`) — **built** (3 views; baseline
+   derived from the Annexe B proficiencies; stages + permanent sign-off; `SKILL`
+   evidence picker now real, with auto-evidence on sign-off).
 6. Medication notes — **built** — + Revision timetable.
 
 ## App shell & routing
@@ -441,7 +449,8 @@ holding feature-to-feature wiring itself:
   the shift they happen in", the pattern future logged actions should follow;
 - the polymorphic `EvidenceLink` join (proficiency ← reflection | skill | shift |
   med log) — **built**; `EvidenceType` is `REFLECTION | SKILL | SHIFT | MED_LOG`
-  (`SHIFT` / `MED_LOG` wired, `REFLECTION` / `SKILL` stub pickers).
+  (`SHIFT` / `MED_LOG` / `SKILL` wired, `REFLECTION` a stub picker). `SKILL`
+  `evidenceId` points at `Skill.id`.
 
 Each feature's own **Integrations** section records what it wires to. Built today:
 Medication Notes ↔ Weekly Planner / Placement Hours Log (shift-linked med logs,
@@ -475,9 +484,13 @@ _(planned)_:
   calc page credits them.
 - **Competency Tracker ↔ Profile.** Profile's `currentPart` / `totalParts` drive gap
   surfacing + escalation; the gaps / top-gaps views link back to profile.
-- **Competency Tracker ↔ Reflection / Clinical Skills** _(planned)_. Reflections and
-  skills attach via the same `EvidenceLink` (`REFLECTION` / `SKILL`); stub pickers
-  already exist. Clinical Skills shares the Annexe B / proficiency seed.
+- **Competency Tracker ↔ Clinical Skills.** A skill attaches to a proficiency via
+  `EvidenceLink` (`SKILL`, `evidenceId` = `Skill.id`) — the real picker on the
+  proficiency detail, plus an auto-link offered when a baseline skill is signed off
+  (1:1 by code). The skill detail links back to its proficiency; the proficiency's
+  evidence row deep-links to `/skills/:id`. They share the Annexe B / proficiency seed.
+- **Competency Tracker ↔ Reflection** _(planned)_. Reflections will attach via the same
+  `EvidenceLink` (`REFLECTION`); a stub picker already exists.
 - **Reflection ↔ Clinical Skills** _(planned)_. A reflection can link to a skill (and a
   proficiency) through `EvidenceLink`; a shift / med log can seed a reflection.
 - **Revision Timetable ↔ Planner / Hours Log** _(planned)_. Shift-aware scheduling

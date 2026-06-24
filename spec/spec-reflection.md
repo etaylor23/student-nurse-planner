@@ -55,7 +55,10 @@ Where this screen and others will feed into each other:
 - **↔ NMC Competency Tracker.** A reflection attaches to a proficiency via
   `EvidenceLink` (`REFLECTION`); the tracker already ships a **stub picker** awaiting
   this feature.
-- **↔ Clinical Skills.** A reflection can link to a skill (same `EvidenceLink`).
+- **↔ Clinical Skills** _(now a live link target)_. A reflection can link to a skill
+  via the same `EvidenceLink`. Clinical Skills is **built** (skills carry stable ids —
+  `Skill.id` — that a reflection link would reference, mirroring how the tracker's
+  `SKILL` evidence already points at `Skill.id`).
 - **← Medication Notes / Weekly Planner.** A med log or a shift can seed a reflection
   (reflect on something that happened in a shift).
 - **→ Activity Log.** Reflection create / edit will append `LogItem`s.

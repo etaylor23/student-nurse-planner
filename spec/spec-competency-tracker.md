@@ -12,11 +12,11 @@ PAD-style, university-agnostic.
   preserved (e.g. developing in year 1 → achieved in year 2).
 - **Evidence linking ON:** a reflection, a logged skill, a placement shift, or a
   medication log can be **attached as evidence** to a proficiency (via the
-  polymorphic `EvidenceLink`). **Built:** `SHIFT` and `MED_LOG` pickers attach real
-  records today; `REFLECTION` and `SKILL` are **stub pickers** (UI present, labelled
-  "coming soon") until those features ship — the `EvidenceType` enum already carries
-  all four, so wiring them later is additive. See `spec-reflection.md` /
-  `spec-clinical-skills.md`.
+  polymorphic `EvidenceLink`). **Built:** `SHIFT`, `MED_LOG` and `SKILL` pickers
+  attach real records today (the `SKILL` picker is searchable; `evidenceId` =
+  `Skill.id`); `REFLECTION` is the only remaining **stub picker** (UI present, labelled
+  "coming soon") until that feature ships — the `EvidenceType` enum already carries all
+  four, so wiring it is additive. See `spec-reflection.md` / `spec-clinical-skills.md`.
 - **Gap surfacing:** **yes** — flag proficiencies not yet evidenced/achieved,
   escalating as the student approaches the end of their current part.
 - **University-agnostic handling:** ship the full national proficiency master
@@ -73,8 +73,9 @@ overview and proficiency detail.
 - **Built.** New entities `Proficiency` (global seed), `ProficiencyProgress`,
   `ProficiencyStatusEvent`, `EvidenceLink` compose the shared bases and register in
   `schema.ts`; the proficiency list seeds in `DexieRepository.ensureSeed()`.
-- `EvidenceLink` is the shared join used by reflection and skills specs too — it now
-  exists and `EvidenceType` includes `MED_LOG`.
+- `EvidenceLink` is the shared join used by the skills spec (built) and reflection
+  (pending) too; `EvidenceType` carries all four sources and `SKILL` is now wired
+  (`evidenceId` = `Skill.id`).
 
 ## Integrations
 
@@ -101,9 +102,12 @@ _Built._
 - **Activity Log (built).** Status changes (`PROFICIENCY_STATUS_CHANGED`) and
   evidence link/unlink (`EVIDENCE_LINKED` / `EVIDENCE_UNLINKED`) append `LogItem`s →
   they appear in the global feed (dot colours added in `LogList`).
-- **Reflection / Clinical Skills (pending).** The `REFLECTION` and `SKILL` evidence
-  pickers ship as stubs until those features are built; the `EvidenceLink` already
-  supports them.
+- **Clinical Skills (built).** The `SKILL` picker is a real, searchable selector over
+  the user's skills (`evidenceId` = `Skill.id`); evidence rows resolve to the skill
+  name and deep-link to `/skills/:id`. Signing a baseline skill off offers to create
+  the matching `SKILL` evidence link automatically (1:1 by Annexe B code).
+- **Reflection (pending).** The `REFLECTION` evidence picker ships as a stub until that
+  feature is built; the `EvidenceLink` already supports it.
 
 ## Connections
 
@@ -117,20 +121,22 @@ Where this screen and others feed into each other (built unless marked _(planned
   credits them).
 - **↔ Profile.** `User.currentPart` / `totalParts` drive gap surfacing + escalation;
   the gaps / top-gaps views link back to profile.
+- **↔ Clinical Skills.** A skill attaches as `SKILL` evidence (real searchable picker,
+  `evidenceId` = `Skill.id`); a baseline skill's sign-off can auto-create the link to
+  its matching proficiency; the skill detail links back here. The two share the Annexe
+  B / proficiency seed (1:1 by code).
 - **↔ Reflection** _(planned)_. A reflection attaches as `REFLECTION` evidence — the
   stub picker is already shipped.
-- **↔ Clinical Skills** _(planned)_. A skill attaches as `SKILL` evidence (stub picker
-  shipped); the two share the Annexe B / proficiency seed.
 - **→ Activity Log.** Status changes + evidence link/unlink append `LogItem`s.
 - **← NMC Foundations** _(reference)_. The proficiency master list derives from the
   foundations facts.
 
 ## Data reuse
 
-- **Will reuse:** `User`, `Shift` (placement evidence), and the planned polymorphic
-  `EvidenceLink` — the **one shared evidence join**, also used by reflections, skills
-  and the future `MED_LOG` source. Compose the `Entity` / `UserOwned` / `Created`
-  bases for new entities; share the Annexe B / proficiency seed with the skills spec.
+- **Reuses:** `User`, `Shift` (placement evidence), and the polymorphic `EvidenceLink`
+  — the **one shared evidence join**, also used by skills (built) and reflections
+  (pending). Compose the `Entity` / `UserOwned` / `Created` bases for new entities;
+  share the Annexe B / proficiency seed with the skills spec.
 
 **Direction:** make `EvidenceLink` the single join for every evidence source rather
 than per-source link tables, and reference proficiencies / skills / shifts by id. See

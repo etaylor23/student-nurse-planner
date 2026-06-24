@@ -45,7 +45,7 @@ these specs describe both what's built and what's next.
 | 1 | NMC competency tracker | **Built** (+ Profile screen) |
 | 2 | Placement hours log | **Built** |
 | 3 | Reflection on practice | Specced — next up |
-| 4 | Clinical skills development / skills tracker | Specced — not built |
+| 4 | Clinical skills development / skills tracker | **Built** |
 | 5 | Weekly shift planner | **Built** |
 | 6 | Medication notes | **Built** |
 | 7 | Self-care checklist | **Deferred** |
@@ -118,11 +118,12 @@ Full detail in [`spec-architecture.md`](./spec-architecture.md). Summary:
 1. **Core + Placement hours log** — ✅ built & verified.
 2. **Weekly shift planner** — the `PLANNED→COMPLETED` flow and the `.ics` feed,
    on top of the same `Shift` entity.
-3. **NMC competency tracker** — needs the proficiency master list seeded plus
-   `EvidenceLink`.
-4. **Reflection on practice** — plugs into `EvidenceLink`.
-5. **Clinical skills tracker** — Annexe B baseline seed plus `EvidenceLink`.
-6. **Medication notes** + **Revision timetable**.
+3. **NMC competency tracker** — ✅ built (proficiency master list seeded plus
+   `EvidenceLink`).
+4. **Reflection on practice** — plugs into `EvidenceLink` (next up).
+5. **Clinical skills tracker** — ✅ built (Annexe B baseline **derived** from the
+   proficiency seed, plus `EvidenceLink` type `SKILL`).
+6. **Medication notes** — ✅ built — + **Revision timetable**.
 
 (**Self-care checklist** is deferred until the rest is in good shape.)
 
@@ -181,7 +182,7 @@ react-router-dom 7, Dexie 4, lucide-react, Vitest 2 (+ fake-indexeddb).
 - [`spec-competency-tracker.md`](./spec-competency-tracker.md) — **built.**
 - [`spec-profile.md`](./spec-profile.md) — **built.**
 - [`spec-medication-notes.md`](./spec-medication-notes.md) — **built.**
+- [`spec-clinical-skills.md`](./spec-clinical-skills.md) — **built.**
 - [`spec-reflection.md`](./spec-reflection.md) — **next.**
-- [`spec-clinical-skills.md`](./spec-clinical-skills.md)
 - [`spec-revision-timetable.md`](./spec-revision-timetable.md)
 - [`spec-self-care.md`](./spec-self-care.md) — **deferred.**

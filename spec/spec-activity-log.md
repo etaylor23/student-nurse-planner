@@ -119,6 +119,11 @@ listLogItems(userId, filter?: { entityType?; entityId? }): Promise<LogItem[]>; /
   link/unlink (`EVIDENCE_LINKED` / `EVIDENCE_UNLINKED`) and profile edits
   (`entityType` `PROFILE`, action `PROFILE_UPDATED`) append `LogItem`s and appear in
   the global feed. `LogList` carries dot colours for each.
+- **Clinical Skills → this feed (built).** Stage changes, sign-off and custom
+  add/delete (`entityType` `SKILL`, actions `SKILL_STAGE_CHANGED`, `SKILL_SIGNED_OFF`,
+  `SKILL_ADDED`, `SKILL_DELETED`) append `LogItem`s via `useSkillActions`; signing off
+  a baseline skill also writes the proficiency's `EVIDENCE_LINKED`. `LogList` carries
+  dot colours for each.
 
 ## Connections
 
@@ -132,8 +137,10 @@ _(planned)_).
 - **← NMC Competency Tracker.** `PROFICIENCY_STATUS_CHANGED`, `EVIDENCE_LINKED`,
   `EVIDENCE_UNLINKED`.
 - **← Profile.** `PROFILE_UPDATED`.
-- **← Reflection / Clinical Skills / Revision** _(planned)_. Will append the same way —
-  no new per-feature history store.
+- **← Clinical Skills.** `SKILL_STAGE_CHANGED`, `SKILL_SIGNED_OFF`, `SKILL_ADDED`,
+  `SKILL_DELETED` (and the proficiency `EVIDENCE_LINKED` on auto-evidence sign-off).
+- **← Reflection / Revision** _(planned)_. Will append the same way — no new
+  per-feature history store.
 
 ## Data reuse
 

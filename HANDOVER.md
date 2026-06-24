@@ -83,7 +83,7 @@ compose the bases, relate by FK id; add a store only via `schema.ts` + a `db.ts`
 
 ## 4. What's built vs. specced
 
-**Built (5 screens + profile, all sharing the data layer above):**
+**Built (6 screens + profile, all sharing the data layer above):**
 
 - **Weekly Planner** (`PlannerPage`) — FullCalendar; create/move/resize shifts;
   lock on complete; copy; placement-palette drag-drop; `/planner/:shiftId` opens the
@@ -105,14 +105,21 @@ compose the bases, relate by FK id; add a store only via `schema.ts` + a `db.ts`
   proficiency from the shift editor / attach a med log from the medication panel (via
   the shared `ProficiencyPicker`). Drug-calc proficiencies (4.14, B11.4) show
   **numeracy** accuracy; the landing page surfaces **top gaps** (`TopGaps`).
+- **Clinical Skills Tracker** (`SkillsPage` + `components/skills/*`) — the Annexe B
+  baseline (84 procedures, **derived** from the proficiency seed, 1:1 by code) plus
+  the student's own custom skills. Searchable/grouped list, a stage stepper
+  (Observed → Assisted → Performed under supervision) and a **permanent sign-off**
+  (name/location/date/evidence — no un-sign-off). Wires the competency tracker's
+  `SKILL` evidence picker (real, searchable; `evidenceId` = `Skill.id`) and offers
+  **auto-evidence on sign-off** to the matching Annexe B proficiency. See
+  `spec-clinical-skills.md`.
 - **Profile** (`ProfilePage`, `/profile`) — edits the single `User`; where
   `currentPart`/`totalParts` (gap surfacing inputs) are set. See `spec-profile.md`.
 
-**Specced, not built:** `spec-clinical-skills.md` (SPECCED), `spec-reflection.md`
-(SPECCED), `spec-revision-timetable.md` (SPECCED), `spec-self-care.md` (DEFERRED).
-`spec-nmc-foundations.md` is reference only. **`EvidenceLink` is now built**; the
-remaining specs plug into it as new evidence sources (Reflection/Skill stub pickers
-already exist in the tracker, awaiting those features).
+**Specced, not built:** `spec-reflection.md` (SPECCED), `spec-revision-timetable.md`
+(SPECCED), `spec-self-care.md` (DEFERRED). `spec-nmc-foundations.md` is reference only.
+**`EvidenceLink` is built and now carries `SHIFT` / `MED_LOG` / `SKILL`**; Reflection is
+the last stub picker in the tracker, awaiting that feature.
 
 ## 5. State of play — things to be aware of
 
@@ -142,20 +149,22 @@ already exist in the tracker, awaiting those features).
 
 ## 6. Recommended next screen — Reflection (Gibbs)
 
-The **NMC Competency Tracker is now built** (with the Profile screen), and it
-introduced the polymorphic **`EvidenceLink`** — so the remaining specs no longer have
-to de-risk that join; they just plug in as new evidence sources.
+The **NMC Competency Tracker and Clinical Skills Tracker are now built**, and the
+polymorphic **`EvidenceLink`** carries `SHIFT` / `MED_LOG` / `SKILL` — so the remaining
+specs no longer have to de-risk that join; they just plug in as new evidence sources.
+Reflection is the **last remaining stub picker** in the tracker.
 
 Build `spec-reflection.md` next. Why it's the highest-leverage move now:
 
 - **High personal value, mostly self-contained.** Guided Gibbs reflective writing is
   what students reach for around placement; no big seed required.
-- **Plugs straight into `EvidenceLink`.** The tracker already ships a **stub
+- **Plugs straight into `EvidenceLink`.** The tracker still ships a **stub
   `REFLECTION` picker** — building Reflection means listing reflections in that picker
   and creating `EvidenceLink{ evidenceType: "REFLECTION", … }`. Additive; the enum and
-  join already exist.
-- **Then Clinical Skills** is the natural follow-on (Annexe B seed — which can reuse
-  the proficiency-seed extraction approach — + the stub `SKILL` picker).
+  join already exist. Copy the wiring just done for `SKILL` (real picker +
+  `evidenceLabel`/`evidenceHref` cases in `ProficiencyDetailPage.tsx`).
+- A reflection can also link to a **skill** (now a live target — `Skill.id`) via the
+  same join, per `spec-reflection.md`.
 
 No big new surface: reuse `ui.tsx`, the `Repository`/`schema.ts` pattern, and the
 existing `EvidenceLink` store.
@@ -198,8 +207,10 @@ competency tracker added "Evidence for N proficiencies" to the shift editor and 
    `ProficiencyStatusEvent`, `EvidenceLink` compose the shared bases and register in
    `schema.ts`. Existing stores untouched.
 
-Reflection and Clinical Skills then attach to proficiencies through the **same**
-`EvidenceLink` (types `REFLECTION` / `SKILL`) — no per-source link tables.
+Reflection attaches to proficiencies through the **same** `EvidenceLink` (type
+`REFLECTION`) — no per-source link tables. Clinical Skills already does (type `SKILL`,
+`evidenceId` = `Skill.id`): the proficiency detail's real picker, plus the auto-link
+offered on sign-off of a baseline skill.
 
 ## 8. Key files
 
@@ -210,13 +221,16 @@ Reflection and Clinical Skills then attach to proficiencies through the **same**
 | Repository interface (swap point) | `src/data/repository.ts` |
 | Dexie binding (rebuild, no migrations) | `src/data/dexie/db.ts`, `src/data/dexie/dexieRepository.ts` |
 | Proficiency seed + provenance | `src/data/seed/proficiencies.ts` (generated), `scripts/extract-proficiencies.py` |
+| Clinical-skills seed (derived from Annexe B) | `src/data/seed/skills.ts` (`seedSkills`, `annexeProficiencyIdOf`) |
 | Shared shift state + mutations | `src/react/ShiftsContext.tsx` (`useShifts`, `useShiftActions`) |
-| Data hooks | `src/react/hooks.ts` (incl. `useProficiencies`, `useProficiency`) |
+| Skill mutations + audit (single point) | `src/react/useSkillActions.ts` |
+| Data hooks | `src/react/hooks.ts` (incl. `useProficiencies`, `useProficiency`, `useSkills`, `useSkill`) |
 | Competency logic | `src/logic/proficiencies.ts` (platform roll-ups, gap surfacing) |
+| Clinical-skills logic | `src/logic/skills.ts` (grouping, filtering, roll-ups) |
 | UI furniture | `src/react/components/ui.tsx` |
 | Audit feed | `src/react/components/ActivityLog.tsx`, `LogList.tsx`, `src/logic/logGroups.ts` |
-| Screens | `PlannerPage.tsx`, `HoursLogPage.tsx`, `MedicationNotesPage.tsx` (+ `components/medications/*`), `NmcCompetenciesPage.tsx` (+ `components/competencies/*`), `ProfilePage.tsx` |
-| Competency↔built-screen bridges | `src/react/components/ShiftEvidence.tsx`, `components/medications/MedicationCompetency.tsx`, `components/competencies/TopGaps.tsx` (landing-page gaps) |
+| Screens | `PlannerPage.tsx`, `HoursLogPage.tsx`, `MedicationNotesPage.tsx` (+ `components/medications/*`), `NmcCompetenciesPage.tsx` (+ `components/competencies/*`), `SkillsPage.tsx` (+ `components/skills/*`), `ProfilePage.tsx` |
+| Competency↔built-screen bridges | `src/react/components/ShiftEvidence.tsx`, `components/medications/MedicationCompetency.tsx`, `components/competencies/TopGaps.tsx` (landing-page gaps); the `SKILL` picker + auto-evidence sign-off in `components/competencies/ProficiencyDetailPage.tsx` ↔ `components/skills/SkillDetailPage.tsx` |
 | Shared competency widgets | `components/competencies/ProficiencyPicker.tsx` (attach picker), `NumeracyPanel.tsx`, `shared.tsx` (`StatusPill` / `EvidenceBadge` / `SourceCredit`) |
 | Canonical model + conventions | `spec/spec-architecture.md` |
 
