@@ -69,7 +69,7 @@ These ripple across everything:
 
 ## 4. Architecture decisions (locked)
 
-Full detail in [`spec-architecture.md`](./spec-architecture.md). Summary:
+Full detail in [`spec-architecture.md`](./spec/spec-architecture.md). Summary:
 
 - **Persistence (PoC):** IndexedDB via **Dexie**, behind a storage-agnostic
   async **`Repository`** interface. The canonical data model is expressed as a
@@ -172,17 +172,21 @@ react-router-dom 7, Dexie 4, lucide-react, Vitest 2 (+ fake-indexeddb).
 
 ## 10. Spec index
 
-- [`spec-architecture.md`](./spec-architecture.md) — data model (full Prisma
+- [`spec-architecture.md`](./spec/spec-architecture.md) — data model (full Prisma
   schema), repository pattern, persistence, shared `Shift`, `EvidenceLink`,
   calendar feed, derived logic, seed data, build order.
-- [`spec-nmc-foundations.md`](./spec-nmc-foundations.md) — the NMC framework
+- [`spec-nmc-foundations.md`](./spec/spec-nmc-foundations.md) — the NMC framework
   facts the app is built on (platforms, annexes, hours), and seeding guidance.
-- [`spec-placement-hours-log.md`](./spec-placement-hours-log.md) — **built.**
-- [`spec-weekly-planner.md`](./spec-weekly-planner.md) — **built.**
-- [`spec-competency-tracker.md`](./spec-competency-tracker.md) — **built.**
-- [`spec-profile.md`](./spec-profile.md) — **built.**
-- [`spec-medication-notes.md`](./spec-medication-notes.md) — **built.**
-- [`spec-clinical-skills.md`](./spec-clinical-skills.md) — **built.**
-- [`spec-reflection.md`](./spec-reflection.md) — **next.**
-- [`spec-revision-timetable.md`](./spec-revision-timetable.md)
-- [`spec-self-care.md`](./spec-self-care.md) — **deferred.**
+- [`spec-placement-hours-log.md`](./spec/spec-placement-hours-log.md) — **built.**
+- [`spec-weekly-planner.md`](./spec/spec-weekly-planner.md) — **built.**
+- [`spec-competency-tracker.md`](./spec/spec-competency-tracker.md) — **built.**
+- [`spec-profile.md`](./spec/spec-profile.md) — **built.**
+- [`spec-medication-notes.md`](./spec/spec-medication-notes.md) — **built.**
+- [`spec-clinical-skills.md`](./spec/spec-clinical-skills.md) — **built.**
+- [`roadmap-usability.md`](./spec/roadmap-usability.md) — **the current build
+  plan**: 11 prioritised usability/interconnectedness items (U1–U11) over the
+  built screens, in three waves. Self-contained brief — read it before starting
+  new work.
+- [`spec-reflection.md`](./spec/spec-reflection.md) — **next.**
+- [`spec-revision-timetable.md`](./spec/spec-revision-timetable.md)
+- [`spec-self-care.md`](./spec/spec-self-care.md) — **deferred.**
