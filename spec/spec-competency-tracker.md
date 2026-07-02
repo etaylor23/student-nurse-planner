@@ -39,10 +39,16 @@ history with `partIndex`, `assessorName`, `note`, `occurredAt`), `EvidenceLink`
 - **Platform detail** — proficiency list with status pills, target-part tags, and an
   evidence-count badge per row.
 - **Proficiency detail** — status + history timeline, attached evidence,
-  add-evidence picker. Evidence rows link to their source (a shift → the planner; a
-  med log → its medication). Drug-calc proficiencies (4.14, B11.4) also show a
-  **numeracy** panel with the student's calc-practice accuracy.
-- **Gaps view** — not-yet-achieved / developing, filtered by current part.
+  add-evidence picker. Above it, a **"Suggested from your activity"** strip (U4)
+  surfaces records the student could attach in one click — recent unlinked med logs
+  (Platform 4 / B11), the 1:1 Annexe B skill once started, and recent completed shifts
+  — derived by the pure `logic/evidenceSuggestions.ts` (`suggestEvidence`). Evidence
+  rows link to their source (a shift → the planner; a med log → its medication).
+  Drug-calc proficiencies (4.14, B11.4) also show a **numeracy** panel with the
+  student's calc-practice accuracy.
+- **Gaps view** — not-yet-achieved / developing, filtered by current part. Each gap
+  with specific ready evidence (med logs / its skill) shows a compact "… could
+  evidence this →" hint (the row already links to the detail, where you attach).
 
 **Two-way attach (enhancement):** evidence can be created from where the student
 works, not only from the proficiency detail — the **shift editor** has a "Link a

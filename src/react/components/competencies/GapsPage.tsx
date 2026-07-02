@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
+import { suggestEvidence } from "../../../logic/evidenceSuggestions";
 import { surfaceGaps } from "../../../logic/proficiencies";
-import { useProficiencies } from "../../hooks";
+import { useMedicationLogs, useProficiencies, useShifts, useSkills } from "../../hooks";
 import { useRepository } from "../../RepositoryContext";
 import { Panel, btnGhostSm } from "../ui";
 import { StatusPill } from "./shared";
@@ -8,7 +9,10 @@ import { StatusPill } from "./shared";
 /** Gaps view — not-yet-achieved / developing, filtered by the student's current part. */
 export function GapsPage() {
   const { user } = useRepository();
-  const { proficiencies, progress } = useProficiencies();
+  const { proficiencies, progress, evidenceLinks } = useProficiencies();
+  const { shifts } = useShifts();
+  const { logs } = useMedicationLogs();
+  const { skills, progress: skillProgress } = useSkills();
 
   if (!user || proficiencies.length === 0) {
     return (
@@ -19,6 +23,24 @@ export function GapsPage() {
   }
 
   const gaps = surfaceGaps(proficiencies, progress, user);
+  // A compact "you already have evidence" hint per gap — only the *specific* signals
+  // (med logs, the 1:1 skill), not generic shifts, so it means something (U4).
+  const evidenceHint = (proficiencyId: string): string | null => {
+    const p = proficiencies.find((x) => x.id === proficiencyId);
+    if (!p) return null;
+    const s = suggestEvidence(p, {
+      shifts,
+      medLogs: logs,
+      skills,
+      skillProgress,
+      links: evidenceLinks,
+    });
+    const parts: string[] = [];
+    if (s.medLogs.length)
+      parts.push(`${s.medLogs.length} med log${s.medLogs.length === 1 ? "" : "s"}`);
+    if (s.skill) parts.push("a skill");
+    return parts.length ? `${parts.join(" + ")} could evidence this` : null;
+  };
 
   return (
     <div className="space-y-4">
@@ -49,6 +71,7 @@ export function GapsPage() {
             {gaps.map((g) => {
               // An Annexe B gap has a 1:1 baseline skill — the concrete way to close it.
               const skillId = g.proficiency.annexe === "B" ? `skill_${g.proficiency.code}` : null;
+              const hint = evidenceHint(g.proficiency.id);
               return (
                 <li key={g.proficiency.id}>
                   <Link
@@ -73,6 +96,11 @@ export function GapsPage() {
                           ? ` · target Part ${g.progress.targetPart}`
                           : ""}
                       </span>
+                      {hint && (
+                        <span className="mt-0.5 block text-xs font-medium text-emerald-700">
+                          {hint} →
+                        </span>
+                      )}
                     </span>
                     <span className="flex shrink-0 flex-col items-end gap-1">
                       <StatusPill status={g.status} />

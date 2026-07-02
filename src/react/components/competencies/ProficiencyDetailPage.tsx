@@ -10,6 +10,7 @@ import {
   type Shift,
 } from "../../../domain/types";
 import { formatHumanDate, hhmm, isoDate } from "../../../logic/calendar";
+import { hasEvidenceSuggestion, suggestEvidence } from "../../../logic/evidenceSuggestions";
 import { isDrugCalcProficiency } from "../../../logic/proficiencies";
 import {
   useMedicationLogs,
@@ -42,7 +43,7 @@ export function ProficiencyDetailPage() {
   const { logs } = useMedicationLogs();
   const { medications } = useMedications();
   const { placements } = usePlacements();
-  const { skills } = useSkills();
+  const { skills, progress: skillProgress } = useSkills();
 
   const placeName = useMemo(
     () => new Map(placements.map((p: Placement) => [p.id, p.name])),
@@ -69,6 +70,17 @@ export function ProficiencyDetailPage() {
 
   const currentStatus = progress?.status ?? "NOT_YET_ACHIEVED";
   const partIndex = user.currentPart;
+
+  // "You already have evidence for this" — records the student could attach in one
+  // click, derived from their activity (U4). Pure logic in `evidenceSuggestions.ts`.
+  const suggestion = suggestEvidence(proficiency, {
+    shifts,
+    medLogs: logs,
+    skills,
+    skillProgress,
+    links,
+  });
+  const suggestedSkill = suggestion.skill; // narrowed const for the strip's closure
 
   const saveStatus = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -294,6 +306,38 @@ export function ProficiencyDetailPage() {
 
         <div className="min-w-0 space-y-6 xl:col-span-2">
           <Panel step="2" title="Evidence" hint="Attach what demonstrates this proficiency">
+            {hasEvidenceSuggestion(suggestion) && (
+              <div className="mb-4 rounded-xl bg-emerald-50/70 p-3 ring-1 ring-emerald-100">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                  Suggested from your activity
+                </p>
+                <ul className="space-y-1.5">
+                  {suggestedSkill && (
+                    <SuggestionRow
+                      tag="Skill"
+                      label={suggestedSkill.skill.name}
+                      onAttach={() => void addEvidence("SKILL", suggestedSkill.skill.id)}
+                    />
+                  )}
+                  {suggestion.medLogs.map((l) => (
+                    <SuggestionRow
+                      key={l.id}
+                      tag="Med log"
+                      label={`${l.medicationId ? (medName.get(l.medicationId) ?? "medication") : "medication"} · ${formatHumanDate(l.date)}`}
+                      onAttach={() => void addEvidence("MED_LOG", l.id)}
+                    />
+                  ))}
+                  {suggestion.shifts.map((s) => (
+                    <SuggestionRow
+                      key={s.id}
+                      tag="Shift"
+                      label={shiftLabel(s, placeName)}
+                      onAttach={() => void addEvidence("SHIFT", s.id)}
+                    />
+                  ))}
+                </ul>
+              </div>
+            )}
             {links.length === 0 ? (
               <p className="text-sm text-slate-400">No evidence attached yet.</p>
             ) : (
@@ -484,5 +528,28 @@ function EvidencePicker<T>({
         {filtered.length === 0 && <li className="py-2 text-sm text-slate-400">No matches.</li>}
       </ul>
     </div>
+  );
+}
+
+/** One row in the "Suggested from your activity" strip — a tag, a label, one-click Attach. */
+function SuggestionRow({
+  tag,
+  label,
+  onAttach,
+}: {
+  tag: string;
+  label: string;
+  onAttach: () => void;
+}) {
+  return (
+    <li className="flex items-center gap-2">
+      <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 ring-1 ring-slate-200">
+        {tag}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-sm text-slate-700">{label}</span>
+      <button type="button" onClick={onAttach} className={btnGhostSm}>
+        Attach
+      </button>
+    </li>
   );
 }

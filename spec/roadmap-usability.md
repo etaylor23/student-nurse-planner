@@ -420,7 +420,7 @@ Wave 1
 Wave 2
 - [x] U8 · Skill sign-off ↔ shift link `[data]`
 - [ ] U1 · Post-shift debrief flow ⭐
-- [ ] U4 · Evidence suggestions
+- [x] U4 · Evidence suggestions
 
 Wave 3
 - [ ] U2 · Home / Today dashboard
