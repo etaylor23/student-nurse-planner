@@ -138,6 +138,12 @@ Where this screen and others feed into each other (built unless marked _(planned
 - **↔ NMC Competency Tracker.** The shift editor shows / links / unlinks the
   proficiencies a shift evidences (`ShiftEvidence`); a proficiency's evidence row
   deep-links to `/planner/:shiftId`.
+- **↔ Clinical Skills.** The shift editor's `ShiftSkills` lists skills signed off in
+  the shift + a "Sign off a skill" shortcut (pinned to the shift, U8).
+- **→ Post-shift debrief (U1).** Marking a shift worked opens `ShiftDebrief` — a live
+  hours-progress line and three one-tap capture prompts (log a med / update a skill /
+  attach as evidence, the last seeded with U4 gap suggestions), each pinned to the
+  shift. Dismissing never blocks the lock (completion is already done + logged).
 - **↔ Revision Timetable** _(planned)_. Revision sessions schedule around these shifts;
   the `.ics` export may include revision blocks.
 - **→ Activity Log.** Shift lifecycle actions append `LogItem`s.

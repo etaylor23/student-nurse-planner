@@ -24,6 +24,7 @@ import { useRepository } from "../RepositoryContext";
 import { downloadText } from "../download";
 import { ActivityLog } from "./ActivityLog";
 import { PlacementPalette } from "./PlacementPalette";
+import { ShiftDebrief } from "./ShiftDebrief";
 import { ShiftForm, type ShiftDraft } from "./ShiftForm";
 import { ShiftHistory } from "./ShiftHistory";
 import { ShiftMedications } from "./ShiftMedications";
@@ -52,6 +53,8 @@ export function PlannerPage() {
   const [newShift, setNewShift] = useState<NewShift | null>(null);
   // Live draft for the calendar highlight; kept in step with the form's fields.
   const [draft, setDraft] = useState<NewShift | null>(null);
+  // The just-completed shift whose post-shift debrief (U1) is showing.
+  const [debriefShiftId, setDebriefShiftId] = useState<string | null>(null);
 
   // Backspace/Delete on a selected event deletes it (single stable listener that
   // reads the latest state via this ref, set on each render below).
@@ -93,6 +96,9 @@ export function PlannerPage() {
   // Default a new shift to the placement of the most recent shift (listShifts is
   // newest-date first) — usually you're still at the same ward.
   const lastPlacementId = shifts.find((s) => s.placementId)?.placementId;
+  const debriefShift = debriefShiftId
+    ? (shifts.find((s) => s.id === debriefShiftId) ?? null)
+    : null;
 
   const events: EventInput[] = shifts.map((s) => ({
     id: s.id,
@@ -133,7 +139,10 @@ export function PlannerPage() {
   };
 
   const completeShift = async (id: string) => {
-    if (await markWorked(id)) close();
+    if (await markWorked(id)) {
+      close();
+      setDebriefShiftId(id); // open the post-shift debrief (U1)
+    }
   };
 
   // Delete the selected (unlocked) shift on Backspace/Delete — unless the user is
@@ -370,6 +379,10 @@ export function PlannerPage() {
           </>
         }
       />
+
+      {debriefShift && (
+        <ShiftDebrief shift={debriefShift} onDismiss={() => setDebriefShiftId(null)} />
+      )}
 
       <PlacementPalette placements={placements} />
 

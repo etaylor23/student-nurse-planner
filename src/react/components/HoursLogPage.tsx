@@ -11,6 +11,7 @@ import { PlacementBreakdown } from "./PlacementBreakdown";
 import { PlacementManager } from "./PlacementManager";
 import { ShiftForm, type ShiftDraft } from "./ShiftForm";
 import { ShiftHistory } from "./ShiftHistory";
+import { ShiftDebrief } from "./ShiftDebrief";
 import { ShiftMedications } from "./ShiftMedications";
 import { ShiftEvidence } from "./ShiftEvidence";
 import { ShiftSkills } from "./ShiftSkills";
@@ -27,6 +28,8 @@ export function HoursLogPage() {
   const { saveShift, deleteShift, markWorked, reactivateShift } = useShiftActions();
   // null = form closed, "new" = adding, Shift = editing that shift.
   const [editing, setEditing] = useState<Shift | "new" | null>(null);
+  // The just-completed shift whose post-shift debrief (U1) is showing.
+  const [debriefShiftId, setDebriefShiftId] = useState<string | null>(null);
 
   if (loading || !user) {
     return <div className="text-sm text-slate-500">Loading…</div>;
@@ -70,9 +73,16 @@ export function HoursLogPage() {
   const editingShift =
     editing && editing !== "new" ? (shifts.find((s) => s.id === editing.id) ?? editing) : null;
   const locked = editingShift?.status === "COMPLETED";
+  const debriefShift = debriefShiftId
+    ? (shifts.find((s) => s.id === debriefShiftId) ?? null)
+    : null;
 
   return (
     <div className="space-y-6">
+      {debriefShift && (
+        <ShiftDebrief shift={debriefShift} onDismiss={() => setDebriefShiftId(null)} />
+      )}
+
       <HoursSummaryPanel summary={summary} projection={projection} />
 
       <TopGaps />
@@ -155,7 +165,9 @@ export function HoursLogPage() {
             const shift = findShift(id);
             if (shift) void removeShift(shift);
           }}
-          onMarkWorked={(id) => void markWorked(id)}
+          onMarkWorked={async (id) => {
+            if (await markWorked(id)) setDebriefShiftId(id); // open the post-shift debrief (U1)
+          }}
         />
       </div>
 

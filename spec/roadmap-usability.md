@@ -419,7 +419,7 @@ Wave 1
 
 Wave 2
 - [x] U8 · Skill sign-off ↔ shift link `[data]`
-- [ ] U1 · Post-shift debrief flow ⭐
+- [x] U1 · Post-shift debrief flow ⭐
 - [x] U4 · Evidence suggestions
 
 Wave 3

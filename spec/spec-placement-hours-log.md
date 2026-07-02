@@ -131,6 +131,11 @@ Where this screen and others feed into each other (built unless marked _(planned
 - **↔ NMC Competency Tracker.** The shift editor links/unlinks the proficiencies a
   shift evidences (`ShiftEvidence`); this **landing page** surfaces the top competency
   gaps (`TopGaps`).
+- **↔ Clinical Skills.** The shift editor's `ShiftSkills` lists skills signed off in
+  the shift + a "Sign off a skill" shortcut (U8).
+- **→ Post-shift debrief (U1).** Marking a timesheet row worked opens `ShiftDebrief`
+  at the top of the page — a live hours-progress line + three one-tap capture prompts
+  (log a med / update a skill / attach as evidence), each pinned to that shift.
 - **↔ Revision Timetable** _(planned)_. Revision scheduling reads these `Shift` rows to
   avoid clashing with placement.
 - **→ Activity Log.** Shift create / edit / complete / reactivate / delete append
