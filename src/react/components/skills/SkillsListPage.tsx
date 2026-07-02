@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { SKILL_STAGE_LABEL, type SkillStage } from "../../../domain/types";
 import { annexeCodeOf } from "../../../data/seed/skills";
 import {
@@ -26,6 +26,11 @@ export function SkillsListPage() {
   const { skills, progress } = useSkills();
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<SkillFilter>("ALL");
+  // Carried in from a shift editor's "Sign off a skill" CTA — passed on to the chosen
+  // skill so its sign-off form pre-selects the shift (U8).
+  const prefillShiftId = (useLocation().state as { prefillShiftId?: string } | null)
+    ?.prefillShiftId;
+  const linkState = prefillShiftId ? { prefillShiftId } : undefined;
 
   const bySkill = useMemo(() => progressBySkill(progress), [progress]);
   const groups = useMemo(() => {
@@ -47,6 +52,11 @@ export function SkillsListPage() {
 
   return (
     <div className="space-y-6">
+      {prefillShiftId && (
+        <p className="rounded-xl bg-sky-50 px-4 py-2.5 text-sm text-sky-800 ring-1 ring-sky-100">
+          Pick a skill to sign off — it'll be linked to the shift you came from.
+        </p>
+      )}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <input
           value={q}
@@ -94,6 +104,7 @@ export function SkillsListPage() {
                   <li key={s.id}>
                     <Link
                       to={`/skills/${s.id}`}
+                      state={linkState}
                       className="flex items-start gap-3 py-3 transition hover:bg-slate-50"
                     >
                       <span className="min-w-0 flex-1 text-sm text-slate-700">

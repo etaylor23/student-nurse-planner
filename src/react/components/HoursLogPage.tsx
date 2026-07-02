@@ -13,6 +13,7 @@ import { ShiftForm, type ShiftDraft } from "./ShiftForm";
 import { ShiftHistory } from "./ShiftHistory";
 import { ShiftMedications } from "./ShiftMedications";
 import { ShiftEvidence } from "./ShiftEvidence";
+import { ShiftSkills } from "./ShiftSkills";
 import { TopGaps } from "./competencies/TopGaps";
 import { TimesheetExport } from "./TimesheetExport";
 import { Panel } from "./ui";
@@ -136,6 +137,7 @@ export function HoursLogPage() {
               </button>
             )}
             {editingShift && <ShiftMedications shift={editingShift} />}
+            {editingShift && <ShiftSkills shift={editingShift} />}
             {editingShift && <ShiftEvidence shift={editingShift} />}
             {editingShift && <ShiftHistory shift={editingShift} />}
           </Panel>

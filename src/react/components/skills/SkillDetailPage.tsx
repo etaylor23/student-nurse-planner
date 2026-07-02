@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   SKILL_SOURCE_LABEL,
   SKILL_STAGE_LABEL,
   SKILL_STAGES,
   type Proficiency,
+  type Shift,
   type SkillStage,
 } from "../../../domain/types";
 import { annexeCodeOf, annexeProficiencyIdOf } from "../../../data/seed/skills";
-import { formatHumanDate, isoDate } from "../../../logic/calendar";
-import { useProficiencies, useSkill } from "../../hooks";
+import { formatHumanDate, hhmm, isoDate } from "../../../logic/calendar";
+import { findCurrentShift, recentShifts } from "../../../logic/shiftContext";
+import { usePlacements, useProficiencies, useShifts, useSkill } from "../../hooks";
 import { useRepository } from "../../RepositoryContext";
 import { useSkillActions } from "../../useSkillActions";
 import { ProficiencyPicker } from "../competencies/ProficiencyPicker";
@@ -17,6 +19,14 @@ import { Panel, btnGhostSm, btnPrimary, inputCls } from "../ui";
 import { SignedOffBadge, SkillStageBadge } from "./shared";
 
 const todayIso = () => isoDate(new Date());
+
+/** "18 Jun 2026 · Ward 7 09:00–17:00" — the shift picker's option label. */
+function shiftLabel(s: Shift, placeName: Map<string, string>): string {
+  const place = s.placementId ? (placeName.get(s.placementId) ?? "Placement") : "No placement";
+  const times =
+    s.startAt && s.endAt ? ` ${hhmm(new Date(s.startAt))}–${hhmm(new Date(s.endAt))}` : "";
+  return `${formatHumanDate(s.date)} · ${place}${times}`;
+}
 
 export function SkillDetailPage() {
   const { id } = useParams();
@@ -26,7 +36,12 @@ export function SkillDetailPage() {
   // The user's proficiencies + all evidence links — used to show which proficiencies
   // this skill already evidences and to resolve their codes.
   const { proficiencies, evidenceLinks, reload: reloadProfs } = useProficiencies();
+  const { shifts } = useShifts();
+  const { placements } = usePlacements();
   const navigate = useNavigate();
+  // A shift editor's "Sign off a skill" CTA rides a prefillShiftId through the list.
+  const prefillShiftId = (useLocation().state as { prefillShiftId?: string } | null)
+    ?.prefillShiftId;
 
   const [byName, setByName] = useState("");
   const [location, setLocation] = useState("");
@@ -34,6 +49,24 @@ export function SkillDetailPage() {
   const [evidenceNote, setEvidenceNote] = useState("");
   const [alsoLink, setAlsoLink] = useState(true);
   const [alreadyLinked, setAlreadyLinked] = useState(false);
+  // Optional shift the sign-off happened in (U8). `null` = auto-follow the current
+  // timed shift (derived live); once the user picks, their choice wins ("" = none).
+  const [pickedShift, setPickedShift] = useState<string | null>(prefillShiftId ?? null);
+
+  const placeName = useMemo(() => new Map(placements.map((p) => [p.id, p.name])), [placements]);
+  const shiftById = useMemo(() => new Map(shifts.map((s) => [s.id, s])), [shifts]);
+  const currentShift = useMemo(() => findCurrentShift(shifts, Date.now()), [shifts]);
+  const recent = useMemo(() => recentShifts(shifts, todayIso()), [shifts]);
+  const signOffShiftId = pickedShift === null ? (currentShift?.id ?? "") : pickedShift;
+  const selectedShift = signOffShiftId ? shiftById.get(signOffShiftId) : undefined;
+  // Recent shifts, plus the selected one if it's older than the 7-day window (e.g.
+  // pinned from a shift editor) so it still shows as chosen.
+  const shiftOptions = useMemo(() => {
+    if (selectedShift && !recent.some((s) => s.id === selectedShift.id)) {
+      return [selectedShift, ...recent];
+    }
+    return recent;
+  }, [recent, selectedShift]);
   // The "Link to a proficiency" picker on the detail (any skill), and the proficiency
   // a custom skill's sign-off form will also attach.
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -124,6 +157,7 @@ export function SkillDetailPage() {
         signOffLocation: location.trim() || undefined,
         signOffDate: date || undefined,
         evidenceNote: evidenceNote.trim() || undefined,
+        shiftId: signOffShiftId || undefined,
       },
       linkProficiency,
     );
@@ -301,6 +335,40 @@ export function SkillDetailPage() {
           ) : (
             <Panel step="2" title="Sign off" hint="Capture who, where, when and the evidence">
               <form onSubmit={handleSignOff} className="space-y-4">
+                <label className="block">
+                  <span className="mb-1.5 block text-sm font-medium text-slate-700">Shift</span>
+                  <select
+                    value={signOffShiftId}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setPickedShift(v);
+                      const s = v ? shiftById.get(v) : undefined;
+                      const place = s?.placementId ? placeName.get(s.placementId) : undefined;
+                      if (place && !location.trim()) setLocation(place);
+                    }}
+                    className={inputCls}
+                  >
+                    <option value="">No shift</option>
+                    {shiftOptions.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {shiftLabel(s, placeName)}
+                        {s.id === currentShift?.id ? " — now" : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="mt-1 block text-xs text-slate-400">
+                    {currentShift ? (
+                      <span className="text-emerald-700">
+                        You're in a shift now — linked automatically. Change it here if you meant a
+                        recent one.
+                      </span>
+                    ) : recent.length > 0 ? (
+                      "Optionally link the shift this was signed off in (last 7 days)."
+                    ) : (
+                      "No recent shifts to link — sign-off can have no shift."
+                    )}
+                  </span>
+                </label>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <label className="block">
                     <span className="mb-1.5 block text-sm font-medium text-slate-700">

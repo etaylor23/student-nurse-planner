@@ -418,7 +418,7 @@ Wave 1
 - [x] U11 · Dead-end sweep bundle
 
 Wave 2
-- [ ] U8 · Skill sign-off ↔ shift link `[data]`
+- [x] U8 · Skill sign-off ↔ shift link `[data]`
 - [ ] U1 · Post-shift debrief flow ⭐
 - [ ] U4 · Evidence suggestions
 

@@ -22,8 +22,10 @@ Tracks development of clinical skills through supervised stages to sign-off.
 
 `Skill` (`userId` null = built-in Annexe B baseline; set = custom; `source`
 ANNEXE_B/CUSTOM), `SkillProgress` (per user × skill: `stage`, `signedOff`,
-`signOffByName`, `signOffLocation`, `signOffDate`, `evidenceNote`). Links to
-proficiencies via `EvidenceLink` (type `SKILL`). See `spec-architecture.md`.
+`signOffByName`, `signOffLocation`, `signOffDate`, `evidenceNote`, and optional
+`shiftId` — the shift the sign-off happened in, the universal capture join added in
+U8; unindexed, so no Dexie schema/version change). Links to proficiencies via
+`EvidenceLink` (type `SKILL`). See `spec-architecture.md`.
 
 ## Screens (built)
 
@@ -104,9 +106,13 @@ Where this screen and others feed into each other:
   that render in the global feed.
 - **↔ Reflection** _(planned)_. A reflection will link to a skill via the same
   `EvidenceLink` once Reflection is built; nothing here hard-couples to it.
-- **↔ Shifts / Placement** _(optional, not built)_. `signOffLocation` is free text; a
-  future enhancement could add an optional `shiftId` so a sign-off references the shift
-  it happened in (the `MedicationLog.shiftId` pattern).
+- **↔ Shifts / Placement (built, U8).** A sign-off can reference the shift it happened
+  in via optional `SkillProgress.shiftId` (the `MedicationLog.shiftId` pattern). The
+  sign-off form offers a shift picker — auto-following the current timed shift, else
+  the last 7 days — and selecting one prefills `signOffLocation` from its placement.
+  The shift editor's `ShiftSkills` panel lists the skills signed off in that shift and
+  offers a "Sign off a skill" CTA that opens the tracker pinned to the shift
+  (`prefillShiftId`). `signOffLocation` remains free text.
 - **← NMC Foundations** _(reference)_. The Annexe B procedures are the baseline skills.
 
 ## Data reuse

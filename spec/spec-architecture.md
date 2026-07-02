@@ -243,6 +243,7 @@ model SkillProgress {           // SKILL EvidenceLinks point at Skill.id, not th
   signOffLocation String?
   signOffDate     DateTime?
   evidenceNote    String?
+  shiftId         String?    // the shift the sign-off happened in (optional, unindexed — the universal capture join)
   updatedAt       DateTime   @updatedAt
   @@unique([userId, skillId])
 }
@@ -357,8 +358,10 @@ model RevisionSession {
 - **Actions are logged against a shift.** A shift is the unit that connects activity
   across the platform. The "current shift" is the timed shift whose `startAt`–`endAt`
   window contains now; an action logged then auto-links to it (overridable from the
-  last 7 days). First built for `MedicationLog.shiftId`; the same pattern should
-  extend to future logged actions. The shift's editor surfaces what was logged in it.
+  last 7 days). First built for `MedicationLog.shiftId`; now also `SkillProgress.shiftId`
+  (the shift a sign-off happened in), and the same pattern extends to future logged
+  actions. The shift's editor surfaces what was logged in it — `ShiftMedications`,
+  `ShiftSkills` and `ShiftEvidence`.
 - **Pace projection:** shifts-to-go from the average completed-shift length; an
   estimated finish date from counted-hours-per-week over the completed date span.
 - **Hours by placement:** `netHours` grouped by `placementId` (counted vs

@@ -438,8 +438,15 @@ export async function seedDemoData(repo: Repository, userId: string): Promise<vo
   await stageSkill("B2.5", "ASSISTED");
   await stageSkill("B7.1", "ASSISTED");
 
-  // Sign off two baseline skills, auto-linking each to its 1:1 proficiency.
-  const signOffBaseline = async (code: string, by: string, where: string, daysAgo: number) => {
+  // Sign off two baseline skills, auto-linking each to its 1:1 proficiency and the
+  // shift it happened in (U8) so the shift editor's "Skills signed off" list populates.
+  const signOffBaseline = async (
+    code: string,
+    by: string,
+    where: string,
+    daysAgo: number,
+    shiftId: string,
+  ) => {
     const id = `skill_${code}`;
     if (!skillIds.has(id)) return;
     await repo.setSkillStage(userId, id, "PERFORMED_UNDER_SUPERVISION");
@@ -448,6 +455,7 @@ export async function seedDemoData(repo: Repository, userId: string): Promise<vo
       signOffLocation: where,
       signOffDate: isoDate(at(daysAgo)),
       evidenceNote: "Directly observed on placement.",
+      shiftId,
     });
     feed.push({
       entityType: "SKILL",
@@ -473,8 +481,8 @@ export async function seedDemoData(repo: Repository, userId: string): Promise<vo
       });
     }
   };
-  await signOffBaseline("B2.1", "Sr. Okafor", "Ward 12 — Acute Medical Unit", 30);
-  await signOffBaseline("B2.10", "Sr. Okafor", "Ward 12 — Acute Medical Unit", 26);
+  await signOffBaseline("B2.1", "Sr. Okafor", "Ward 12 — Acute Medical Unit", 30, s1.id);
+  await signOffBaseline("B2.10", "Sr. Okafor", "Ward 12 — Acute Medical Unit", 26, s1.id);
 
   // Custom skills — one linked to a proficiency as evidence (U7).
   const addCustom = async (name: string, category: string, stage?: SkillStage) => {

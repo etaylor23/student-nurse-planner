@@ -537,6 +537,7 @@ export class DexieRepository implements Repository {
       signOffLocation: existing?.signOffLocation,
       signOffDate: existing?.signOffDate,
       evidenceNote: existing?.evidenceNote,
+      shiftId: existing?.shiftId, // preserve the sign-off's shift across stage changes
       updatedAt: nowIso(),
     };
     await this.db.skillProgress.put(next);
@@ -560,6 +561,7 @@ export class DexieRepository implements Repository {
       signOffLocation: signOff.signOffLocation?.trim() || undefined,
       signOffDate: signOff.signOffDate || undefined,
       evidenceNote: signOff.evidenceNote?.trim() || undefined,
+      shiftId: signOff.shiftId || existing?.shiftId || undefined, // the shift this was signed off in
       updatedAt: nowIso(),
     };
     await this.db.skillProgress.put(next);

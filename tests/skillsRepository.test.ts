@@ -65,6 +65,23 @@ describe("DexieRepository — clinical skills", () => {
     expect(signed.stage).toBe("OBSERVED"); // default stage
   });
 
+  it("persists the sign-off's shiftId and preserves it across a stage change", async () => {
+    const user = await repo.getCurrentUser();
+    const id = "skill_B2.1";
+
+    const signed = await repo.signOffSkill(user.id, id, {
+      signOffDate: "2026-06-03",
+      shiftId: "shift-123",
+    });
+    expect(signed.shiftId).toBe("shift-123");
+    // Round-trips through the store (unindexed optional field — no schema change).
+    expect((await repo.getSkillProgress(user.id, id))!.shiftId).toBe("shift-123");
+
+    // A later stage change must not drop the shift link.
+    const after = await repo.setSkillStage(user.id, id, "PERFORMED_UNDER_SUPERVISION");
+    expect(after.shiftId).toBe("shift-123");
+  });
+
   it("adds, lists and deletes a custom skill (and its progress)", async () => {
     const user = await repo.getCurrentUser();
     const before = (await repo.listSkills(user.id)).length;

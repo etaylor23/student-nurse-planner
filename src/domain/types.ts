@@ -310,6 +310,7 @@ export interface SkillProgress extends Entity, UserOwned, Updated {
   signOffLocation?: string; // where
   signOffDate?: string; // ISO date
   evidenceNote?: string; // what evidence supported it
+  shiftId?: string; // FK → Shift the sign-off happened in (the universal capture join; optional, unindexed)
 }
 
 /** A skill to create — the store stamps the id. */
@@ -317,7 +318,7 @@ export type SkillDraft = Omit<Skill, "id">;
 /** The sign-off fields captured on the detail screen. */
 export type SkillSignOff = Pick<
   SkillProgress,
-  "signOffByName" | "signOffLocation" | "signOffDate" | "evidenceNote"
+  "signOffByName" | "signOffLocation" | "signOffDate" | "evidenceNote" | "shiftId"
 >;
 
 /**
