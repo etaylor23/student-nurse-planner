@@ -48,4 +48,13 @@ describe("groupLogItems", () => {
     const groups = groupLogItems([item({ entityLabel: "Ward 7 · Thu 18 Jun" })]);
     expect(groups[0].entityLabel).toBe("Ward 7 · Thu 18 Jun");
   });
+
+  it("carries entityType (from the first entry) onto the group", () => {
+    const groups = groupLogItems([
+      item({ id: "e", batchId: "b1", entityType: "PROFICIENCY", entityId: "prof_1" }),
+      item({ id: "f", batchId: "b1", entityType: "PROFICIENCY", entityId: "prof_1" }),
+    ]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].entityType).toBe("PROFICIENCY");
+  });
 });

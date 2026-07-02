@@ -4,6 +4,7 @@ import { medsByPlacement } from "../../logic/medications";
 import { useMedicationLogs, usePlacements, useShifts } from "../hooks";
 import { useShiftActions } from "../ShiftsContext";
 import { useRepository } from "../RepositoryContext";
+import { ActivityLog } from "./ActivityLog";
 import { BreakRulesEditor } from "./BreakRulesEditor";
 import { HoursSummaryPanel } from "./HoursSummaryPanel";
 import { PlacementBreakdown } from "./PlacementBreakdown";
@@ -162,6 +163,8 @@ export function HoursLogPage() {
           <BreakRulesEditor />
         </Panel>
       </div>
+
+      <ActivityLog />
     </div>
   );
 }

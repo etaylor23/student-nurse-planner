@@ -81,12 +81,20 @@ entries).
 - **History** — below the shift editor, a **History** list shows that shift's
   changes newest-first, **grouped by save event** (one timestamped group per save,
   with a line per changed field), like Jira.
-- **Activity feed** — the planner has a global **Activity** panel at the bottom
-  listing every change across all shifts, newest-first and grouped by save event.
-  Each group is headed by the shift's **label** (`entityLabel` — placement · date,
-  captured at action time) so you can tell which shift it was, even after the date
-  changes or the shift is deleted. Both lists reuse a shared `LogList` renderer that
-  groups by `batchId` (`logic/logGroups.ts`).
+- **Activity feed** — a global **Activity** panel listing every change across every
+  entity, newest-first and grouped by save event. Mounted at the bottom of both the
+  **Weekly Planner** and the **Placement Hours Log** (students logging shifts there
+  now see it too). Each group is headed by the entity's **label** (`entityLabel`,
+  captured at action time) so you can tell what it was, even after the entity changes
+  or is deleted. The header **links to the entity** it's about — a med log opens the
+  med log, a `PROFICIENCY_STATUS_CHANGED` opens that proficiency, a shift opens
+  `/planner/:id`, etc. — via `hrefForEntity` (`logic/entityLinks.ts`, keyed on
+  `entityType` + `entityId`; returns `null`, rendered as plain text, for unroutable
+  types). **Filter chips** (All · Shifts · Meds · Competencies · Skills) narrow the
+  feed by area. Both the feed and the per-shift history reuse a shared `LogList`
+  renderer that groups by `batchId` (`logic/logGroups.ts`); a group now also carries
+  its `entityType` (from `entries[0]`). The per-shift history header stays the
+  timestamp (not linked).
 
 ## Repository
 
@@ -102,8 +110,8 @@ listLogItems(userId, filter?: { entityType?; entityId? }): Promise<LogItem[]>; /
 
 ## Not yet built (future)
 
-- **Filter / paginate the activity feed** — it currently lists every entry; a busy
-  log would want date/action filters or a "show more".
+- **Paginate the activity feed** — area filter chips are built (All · Shifts · Meds ·
+  Competencies · Skills); a busy log would still want date filters or a "show more".
 - **Logging other entities** — placements, reflections, skill sign-offs reuse the
   same `LogItem` table when those features add audit needs.
 

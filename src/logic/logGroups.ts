@@ -4,6 +4,7 @@ import type { LogItem } from "../domain/types";
  * or a lone entry. Rendered as one row in the activity feed / history. */
 export interface LogGroup {
   key: string;
+  entityType: string; // the kind of entity this group is about (from its entries)
   entityId: string;
   entityLabel?: string;
   at: string; // the group's timestamp (latest entry)
@@ -25,6 +26,7 @@ export function groupLogItems(items: LogItem[]): LogGroup[] {
     if (!g) {
       g = {
         key,
+        entityType: it.entityType,
         entityId: it.entityId,
         entityLabel: it.entityLabel,
         at: it.createdAt,
