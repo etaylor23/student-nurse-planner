@@ -294,7 +294,13 @@ export function MedicationDetailPage() {
               ))}
             </ul>
             {logs.length > 5 && (
-              <p className="mt-2 text-xs text-slate-400">+{logs.length - 5} more in the med log</p>
+              <Link
+                to="/medications/log"
+                state={{ filterMedicationId: medication.id }}
+                className="mt-2 inline-block text-xs font-medium text-emerald-700 hover:underline"
+              >
+                +{logs.length - 5} more in the med log →
+              </Link>
             )}
           </>
         )}

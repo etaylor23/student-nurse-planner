@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { MED_LOG_TYPE_LABEL, type MedLogType, type Shift } from "../../../domain/types";
 import { ADMIN_ROUTES } from "../../../data/bnf";
 import { formatHumanDate, hhmm, isoDate } from "../../../logic/calendar";
@@ -33,6 +33,8 @@ export function MedLogPage() {
   const prefill = (location.state ?? {}) as {
     prefillMedicationId?: string;
     prefillShiftId?: string;
+    filterMedicationId?: string;
+    filterPlacementId?: string;
   };
   const typeFilter: MedLogType | null =
     typeSlug === "observed" ? "OBSERVED" : typeSlug === "administered" ? "ADMINISTERED" : null;
@@ -53,8 +55,20 @@ export function MedLogPage() {
   const [picked, setPicked] = useState<string | null>(prefill.prefillShiftId ?? null);
   const shiftId = picked === null ? (currentShift?.id ?? "") : picked;
 
-  const rows = typeFilter ? logs.filter((l) => l.type === typeFilter) : logs;
   const shiftById = useMemo(() => new Map(shifts.map((s) => [s.id, s])), [shifts]);
+  // Optional one-shot view filters carried in router state — from a med detail's
+  // "+N more in the med log" or a placement's med count. Cleared by navigating
+  // without state (any tab/type click drops them, which is the intended behaviour).
+  const { filterMedicationId, filterPlacementId } = prefill;
+  const rows = logs.filter((l) => {
+    if (typeFilter && l.type !== typeFilter) return false;
+    if (filterMedicationId && l.medicationId !== filterMedicationId) return false;
+    if (filterPlacementId) {
+      const placementId = l.shiftId ? shiftById.get(l.shiftId)?.placementId : undefined;
+      if (placementId !== filterPlacementId) return false;
+    }
+    return true;
+  });
   // Options = recent shifts, plus the currently-selected shift if it's older than
   // 7 days (e.g. pinned from a shift editor) so it always shows as selected.
   const selectedShift = shiftId ? shiftById.get(shiftId) : undefined;
@@ -231,6 +245,24 @@ export function MedLogPage() {
           </div>
         }
       >
+        {(filterMedicationId || filterPlacementId) && (
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+            <span className="rounded-full bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700 ring-1 ring-emerald-100">
+              {filterMedicationId
+                ? `Showing ${medName.get(filterMedicationId) ?? "one medication"} only`
+                : `Showing ${placeName.get(filterPlacementId ?? "") ?? "one placement"} only`}
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                navigate(typeSlug ? `/medications/log/${typeSlug}` : "/medications/log")
+              }
+              className="text-xs font-medium text-slate-500 hover:text-slate-700"
+            >
+              Clear filter
+            </button>
+          </div>
+        )}
         {rows.length === 0 ? (
           <p className="rounded-xl border border-dashed border-slate-200 py-10 text-center text-sm text-slate-500">
             No log entries yet.
@@ -252,9 +284,16 @@ export function MedLogPage() {
                     {MED_LOG_TYPE_LABEL[l.type]}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-slate-800">
-                      {l.medicationId ? (medName.get(l.medicationId) ?? "Unknown med") : "Unlinked"}
-                    </p>
+                    {l.medicationId ? (
+                      <Link
+                        to={`/medications/${l.medicationId}`}
+                        className="block truncate text-sm font-medium text-emerald-700 hover:underline"
+                      >
+                        {medName.get(l.medicationId) ?? "Unknown med"}
+                      </Link>
+                    ) : (
+                      <p className="truncate text-sm font-medium text-slate-800">Unlinked</p>
+                    )}
                     <p className="text-xs text-slate-400">
                       {formatHumanDate(l.date)}
                       {l.route ? ` · ${l.route}` : ""}

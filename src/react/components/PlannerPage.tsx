@@ -335,6 +335,10 @@ export function PlannerPage() {
           Click a day — or drag across the hours you worked — and it opens here, ready to save.
           Click an existing shift to edit it.
         </p>
+        <p className="mt-2 text-sm leading-relaxed text-slate-500">
+          Or drag a placement chip from the palette above straight onto the calendar to drop a shift
+          at that ward.
+        </p>
         <button
           type="button"
           onClick={() => openNew({ date: isoDate(new Date()) })}

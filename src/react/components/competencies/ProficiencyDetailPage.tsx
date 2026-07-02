@@ -372,7 +372,18 @@ export function ProficiencyDetailPage() {
                     getLabel={(l) =>
                       `${l.medicationId ? (medName.get(l.medicationId) ?? "medication") : "medication"} · ${formatHumanDate(l.date)}`
                     }
-                    emptyText="No medication logs yet — log a med to use it as evidence (e.g. for Platform 4)."
+                    emptyText={
+                      <>
+                        No medication logs yet —{" "}
+                        <Link
+                          to="/medications/log"
+                          className="font-medium text-emerald-700 hover:underline"
+                        >
+                          log a med
+                        </Link>{" "}
+                        to use it as evidence (e.g. for Platform 4).
+                      </>
+                    }
                     onAdd={(l) => addEvidence("MED_LOG", l.id)}
                   />
                 )}
@@ -382,7 +393,15 @@ export function ProficiencyDetailPage() {
                     linked={linkedFor("SKILL")}
                     getId={(s) => s.id}
                     getLabel={(s) => s.name}
-                    emptyText="No skills yet — open the clinical skills tracker to use one as evidence."
+                    emptyText={
+                      <>
+                        No skills yet — open the{" "}
+                        <Link to="/skills" className="font-medium text-emerald-700 hover:underline">
+                          clinical skills tracker
+                        </Link>{" "}
+                        to use one as evidence.
+                      </>
+                    }
                     searchPlaceholder="Search skills…"
                     onAdd={(s) => addEvidence("SKILL", s.id)}
                   />
@@ -428,7 +447,7 @@ function EvidencePicker<T>({
   linked: Set<string>;
   getId: (row: T) => string;
   getLabel: (row: T) => string;
-  emptyText: string;
+  emptyText: React.ReactNode;
   onAdd: (row: T) => void;
   searchPlaceholder?: string;
 }) {

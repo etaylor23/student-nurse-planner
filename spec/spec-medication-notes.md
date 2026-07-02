@@ -66,7 +66,11 @@ medication). See `spec-architecture.md`.
   **optionally pick one from the last 7 days**; if you are, that recent list is
   still offered so you can **override** the auto-link (it's only a quick helper).
   Linked entries then show in that **shift's details** (planner editor + hours-log
-  panel).
+  panel). Each log row's **med name links to the medication**. The log also honours
+  two **one-shot view filters** carried in router `state` — `filterMedicationId`
+  (from a med detail's "+N more in the med log") and `filterPlacementId` (from the
+  hours log's per-placement med count) — shown as a clearable "Showing … only" chip;
+  any tab/type click drops the filter.
 
 ## Routing (path-based — no query strings)
 

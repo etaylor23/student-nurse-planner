@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import type { Placement, Shift } from "../../domain/types";
 import { hoursByPlacement } from "../../logic/hours";
 import type { PlacementMedCount } from "../../logic/medications";
@@ -54,9 +55,26 @@ export function PlacementBreakdown({
                   {r.planned > 0 && ` · ${r.planned} h planned`}
                   {(() => {
                     const m = medCounts?.get(r.placementId);
-                    return m && m.total > 0
-                      ? ` · ${m.total} med${m.total === 1 ? "" : "s"} logged`
-                      : "";
+                    if (!m || m.total === 0) return null;
+                    const text = `${m.total} med${m.total === 1 ? "" : "s"} logged`;
+                    // Deep-link to the med log filtered to this placement (real placements
+                    // only; the "no placement" bucket has nothing to filter to).
+                    return (
+                      <>
+                        {" · "}
+                        {r.placementId ? (
+                          <Link
+                            to="/medications/log"
+                            state={{ filterPlacementId: r.placementId }}
+                            className="text-emerald-700 hover:underline"
+                          >
+                            {text}
+                          </Link>
+                        ) : (
+                          text
+                        )}
+                      </>
+                    );
                   })()}
                 </div>
               </div>
