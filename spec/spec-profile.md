@@ -30,6 +30,13 @@ Reuses `User` (`src/domain/types.ts`) — **no new persisted entity**. See
   part, total parts, start date, target registration date. A side panel explains
   how the current part drives competency gap warnings, with the standing reminder
   that the PAD remains the official signed record.
+- **Demo data panel** — an opt-in tool (`DemoDataPanel`) to explore the app: **Load
+  demo data** writes a realistic part-2 dataset across every screen
+  (`data/seed/demo.ts` → `seedDemoData`, written through the `Repository` and
+  mirroring the action-layer `LogItem`s), and **Clear all data** wipes the local
+  store (`repo.resetDatabase()`, then reload — `ensureSeed` recreates the reference
+  seed). Load is disabled once any content exists so it can't duplicate. Local to the
+  browser only; never auto-runs.
 
 ## Integrations
 

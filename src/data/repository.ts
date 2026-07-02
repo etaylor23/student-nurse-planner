@@ -38,6 +38,13 @@ export interface Repository {
   getCurrentUser(): Promise<User>;
   updateUser(patch: Partial<Omit<User, "id" | "createdAt">>): Promise<User>;
 
+  /**
+   * Local/demo utility: wipe the entire local store (reference seed is recreated on
+   * next load). Backs the Profile "Clear all data" control; a remote backend may
+   * scope this to the current user or decline it.
+   */
+  resetDatabase(): Promise<void>;
+
   // ---- Break rules ----
   /** Returns the user's rules if present, otherwise the built-in defaults. */
   getBreakRules(userId: string): Promise<BreakRule[]>;

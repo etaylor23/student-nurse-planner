@@ -86,6 +86,12 @@ export class DexieRepository implements Repository {
     return updated;
   }
 
+  /** Delete the whole IndexedDB database; the caller reloads so `ensureSeed` re-runs. */
+  async resetDatabase(): Promise<void> {
+    await this.db.delete();
+    this.seeded = false;
+  }
+
   async getBreakRules(userId: string): Promise<BreakRule[]> {
     await this.ensureSeed();
     const own = await this.db.breakRules.where("userId").equals(userId).toArray();

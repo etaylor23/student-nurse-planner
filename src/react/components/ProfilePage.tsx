@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ProgrammeType, User } from "../../domain/types";
+import { hasDemoData, seedDemoData } from "../../data/seed/demo";
 import { useRepository } from "../RepositoryContext";
-import { PageHero, Panel, btnPrimary, inputCls } from "./ui";
+import { PageHero, Panel, btnGhost, btnPrimary, inputCls } from "./ui";
 
 const PROGRAMME_TYPE_LABEL: Record<ProgrammeType, string> = {
   BSC_3YR: "BSc (3 years)",
@@ -189,6 +190,78 @@ function ProfileForm({ user }: { user: User }) {
           </p>
         </Panel>
       </div>
+
+      <DemoDataPanel userId={user.id} />
     </div>
+  );
+}
+
+/**
+ * Opt-in sample data for exploring the app. Fills every screen with a realistic
+ * dataset, or clears the local store back to a blank slate. Everything is local to
+ * this browser (IndexedDB) — no server, no other users affected.
+ */
+function DemoDataPanel({ userId }: { userId: string }) {
+  const { repo } = useRepository();
+  const [populated, setPopulated] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState<null | "load" | "clear">(null);
+
+  useEffect(() => {
+    let active = true;
+    void hasDemoData(repo, userId).then((has) => {
+      if (active) setPopulated(has);
+    });
+    return () => {
+      active = false;
+    };
+  }, [repo, userId]);
+
+  const load = async () => {
+    setBusy("load");
+    await seedDemoData(repo, userId);
+    window.location.reload();
+  };
+
+  const clear = async () => {
+    if (
+      !window.confirm(
+        "Clear ALL local data — shifts, medications, competency progress, skills and history? This can't be undone.",
+      )
+    )
+      return;
+    setBusy("clear");
+    await repo.resetDatabase();
+    window.location.reload();
+  };
+
+  return (
+    <Panel title="Demo data" hint="Explore with a sample dataset — local to this browser only">
+      <p className="text-sm leading-relaxed text-slate-600">
+        {populated
+          ? "This browser already has data. Load is disabled so it can't be duplicated — clear everything first to load a fresh sample."
+          : "Fill every screen with a realistic part-2 student's dataset — placements, shifts, medications and logs, competency progress and evidence, clinical-skill sign-offs, custom skills and activity history — so you can explore the whole app and its cross-links."}
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => void load()}
+          disabled={busy !== null || populated !== false}
+          className={btnPrimary + (busy !== null || populated !== false ? " opacity-50" : "")}
+        >
+          {busy === "load" ? "Loading…" : "Load demo data"}
+        </button>
+        <button
+          type="button"
+          onClick={() => void clear()}
+          disabled={busy !== null}
+          className={btnGhost + (busy !== null ? " opacity-50" : "")}
+        >
+          {busy === "clear" ? "Clearing…" : "Clear all data"}
+        </button>
+      </div>
+      <p className="mt-3 text-xs text-slate-400">
+        Sample data only — illustrative, never real patient information.
+      </p>
+    </Panel>
   );
 }
