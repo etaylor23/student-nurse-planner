@@ -412,7 +412,7 @@ carry `shiftId`?"
 ## 8. Checklist (tick as built; keep statuses honest)
 
 Wave 1
-- [ ] U5 · Skill ↔ proficiency bridges everywhere
+- [x] U5 · Skill ↔ proficiency bridges everywhere
 - [ ] U6 · Clickable activity feed + filters + mounts
 - [ ] U7 · Custom skills → proficiency linking
 - [ ] U11 · Dead-end sweep bundle

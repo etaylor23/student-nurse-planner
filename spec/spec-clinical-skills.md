@@ -81,9 +81,14 @@ Where this screen and others feed into each other:
 
 - **↔ NMC Competency Tracker.** A skill attaches to a proficiency via `EvidenceLink`
   (`SKILL`) — the real picker on the proficiency detail, and the auto-link on sign-off.
-  The skill detail links back to its proficiency ("Counts toward B2.1"); the
-  proficiency's evidence row deep-links to `/skills/:id`. The two share the Annexe B /
-  proficiency seed (derived, 1:1 by code).
+  The skill detail links back to its proficiency ("Counts toward B2.1"), and once the
+  sign-off evidence link exists shows "This skill now counts as evidence for B2.1 →
+  view proficiency"; the proficiency's evidence row deep-links to `/skills/:id`. The
+  1:1 mapping is surfaced on both sides: the **skills list** prefixes each Annexe B row
+  with its B-code; the **platform detail** (Annexe B) shows each proficiency's paired
+  skill stage/sign-off badge linking through to the skill; the **gaps page** offers
+  "Practise the skill →" on Annexe B gaps. The two share the Annexe B / proficiency
+  seed (derived, 1:1 by code).
 - **→ Activity Log.** Stage changes, sign-off and custom add/delete append `LogItem`s
   that render in the global feed.
 - **↔ Reflection** _(planned)_. A reflection will link to a skill via the same

@@ -202,6 +202,18 @@ export function SkillDetailPage() {
                   <Detail label="Evidence" value={progress?.evidenceNote} />
                 </dl>
               </div>
+              {profId && profCode && alreadyLinked && (
+                <p className="mt-3 text-sm text-slate-600">
+                  This skill now counts as evidence for{" "}
+                  <Link
+                    to={`/competencies/proficiency/${profId}`}
+                    className="font-medium text-emerald-700"
+                  >
+                    {profCode}
+                  </Link>{" "}
+                  → view proficiency.
+                </p>
+              )}
             </Panel>
           ) : (
             <Panel step="2" title="Sign off" hint="Capture who, where, when and the evidence">

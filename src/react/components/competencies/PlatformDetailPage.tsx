@@ -7,7 +7,9 @@ import {
   progressByProficiency,
   statusOf,
 } from "../../../logic/proficiencies";
-import { useProficiencies } from "../../hooks";
+import { progressBySkill, skillStageOf } from "../../../logic/skills";
+import { useProficiencies, useSkills } from "../../hooks";
+import { SignedOffBadge, SkillStageBadge } from "../skills/shared";
 import { Panel, btnGhostSm } from "../ui";
 import { EvidenceBadge, StatusPill } from "./shared";
 
@@ -15,9 +17,14 @@ import { EvidenceBadge, StatusPill } from "./shared";
 export function PlatformDetailPage() {
   const { group } = useParams();
   const { proficiencies, progress, evidenceLinks } = useProficiencies();
+  // Annexe B proficiencies map 1:1 to a baseline skill by code (prof_B2.1 ↔ skill_B2.1);
+  // surface that skill's stage/sign-off here so the two trackers read as one journey.
+  const { skills, progress: skillProgress } = useSkills();
 
   const byProf = useMemo(() => progressByProficiency(progress), [progress]);
   const counts = useMemo(() => evidenceCountByProficiency(evidenceLinks), [evidenceLinks]);
+  const skillProgressBy = useMemo(() => progressBySkill(skillProgress), [skillProgress]);
+  const skillIds = useMemo(() => new Set(skills.map((s) => s.id)), [skills]);
   const rows = useMemo(
     () => proficiencies.filter((p) => groupKeyOf(p) === group),
     [proficiencies, group],
@@ -58,6 +65,10 @@ export function PlatformDetailPage() {
             const showSubhead =
               isAnnexe && (i === 0 || rows[i - 1].platformTitle !== p.platformTitle);
             const progressRow = byProf.get(p.id);
+            // The 1:1 baseline skill for an Annexe B proficiency, if it exists.
+            const skillId = p.annexe === "B" ? `skill_${p.code}` : null;
+            const hasSkill = skillId != null && skillIds.has(skillId);
+            const skillProg = skillId ? skillProgressBy.get(skillId) : undefined;
             return (
               <Fragment key={p.id}>
                 {showSubhead && (
@@ -68,7 +79,10 @@ export function PlatformDetailPage() {
                 <li>
                   <Link
                     to={`/competencies/proficiency/${p.id}`}
-                    className="flex items-start gap-3 py-3 transition hover:bg-slate-50"
+                    className={
+                      "flex items-start gap-3 pt-3 transition hover:bg-slate-50 " +
+                      (hasSkill ? "pb-1" : "pb-3")
+                    }
                   >
                     <span className="mt-0.5 w-12 shrink-0 text-xs font-semibold tabular-nums text-slate-400">
                       {p.code}
@@ -86,6 +100,21 @@ export function PlatformDetailPage() {
                       )}
                     </span>
                   </Link>
+                  {hasSkill && (
+                    <Link
+                      to={`/skills/${skillId}`}
+                      className="mb-3 ml-[3.75rem] flex w-fit items-center gap-1.5 text-xs text-slate-400 transition hover:text-emerald-700"
+                      title="Open the matching clinical skill"
+                    >
+                      <span>Skill</span>
+                      {skillProg?.signedOff ? (
+                        <SignedOffBadge />
+                      ) : (
+                        <SkillStageBadge stage={skillStageOf(skillProg)} />
+                      )}
+                      <span aria-hidden="true">→</span>
+                    </Link>
+                  )}
                 </li>
               </Fragment>
             );

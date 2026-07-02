@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { SKILL_STAGE_LABEL, type SkillStage } from "../../../domain/types";
+import { annexeCodeOf } from "../../../data/seed/skills";
 import {
   groupSkillsByCategory,
   progressBySkill,
@@ -96,6 +97,14 @@ export function SkillsListPage() {
                       className="flex items-start gap-3 py-3 transition hover:bg-slate-50"
                     >
                       <span className="min-w-0 flex-1 text-sm text-slate-700">
+                        {annexeCodeOf(s) && (
+                          <span
+                            className="mr-2 font-semibold tabular-nums text-slate-400"
+                            title="Maps 1:1 to this Annexe B proficiency"
+                          >
+                            {annexeCodeOf(s)}
+                          </span>
+                        )}
                         {s.name}
                         {s.source === "CUSTOM" && (
                           <span className="ml-2 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-400">
