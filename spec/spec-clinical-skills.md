@@ -36,8 +36,11 @@ Path-based, nested under `/skills/*` (shell `SkillsPage`, components in
 - **Skill detail** (`/skills/:id`, `SkillDetailPage`) — a clickable stage stepper
   (Observed → Assisted → Performed under supervision) and a sign-off form
   (name / location / date / evidence). Once signed off the stepper is **locked** and
-  the sign-off shows as a permanent, captured record. Built-in skills show a "Counts
-  toward proficiency B2.1" link; custom skills can be deleted here.
+  the sign-off shows as a permanent, captured record. **Proficiency evidence** block
+  (all skills): an Annexe B skill notes its 1:1 mapping ("Maps 1:1 to B2.1"); every
+  skill lists the proficiencies it currently evidences ("Evidences 4.6, B2.2 →") and
+  offers **Link to a proficiency** (opens the shared `ProficiencyPicker`, excluding
+  ones already linked). Custom skills can be deleted here.
 - **Add custom skill** (`/skills/new`, `SkillFormPage`) — name + category (an
   `Autocomplete` over existing categories).
 
@@ -71,7 +74,15 @@ Path-based, nested under `/skills/*` (shell `SkillsPage`, components in
 - **Auto-evidence on sign-off.** Because baseline skills map 1:1 to an Annexe B
   proficiency by code, signing off a baseline skill offers (checkbox, on by default)
   to create the matching `SKILL` evidence link in one step — so sign-off feeds the PAD.
-  Hidden when the skill is already linked.
+  Hidden when the skill is already linked. **Custom skills** get the parallel affordance:
+  their sign-off form offers "Also attach as evidence for a proficiency…", opening the
+  picker to choose any proficiency, attached on sign-off.
+- **Custom skills join the evidence economy.** Custom skills are no longer excluded
+  from the spine — the detail page's **Link to a proficiency** action (and the sign-off
+  picker above) let a custom skill attach to any proficiency as `SKILL` evidence, via
+  `useSkillActions.linkSkillToProficiency` (the link + `EVIDENCE_LINKED` `LogItem` live
+  at the action layer). The link shows on the proficiency detail + activity feed like
+  any other.
 - **Activity Log.** `useSkillActions` appends `SKILL_STAGE_CHANGED`, `SKILL_SIGNED_OFF`,
   `SKILL_ADDED`, `SKILL_DELETED` (`entityType: "SKILL"`); dot colours added in `LogList`.
 

@@ -42,9 +42,36 @@ export function useSkillActions() {
   };
 
   /**
-   * Sign a skill off (permanent). When `linkProficiency` is given (an Annexe B skill's
-   * matching proficiency), also creates the `SKILL` evidence link so a sign-off feeds
-   * the PAD in one step — logged against that proficiency too.
+   * Attach a skill to a proficiency as `SKILL` evidence — the join that lets any
+   * skill (baseline or custom) feed the PAD. Logged against the proficiency (like
+   * `ProficiencyDetailPage.addEvidence`). The caller excludes already-linked
+   * proficiencies, so this doesn't guard against duplicates.
+   */
+  const linkSkillToProficiency = async (
+    skill: Skill,
+    proficiency: { id: string; code: string },
+  ) => {
+    if (!user) return;
+    await repo.createEvidenceLink({
+      userId: user.id,
+      proficiencyId: proficiency.id,
+      evidenceType: "SKILL",
+      evidenceId: skill.id,
+    });
+    await repo.createLogItem({
+      userId: user.id,
+      entityType: "PROFICIENCY",
+      entityId: proficiency.id,
+      entityLabel: proficiency.code,
+      action: "EVIDENCE_LINKED",
+      summary: `Linked a clinical skill as evidence for ${proficiency.code}`,
+    });
+  };
+
+  /**
+   * Sign a skill off (permanent). When `linkProficiency` is given — an Annexe B skill's
+   * matching proficiency, or a proficiency the student picked for a custom skill — also
+   * creates the `SKILL` evidence link so a sign-off feeds the PAD in one step.
    */
   const signOff = async (
     skill: Skill,
@@ -60,22 +87,7 @@ export function useSkillActions() {
       `${skillNoun(skill)} signed off${by}`,
       skillNoun(skill),
     );
-    if (linkProficiency) {
-      await repo.createEvidenceLink({
-        userId: user.id,
-        proficiencyId: linkProficiency.id,
-        evidenceType: "SKILL",
-        evidenceId: skill.id,
-      });
-      await repo.createLogItem({
-        userId: user.id,
-        entityType: "PROFICIENCY",
-        entityId: linkProficiency.id,
-        entityLabel: linkProficiency.code,
-        action: "EVIDENCE_LINKED",
-        summary: `Linked a clinical skill as evidence for ${linkProficiency.code}`,
-      });
-    }
+    if (linkProficiency) await linkSkillToProficiency(skill, linkProficiency);
     return progress;
   };
 
@@ -91,5 +103,5 @@ export function useSkillActions() {
     await log(skill.id, "SKILL_DELETED", `Deleted custom skill “${skill.name}”`, skillNoun(skill));
   };
 
-  return { setStage, signOff, addCustomSkill, deleteCustomSkill };
+  return { setStage, signOff, linkSkillToProficiency, addCustomSkill, deleteCustomSkill };
 }

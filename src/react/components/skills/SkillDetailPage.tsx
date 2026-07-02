@@ -1,16 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   SKILL_SOURCE_LABEL,
   SKILL_STAGE_LABEL,
   SKILL_STAGES,
+  type Proficiency,
   type SkillStage,
 } from "../../../domain/types";
 import { annexeCodeOf, annexeProficiencyIdOf } from "../../../data/seed/skills";
 import { formatHumanDate, isoDate } from "../../../logic/calendar";
-import { useSkill } from "../../hooks";
+import { useProficiencies, useSkill } from "../../hooks";
 import { useRepository } from "../../RepositoryContext";
 import { useSkillActions } from "../../useSkillActions";
+import { ProficiencyPicker } from "../competencies/ProficiencyPicker";
 import { Panel, btnGhostSm, btnPrimary, inputCls } from "../ui";
 import { SignedOffBadge, SkillStageBadge } from "./shared";
 
@@ -20,7 +22,10 @@ export function SkillDetailPage() {
   const { id } = useParams();
   const { skill, progress, reload } = useSkill(id);
   const { repo, user } = useRepository();
-  const { setStage, signOff, deleteCustomSkill } = useSkillActions();
+  const { setStage, signOff, linkSkillToProficiency, deleteCustomSkill } = useSkillActions();
+  // The user's proficiencies + all evidence links — used to show which proficiencies
+  // this skill already evidences and to resolve their codes.
+  const { proficiencies, evidenceLinks, reload: reloadProfs } = useProficiencies();
   const navigate = useNavigate();
 
   const [byName, setByName] = useState("");
@@ -29,9 +34,30 @@ export function SkillDetailPage() {
   const [evidenceNote, setEvidenceNote] = useState("");
   const [alsoLink, setAlsoLink] = useState(true);
   const [alreadyLinked, setAlreadyLinked] = useState(false);
+  // The "Link to a proficiency" picker on the detail (any skill), and the proficiency
+  // a custom skill's sign-off form will also attach.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [signOffProf, setSignOffProf] = useState<Proficiency | null>(null);
+  const [signOffPickerOpen, setSignOffPickerOpen] = useState(false);
 
   const profId = skill ? annexeProficiencyIdOf(skill) : null;
   const profCode = skill ? annexeCodeOf(skill) : null;
+
+  const profById = useMemo(() => new Map(proficiencies.map((p) => [p.id, p])), [proficiencies]);
+  // The proficiencies this skill is already attached to (as SKILL evidence), sorted by
+  // code; plus the id set to exclude from the pickers so you can't double-link.
+  const linkedProficiencies = useMemo(() => {
+    if (!skill) return [];
+    return evidenceLinks
+      .filter((l) => l.evidenceType === "SKILL" && l.evidenceId === skill.id)
+      .map((l) => profById.get(l.proficiencyId))
+      .filter((p): p is Proficiency => !!p)
+      .sort((a, b) => a.code.localeCompare(b.code));
+  }, [evidenceLinks, skill, profById]);
+  const linkedProfIds = useMemo(
+    () => new Set(linkedProficiencies.map((p) => p.id)),
+    [linkedProficiencies],
+  );
 
   // Has this skill already been attached as evidence to its matching proficiency?
   // (If so, we don't offer to attach it again on sign-off.)
@@ -71,10 +97,26 @@ export function SkillDetailPage() {
     await reload();
   };
 
+  // Attach this skill to a proficiency from the detail page (available for any skill,
+  // any time — before or after sign-off).
+  const handleLink = async (p: Proficiency) => {
+    await linkSkillToProficiency(skill, { id: p.id, code: p.code });
+    setPickerOpen(false);
+    await reloadProfs();
+  };
+
   const handleSignOff = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Custom skills attach the proficiency the student picked in the form; Annexe B
+    // skills auto-attach their 1:1 proficiency unless it's already linked / opted out.
     const linkProficiency =
-      profId && profCode && alsoLink && !alreadyLinked ? { id: profId, code: profCode } : undefined;
+      skill.source === "CUSTOM"
+        ? signOffProf
+          ? { id: signOffProf.id, code: signOffProf.code }
+          : undefined
+        : profId && profCode && alsoLink && !alreadyLinked
+          ? { id: profId, code: profCode }
+          : undefined;
     await signOff(
       skill,
       {
@@ -85,7 +127,10 @@ export function SkillDetailPage() {
       },
       linkProficiency,
     );
+    setSignOffProf(null);
+    setSignOffPickerOpen(false);
     await reload();
+    await reloadProfs();
   };
 
   const handleDelete = async () => {
@@ -119,18 +164,56 @@ export function SkillDetailPage() {
           </span>
           {signedOff ? <SignedOffBadge /> : <SkillStageBadge stage={currentStage} />}
         </div>
-        {profId && profCode && (
-          <p className="mt-3 text-sm text-slate-500">
-            Counts toward proficiency{" "}
-            <Link
-              to={`/competencies/proficiency/${profId}`}
-              className="font-medium text-emerald-700"
-            >
-              {profCode}
-            </Link>
-            .
-          </p>
-        )}
+        {/* Proficiency evidence — the 1:1 mapping hint (Annexe B) plus any real links
+            this skill now evidences, and a way to attach it to any proficiency. */}
+        <div className="mt-4 space-y-2">
+          {profId && profCode && (
+            <p className="text-sm text-slate-500">
+              Maps 1:1 to proficiency{" "}
+              <Link
+                to={`/competencies/proficiency/${profId}`}
+                className="font-medium text-emerald-700"
+              >
+                {profCode}
+              </Link>
+              {linkedProfIds.has(profId)
+                ? "."
+                : " — sign off, or link below, to attach it as evidence."}
+            </p>
+          )}
+          {linkedProficiencies.length > 0 ? (
+            <p className="text-sm text-slate-600">
+              Evidences{" "}
+              {linkedProficiencies.map((p, i) => (
+                <span key={p.id}>
+                  {i > 0 && ", "}
+                  <Link
+                    to={`/competencies/proficiency/${p.id}`}
+                    className="font-medium text-emerald-700"
+                  >
+                    {p.code}
+                  </Link>
+                </span>
+              ))}{" "}
+              →
+            </p>
+          ) : (
+            <p className="text-sm text-slate-400">
+              Not yet attached as evidence for any proficiency.
+            </p>
+          )}
+          {pickerOpen ? (
+            <ProficiencyPicker
+              excludeIds={linkedProfIds}
+              onPick={(p) => void handleLink(p)}
+              onClose={() => setPickerOpen(false)}
+            />
+          ) : (
+            <button type="button" onClick={() => setPickerOpen(true)} className={btnGhostSm}>
+              Link to a proficiency
+            </button>
+          )}
+        </div>
       </Panel>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
@@ -280,6 +363,39 @@ export function SkillDetailPage() {
                     Already attached as evidence for {profCode}.
                   </p>
                 )}
+                {skill.source === "CUSTOM" &&
+                  (signOffProf ? (
+                    <div className="flex flex-wrap items-center gap-2 rounded-xl bg-sky-50 p-3 text-sm text-sky-800 ring-1 ring-sky-100">
+                      <span>
+                        Will also attach as evidence for <strong>{signOffProf.code}</strong> when
+                        you sign off.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSignOffProf(null)}
+                        className="font-medium text-sky-700 underline"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : signOffPickerOpen ? (
+                    <ProficiencyPicker
+                      excludeIds={linkedProfIds}
+                      onPick={(p) => {
+                        setSignOffProf(p);
+                        setSignOffPickerOpen(false);
+                      }}
+                      onClose={() => setSignOffPickerOpen(false)}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setSignOffPickerOpen(true)}
+                      className="text-sm font-medium text-emerald-700"
+                    >
+                      + Also attach as evidence for a proficiency…
+                    </button>
+                  ))}
                 <p className="text-xs text-slate-400">
                   Sign-off is permanent — once signed off, a skill stays signed off.
                 </p>

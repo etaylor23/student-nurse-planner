@@ -123,11 +123,13 @@ Where this screen and others feed into each other (built unless marked _(planned
   the gaps / top-gaps views link back to profile.
 - **↔ Clinical Skills.** A skill attaches as `SKILL` evidence (real searchable picker,
   `evidenceId` = `Skill.id`); a baseline skill's sign-off can auto-create the link to
-  its matching proficiency; the skill detail links back here. The two share the Annexe
-  B / proficiency seed (1:1 by code), and that mapping is surfaced both ways: the
-  **platform detail** (Annexe B) shows each proficiency's paired skill stage/sign-off
-  badge linking to `/skills/skill_<code>`, and the **gaps page** offers "Practise the
-  skill →" on Annexe B gaps.
+  its matching proficiency, and **custom skills** can now attach to any proficiency too
+  — from the skill detail's "Link to a proficiency" action or their sign-off picker.
+  The skill detail links back here and lists the proficiencies it evidences. The two
+  share the Annexe B / proficiency seed (1:1 by code), and that mapping is surfaced both
+  ways: the **platform detail** (Annexe B) shows each proficiency's paired skill
+  stage/sign-off badge linking to `/skills/skill_<code>`, and the **gaps page** offers
+  "Practise the skill →" on Annexe B gaps.
 - **↔ Reflection** _(planned)_. A reflection attaches as `REFLECTION` evidence — the
   stub picker is already shipped.
 - **→ Activity Log.** Status changes + evidence link/unlink append `LogItem`s.

@@ -414,7 +414,7 @@ carry `shiftId`?"
 Wave 1
 - [x] U5 · Skill ↔ proficiency bridges everywhere
 - [x] U6 · Clickable activity feed + filters + mounts
-- [ ] U7 · Custom skills → proficiency linking
+- [x] U7 · Custom skills → proficiency linking
 - [ ] U11 · Dead-end sweep bundle
 
 Wave 2
