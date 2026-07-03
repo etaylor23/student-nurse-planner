@@ -229,6 +229,22 @@ function CalcExam({
         >
           {percent}% · {pass ? "Pass" : `Below ${PASS_PCT}% pass mark`}
         </span>
+        {pass && (
+          <p className="mx-auto mt-4 max-w-sm text-sm text-slate-600">
+            This demonstrates drug-calculation accuracy — evidence for{" "}
+            <Link to="/competencies/proficiency/prof_4.14" className="font-medium text-emerald-700">
+              4.14
+            </Link>{" "}
+            and{" "}
+            <Link
+              to="/competencies/proficiency/prof_B11.4"
+              className="font-medium text-emerald-700"
+            >
+              B11.4
+            </Link>
+            .
+          </p>
+        )}
         <div className="mt-5 flex justify-center gap-2">
           <button type="button" onClick={onRestart} className={btnPrimary}>
             Try another exam

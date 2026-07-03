@@ -58,8 +58,10 @@ medication). See `spec-architecture.md`.
   weight-based / drops-per-minute / mg↔microgram unit conversion). Each card can
   reveal **worked steps** (`working`), not just the final answer. Two modes:
   **Practice** (free flashcard loop by type) and **Exam** (a fixed 10-question
-  mixed run, scored against an 80% pass mark and timed). A **"Your numeracy"** panel
-  shows lifetime accuracy per type and flags the **weakest area** to revise.
+  mixed run, scored against an 80% pass mark and timed); **passing the exam credits
+  proficiencies 4.14 and B11.4** with links (U9, closing the loop from the exam side).
+  A **"Your numeracy"** panel shows lifetime accuracy per type and flags the
+  **weakest area** to revise.
 - **Med log** — observed/administered entries (no patient-identifiable info). On
   logging, the entry is **auto-linked to the shift you're currently in** (a timed
   shift whose start–end window contains "now"). If you're not in a shift you can
