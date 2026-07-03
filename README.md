@@ -52,7 +52,9 @@ these specs describe both what's built and what's next.
 | 8 | Revision timetable | Specced — not built |
 
 A **Profile / Settings** screen (`spec-profile.md`) was built alongside the competency
-tracker, since gap surfacing needs the student's current programme part.
+tracker, since gap surfacing needs the student's current programme part. A **Home /
+Today** hub (`spec-home.md`) is the landing page (`/` redirects there) — connective
+tissue that mounts the existing screens' hooks/components; it adds no new data.
 
 ## 3. Foundational decisions ("Start here")
 
@@ -109,9 +111,10 @@ Full detail in [`spec-architecture.md`](./spec/spec-architecture.md). Summary:
   in and floats over the content** when you hover the left margin strip
   (pure CSS `group-hover`). On mobile (no hover) a slim top bar with a menu
   button opens it as a drawer with a tap-to-close backdrop.
-- **Routing:** `react-router-dom` v7. Nav links for all eight features; **every
-  item is disabled until its feature is implemented.** Currently only
-  **Placement hours log** is enabled; `/` and unknown routes redirect to it.
+- **Routing:** `react-router-dom` v7. Nav links for all features; **an item is
+  disabled until its feature is implemented.** A **Home** hub leads the nav, so `/`
+  and unknown routes redirect to `/home` (the first enabled item); Reflection,
+  Revision and Self-care remain the disabled "Soon" items.
 
 ## 6. Build order / roadmap
 

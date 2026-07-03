@@ -17,6 +17,22 @@ export function findCurrentShift(shifts: Shift[], nowMs: number): Shift | undefi
   );
 }
 
+/** A shift's sortable start instant: its clock-in, else local midnight of its date. */
+function startMs(s: Shift): number {
+  return s.startAt ? new Date(s.startAt).getTime() : new Date(s.date).getTime();
+}
+
+/**
+ * The soonest upcoming PLANNED shift — the "next shift" for the Home dashboard.
+ * A shift counts as upcoming when its start instant is at/after `nowMs` (timed) or its
+ * date is today or later (all-day). Earliest first. Pure — pass the current epoch ms.
+ */
+export function nextShift(shifts: Shift[], nowMs: number): Shift | undefined {
+  return shifts
+    .filter((s) => s.status === "PLANNED" && startMs(s) >= nowMs)
+    .sort((a, b) => startMs(a) - startMs(b))[0];
+}
+
 /**
  * Shifts whose date falls within the last `days` (default 7) up to and including
  * `todayIso` — the override list offered when logging an action. Newest first.

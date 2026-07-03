@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findCurrentShift, recentShifts } from "../src/logic/shiftContext";
+import { findCurrentShift, nextShift, recentShifts } from "../src/logic/shiftContext";
 import type { Shift } from "../src/domain/types";
 
 function shift(p: Partial<Shift>): Shift {
@@ -47,6 +47,24 @@ describe("findCurrentShift", () => {
   it("includes the window boundaries", () => {
     expect(findCurrentShift([inShift], ms("2026-06-16T08:00:00.000Z"))?.id).toBe("now");
     expect(findCurrentShift([inShift], ms("2026-06-16T16:00:00.000Z"))?.id).toBe("now");
+  });
+});
+
+describe("nextShift", () => {
+  const now = ms("2026-06-16T12:00:00.000Z");
+  const soon = shift({ id: "soon", startAt: "2026-06-16T18:00:00.000Z" });
+  const later = shift({ id: "later", startAt: "2026-06-18T08:00:00.000Z" });
+  const past = shift({ id: "past", startAt: "2026-06-15T08:00:00.000Z" });
+  const completed = shift({ id: "done", status: "COMPLETED", startAt: "2026-06-17T08:00:00.000Z" });
+
+  it("returns the soonest upcoming PLANNED shift", () => {
+    expect(nextShift([later, soon, past], now)?.id).toBe("soon");
+  });
+  it("ignores past and completed shifts", () => {
+    expect(nextShift([past, completed], now)).toBeUndefined();
+  });
+  it("returns undefined when nothing is upcoming", () => {
+    expect(nextShift([past], now)).toBeUndefined();
   });
 });
 

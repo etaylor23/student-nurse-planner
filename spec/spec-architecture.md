@@ -415,9 +415,13 @@ model RevisionSession {
 - `react-router-dom` v7. `nav.ts` holds `NAV_SECTIONS` — ordered "suites of
   views", each with optional `heading` and items carrying an `enabled` flag;
   disabled items render non-clickable with a "Soon" badge. `NAV_ITEMS` /
-  `DEFAULT_ROUTE` are derived from the sections. (Built: "Shifts & hours" =
-  placement hours log + weekly planner; competency tracker + medication notes; an
-  "Account" section = `/profile`.)
+  `DEFAULT_ROUTE` are derived from the sections. (Built: an ungrouped first section =
+  `/home` (the hub); "Shifts & hours" = placement hours log + weekly planner;
+  "Trackers" = competency tracker + clinical skills; "Study & wellbeing" = medication
+  notes; an "Account" section = `/profile`.)
+- **Home / Today** (`/home`, `HomePage`, U2) — the hub landing page: mounts existing
+  hooks/components (on-shift strip, hours pace, `TopGaps`, skills-in-progress,
+  `ActivityLog`) with no new data. See `spec-home.md`.
 - **Competency tracker routes** (path-based, nested under `/competencies/*`):
   `/competencies` (platform overview), `/competencies/platform/:group`
   (`:group` = `1`..`7` | `A` | `B`), `/competencies/proficiency/:id`,
@@ -432,7 +436,7 @@ model RevisionSession {
   Layout grids start at `grid-cols-1` and wrappers use `min-w-0` so a wide child
   (e.g. a table) can't force horizontal overflow.
 - `App.tsx`: `/` and `*` redirect to the first enabled route
-  (`DEFAULT_ROUTE` = `/placement-hours`).
+  (`DEFAULT_ROUTE` = `/home`).
 - **Path-based routing — no query strings.** View/selection states are path
   segments so they're shareable and refresh-safe: e.g. `/planner/:shiftId` (opens a
   shift's week + editor), `/medications/calc/:type`, `/medications/log/:type`. Even

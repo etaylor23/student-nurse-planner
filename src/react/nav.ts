@@ -23,6 +23,11 @@ export interface NavSection {
 
 export const NAV_SECTIONS: NavSection[] = [
   {
+    // Ungrouped first section; its first enabled item is the DEFAULT_ROUTE, so `/`
+    // lands on Home.
+    items: [{ path: "/home", label: "Home", enabled: true }],
+  },
+  {
     heading: "Shifts & hours",
     items: [
       { path: "/placement-hours", label: "Placement hours log", enabled: true },

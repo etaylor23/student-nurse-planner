@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { RepositoryProvider } from "./react/RepositoryContext";
 import { ShiftsProvider } from "./react/ShiftsContext";
 import { AppLayout } from "./react/components/AppLayout";
+import { HomePage } from "./react/components/HomePage";
 import { HoursLogPage } from "./react/components/HoursLogPage";
 import { PlannerPage } from "./react/components/PlannerPage";
 import { MedicationNotesPage } from "./react/components/MedicationNotesPage";
@@ -20,6 +21,7 @@ export function App() {
         <BrowserRouter basename={basename}>
           <AppLayout>
             <Routes>
+              <Route path="/home" element={<HomePage />} />
               <Route path="/placement-hours" element={<HoursLogPage />} />
               <Route path="/planner" element={<PlannerPage />} />
               <Route path="/planner/:shiftId" element={<PlannerPage />} />

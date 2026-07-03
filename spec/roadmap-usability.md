@@ -423,7 +423,7 @@ Wave 2
 - [x] U4 · Evidence suggestions
 
 Wave 3
-- [ ] U2 · Home / Today dashboard
+- [x] U2 · Home / Today dashboard
 - [ ] U3 · Placement debrief view
 - [ ] U9 · Golden-moment responses (4 small commits)
 - [ ] U10 · Profile current-impact panel
