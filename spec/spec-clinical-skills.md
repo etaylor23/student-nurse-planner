@@ -36,8 +36,9 @@ Path-based, nested under `/skills/*` (shell `SkillsPage`, components in
   filtered, grouped by category. Each row a stage badge (or a solid "Signed off"
   marker) + a "Custom" tag on the student's own skills.
 - **Skill detail** (`/skills/:id`, `SkillDetailPage`) — a clickable stage stepper
-  (Observed → Assisted → Performed under supervision) and a sign-off form
-  (name / location / date / evidence). Once signed off the stepper is **locked** and
+  (Observed → Assisted → Performed under supervision; advancing shows a transient
+  "Advanced to …" confirmation, U9) and a sign-off form (name / location / date /
+  evidence). Once signed off the stepper is **locked** and
   the sign-off shows as a permanent, captured record. **Proficiency evidence** block
   (all skills): an Annexe B skill notes its 1:1 mapping ("Maps 1:1 to B2.1"); every
   skill lists the proficiencies it currently evidences ("Evidences 4.6, B2.2 →") and

@@ -72,6 +72,7 @@ export function SkillDetailPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [signOffProf, setSignOffProf] = useState<Proficiency | null>(null);
   const [signOffPickerOpen, setSignOffPickerOpen] = useState(false);
+  const [advancedTo, setAdvancedTo] = useState<SkillStage | null>(null); // transient stage confirmation (U9)
 
   const profId = skill ? annexeProficiencyIdOf(skill) : null;
   const profCode = skill ? annexeCodeOf(skill) : null;
@@ -128,6 +129,8 @@ export function SkillDetailPage() {
     if (signedOff) return;
     await setStage(skill, stage);
     await reload();
+    setAdvancedTo(stage); // transient confirmation (U9)
+    setTimeout(() => setAdvancedTo(null), 2500);
   };
 
   // Attach this skill to a proficiency from the detail page (available for any skill,
@@ -293,6 +296,11 @@ export function SkillDetailPage() {
                 );
               })}
             </ol>
+            {advancedTo && !signedOff && (
+              <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 ring-1 ring-emerald-100">
+                Advanced to {SKILL_STAGE_LABEL[advancedTo]} ✓
+              </p>
+            )}
           </Panel>
         </div>
 
