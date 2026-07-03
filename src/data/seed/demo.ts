@@ -716,6 +716,40 @@ export async function seedDemoData(repo: Repository, userId: string): Promise<vo
     completed: false,
   });
 
+  // ---- Self-care check-ins (private wellbeing; one after a hard shift) ----
+  const mkCheckin = async (c: {
+    daysAgo: number;
+    shiftId?: string;
+    energy?: number;
+    items: string[];
+    note?: string;
+  }) => {
+    const checkin = await repo.createSelfCareCheckin({
+      userId,
+      date: isoDate(at(c.daysAgo)),
+      shiftId: c.shiftId,
+      energy: c.energy,
+      note: c.note,
+      items: c.items.join(","),
+    });
+    feed.push({
+      entityType: "SELF_CARE",
+      entityId: checkin.id,
+      action: "SELF_CARE_CHECKIN",
+      summary: `Checked in on your wellbeing${c.energy != null ? ` — energy ${c.energy}/5` : ""}`,
+      entityLabel: "Self-care check-in",
+    });
+  };
+  // The day after a demanding ED long-day (s3): low energy, debriefed.
+  await mkCheckin({
+    daysAgo: 13,
+    shiftId: s3.id,
+    energy: 2,
+    items: ["debrief", "move"],
+    note: "Tough shift in ED — talked it through with my mentor afterwards.",
+  });
+  await mkCheckin({ daysAgo: 2, energy: 4, items: ["sleep", "food", "connect", "balance"] });
+
   // ---- Write the activity feed last (chronological insertion order) ----
   for (const f of feed) {
     await repo.createLogItem({ userId, ...f });

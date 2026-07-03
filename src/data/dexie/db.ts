@@ -35,6 +35,9 @@ const V4_ADDED_STORES: StoreName[] = [
   "revisionSessions",
 ];
 
+/** Stores added at version(5) — the Self-care checklist. Same additive pattern. */
+const V5_ADDED_STORES: StoreName[] = ["selfCareCheckins"];
+
 /**
  * IndexedDB binding for the PoC. The current schema and the table types both come
  * from the single registry in `../schema.ts` (one source for store↔type↔index), so
@@ -44,10 +47,11 @@ const V4_ADDED_STORES: StoreName[] = [
  * Migration policy: this is a local-only PoC, so we **rebuild rather than migrate**.
  * version(1) declares the original schema; version(2) **additively** introduces the
  * clinical-skills stores (see `V2_ADDED_STORES`); version(3) the reflection stores
- * (`V3_ADDED_STORES`); version(4) the revision stores (`V4_ADDED_STORES`) — all without
- * `.upgrade()` transforms, so deployed databases gain the new stores with zero data
- * loss. The database name is suffixed (`-v2`); bump that suffix only when a change must
- * force a clean rebuild (dropping/reshaping existing data) rather than an additive store.
+ * (`V3_ADDED_STORES`); version(4) the revision stores (`V4_ADDED_STORES`); version(5) the
+ * self-care store (`V5_ADDED_STORES`) — all without `.upgrade()` transforms, so deployed
+ * databases gain the new stores with zero data loss. The database name is suffixed
+ * (`-v2`); bump that suffix only when a change must force a clean rebuild
+ * (dropping/reshaping existing data) rather than an additive store.
  */
 export class PlannerDb extends Dexie {
   // Table accessors, typed from the registry. Field names match the STORE_INDEXES
@@ -76,6 +80,7 @@ export class PlannerDb extends Dexie {
   revisionTargets!: Table<EntityMap["revisionTargets"], string>;
   revisionTopics!: Table<EntityMap["revisionTopics"], string>;
   revisionSessions!: Table<EntityMap["revisionSessions"], string>;
+  selfCareCheckins!: Table<EntityMap["selfCareCheckins"], string>;
 
   constructor(name = "nurse-planner-v2") {
     super(name);
@@ -87,6 +92,7 @@ export class PlannerDb extends Dexie {
       ...V2_ADDED_STORES,
       ...V3_ADDED_STORES,
       ...V4_ADDED_STORES,
+      ...V5_ADDED_STORES,
     ]);
     const v1Stores = Object.fromEntries(
       Object.entries(STORE_INDEXES).filter(([k]) => !addedLater.has(k)),
@@ -97,5 +103,6 @@ export class PlannerDb extends Dexie {
     this.version(2).stores(later(V2_ADDED_STORES));
     this.version(3).stores(later(V3_ADDED_STORES));
     this.version(4).stores(later(V4_ADDED_STORES));
+    this.version(5).stores(later(V5_ADDED_STORES));
   }
 }

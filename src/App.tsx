@@ -11,6 +11,7 @@ import { NmcCompetenciesPage } from "./react/components/NmcCompetenciesPage";
 import { SkillsPage } from "./react/components/SkillsPage";
 import { ReflectionPage } from "./react/components/ReflectionPage";
 import { RevisionPage } from "./react/components/RevisionPage";
+import { SelfCarePage } from "./react/components/SelfCarePage";
 import { ProfilePage } from "./react/components/ProfilePage";
 import { DEFAULT_ROUTE } from "./react/nav";
 
@@ -34,6 +35,7 @@ export function App() {
               <Route path="/skills/*" element={<SkillsPage />} />
               <Route path="/reflection/*" element={<ReflectionPage />} />
               <Route path="/revision/*" element={<RevisionPage />} />
+              <Route path="/self-care" element={<SelfCarePage />} />
               <Route path="/profile" element={<ProfilePage />} />
               {/* `/` and any unknown path land on the first enabled feature. */}
               <Route path="*" element={<Navigate to={DEFAULT_ROUTE} replace />} />

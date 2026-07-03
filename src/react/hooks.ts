@@ -17,6 +17,7 @@ import type {
   RevisionSession,
   RevisionTarget,
   RevisionTopic,
+  SelfCareCheckin,
   Skill,
   SkillProgress,
   Subject,
@@ -324,6 +325,23 @@ export function useRevision() {
   }, [reload]);
 
   return { subjects, targets, topics, sessions, reload };
+}
+
+/** The user's self-care check-ins (private, on-device), newest first. */
+export function useSelfCare() {
+  const { repo, user } = useRepository();
+  const [checkins, setCheckins] = useState<SelfCareCheckin[]>([]);
+
+  const reload = useCallback(async () => {
+    if (!user) return;
+    setCheckins(await repo.listSelfCareCheckins(user.id));
+  }, [repo, user]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  return { checkins, reload };
 }
 
 /** One skill with the user's progress against it (detail view). */

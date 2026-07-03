@@ -13,7 +13,8 @@ type FeedFilter =
   | "competencies"
   | "skills"
   | "reflections"
-  | "revision";
+  | "revision"
+  | "wellbeing";
 const FILTERS: { key: FeedFilter; label: string }[] = [
   { key: "all", label: "All" },
   { key: "shifts", label: "Shifts" },
@@ -22,6 +23,7 @@ const FILTERS: { key: FeedFilter; label: string }[] = [
   { key: "skills", label: "Skills" },
   { key: "reflections", label: "Reflections" },
   { key: "revision", label: "Revision" },
+  { key: "wellbeing", label: "Wellbeing" },
 ];
 /** Which chip an entity type falls under (types with no chip only show under "All"). */
 const FEED_CATEGORY: Record<string, FeedFilter> = {
@@ -32,6 +34,7 @@ const FEED_CATEGORY: Record<string, FeedFilter> = {
   SKILL: "skills",
   REFLECTION: "reflections",
   REVISION: "revision",
+  SELF_CARE: "wellbeing",
 };
 
 /**

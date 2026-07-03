@@ -29,6 +29,8 @@ import type {
   RevisionTargetDraft,
   RevisionTopic,
   RevisionTopicDraft,
+  SelfCareCheckin,
+  SelfCareCheckinDraft,
   Shift,
   Skill,
   SkillProgress,
@@ -235,4 +237,9 @@ export interface Repository {
   createRevisionSession(input: RevisionSessionDraft & { userId: string }): Promise<RevisionSession>;
   updateRevisionSession(id: string, patch: Partial<RevisionSessionDraft>): Promise<RevisionSession>;
   deleteRevisionSession(id: string): Promise<void>;
+
+  // ---- Self-care check-ins (private, on-device) ----
+  listSelfCareCheckins(userId: string): Promise<SelfCareCheckin[]>;
+  createSelfCareCheckin(input: SelfCareCheckinDraft & { userId: string }): Promise<SelfCareCheckin>;
+  deleteSelfCareCheckin(id: string): Promise<void>;
 }

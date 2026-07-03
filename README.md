@@ -48,7 +48,7 @@ these specs describe both what's built and what's next.
 | 4 | Clinical skills development / skills tracker | **Built** |
 | 5 | Weekly shift planner | **Built** |
 | 6 | Medication notes | **Built** |
-| 7 | Self-care checklist | **Deferred** |
+| 7 | Self-care checklist | **Built** |
 | 8 | Revision timetable | **Built** |
 
 A **Profile / Settings** screen (`spec-profile.md`) was built alongside the competency
@@ -132,7 +132,12 @@ Full detail in [`spec-architecture.md`](./spec/spec-architecture.md). Summary:
    subjects → topics with confidence, spaced-repetition resurfacing, a Pomodoro runner,
    and shift-aware scheduling; numeracy reads `CalcStat`).
 
-(**Self-care checklist** is deferred until the rest is in good shape.)
+7. **Self-care checklist** — ✅ built (gentle, private; flexible rhythm + a post-hard-shift
+   debrief nudge; energy note that signposts support when low; no streaks). Brought the
+   first slice of **web notifications** — a Profile button that simulates a daily
+   check-in reminder (see `spec/notifications.md`).
+
+(All eight features are now built.)
 
 ## 7. What's already built (slice 1)
 
@@ -196,4 +201,6 @@ react-router-dom 7, Dexie 4, lucide-react, Vitest 2 (+ fake-indexeddb).
   new work.
 - [`spec-reflection.md`](./spec/spec-reflection.md) — **built.**
 - [`spec-revision-timetable.md`](./spec/spec-revision-timetable.md) — **built.**
-- [`spec-self-care.md`](./spec/spec-self-care.md) — **deferred.**
+- [`spec-self-care.md`](./spec/spec-self-care.md) — **built.**
+- [`notifications.md`](./spec/notifications.md) — web notifications; the self-care
+  check-in "simulate" button is built, shift reminders are specced-not-built.

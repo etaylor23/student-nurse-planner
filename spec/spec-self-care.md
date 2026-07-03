@@ -1,43 +1,58 @@
-# Spec — Self-Care Checklist  (Status: DEFERRED)
+# Spec — Self-Care Checklist  (Status: BUILT)
 
-Explicitly **deferred** during scoping — to be designed once the rest of the app
-is in good shape. No decisions locked yet.
+A gentle, private wellbeing check-in for student nurses — supportive, never a scored
+obligation.
 
-## Open questions to resolve when picked up
+**Built:** a single `/self-care` screen — an optional energy rating (1–5), a kind
+checklist grouped by dimension, an optional private on-device note, and always-available
+support signposting that comes forward when energy is low. Data: `SelfCareCheckin` (with
+the universal `shiftId` capture join) via the additive Dexie `version(5)`. Pure logic in
+`logic/selfCare.ts` (item catalogue, `isHardShift`, support links, `parseItems`/
+`joinItems`), unit-tested. Mutations via `useSelfCareActions` (activity-log at the action
+layer). The tone guardrail is enforced in the UI: no streaks, no scores.
 
-- **Rhythm:** daily, weekly, or per placement block?
-- **Dimensions:** sleep, food/hydration, movement, finances, social contact,
-  debrief after hard shifts, signposting to wellbeing support?
-- **Tone:** a gentle optional checklist vs. tracking/streaks. (Decide
-  deliberately — streaks can add pressure when missed, which is the opposite of
-  the intent for a wellbeing feature.)
-- **Mood/energy:** a private note, or prompts after difficult shifts that
-  **signpost support**?
+## Decisions (locked — confirmed with the user)
 
-## Guardrails (when built)
+- **Rhythm:** **flexible** — check in any time, never marked "behind"; a gentle nudge
+  appears in the post-shift **debrief after a hard shift** (night / long day / ~11h+).
+- **Dimensions:** **all** — Physical basics (rest/sleep, food & hydration, movement),
+  Emotional & social (connection, debrief after a tough moment), Practical (money/admin,
+  protected time), and standing **signposting to support**.
+- **Tone:** a gentle optional checklist — **no tracking/streaks**.
+- **Mood/energy:** an optional **private** energy note (1–5, on-device); if it's low
+  (≤ 2) the screen gently **signposts real support** rather than handling it in-app.
+- **Notifications:** a Profile button **simulates** a daily self-care check-in reminder
+  (foreground Notification API). The fuller notification vision lives in
+  `notifications.md` (shift reminders are **not** built).
 
-Keep it supportive, not a guilt/pressure mechanic. Avoid turning self-care into
-another scored obligation. If it surfaces distress, point gently toward real
-support rather than handling it in-app.
+## Guardrails
 
-## Integrations
+Supportive, not a guilt/pressure mechanic — never a scored obligation, no streaks. If it
+surfaces distress, point gently toward real support (Samaritans, Shout, NHS Practitioner
+Health, the university wellbeing team, and 999/A&E for a crisis) rather than handling it
+in-app.
 
-None yet.
+## Integrations (built)
 
-## Connections _(deferred — none built yet)_
+- **← Weekly Planner / Placement Hours Log.** After a **hard shift**, the post-shift
+  debrief (`ShiftDebrief`) shows a gentle "check in with yourself" nudge that opens
+  `/self-care` prefilled with that shift (`Shift` read via the universal `shiftId` join).
+- **→ Activity Log.** Check-ins append `SELF_CARE_CHECKIN` `LogItem`s; the feed filters
+  under a "Wellbeing" chip and links to `/self-care`.
+- **↔ Notifications.** The Profile simulate button (and future scheduled reminders) deep-
+  link to the check-in — see `notifications.md`.
 
-Ideas for when this is picked up:
+## Connections _(built)_
 
-- **← Weekly Planner / Placement Hours Log.** "After a hard shift" prompts could read
-  `Shift` rows (e.g. a debrief nudge following a completed shift).
-- **→ Activity Log.** Any check-ins would append `LogItem`s like every other feature.
-
-No connections are built while this feature is deferred.
+- **← Weekly Planner / Placement Hours Log.** The hard-shift debrief nudge (above).
+- **→ Activity Log.** Check-ins in the global feed (Wellbeing chip).
 
 ## Data reuse
 
-- **Will reuse (when built):** `User` and the shared `Entity` / `UserOwned` /
-  `Created` bases; `Shift` for any "after a hard shift" prompts.
+- **Reuses:** `User` and the shared `Entity` / `UserOwned` / `Created` bases; `Shift` via
+  `SelfCareCheckin.shiftId` for the post-hard-shift nudge. Ticked items are a
+  comma-separated key list (like `Medication.routes`); the catalogue lives in
+  `logic/selfCare.ts`, not the entity model.
 
-**Direction:** compose the shared bases and reference shifts by id; add a store only
-via `schema.ts`. See `spec-architecture.md` → Data reuse.
+**Direction:** compose the shared bases and reference shifts by id; the one store was
+added via `schema.ts` + an additive `db.ts` `version()`. See `spec-architecture.md`.

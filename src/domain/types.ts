@@ -459,6 +459,23 @@ export type RevisionTargetDraft = Omit<RevisionTarget, "id" | "userId" | "create
 export type RevisionTopicDraft = Omit<RevisionTopic, "id" | "userId" | "createdAt">;
 export type RevisionSessionDraft = Omit<RevisionSession, "id" | "userId" | "createdAt">;
 
+// ---------- Self-care checklist (supportive; never a streak / guilt mechanic) ----------
+
+/**
+ * A gentle, optional wellbeing check-in — private and on-device, never scored and with
+ * no streaks. `shiftId` is the universal capture join, so a check-in can follow a hard
+ * shift. Ticked self-care items are a comma-separated list of keys (like
+ * `Medication.routes`) — the catalogue of items/dimensions lives in `logic/selfCare.ts`.
+ */
+export interface SelfCareCheckin extends Entity, UserOwned, Created {
+  date: string; // ISO date
+  shiftId?: string; // FK → Shift (optional; a check-in prompted after a hard shift)
+  energy?: number; // 1..5 optional private energy/mood rating (low → support signposting)
+  note?: string; // optional private free text (kept on-device)
+  items: string; // comma-separated self-care item keys the student looked after
+}
+export type SelfCareCheckinDraft = Omit<SelfCareCheckin, "id" | "userId" | "createdAt">;
+
 /**
  * Configurable break-deduction band. A raw shift duration that falls in
  * [minShiftMins, maxShiftMins] has `breakMins` deducted before counting.

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { ProgrammeType, User } from "../../domain/types";
 import { hasDemoData, seedDemoData } from "../../data/seed/demo";
+import { simulateSelfCareReminder } from "../notifications";
 import { surfaceGaps } from "../../logic/proficiencies";
 import { useProficiencies } from "../hooks";
 import { useRepository } from "../RepositoryContext";
@@ -252,6 +253,18 @@ function DemoDataPanel({ userId }: { userId: string }) {
   const { repo } = useRepository();
   const [populated, setPopulated] = useState<boolean | null>(null);
   const [busy, setBusy] = useState<null | "load" | "clear">(null);
+  const [notifyMsg, setNotifyMsg] = useState<string | null>(null);
+
+  const sendCheckinReminder = async () => {
+    const result = await simulateSelfCareReminder();
+    setNotifyMsg(
+      result === "shown"
+        ? "Sent — check your notifications (it links to your self-care check-in)."
+        : result === "denied"
+          ? "Notifications are blocked — allow them for this site to try it."
+          : "Notifications aren't supported in this browser.",
+    );
+  };
 
   useEffect(() => {
     let active = true;
@@ -305,9 +318,15 @@ function DemoDataPanel({ userId }: { userId: string }) {
         >
           {busy === "clear" ? "Clearing…" : "Clear all data"}
         </button>
+        <button type="button" onClick={() => void sendCheckinReminder()} className={btnGhost}>
+          Simulate a check-in reminder
+        </button>
       </div>
+      {notifyMsg && <p className="mt-2 text-xs text-slate-500">{notifyMsg}</p>}
       <p className="mt-3 text-xs text-slate-400">
-        Sample data only — illustrative, never real patient information.
+        Sample data only — illustrative, never real patient information. The reminder is a demo of
+        the planned web notifications (see spec/notifications.md) — a foreground notification only,
+        no scheduling yet.
       </p>
     </Panel>
   );

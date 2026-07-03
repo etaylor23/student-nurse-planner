@@ -28,6 +28,7 @@ const DOT: Record<string, string> = {
   REVISION_REVIEWED: "bg-amber-400",
   REVISION_SESSION_COMPLETED: "bg-emerald-400",
   REVISION_TARGET_ADDED: "bg-sky-400",
+  SELF_CARE_CHECKIN: "bg-teal-400",
 };
 
 /** "2026-06-16T14:32:00.000Z" → "16 Jun 2026, 14:32" (local). */

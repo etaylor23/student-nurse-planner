@@ -337,6 +337,18 @@ model RevisionSession {
   confidenceAfter Int?
   createdAt       DateTime       @default(now())
 }
+
+// ---------- Self-care ----------
+model SelfCareCheckin {          // gentle, private wellbeing check-in — never scored
+  id        String   @id @default(cuid())
+  userId    String
+  date      DateTime
+  shiftId   String?              // the shift it follows (the universal capture join; optional)
+  energy    Int?                 // 1..5 optional private energy/mood rating
+  note      String?              // optional private free text (on-device)
+  items     String               // comma-separated self-care item keys ticked
+  createdAt DateTime @default(now())
+}
 ```
 
 ## Derived logic (computed, not stored)
@@ -360,10 +372,11 @@ model RevisionSession {
   across the platform. The "current shift" is the timed shift whose `startAt`–`endAt`
   window contains now; an action logged then auto-links to it (overridable from the
   last 7 days). First built for `MedicationLog.shiftId`; now also `SkillProgress.shiftId`
-  (the shift a sign-off happened in) and `Reflection.shiftId` (the shift a reflection is
-  about), and the same pattern extends to future logged actions. The shift's editor
-  surfaces what was logged in it — `ShiftMedications`, `ShiftSkills`, `ShiftReflections`
-  and `ShiftEvidence`.
+  (the shift a sign-off happened in), `Reflection.shiftId` (the shift a reflection is
+  about) and `SelfCareCheckin.shiftId` (a check-in nudged after a hard shift), and the
+  same pattern extends to future logged actions. The shift's editor surfaces what was
+  logged in it — `ShiftMedications`, `ShiftSkills`, `ShiftReflections` and `ShiftEvidence`;
+  the post-shift debrief adds a gentle self-care nudge after a hard shift.
 - **Pace projection:** shifts-to-go from the average completed-shift length; an
   estimated finish date from counted-hours-per-week over the completed date span.
 - **Hours by placement:** `netHours` grouped by `placementId` (counted vs
@@ -417,6 +430,10 @@ model RevisionSession {
 6. Medication notes — **built** — + Revision timetable — **built** (targets, subjects →
    topics with confidence, spaced-repetition resurfacing, Pomodoro session runner, and
    shift-aware scheduling that never clashes with a `Shift`; numeracy reads `CalcStat`).
+7. Self-care checklist — **built** (gentle, private; flexible rhythm + a post-hard-shift
+   debrief nudge; energy note that signposts support when low; no streaks). Plus the
+   first slice of web notifications (a Profile "simulate check-in" button) — see
+   `notifications.md`.
 
 ## App shell & routing
 
@@ -427,7 +444,7 @@ model RevisionSession {
   `/home` (the hub); "Shifts & hours" = placement hours log + weekly planner;
   "Trackers" = competency tracker + clinical skills; "Study & wellbeing" = reflection
   on practice + medication notes + revision timetable; an "Account" section = `/profile`.
-  Self-care remains the disabled "Soon" item.)
+  self-care checklist. All eight features are now enabled.)
 - **Home / Today** (`/home`, `HomePage`, U2) — the hub landing page: mounts existing
   hooks/components (on-shift strip, hours pace, `TopGaps`, skills-in-progress,
   `ActivityLog`) with no new data. See `spec-home.md`.
@@ -516,6 +533,10 @@ _(planned)_:
 - **Revision Timetable ↔ Planner / Hours Log.** The Timetable suggests study slots around
   the shared `Shift` rows (never clashing with a shift) and links back to the planner;
   the numeracy weak-area reads `CalcStat` and links to the med calc-practice screen.
+- **Self-care ← Planner / Hours Log.** After a hard shift (night / long day / ~11h+) the
+  post-shift debrief nudges a gentle `/self-care` check-in, prefilled with that shift
+  (`SelfCareCheckin.shiftId`). A Profile button simulates a daily check-in web
+  notification (see `notifications.md`).
 - **All screens → Activity Log.** Auditable actions append a generic `LogItem` that
   renders in the global feed (shifts, med actions, proficiency status + evidence
   link/unlink, profile updates; future features the same way).

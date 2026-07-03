@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Proficiency, Shift } from "../../domain/types";
 import { suggestProficienciesForShift } from "../../logic/evidenceSuggestions";
+import { isHardShift } from "../../logic/selfCare";
 import { useMedicationLogs, useProficiencies, useShifts } from "../hooks";
 import { useRepository } from "../RepositoryContext";
 import { ShiftEvidence } from "./ShiftEvidence";
@@ -140,6 +141,17 @@ export function ShiftDebrief({ shift, onDismiss }: { shift: Shift; onDismiss: ()
           )}
           <ShiftEvidence key={evidenceKey} shift={shift} />
         </div>
+      )}
+
+      {isHardShift(shift) && (
+        <button
+          type="button"
+          onClick={() => navigate("/self-care", { state: { prefillShiftId: shift.id } })}
+          className="mt-4 flex w-full items-center gap-2 rounded-xl bg-teal-50 px-3.5 py-3 text-left text-sm text-teal-900 ring-1 ring-teal-100 transition hover:bg-teal-100/70"
+        >
+          <span aria-hidden>🌱</span>
+          That was a long one — take a moment to check in with yourself.
+        </button>
       )}
 
       <button type="button" onClick={onDismiss} className={btnGhost + " mt-4"}>

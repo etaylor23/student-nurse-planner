@@ -47,7 +47,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { path: "/reflection", label: "Reflection on practice", enabled: true },
       { path: "/medications", label: "Medication notes", enabled: true },
       { path: "/revision", label: "Revision timetable", enabled: true },
-      { path: "/self-care", label: "Self-care checklist", enabled: false },
+      { path: "/self-care", label: "Self-care checklist", enabled: true },
     ],
   },
   {

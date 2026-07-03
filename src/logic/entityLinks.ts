@@ -17,6 +17,8 @@ export function hrefForEntity(entityType: string, entityId: string): string | nu
     // Revision entities have no per-row detail route; land on the revision hub.
     case "REVISION":
       return "/revision";
+    case "SELF_CARE":
+      return "/self-care";
     case "MEDICATION":
       return `/medications/${entityId}`;
     // The feed doesn't carry a med log's medication id, so we can't deep-link to the

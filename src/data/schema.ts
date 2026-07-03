@@ -17,6 +17,7 @@ import type {
   RevisionSession,
   RevisionTarget,
   RevisionTopic,
+  SelfCareCheckin,
   Shift,
   Skill,
   SkillProgress,
@@ -64,6 +65,7 @@ export interface EntityMap {
   revisionTargets: RevisionTarget;
   revisionTopics: RevisionTopic;
   revisionSessions: RevisionSession;
+  selfCareCheckins: SelfCareCheckin;
 }
 
 /** The set of persisted store names (single source of truth). */
@@ -111,4 +113,6 @@ export const STORE_INDEXES: Record<StoreName, string> = {
   revisionTargets: "id, userId, date, type",
   revisionTopics: "id, userId, subjectId, [userId+subjectId], nextDue",
   revisionSessions: "id, userId, topicId, scheduledStart",
+  // Self-care check-ins (private, on-device). `shiftId` unindexed (the capture join).
+  selfCareCheckins: "id, userId, date, createdAt",
 };

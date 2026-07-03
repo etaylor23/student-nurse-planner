@@ -30,6 +30,8 @@ import type {
   RevisionTargetDraft,
   RevisionTopic,
   RevisionTopicDraft,
+  SelfCareCheckin,
+  SelfCareCheckinDraft,
   Shift,
   Skill,
   SkillProgress,
@@ -811,5 +813,26 @@ export class DexieRepository implements Repository {
 
   async deleteRevisionSession(id: string): Promise<void> {
     await this.db.revisionSessions.delete(id);
+  }
+
+  // ---- Self-care check-ins ----
+  async listSelfCareCheckins(userId: string): Promise<SelfCareCheckin[]> {
+    const rows = await this.db.selfCareCheckins.where("userId").equals(userId).toArray();
+    // Newest first: check-in date, then creation order.
+    return rows.sort((a, b) =>
+      a.date !== b.date ? (a.date < b.date ? 1 : -1) : a.createdAt < b.createdAt ? 1 : -1,
+    );
+  }
+
+  async createSelfCareCheckin(
+    input: SelfCareCheckinDraft & { userId: string },
+  ): Promise<SelfCareCheckin> {
+    const checkin: SelfCareCheckin = { ...input, id: newId(), createdAt: nowIso() };
+    await this.db.selfCareCheckins.put(checkin);
+    return checkin;
+  }
+
+  async deleteSelfCareCheckin(id: string): Promise<void> {
+    await this.db.selfCareCheckins.delete(id);
   }
 }
