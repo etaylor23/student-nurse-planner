@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import type { Placement } from "../../domain/types";
 import { btnGhost, btnGhostSm, inputCls } from "./ui";
 
@@ -141,7 +142,12 @@ export function PlacementManager({
               ) : (
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0 truncate">
-                    <span className="text-sm font-medium text-slate-700">{p.name}</span>
+                    <Link
+                      to={`/placements/${p.id}`}
+                      className="text-sm font-medium text-slate-700 hover:text-emerald-700"
+                    >
+                      {p.name}
+                    </Link>
                     {p.settingType && (
                       <span className="ml-2 text-xs text-slate-400">{p.settingType}</span>
                     )}

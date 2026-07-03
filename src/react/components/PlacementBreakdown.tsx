@@ -49,7 +49,16 @@ export function PlacementBreakdown({
               className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0"
             >
               <div className="min-w-0">
-                <div className="truncate text-sm font-medium text-slate-700">{r.name}</div>
+                {r.placementId ? (
+                  <Link
+                    to={`/placements/${r.placementId}`}
+                    className="block truncate text-sm font-medium text-slate-700 hover:text-emerald-700"
+                  >
+                    {r.name}
+                  </Link>
+                ) : (
+                  <div className="truncate text-sm font-medium text-slate-700">{r.name}</div>
+                )}
                 <div className="text-xs text-slate-400">
                   {r.shiftCount} shift{r.shiftCount === 1 ? "" : "s"}
                   {r.planned > 0 && ` · ${r.planned} h planned`}

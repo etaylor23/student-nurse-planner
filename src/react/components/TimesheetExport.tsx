@@ -48,6 +48,9 @@ export function TimesheetExport({
   });
 
   const rows = buildTimesheet(filtered, placements);
+  // Resolve a row's placement name back to its id so the cell can deep-link to the
+  // placement debrief (U3). Names are effectively unique in practice.
+  const idByName = new Map(placements.map((p) => [p.name, p.id]));
   const showActions = !!(onEdit || onDelete || onMarkWorked);
   const isFiltered = !!(placementFilter || statusFilter || fromDate || toDate);
   const clearFilters = () => {
@@ -185,7 +188,18 @@ export function TimesheetExport({
               {rows.map((r) => (
                 <tr key={r.id} className="text-slate-700 transition-colors hover:bg-slate-50/60">
                   <td className="whitespace-nowrap px-4 py-2.5">{formatShiftDate(r.date)}</td>
-                  <td className="px-4 py-2.5">{r.placement}</td>
+                  <td className="px-4 py-2.5">
+                    {idByName.get(r.placement) ? (
+                      <Link
+                        to={`/placements/${idByName.get(r.placement)}`}
+                        className="text-slate-700 hover:text-emerald-700"
+                      >
+                        {r.placement}
+                      </Link>
+                    ) : (
+                      r.placement
+                    )}
+                  </td>
                   <td className="px-4 py-2.5">{r.shiftType}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{r.netHours}</td>
                   <td className="px-4 py-2.5">

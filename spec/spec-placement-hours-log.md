@@ -57,6 +57,14 @@ are exact (no 24h cap).
   the editor first).
 - **Hours by placement** — counted (and planned) hours grouped per ward/team,
   each with a per-placement CSV export.
+- **Placement debrief** (`/placements/:id`, `PlacementDetailPage`, U3) — a detail-only
+  route (no nav entry, like `/planner/:shiftId`) answering "what did this placement
+  give me?" for a midpoint/final PAD interview: counted/planned hours + date span,
+  the shifts here (→ planner), meds seen here (grouped, → medication), proficiencies
+  it evidenced (→ proficiency) and skills signed off here (→ skill). All in-memory
+  joins off the shift → placement link, aggregated by the pure `logic/placementSummary.ts`.
+  Every **placement name** links here — the hours-by-placement rows, the timesheet's
+  placement cells, the placements manager, and the planner palette chips.
 
 ## Derived logic
 
@@ -133,6 +141,9 @@ Where this screen and others feed into each other (built unless marked _(planned
   gaps (`TopGaps`).
 - **↔ Clinical Skills.** The shift editor's `ShiftSkills` lists skills signed off in
   the shift + a "Sign off a skill" shortcut (U8).
+- **→ Placement debrief (U3).** Every placement name links to `/placements/:id`, which
+  aggregates that placement's shifts, meds, evidenced proficiencies and signed-off
+  skills — each row deep-linking onward.
 - **→ Post-shift debrief (U1).** Marking a timesheet row worked opens `ShiftDebrief`
   at the top of the page — a live hours-progress line + three one-tap capture prompts
   (log a med / update a skill / attach as evidence), each pinned to that shift.

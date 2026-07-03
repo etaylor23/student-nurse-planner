@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import { Draggable } from "@fullcalendar/interaction";
 import type { Placement } from "../../domain/types";
 import { Panel } from "./ui";
@@ -68,6 +69,29 @@ export function PlacementPalette({ placements }: { placements: Placement[] }) {
                   <circle cx="15" cy="18" r="1.4" />
                 </svg>
                 <span className="truncate">{p.name}</span>
+                {/* Open the placement debrief. stopPropagation on mousedown so it
+                    doesn't start a calendar drag. */}
+                <Link
+                  to={`/placements/${p.id}`}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={`View ${p.name} placement`}
+                  title={`View ${p.name}`}
+                  className="ml-auto shrink-0 rounded p-0.5 text-slate-300 transition hover:text-emerald-600"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-3.5 w-3.5"
+                    aria-hidden="true"
+                  >
+                    <path d="M7 17 17 7M8 7h9v9" />
+                  </svg>
+                </Link>
               </div>
             ))}
           </div>

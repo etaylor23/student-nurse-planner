@@ -5,6 +5,7 @@ import { AppLayout } from "./react/components/AppLayout";
 import { HomePage } from "./react/components/HomePage";
 import { HoursLogPage } from "./react/components/HoursLogPage";
 import { PlannerPage } from "./react/components/PlannerPage";
+import { PlacementDetailPage } from "./react/components/PlacementDetailPage";
 import { MedicationNotesPage } from "./react/components/MedicationNotesPage";
 import { NmcCompetenciesPage } from "./react/components/NmcCompetenciesPage";
 import { SkillsPage } from "./react/components/SkillsPage";
@@ -25,6 +26,7 @@ export function App() {
               <Route path="/placement-hours" element={<HoursLogPage />} />
               <Route path="/planner" element={<PlannerPage />} />
               <Route path="/planner/:shiftId" element={<PlannerPage />} />
+              <Route path="/placements/:id" element={<PlacementDetailPage />} />
               <Route path="/medications/*" element={<MedicationNotesPage />} />
               <Route path="/competencies/*" element={<NmcCompetenciesPage />} />
               <Route path="/skills/*" element={<SkillsPage />} />
