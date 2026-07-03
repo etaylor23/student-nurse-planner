@@ -65,55 +65,55 @@ export function HomePage() {
         }
       />
 
-      {/* On shift now / next shift — the "capture as you go" entry point. */}
-      {current ? (
-        <Panel title="On shift now" hint={label(current)}>
-          <p className="mb-3 text-sm text-slate-500">
-            You're in a shift — capture what you see while it's fresh.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() =>
-                navigate("/medications/log", { state: { prefillShiftId: current.id } })
-              }
-              className={btnPrimary}
-            >
-              Log a medication
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate("/skills", { state: { prefillShiftId: current.id } })}
-              className={btnGhost}
-            >
-              Update a skill
-            </button>
-            <Link to={`/planner/${current.id}`} className={btnGhost}>
-              Open in planner
-            </Link>
-          </div>
-        </Panel>
-      ) : upcoming ? (
-        <Panel title="Next shift" hint={`${formatHumanDate(upcoming.date)} · ${label(upcoming)}`}>
-          <div className="flex flex-wrap gap-2">
-            <Link to={`/planner/${upcoming.id}`} className={btnPrimary}>
-              Open in planner
-            </Link>
-          </div>
-        </Panel>
-      ) : (
-        <Panel title="No upcoming shifts">
-          <p className="text-sm text-slate-500">
-            Plan your next shift on the{" "}
-            <Link to="/planner" className="font-medium text-emerald-700">
-              weekly planner
-            </Link>
-            .
-          </p>
-        </Panel>
-      )}
+      {/* Today at a glance — next shift, hours pace and skills on one row (1/3 each). */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {current ? (
+          <Panel title="On shift now" hint={label(current)}>
+            <p className="mb-3 text-sm text-slate-500">
+              You're in a shift — capture what you see while it's fresh.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  navigate("/medications/log", { state: { prefillShiftId: current.id } })
+                }
+                className={btnPrimary}
+              >
+                Log a medication
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/skills", { state: { prefillShiftId: current.id } })}
+                className={btnGhost}
+              >
+                Update a skill
+              </button>
+              <Link to={`/planner/${current.id}`} className={btnGhost}>
+                Open in planner
+              </Link>
+            </div>
+          </Panel>
+        ) : upcoming ? (
+          <Panel title="Next shift" hint={`${formatHumanDate(upcoming.date)} · ${label(upcoming)}`}>
+            <div className="flex flex-wrap gap-2">
+              <Link to={`/planner/${upcoming.id}`} className={btnPrimary}>
+                Open in planner
+              </Link>
+            </div>
+          </Panel>
+        ) : (
+          <Panel title="No upcoming shifts">
+            <p className="text-sm text-slate-500">
+              Plan your next shift on the{" "}
+              <Link to="/planner" className="font-medium text-emerald-700">
+                weekly planner
+              </Link>
+              .
+            </p>
+          </Panel>
+        )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Panel
           title="Hours pace"
           hint="Counting toward your practice hours"
