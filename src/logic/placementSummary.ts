@@ -1,4 +1,10 @@
-import type { EvidenceLink, MedicationLog, Shift, SkillProgress } from "../domain/types";
+import type {
+  EvidenceLink,
+  MedicationLog,
+  Reflection,
+  Shift,
+  SkillProgress,
+} from "../domain/types";
 
 /**
  * "What did this placement give me?" (U3) — the in-memory joins that reframe a
@@ -21,6 +27,7 @@ export interface PlacementSummary {
   medLogs: MedicationLog[]; // logs whose shift is at this placement, newest-first
   proficiencyIds: string[]; // distinct proficiencies evidenced via SHIFT links to these shifts
   signedOffSkillIds: string[]; // distinct skills signed off in these shifts (SkillProgress.shiftId)
+  reflectionIds: string[]; // distinct reflections written about these shifts (Reflection.shiftId)
 }
 
 export interface PlacementSummaryInput {
@@ -28,6 +35,7 @@ export interface PlacementSummaryInput {
   medLogs: MedicationLog[];
   evidenceLinks: EvidenceLink[];
   skillProgress: SkillProgress[];
+  reflections: Reflection[];
 }
 
 /** Aggregate everything that happened at one placement, via its shifts. */
@@ -82,6 +90,14 @@ export function summarisePlacement(
     ),
   ];
 
+  const reflectionIds = [
+    ...new Set(
+      input.reflections
+        .filter((r) => r.shiftId != null && shiftIds.has(r.shiftId))
+        .map((r) => r.id),
+    ),
+  ];
+
   return {
     shifts,
     shiftCount: shifts.length,
@@ -91,5 +107,6 @@ export function summarisePlacement(
     medLogs,
     proficiencyIds,
     signedOffSkillIds,
+    reflectionIds,
   };
 }

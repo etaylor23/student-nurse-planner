@@ -246,9 +246,25 @@ export function SkillDetailPage() {
               onClose={() => setPickerOpen(false)}
             />
           ) : (
-            <button type="button" onClick={() => setPickerOpen(true)} className={btnGhostSm}>
-              Link to a proficiency
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setPickerOpen(true)} className={btnGhostSm}>
+                Link to a proficiency
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  navigate("/reflection/new", {
+                    state: {
+                      prefillTitle: `Reflecting on ${skill.name}`,
+                      prefillTags: [skill.category],
+                    },
+                  })
+                }
+                className={btnGhostSm}
+              >
+                Reflect on this skill
+              </button>
+            </div>
           )}
         </div>
       </Panel>

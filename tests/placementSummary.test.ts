@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { summarisePlacement } from "../src/logic/placementSummary";
-import type { EvidenceLink, MedicationLog, Shift, SkillProgress } from "../src/domain/types";
+import type {
+  EvidenceLink,
+  MedicationLog,
+  Reflection,
+  Shift,
+  SkillProgress,
+} from "../src/domain/types";
 
 const shift = (p: Partial<Shift> & Pick<Shift, "id">): Shift => ({
   userId: "u",
@@ -41,7 +47,24 @@ const skillProgress = (
   ...p,
 });
 
-const EMPTY = { shifts: [], medLogs: [], evidenceLinks: [], skillProgress: [] };
+const reflection = (p: Partial<Reflection> & Pick<Reflection, "id">): Reflection => ({
+  userId: "u",
+  title: "R",
+  model: "GIBBS",
+  isLocked: false,
+  piiAcknowledged: true,
+  createdAt: "",
+  updatedAt: "",
+  ...p,
+});
+
+const EMPTY = {
+  shifts: [],
+  medLogs: [],
+  evidenceLinks: [],
+  skillProgress: [],
+  reflections: [],
+};
 
 describe("summarisePlacement", () => {
   const shifts = [
@@ -60,7 +83,7 @@ describe("summarisePlacement", () => {
     expect(s.shifts.map((x) => x.id)).toEqual(["c", "a", "b"]); // newest-first
   });
 
-  it("collects meds, evidenced proficiencies and signed-off skills via the shifts", () => {
+  it("collects meds, evidenced proficiencies, signed-off skills and reflections via the shifts", () => {
     const s = summarisePlacement("p1", {
       shifts,
       medLogs: [
@@ -79,10 +102,16 @@ describe("summarisePlacement", () => {
         skillProgress({ id: "sp2", skillId: "skill_B2.2", shiftId: "x" }), // other placement
         skillProgress({ id: "sp3", skillId: "skill_B2.3", shiftId: "b", signedOff: false }), // not signed off
       ],
+      reflections: [
+        reflection({ id: "r1", shiftId: "a" }),
+        reflection({ id: "r2", shiftId: "x" }), // other placement's shift
+        reflection({ id: "r3", shiftId: undefined }), // not linked to a shift
+      ],
     });
     expect(s.medLogs.map((m) => m.id)).toEqual(["m1"]);
     expect(s.proficiencyIds).toEqual(["prof_1.1"]);
     expect(s.signedOffSkillIds).toEqual(["skill_B2.1"]);
+    expect(s.reflectionIds).toEqual(["r1"]);
   });
 
   it("returns empty aggregates when the placement has no shifts", () => {

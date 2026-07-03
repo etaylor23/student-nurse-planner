@@ -200,6 +200,7 @@ model Reflection {
   title           String
   model           ReflectionModel @default(GIBBS)
   occurredOn      DateTime?
+  shiftId         String?         // the shift it reflects on (the universal capture join; optional, unindexed)
   isLocked        Boolean         @default(false) // PIN/biometric (device)
   piiAcknowledged Boolean         @default(false)
   createdAt       DateTime        @default(now())
@@ -359,9 +360,10 @@ model RevisionSession {
   across the platform. The "current shift" is the timed shift whose `startAt`–`endAt`
   window contains now; an action logged then auto-links to it (overridable from the
   last 7 days). First built for `MedicationLog.shiftId`; now also `SkillProgress.shiftId`
-  (the shift a sign-off happened in), and the same pattern extends to future logged
-  actions. The shift's editor surfaces what was logged in it — `ShiftMedications`,
-  `ShiftSkills` and `ShiftEvidence`.
+  (the shift a sign-off happened in) and `Reflection.shiftId` (the shift a reflection is
+  about), and the same pattern extends to future logged actions. The shift's editor
+  surfaces what was logged in it — `ShiftMedications`, `ShiftSkills`, `ShiftReflections`
+  and `ShiftEvidence`.
 - **Pace projection:** shifts-to-go from the average completed-shift length; an
   estimated finish date from counted-hours-per-week over the completed date span.
 - **Hours by placement:** `netHours` grouped by `placementId` (counted vs
@@ -401,10 +403,13 @@ model RevisionSession {
    quick-add, click-drag-to-create, drag-reschedule & resize, PLANNED→COMPLETED,
    `.ics` snapshot export; live feed deferred — needs a backend).
 3. Competency tracker (proficiency seed + `EvidenceLink`) — **built** (4 views;
-   `SHIFT`/`MED_LOG` evidence wired, `REFLECTION`/`SKILL` stub pickers; gap surfacing
+   `SHIFT`/`MED_LOG`/`SKILL`/`REFLECTION` evidence all wired; gap surfacing
    off the profile's current part). Brought with it the **Profile / Settings** screen
    (`spec-profile.md`) — where `currentPart`/`totalParts` are set.
-4. Reflection (`EvidenceLink`).
+4. Reflection (`EvidenceLink`) — **built** (Gibbs cycle at `/reflection/*`, lockable,
+   tags + search; the `REFLECTION` picker is now real; woven into the shift debrief,
+   both shift editors (`ShiftReflections`), the placement debrief, evidence suggestions
+   and the feed via the universal `shiftId` join).
 5. Clinical skills (Annexe B seed + `EvidenceLink`) — **built** (3 views; baseline
    derived from the Annexe B proficiencies; stages + permanent sign-off; `SKILL`
    evidence picker now real, with auto-evidence on sign-off).
@@ -417,8 +422,9 @@ model RevisionSession {
   disabled items render non-clickable with a "Soon" badge. `NAV_ITEMS` /
   `DEFAULT_ROUTE` are derived from the sections. (Built: an ungrouped first section =
   `/home` (the hub); "Shifts & hours" = placement hours log + weekly planner;
-  "Trackers" = competency tracker + clinical skills; "Study & wellbeing" = medication
-  notes; an "Account" section = `/profile`.)
+  "Trackers" = competency tracker + clinical skills; "Study & wellbeing" = reflection
+  on practice + medication notes; an "Account" section = `/profile`. Revision timetable
+  and self-care remain disabled "Soon" items.)
 - **Home / Today** (`/home`, `HomePage`, U2) — the hub landing page: mounts existing
   hooks/components (on-shift strip, hours pace, `TopGaps`, skills-in-progress,
   `ActivityLog`) with no new data. See `spec-home.md`.
@@ -456,8 +462,8 @@ holding feature-to-feature wiring itself:
   the shift they happen in", the pattern future logged actions should follow;
 - the polymorphic `EvidenceLink` join (proficiency ← reflection | skill | shift |
   med log) — **built**; `EvidenceType` is `REFLECTION | SKILL | SHIFT | MED_LOG`
-  (`SHIFT` / `MED_LOG` / `SKILL` wired, `REFLECTION` a stub picker). `SKILL`
-  `evidenceId` points at `Skill.id`.
+  (`SHIFT` / `MED_LOG` / `SKILL` / `REFLECTION` all wired). `SKILL`
+  `evidenceId` points at `Skill.id`, `REFLECTION` at `Reflection.id`.
 
 Each feature's own **Integrations** section records what it wires to. Built today:
 Medication Notes ↔ Weekly Planner / Placement Hours Log (shift-linked med logs,
@@ -496,10 +502,14 @@ _(planned)_:
   proficiency detail, plus an auto-link offered when a baseline skill is signed off
   (1:1 by code). The skill detail links back to its proficiency; the proficiency's
   evidence row deep-links to `/skills/:id`. They share the Annexe B / proficiency seed.
-- **Competency Tracker ↔ Reflection** _(planned)_. Reflections will attach via the same
-  `EvidenceLink` (`REFLECTION`); a stub picker already exists.
-- **Reflection ↔ Clinical Skills** _(planned)_. A reflection can link to a skill (and a
-  proficiency) through `EvidenceLink`; a shift / med log can seed a reflection.
+- **Competency Tracker ↔ Reflection.** A reflection attaches to a proficiency via
+  `EvidenceLink` (`REFLECTION`, `evidenceId` = `Reflection.id`) — the real picker on the
+  proficiency detail and a "Link to a proficiency" picker on the reflection detail (both
+  directions); recent reflections feed the "Suggested from your activity" strip.
+- **Reflection ↔ Planner / Hours Log / Clinical Skills.** A shift seeds a reflection: the
+  post-shift debrief's "Write a reflection", the `ShiftReflections` panel in both shift
+  editors, and reflections on the placement debrief (via `Reflection.shiftId`); the skill
+  detail offers "Reflect on this skill" (prefilled title + tag).
 - **Revision Timetable ↔ Planner / Hours Log** _(planned)_. Shift-aware scheduling
   excludes windows overlapping a `Shift`; numeracy weak-areas read `CalcStat`.
 - **All screens → Activity Log.** Auditable actions append a generic `LogItem` that

@@ -1,7 +1,13 @@
 import { Link } from "react-router-dom";
 import { suggestEvidence } from "../../../logic/evidenceSuggestions";
 import { surfaceGaps } from "../../../logic/proficiencies";
-import { useMedicationLogs, useProficiencies, useShifts, useSkills } from "../../hooks";
+import {
+  useMedicationLogs,
+  useProficiencies,
+  useReflections,
+  useShifts,
+  useSkills,
+} from "../../hooks";
 import { useRepository } from "../../RepositoryContext";
 import { Panel, btnGhostSm } from "../ui";
 import { StatusPill } from "./shared";
@@ -13,6 +19,7 @@ export function GapsPage() {
   const { shifts } = useShifts();
   const { logs } = useMedicationLogs();
   const { skills, progress: skillProgress } = useSkills();
+  const { reflections } = useReflections();
 
   if (!user || proficiencies.length === 0) {
     return (
@@ -33,6 +40,7 @@ export function GapsPage() {
       medLogs: logs,
       skills,
       skillProgress,
+      reflections,
       links: evidenceLinks,
     });
     const parts: string[] = [];

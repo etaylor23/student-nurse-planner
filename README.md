@@ -44,7 +44,7 @@ these specs describe both what's built and what's next.
 |---|---------|--------|
 | 1 | NMC competency tracker | **Built** (+ Profile screen) |
 | 2 | Placement hours log | **Built** |
-| 3 | Reflection on practice | Specced — next up |
+| 3 | Reflection on practice | **Built** |
 | 4 | Clinical skills development / skills tracker | **Built** |
 | 5 | Weekly shift planner | **Built** |
 | 6 | Medication notes | **Built** |
@@ -113,8 +113,8 @@ Full detail in [`spec-architecture.md`](./spec/spec-architecture.md). Summary:
   button opens it as a drawer with a tap-to-close backdrop.
 - **Routing:** `react-router-dom` v7. Nav links for all features; **an item is
   disabled until its feature is implemented.** A **Home** hub leads the nav, so `/`
-  and unknown routes redirect to `/home` (the first enabled item); Reflection,
-  Revision and Self-care remain the disabled "Soon" items.
+  and unknown routes redirect to `/home` (the first enabled item); Revision and
+  Self-care remain the disabled "Soon" items.
 
 ## 6. Build order / roadmap
 
@@ -123,7 +123,9 @@ Full detail in [`spec-architecture.md`](./spec/spec-architecture.md). Summary:
    on top of the same `Shift` entity.
 3. **NMC competency tracker** — ✅ built (proficiency master list seeded plus
    `EvidenceLink`).
-4. **Reflection on practice** — plugs into `EvidenceLink` (next up).
+4. **Reflection on practice** — ✅ built (Gibbs cycle, lockable, `EvidenceLink`
+   type `REFLECTION`; woven into the shift debrief, shift editor, placement
+   debrief, evidence suggestions and the activity feed).
 5. **Clinical skills tracker** — ✅ built (Annexe B baseline **derived** from the
    proficiency seed, plus `EvidenceLink` type `SKILL`).
 6. **Medication notes** — ✅ built — + **Revision timetable**.
@@ -190,6 +192,6 @@ react-router-dom 7, Dexie 4, lucide-react, Vitest 2 (+ fake-indexeddb).
   plan**: 11 prioritised usability/interconnectedness items (U1–U11) over the
   built screens, in three waves. Self-contained brief — read it before starting
   new work.
-- [`spec-reflection.md`](./spec/spec-reflection.md) — **next.**
+- [`spec-reflection.md`](./spec/spec-reflection.md) — **built.**
 - [`spec-revision-timetable.md`](./spec/spec-revision-timetable.md)
 - [`spec-self-care.md`](./spec/spec-self-care.md) — **deferred.**

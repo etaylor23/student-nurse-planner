@@ -21,6 +21,9 @@ const DOT: Record<string, string> = {
   SKILL_SIGNED_OFF: "bg-emerald-400",
   SKILL_ADDED: "bg-indigo-400",
   SKILL_DELETED: "bg-rose-400",
+  REFLECTION_CREATED: "bg-violet-400",
+  REFLECTION_UPDATED: "bg-slate-300",
+  REFLECTION_DELETED: "bg-rose-400",
 };
 
 /** "2026-06-16T14:32:00.000Z" → "16 Jun 2026, 14:32" (local). */

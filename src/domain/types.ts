@@ -321,6 +321,81 @@ export type SkillSignOff = Pick<
   "signOffByName" | "signOffLocation" | "signOffDate" | "evidenceNote" | "shiftId"
 >;
 
+// ---------- Reflection on practice (Gibbs reflective cycle) ----------
+
+/** Reflective model. v1 is Gibbs-only; the enum leaves room for Driscoll/Borton/Kolb. */
+export type ReflectionModel = "GIBBS";
+
+/** The six stages of the Gibbs reflective cycle, in progression order. */
+export type GibbsStage =
+  | "DESCRIPTION"
+  | "FEELINGS"
+  | "EVALUATION"
+  | "ANALYSIS"
+  | "CONCLUSION"
+  | "ACTION_PLAN";
+/** The stages in order (drives the editor's section list + completeness). */
+export const GIBBS_STAGES: GibbsStage[] = [
+  "DESCRIPTION",
+  "FEELINGS",
+  "EVALUATION",
+  "ANALYSIS",
+  "CONCLUSION",
+  "ACTION_PLAN",
+];
+export const GIBBS_STAGE_LABEL: Record<GibbsStage, string> = {
+  DESCRIPTION: "Description",
+  FEELINGS: "Feelings",
+  EVALUATION: "Evaluation",
+  ANALYSIS: "Analysis",
+  CONCLUSION: "Conclusion",
+  ACTION_PLAN: "Action plan",
+};
+
+/**
+ * A structured reflective account (Gibbs). Private, lockable, and never patient-
+ * identifiable. `shiftId` is the universal capture join — a shift (or a med log) can
+ * seed a reflection. Written content lives in one `ReflectionSection` per stage;
+ * links to proficiencies use the polymorphic `EvidenceLink` (type `REFLECTION`).
+ */
+export interface Reflection extends Entity, UserOwned, Created, Updated {
+  title: string;
+  model: ReflectionModel;
+  occurredOn?: string; // ISO date the reflected-on event happened
+  shiftId?: string; // FK → Shift it reflects on (the universal capture join; optional, unindexed)
+  isLocked: boolean; // device-level privacy gate in the PoC (see logic/reflectionLock)
+  piiAcknowledged: boolean; // the standing "no patient-identifiable information" acknowledgement
+}
+
+/** One Gibbs stage's written content (one row per reflection+stage; owned via reflectionId). */
+export interface ReflectionSection extends Entity {
+  reflectionId: string; // FK → Reflection (owns it; carries no own userId)
+  stage: GibbsStage;
+  content: string;
+}
+
+/** A free-text label a student attaches to reflections, so they can be pulled later
+ * (revalidation, essays, interviews). Unique per user+label. */
+export interface Tag extends Entity, UserOwned {
+  label: string;
+}
+
+/** m:n join between a reflection and a tag. `id` is composite `${reflectionId}:${tagId}`. */
+export interface ReflectionTag extends Entity {
+  // id = `${reflectionId}:${tagId}`
+  reflectionId: string; // FK → Reflection
+  tagId: string; // FK → Tag
+}
+
+/** A reflection's editable fields (the store stamps id + timestamps). Sections and
+ * tags are saved alongside via dedicated repository arguments. */
+export type ReflectionDraft = Omit<Reflection, "id" | "userId" | "createdAt" | "updatedAt">;
+/** One stage's content, as passed to create/update (the store assigns section ids). */
+export interface ReflectionSectionInput {
+  stage: GibbsStage;
+  content: string;
+}
+
 /**
  * Configurable break-deduction band. A raw shift duration that falls in
  * [minShiftMins, maxShiftMins] has `breakMins` deducted before counting.

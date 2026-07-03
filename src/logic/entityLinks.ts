@@ -12,6 +12,8 @@ export function hrefForEntity(entityType: string, entityId: string): string | nu
       return `/competencies/proficiency/${entityId}`;
     case "SKILL":
       return `/skills/${entityId}`;
+    case "REFLECTION":
+      return `/reflection/${entityId}`;
     case "MEDICATION":
       return `/medications/${entityId}`;
     // The feed doesn't carry a med log's medication id, so we can't deep-link to the

@@ -11,8 +11,12 @@ import type {
   Proficiency,
   ProficiencyProgress,
   ProficiencyStatusEvent,
+  Reflection,
+  ReflectionSection,
+  ReflectionTag,
   Skill,
   SkillProgress,
+  Tag,
 } from "../domain/types";
 import { useRepository } from "./RepositoryContext";
 
@@ -221,6 +225,72 @@ export function useSkills() {
   }, [reload]);
 
   return { skills, progress, reload };
+}
+
+/**
+ * All the user's reflections plus every stage section, tag and reflection↔tag link —
+ * enough for the list to search content, show tag filters and completeness without
+ * per-row fetches.
+ */
+export function useReflections() {
+  const { repo, user } = useRepository();
+  const [reflections, setReflections] = useState<Reflection[]>([]);
+  const [sections, setSections] = useState<ReflectionSection[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [reflectionTags, setReflectionTags] = useState<ReflectionTag[]>([]);
+
+  const reload = useCallback(async () => {
+    if (!user) return;
+    const [r, s, t, rt] = await Promise.all([
+      repo.listReflections(user.id),
+      repo.listReflectionSectionsForUser(user.id),
+      repo.listTags(user.id),
+      repo.listReflectionTags(user.id),
+    ]);
+    setReflections(r);
+    setSections(s);
+    setTags(t);
+    setReflectionTags(rt);
+  }, [repo, user]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  return { reflections, sections, tags, reflectionTags, reload };
+}
+
+/** One reflection with its Gibbs sections and its own tags (detail/edit view). */
+export function useReflection(id: string | undefined) {
+  const { repo, user } = useRepository();
+  const [reflection, setReflection] = useState<Reflection | undefined>();
+  const [sections, setSections] = useState<ReflectionSection[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
+
+  const reload = useCallback(async () => {
+    if (!user || !id) {
+      setReflection(undefined);
+      setSections([]);
+      setTags([]);
+      return;
+    }
+    const [r, secs, allTags, links] = await Promise.all([
+      repo.getReflection(id),
+      repo.listReflectionSections(id),
+      repo.listTags(user.id),
+      repo.listReflectionTags(user.id),
+    ]);
+    const tagIds = new Set(links.filter((l) => l.reflectionId === id).map((l) => l.tagId));
+    setReflection(r);
+    setSections(secs);
+    setTags(allTags.filter((t) => tagIds.has(t.id)));
+  }, [repo, user, id]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  return { reflection, sections, tags, reload };
 }
 
 /** One skill with the user's progress against it (detail view). */

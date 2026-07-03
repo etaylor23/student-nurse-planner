@@ -10,6 +10,7 @@ import type {
   Proficiency,
   ProficiencyProgress,
   ProficiencyStatus,
+  Reflection,
   Shift,
   Skill,
   SkillProgress,
@@ -83,7 +84,25 @@ const progress = (proficiencyId: string, status: ProficiencyStatus): Proficiency
   updatedAt: "2026-01-01T00:00:00.000Z",
 });
 
-const EMPTY = { shifts: [], medLogs: [], skills: [], skillProgress: [], links: [] };
+const reflection = (p: Partial<Reflection> & Pick<Reflection, "id">): Reflection => ({
+  userId: "u",
+  title: p.id,
+  model: "GIBBS",
+  isLocked: false,
+  piiAcknowledged: true,
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+  ...p,
+});
+
+const EMPTY = {
+  shifts: [],
+  medLogs: [],
+  skills: [],
+  skillProgress: [],
+  reflections: [],
+  links: [],
+};
 
 describe("suggestEvidence", () => {
   it("suggests up to 5 most-recent unlinked med logs for a Platform 4 proficiency", () => {
@@ -163,11 +182,33 @@ describe("suggestEvidence", () => {
     expect(s.shifts.map((x) => x.id)).toEqual(["s2", "s3", "s1"]); // date-desc, no planned/linked
   });
 
+  it("suggests up to 2 most-recent unlinked reflections (any proficiency)", () => {
+    const p = prof({ id: "prof_1.1", code: "1.1", platform: 1 });
+    const reflections = [
+      reflection({ id: "r1", occurredOn: "2026-06-01" }),
+      reflection({ id: "r2", occurredOn: "2026-06-09" }),
+      reflection({ id: "r3", occurredOn: "2026-06-05" }),
+    ];
+    const s = suggestEvidence(p, {
+      ...EMPTY,
+      reflections,
+      links: [link("prof_1.1", "REFLECTION", "r2")], // newest already linked → excluded
+    });
+    expect(s.reflections.map((r) => r.id)).toEqual(["r3", "r1"]); // recency-desc, capped at 2
+  });
+
   it("hasEvidenceSuggestion reflects emptiness", () => {
-    expect(hasEvidenceSuggestion({ medLogs: [], shifts: [] })).toBe(false);
-    expect(hasEvidenceSuggestion({ medLogs: [medLog({ id: "l", date: "x" })], shifts: [] })).toBe(
-      true,
-    );
+    expect(hasEvidenceSuggestion({ medLogs: [], shifts: [], reflections: [] })).toBe(false);
+    expect(
+      hasEvidenceSuggestion({ medLogs: [], shifts: [], reflections: [reflection({ id: "r" })] }),
+    ).toBe(true);
+    expect(
+      hasEvidenceSuggestion({
+        medLogs: [medLog({ id: "l", date: "x" })],
+        shifts: [],
+        reflections: [],
+      }),
+    ).toBe(true);
   });
 });
 

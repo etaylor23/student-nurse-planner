@@ -78,7 +78,7 @@ export function ShiftDebrief({ shift, onDismiss }: { shift: Shift; onDismiss: ()
       <p className="mt-4 mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
         What did this shift give you?
       </p>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <button
           type="button"
           onClick={() => navigate("/medications/log", { state: { prefillShiftId: shift.id } })}
@@ -92,6 +92,13 @@ export function ShiftDebrief({ shift, onDismiss }: { shift: Shift; onDismiss: ()
           className={promptCls}
         >
           Update a skill you practised
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate("/reflection/new", { state: { prefillShiftId: shift.id } })}
+          className={promptCls}
+        >
+          Write a reflection on it
         </button>
         <button
           type="button"

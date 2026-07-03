@@ -12,6 +12,7 @@ import {
   PROFICIENCY_STATUS_LABEL,
   SKILL_STAGE_LABEL,
   type CalcType,
+  type GibbsStage,
   type MedLogType,
   type ProficiencyStatus,
   type ShiftType,
@@ -526,6 +527,108 @@ export async function seedDemoData(repo: Repository, userId: string): Promise<vo
       entityLabel: "B2.3",
     });
   }
+
+  // ---- Reflections (Gibbs; linked to shifts + attached as evidence) ----
+  const mkReflection = async (r: {
+    title: string;
+    daysAgo: number;
+    shiftId?: string;
+    isLocked?: boolean;
+    tags: string[];
+    sections: Partial<Record<GibbsStage, string>>;
+    evidenceCodes?: string[];
+  }) => {
+    const sections = (Object.entries(r.sections) as [GibbsStage, string][]).map(
+      ([stage, content]) => ({ stage, content }),
+    );
+    const reflection = await repo.createReflection(
+      {
+        userId,
+        title: r.title,
+        model: "GIBBS",
+        occurredOn: isoDate(at(r.daysAgo)),
+        shiftId: r.shiftId,
+        isLocked: !!r.isLocked,
+        piiAcknowledged: true,
+      },
+      sections,
+    );
+    if (r.tags.length > 0) await repo.setReflectionTags(userId, reflection.id, r.tags);
+    feed.push({
+      entityType: "REFLECTION",
+      entityId: reflection.id,
+      action: "REFLECTION_CREATED",
+      summary: `Wrote a reflection — “${reflection.title}”`,
+      entityLabel: reflection.title,
+    });
+    for (const code of r.evidenceCodes ?? []) {
+      const pid = profByCode.get(code);
+      if (!pid) continue;
+      await repo.createEvidenceLink({
+        userId,
+        proficiencyId: pid,
+        evidenceType: "REFLECTION",
+        evidenceId: reflection.id,
+      });
+      feed.push({
+        entityType: "PROFICIENCY",
+        entityId: pid,
+        action: "EVIDENCE_LINKED",
+        summary: `Linked a reflection as evidence for ${code}`,
+        entityLabel: code,
+      });
+    }
+    return reflection;
+  };
+
+  // A complete reflection off the ED shift, attached to two proficiencies as evidence.
+  await mkReflection({
+    title: "Escalating a deteriorating patient",
+    daysAgo: 14,
+    shiftId: s3.id,
+    tags: ["escalation", "safety", "communication"],
+    evidenceCodes: ["6.1", "1.1"],
+    sections: {
+      DESCRIPTION:
+        "On a busy ED shift a patient's NEWS2 rose to 7. I flagged it to my supervising nurse and we escalated to the medical team.",
+      FEELINGS: "Anxious about interrupting a busy team, but I knew I had to speak up.",
+      EVALUATION:
+        "Escalating early meant a quick review. I hesitated for a minute, which I'd like to shorten.",
+      ANALYSIS:
+        "Structured tools like NEWS2 and SBAR gave me the language and confidence to escalate clearly.",
+      CONCLUSION: "Speaking up promptly is part of safe practice — my hesitation was about not wanting to seem wrong.", // prettier-ignore
+      ACTION_PLAN:
+        "Practise SBAR handovers and remind myself that raising a concern is always appropriate.",
+    },
+  });
+
+  // A partially-written reflection on a medication skill, evidencing a Platform 4 gap.
+  await mkReflection({
+    title: "First subcutaneous injection under supervision",
+    daysAgo: 30,
+    shiftId: s1.id,
+    tags: ["medication", "skills"],
+    evidenceCodes: ["4.1"],
+    sections: {
+      DESCRIPTION: "I gave my first subcutaneous injection under supervision on Ward 12.",
+      FEELINGS: "Nervous about my technique but reassured by my assessor.",
+      EVALUATION: "Preparation went well; I need to be smoother with the injection angle.",
+      ACTION_PLAN: "Rehearse the technique and read up on injection sites.",
+    },
+  });
+
+  // A locked, private wellbeing reflection with no shift link (demonstrates the lock).
+  await mkReflection({
+    title: "Staying on top of study around placement",
+    daysAgo: 9,
+    isLocked: true,
+    tags: ["time-management", "wellbeing"],
+    sections: {
+      DESCRIPTION: "A run of long days left me exhausted and behind on my own study.",
+      FEELINGS: "Overwhelmed, and guilty about not keeping up.",
+      ACTION_PLAN: "Block protected study time around my shifts and talk to my academic advisor.",
+    },
+  });
 
   // ---- Write the activity feed last (chronological insertion order) ----
   for (const f of feed) {

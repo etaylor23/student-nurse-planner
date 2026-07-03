@@ -7,6 +7,7 @@ import {
   useMedications,
   usePlacements,
   useProficiencies,
+  useReflections,
   useShifts,
   useSkills,
 } from "../hooks";
@@ -26,6 +27,7 @@ export function PlacementDetailPage() {
   const { medications } = useMedications();
   const { proficiencies, evidenceLinks } = useProficiencies();
   const { skills, progress: skillProgress } = useSkills();
+  const { reflections } = useReflections();
   const { placements } = usePlacements();
 
   const placement = placements.find((p) => p.id === id);
@@ -55,11 +57,13 @@ export function PlacementDetailPage() {
     medLogs: logs,
     evidenceLinks,
     skillProgress,
+    reflections,
   });
 
   const medName = new Map(medications.map((m) => [m.id, m.name]));
   const profById = new Map(proficiencies.map((p) => [p.id, p]));
   const skillName = new Map(skills.map((s) => [s.id, s.name]));
+  const reflectionTitle = new Map(reflections.map((r) => [r.id, r.title]));
 
   const shiftLine = (s: Shift) => {
     const times =
@@ -225,6 +229,27 @@ export function PlacementDetailPage() {
                     className="block truncate py-2.5 text-sm text-slate-700 transition first:pt-0 last:pb-0 hover:text-emerald-700"
                   >
                     {skillName.get(sid) ?? "Skill"}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+
+        <Panel title="Reflections written" hint="Reflecting on shifts here">
+          {summary.reflectionIds.length === 0 ? (
+            <p className="text-sm text-slate-400">
+              No reflections on this placement yet — write one from a shift's debrief.
+            </p>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {summary.reflectionIds.map((rid) => (
+                <li key={rid}>
+                  <Link
+                    to={`/reflection/${rid}`}
+                    className="block truncate py-2.5 text-sm text-slate-700 transition first:pt-0 last:pb-0 hover:text-emerald-700"
+                  >
+                    {reflectionTitle.get(rid) ?? "Reflection"}
                   </Link>
                 </li>
               ))}

@@ -6,6 +6,7 @@ describe("hrefForEntity", () => {
     expect(hrefForEntity("SHIFT", "s1")).toBe("/planner/s1");
     expect(hrefForEntity("PROFICIENCY", "prof_B2.1")).toBe("/competencies/proficiency/prof_B2.1");
     expect(hrefForEntity("SKILL", "skill_B2.1")).toBe("/skills/skill_B2.1");
+    expect(hrefForEntity("REFLECTION", "r1")).toBe("/reflection/r1");
     expect(hrefForEntity("MEDICATION", "m1")).toBe("/medications/m1");
     expect(hrefForEntity("PROFILE", "u1")).toBe("/profile");
   });
@@ -15,7 +16,7 @@ describe("hrefForEntity", () => {
   });
 
   it("returns null for unknown / unroutable entity types", () => {
-    expect(hrefForEntity("REFLECTION", "r1")).toBeNull();
+    expect(hrefForEntity("REVISION", "x1")).toBeNull();
     expect(hrefForEntity("", "x")).toBeNull();
   });
 });

@@ -18,11 +18,17 @@ import type {
   ProficiencyProgress,
   ProficiencyStatusChange,
   ProficiencyStatusEvent,
+  Reflection,
+  ReflectionDraft,
+  ReflectionSection,
+  ReflectionSectionInput,
+  ReflectionTag,
   Shift,
   Skill,
   SkillProgress,
   SkillSignOff,
   SkillStage,
+  Tag,
   User,
 } from "../domain/types";
 
@@ -170,4 +176,35 @@ export interface Repository {
   setSkillStage(userId: string, skillId: string, stage: SkillStage): Promise<SkillProgress>;
   /** Mark a skill signed off — permanent; never clears the flag (no refresh). */
   signOffSkill(userId: string, skillId: string, signOff: SkillSignOff): Promise<SkillProgress>;
+
+  // ---- Reflection on practice (Gibbs; private, lockable) ----
+  listReflections(userId: string): Promise<Reflection[]>;
+  getReflection(id: string): Promise<Reflection | undefined>;
+  /** One reflection's Gibbs stage content. */
+  listReflectionSections(reflectionId: string): Promise<ReflectionSection[]>;
+  /** Every stage row across the user's reflections (list search + completeness). */
+  listReflectionSectionsForUser(userId: string): Promise<ReflectionSection[]>;
+  /** Create a reflection and its stage sections in one step. */
+  createReflection(
+    input: ReflectionDraft & { userId: string },
+    sections: ReflectionSectionInput[],
+  ): Promise<Reflection>;
+  /** Update a reflection; when `sections` is given, replace its stage content. */
+  updateReflection(
+    id: string,
+    patch: Partial<ReflectionDraft>,
+    sections?: ReflectionSectionInput[],
+  ): Promise<Reflection>;
+  /** Delete a reflection and cascade its sections, tag links and REFLECTION evidence links. */
+  deleteReflection(id: string): Promise<void>;
+
+  // ---- Tags (reflection labels; unique per user+label) ----
+  listTags(userId: string): Promise<Tag[]>;
+  /** Every reflection↔tag join row across the user's reflections. */
+  listReflectionTags(userId: string): Promise<ReflectionTag[]>;
+  /**
+   * Replace a reflection's tags from a label list — upserts tags by label (unique per
+   * user) and rewrites the join rows. Returns the reflection's resulting tags.
+   */
+  setReflectionTags(userId: string, reflectionId: string, labels: string[]): Promise<Tag[]>;
 }

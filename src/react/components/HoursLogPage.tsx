@@ -15,6 +15,7 @@ import { ShiftDebrief } from "./ShiftDebrief";
 import { ShiftMedications } from "./ShiftMedications";
 import { ShiftEvidence } from "./ShiftEvidence";
 import { ShiftSkills } from "./ShiftSkills";
+import { ShiftReflections } from "./ShiftReflections";
 import { TopGaps } from "./competencies/TopGaps";
 import { TimesheetExport } from "./TimesheetExport";
 import { Panel } from "./ui";
@@ -148,6 +149,7 @@ export function HoursLogPage() {
             )}
             {editingShift && <ShiftMedications shift={editingShift} />}
             {editingShift && <ShiftSkills shift={editingShift} />}
+            {editingShift && <ShiftReflections shift={editingShift} />}
             {editingShift && <ShiftEvidence shift={editingShift} />}
             {editingShift && <ShiftHistory shift={editingShift} />}
           </Panel>

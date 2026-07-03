@@ -3,6 +3,7 @@ import type {
   MedicationLog,
   Proficiency,
   ProficiencyProgress,
+  Reflection,
   Shift,
   Skill,
   SkillProgress,
@@ -20,6 +21,7 @@ import type {
 
 const MAX_MED_LOGS = 5;
 const MAX_SHIFTS = 3;
+const MAX_REFLECTIONS = 2;
 const MAX_SHIFT_GAPS = 3;
 
 /** A proficiency's competence is demonstrated (in part) by drug-calc / med activity. */
@@ -39,6 +41,8 @@ export interface EvidenceSuggestion {
   skill?: { skill: Skill; progress?: SkillProgress };
   /** Recent completed, unlinked shifts (all proficiencies). */
   shifts: Shift[];
+  /** Recent unlinked reflections (all proficiencies — a reflection can evidence many). */
+  reflections: Reflection[];
 }
 
 export interface EvidenceSuggestionInput {
@@ -46,6 +50,7 @@ export interface EvidenceSuggestionInput {
   medLogs: MedicationLog[];
   skills: Skill[];
   skillProgress: SkillProgress[];
+  reflections: Reflection[];
   links: EvidenceLink[];
 }
 
@@ -86,12 +91,22 @@ export function suggestEvidence(
     input.shifts.filter((s) => s.status === "COMPLETED" && !linkedShifts.has(s.id)),
   ).slice(0, MAX_SHIFTS);
 
-  return { medLogs, skill, shifts };
+  // Recent reflections not yet linked here — a reflection can evidence any proficiency.
+  const linkedReflections = linkedOfType("REFLECTION");
+  const reflections = [...input.reflections.filter((r) => !linkedReflections.has(r.id))]
+    .sort((a, b) => {
+      const ka = a.occurredOn ?? a.createdAt;
+      const kb = b.occurredOn ?? b.createdAt;
+      return ka < kb ? 1 : ka > kb ? -1 : 0;
+    })
+    .slice(0, MAX_REFLECTIONS);
+
+  return { medLogs, skill, shifts, reflections };
 }
 
 /** True when a suggestion has anything worth showing. */
 export function hasEvidenceSuggestion(s: EvidenceSuggestion): boolean {
-  return s.medLogs.length > 0 || !!s.skill || s.shifts.length > 0;
+  return s.medLogs.length > 0 || !!s.skill || s.shifts.length > 0 || s.reflections.length > 0;
 }
 
 export interface ShiftGapInput {

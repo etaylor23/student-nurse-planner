@@ -11,9 +11,13 @@ import type {
   Proficiency,
   ProficiencyProgress,
   ProficiencyStatusEvent,
+  Reflection,
+  ReflectionSection,
+  ReflectionTag,
   Shift,
   Skill,
   SkillProgress,
+  Tag,
   User,
 } from "../domain/types";
 
@@ -48,6 +52,10 @@ export interface EntityMap {
   evidenceLinks: EvidenceLink;
   skills: Skill;
   skillProgress: SkillProgress;
+  reflections: Reflection;
+  reflectionSections: ReflectionSection;
+  tags: Tag;
+  reflectionTags: ReflectionTag;
 }
 
 /** The set of persisted store names (single source of truth). */
@@ -82,4 +90,11 @@ export const STORE_INDEXES: Record<StoreName, string> = {
   // indexed — a boolean isn't a valid IndexedDB key; it's filtered in memory.
   skills: "id, userId, source, category, orderIndex",
   skillProgress: "id, userId, skillId, [userId+skillId]",
+  // Reflection on practice. `shiftId` (the universal capture join) is intentionally
+  // NOT indexed — filtered in memory, like `skillProgress.shiftId`. A reflection's
+  // links to proficiencies live in `evidenceLinks` (type REFLECTION), not here.
+  reflections: "id, userId, createdAt",
+  reflectionSections: "id, reflectionId, &[reflectionId+stage]",
+  tags: "id, userId, &[userId+label]",
+  reflectionTags: "id, reflectionId, tagId",
 };

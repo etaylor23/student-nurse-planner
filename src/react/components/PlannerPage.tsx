@@ -30,6 +30,7 @@ import { ShiftHistory } from "./ShiftHistory";
 import { ShiftMedications } from "./ShiftMedications";
 import { ShiftEvidence } from "./ShiftEvidence";
 import { ShiftSkills } from "./ShiftSkills";
+import { ShiftReflections } from "./ShiftReflections";
 import { PageHero, Panel, btnGhostSm, btnPrimary } from "./ui";
 
 type NewShift = { date: string; startTime?: string; endTime?: string };
@@ -337,6 +338,7 @@ export function PlannerPage() {
         />
         {editingShift && <ShiftMedications shift={editingShift} />}
         {editingShift && <ShiftSkills shift={editingShift} />}
+        {editingShift && <ShiftReflections shift={editingShift} />}
         {editingShift && <ShiftEvidence shift={editingShift} />}
         {editingShift && <ShiftHistory shift={editingShift} />}
       </Panel>

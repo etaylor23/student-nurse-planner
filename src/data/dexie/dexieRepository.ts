@@ -19,11 +19,17 @@ import type {
   ProficiencyProgress,
   ProficiencyStatusChange,
   ProficiencyStatusEvent,
+  Reflection,
+  ReflectionDraft,
+  ReflectionSection,
+  ReflectionSectionInput,
+  ReflectionTag,
   Shift,
   Skill,
   SkillProgress,
   SkillSignOff,
   SkillStage,
+  Tag,
   User,
 } from "../../domain/types";
 import { newId, nowIso } from "../../domain/ids";
@@ -566,5 +572,140 @@ export class DexieRepository implements Repository {
     };
     await this.db.skillProgress.put(next);
     return next;
+  }
+
+  // ---- Reflection on practice ----
+  async listReflections(userId: string): Promise<Reflection[]> {
+    const rows = await this.db.reflections.where("userId").equals(userId).toArray();
+    // Newest first by the reflected-on date when set, else creation time.
+    const key = (r: Reflection) => r.occurredOn ?? r.createdAt;
+    return rows.sort((a, b) => (key(a) < key(b) ? 1 : key(a) > key(b) ? -1 : 0));
+  }
+
+  async getReflection(id: string): Promise<Reflection | undefined> {
+    return this.db.reflections.get(id);
+  }
+
+  async listReflectionSections(reflectionId: string): Promise<ReflectionSection[]> {
+    return this.db.reflectionSections.where("reflectionId").equals(reflectionId).toArray();
+  }
+
+  async listReflectionSectionsForUser(userId: string): Promise<ReflectionSection[]> {
+    const ids = new Set(
+      (await this.db.reflections.where("userId").equals(userId).primaryKeys()) as string[],
+    );
+    const all = await this.db.reflectionSections.toArray();
+    return all.filter((s) => ids.has(s.reflectionId));
+  }
+
+  async createReflection(
+    input: ReflectionDraft & { userId: string },
+    sections: ReflectionSectionInput[],
+  ): Promise<Reflection> {
+    const ts = nowIso();
+    const reflection: Reflection = { ...input, id: newId(), createdAt: ts, updatedAt: ts };
+    await this.db.reflections.put(reflection);
+    await this.writeReflectionSections(reflection.id, sections);
+    return reflection;
+  }
+
+  async updateReflection(
+    id: string,
+    patch: Partial<ReflectionDraft>,
+    sections?: ReflectionSectionInput[],
+  ): Promise<Reflection> {
+    const current = await this.db.reflections.get(id);
+    if (!current) throw new Error(`Reflection ${id} not found`);
+    const updated: Reflection = { ...current, ...patch, updatedAt: nowIso() };
+    await this.db.reflections.put(updated);
+    if (sections) {
+      const existing = await this.db.reflectionSections.where("reflectionId").equals(id).toArray();
+      if (existing.length > 0)
+        await this.db.reflectionSections.bulkDelete(existing.map((s) => s.id));
+      await this.writeReflectionSections(id, sections);
+    }
+    return updated;
+  }
+
+  /** Write a reflection's non-empty stage sections (deterministic ids per stage). */
+  private async writeReflectionSections(
+    reflectionId: string,
+    sections: ReflectionSectionInput[],
+  ): Promise<void> {
+    const rows: ReflectionSection[] = sections
+      .filter((s) => s.content.trim() !== "")
+      .map((s) => ({
+        id: `${reflectionId}:${s.stage}`,
+        reflectionId,
+        stage: s.stage,
+        content: s.content.trim(),
+      }));
+    if (rows.length > 0) await this.db.reflectionSections.bulkPut(rows);
+  }
+
+  async deleteReflection(id: string): Promise<void> {
+    await this.db.reflections.delete(id);
+    const sections = await this.db.reflectionSections.where("reflectionId").equals(id).toArray();
+    if (sections.length > 0) await this.db.reflectionSections.bulkDelete(sections.map((s) => s.id));
+    const tagLinks = await this.db.reflectionTags.where("reflectionId").equals(id).toArray();
+    if (tagLinks.length > 0) await this.db.reflectionTags.bulkDelete(tagLinks.map((t) => t.id));
+    // A reflection may be attached to proficiencies as REFLECTION evidence — drop those.
+    const evLinks = await this.db.evidenceLinks
+      .where("[evidenceType+evidenceId]")
+      .equals(["REFLECTION", id])
+      .toArray();
+    if (evLinks.length > 0) await this.db.evidenceLinks.bulkDelete(evLinks.map((l) => l.id));
+  }
+
+  // ---- Tags (reflection labels) ----
+  async listTags(userId: string): Promise<Tag[]> {
+    const rows = await this.db.tags.where("userId").equals(userId).toArray();
+    return rows.sort((a, b) => a.label.localeCompare(b.label));
+  }
+
+  async listReflectionTags(userId: string): Promise<ReflectionTag[]> {
+    const ids = new Set(
+      (await this.db.reflections.where("userId").equals(userId).primaryKeys()) as string[],
+    );
+    const all = await this.db.reflectionTags.toArray();
+    return all.filter((t) => ids.has(t.reflectionId));
+  }
+
+  async setReflectionTags(userId: string, reflectionId: string, labels: string[]): Promise<Tag[]> {
+    // Normalise: trim, drop blanks, dedupe case-insensitively (keeping the first form).
+    const seen = new Set<string>();
+    const clean: string[] = [];
+    for (const raw of labels) {
+      const label = raw.trim();
+      const key = label.toLowerCase();
+      if (label === "" || seen.has(key)) continue;
+      seen.add(key);
+      clean.push(label);
+    }
+    // Upsert each tag by (userId,label), reusing an existing row where present.
+    const existingTags = await this.db.tags.where("userId").equals(userId).toArray();
+    const byLabel = new Map(existingTags.map((t) => [t.label.toLowerCase(), t]));
+    const resolved: Tag[] = [];
+    for (const label of clean) {
+      const found = byLabel.get(label.toLowerCase());
+      if (found) {
+        resolved.push(found);
+      } else {
+        const tag: Tag = { id: newId(), userId, label };
+        await this.db.tags.put(tag);
+        byLabel.set(label.toLowerCase(), tag);
+        resolved.push(tag);
+      }
+    }
+    // Rewrite this reflection's join rows.
+    const old = await this.db.reflectionTags.where("reflectionId").equals(reflectionId).toArray();
+    if (old.length > 0) await this.db.reflectionTags.bulkDelete(old.map((r) => r.id));
+    const links: ReflectionTag[] = resolved.map((t) => ({
+      id: `${reflectionId}:${t.id}`,
+      reflectionId,
+      tagId: t.id,
+    }));
+    if (links.length > 0) await this.db.reflectionTags.bulkPut(links);
+    return resolved;
   }
 }

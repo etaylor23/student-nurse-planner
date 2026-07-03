@@ -22,6 +22,7 @@ import {
   usePlacements,
   useProficiencies,
   useProficiency,
+  useReflections,
   useShifts,
   useSkills,
 } from "../../hooks";
@@ -51,6 +52,7 @@ export function ProficiencyDetailPage() {
   const { medications } = useMedications();
   const { placements } = usePlacements();
   const { skills, progress: skillProgress } = useSkills();
+  const { reflections } = useReflections();
 
   const placeName = useMemo(
     () => new Map(placements.map((p: Placement) => [p.id, p.name])),
@@ -60,6 +62,7 @@ export function ProficiencyDetailPage() {
   const shiftById = useMemo(() => new Map(shifts.map((s) => [s.id, s])), [shifts]);
   const logById = useMemo(() => new Map(logs.map((l) => [l.id, l])), [logs]);
   const skillById = useMemo(() => new Map(skills.map((s) => [s.id, s])), [skills]);
+  const reflectionById = useMemo(() => new Map(reflections.map((r) => [r.id, r])), [reflections]);
 
   const [status, setStatus] = useState<ProficiencyStatus>("DEVELOPING");
   const [occurredAt, setOccurredAt] = useState(todayIso());
@@ -86,6 +89,7 @@ export function ProficiencyDetailPage() {
     medLogs: logs,
     skills,
     skillProgress,
+    reflections,
     links,
   });
   const suggestedSkill = suggestion.skill; // narrowed const for the strip's closure
@@ -175,6 +179,10 @@ export function ProficiencyDetailPage() {
       const s = skillById.get(link.evidenceId);
       return s ? s.name : "Clinical skill (not found)";
     }
+    if (link.evidenceType === "REFLECTION") {
+      const r = reflectionById.get(link.evidenceId);
+      return r ? r.title : "Reflection (not found)";
+    }
     return EVIDENCE_TYPE_LABEL[link.evidenceType];
   };
 
@@ -188,6 +196,7 @@ export function ProficiencyDetailPage() {
       return medicationId ? `/medications/${medicationId}` : null;
     }
     if (link.evidenceType === "SKILL") return `/skills/${link.evidenceId}`;
+    if (link.evidenceType === "REFLECTION") return `/reflection/${link.evidenceId}`;
     return null;
   };
 
@@ -367,6 +376,14 @@ export function ProficiencyDetailPage() {
                       onAttach={() => void addEvidence("SHIFT", s.id)}
                     />
                   ))}
+                  {suggestion.reflections.map((r) => (
+                    <SuggestionRow
+                      key={r.id}
+                      tag="Reflection"
+                      label={r.title}
+                      onAttach={() => void addEvidence("REFLECTION", r.id)}
+                    />
+                  ))}
                 </ul>
               </div>
             )}
@@ -483,15 +500,26 @@ export function ProficiencyDetailPage() {
                   />
                 )}
                 {evTab === "REFLECTION" && (
-                  <div className="rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center">
-                    <p className="text-sm font-medium text-slate-600">
-                      Reflection evidence — coming soon
-                    </p>
-                    <p className="mx-auto mt-1 max-w-sm text-xs text-slate-400">
-                      This picker is a stub. It will attach real records once the Reflection on
-                      practice feature is built — the evidence link already supports it.
-                    </p>
-                  </div>
+                  <EvidencePicker
+                    rows={reflections}
+                    linked={linkedFor("REFLECTION")}
+                    getId={(r) => r.id}
+                    getLabel={(r) => r.title}
+                    emptyText={
+                      <>
+                        No reflections yet —{" "}
+                        <Link
+                          to="/reflection/new"
+                          className="font-medium text-emerald-700 hover:underline"
+                        >
+                          write a reflection
+                        </Link>{" "}
+                        to attach it as evidence.
+                      </>
+                    }
+                    searchPlaceholder="Search reflections…"
+                    onAdd={(r) => addEvidence("REFLECTION", r.id)}
+                  />
                 )}
               </div>
             </div>
