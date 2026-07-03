@@ -45,7 +45,8 @@ history with `partIndex`, `assessorName`, `note`, `occurredAt`), `EvidenceLink`
   — derived by the pure `logic/evidenceSuggestions.ts` (`suggestEvidence`). Evidence
   rows link to their source (a shift → the planner; a med log → its medication).
   Drug-calc proficiencies (4.14, B11.4) also show a **numeracy** panel with the
-  student's calc-practice accuracy.
+  student's calc-practice accuracy. Saving a status change shows a transient
+  confirmation with the **new overall %** and a **"next gap →"** link (U9).
 - **Gaps view** — not-yet-achieved / developing, filtered by current part. Each gap
   with specific ready evidence (med logs / its skill) shows a compact "… could
   evidence this →" hint (the row already links to the detail, where you attach).

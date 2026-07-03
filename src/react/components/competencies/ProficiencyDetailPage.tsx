@@ -11,11 +11,16 @@ import {
 } from "../../../domain/types";
 import { formatHumanDate, hhmm, isoDate } from "../../../logic/calendar";
 import { hasEvidenceSuggestion, suggestEvidence } from "../../../logic/evidenceSuggestions";
-import { isDrugCalcProficiency } from "../../../logic/proficiencies";
+import {
+  isDrugCalcProficiency,
+  overallPercentAchieved,
+  surfaceGaps,
+} from "../../../logic/proficiencies";
 import {
   useMedicationLogs,
   useMedications,
   usePlacements,
+  useProficiencies,
   useProficiency,
   useShifts,
   useSkills,
@@ -38,6 +43,8 @@ function shiftLabel(s: Shift, placeName: Map<string, string>): string {
 export function ProficiencyDetailPage() {
   const { id } = useParams();
   const { proficiency, progress, events, links, reload } = useProficiency(id);
+  // The whole list too, for the post-save "overall %" + "next gap" golden moment (U9).
+  const { proficiencies: allProfs, progress: allProgress, reload: reloadAll } = useProficiencies();
   const { repo, user } = useRepository();
   const { shifts } = useShifts();
   const { logs } = useMedicationLogs();
@@ -59,6 +66,7 @@ export function ProficiencyDetailPage() {
   const [assessorName, setAssessorName] = useState("");
   const [note, setNote] = useState("");
   const [evTab, setEvTab] = useState<EvidenceType>("SHIFT");
+  const [saved, setSaved] = useState(false); // transient post-save confirmation (U9)
 
   if (!proficiency || !user) {
     return (
@@ -82,6 +90,12 @@ export function ProficiencyDetailPage() {
   });
   const suggestedSkill = suggestion.skill; // narrowed const for the strip's closure
 
+  // Post-save golden moment (U9): overall % + the next gap to chase.
+  const overallPct = overallPercentAchieved(allProfs, allProgress);
+  const nextGap =
+    surfaceGaps(allProfs, allProgress, user).find((g) => g.proficiency.id !== proficiency.id) ??
+    null;
+
   const saveStatus = async (e: React.FormEvent) => {
     e.preventDefault();
     await repo.setProficiencyStatus(user.id, proficiency.id, {
@@ -103,6 +117,8 @@ export function ProficiencyDetailPage() {
     setNote("");
     setOccurredAt(todayIso());
     await reload();
+    await reloadAll();
+    setSaved(true);
   };
 
   const setTargetPart = async (value: number | undefined) => {
@@ -212,7 +228,7 @@ export function ProficiencyDetailPage() {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div className="min-w-0 space-y-6 xl:col-span-1">
           <Panel step="1" title="Record a status change" hint="Appends to the dated history">
-            <form onSubmit={saveStatus} className="space-y-4">
+            <form onSubmit={saveStatus} onChange={() => setSaved(false)} className="space-y-4">
               <label className="block">
                 <span className="mb-1.5 block text-sm font-medium text-slate-700">Status</span>
                 <select
@@ -273,6 +289,22 @@ export function ProficiencyDetailPage() {
               <button type="submit" className={btnPrimary}>
                 Save status
               </button>
+              {saved && (
+                <div className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800 ring-1 ring-emerald-100">
+                  Saved — you're at <strong>{overallPct}%</strong> achieved overall.
+                  {nextGap && (
+                    <>
+                      {" "}
+                      <Link
+                        to={`/competencies/proficiency/${nextGap.proficiency.id}`}
+                        className="font-medium text-emerald-700 hover:underline"
+                      >
+                        Next gap: {nextGap.proficiency.code} →
+                      </Link>
+                    </>
+                  )}
+                </div>
+              )}
             </form>
           </Panel>
 
