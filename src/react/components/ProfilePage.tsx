@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import type { ProgrammeType, User } from "../../domain/types";
 import { hasDemoData, seedDemoData } from "../../data/seed/demo";
+import { surfaceGaps } from "../../logic/proficiencies";
+import { useProficiencies } from "../hooks";
 import { useRepository } from "../RepositoryContext";
-import { PageHero, Panel, btnGhost, btnPrimary, inputCls } from "./ui";
+import { PageHero, Panel, btnGhost, btnGhostSm, btnPrimary, inputCls } from "./ui";
 
 const PROGRAMME_TYPE_LABEL: Record<ProgrammeType, string> = {
   BSC_3YR: "BSc (3 years)",
@@ -29,6 +32,7 @@ export function ProfilePage() {
 
 function ProfileForm({ user }: { user: User }) {
   const { repo, reloadUser } = useRepository();
+  const { proficiencies, progress } = useProficiencies();
   const [displayName, setDisplayName] = useState(user.displayName);
   const [programmeType, setProgrammeType] = useState<ProgrammeType>(user.programmeType);
   const [currentPart, setCurrentPart] = useState(String(user.currentPart));
@@ -47,6 +51,14 @@ function ProfileForm({ user }: { user: User }) {
       : !Number.isInteger(current) || current < 1 || current > total
         ? `Current part must be between 1 and ${total || 1}.`
         : null;
+
+  // Live "so what?" (U10): gaps due for the part currently in the form (before save),
+  // so changing the part visibly changes the count. null while the input is invalid.
+  const dueNow =
+    error || proficiencies.length === 0
+      ? null
+      : surfaceGaps(proficiencies, progress, { ...user, currentPart: current, totalParts: total })
+          .length;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,22 +185,57 @@ function ProfileForm({ user }: { user: User }) {
               <button type="submit" className={btnPrimary} disabled={!!error}>
                 Save profile
               </button>
-              {saved && <span className="text-sm text-emerald-700">Saved.</span>}
+              {saved && (
+                <span className="text-sm text-emerald-700">
+                  Saved.
+                  {dueNow != null && (
+                    <>
+                      {" — "}
+                      <Link to="/competencies/gaps" className="font-medium hover:underline">
+                        {dueNow} gap{dueNow === 1 ? "" : "s"} now due →
+                      </Link>
+                    </>
+                  )}
+                </span>
+              )}
             </div>
           </form>
         </Panel>
 
-        <Panel title="Why this matters" hint="How your part is used">
-          <p className="text-sm leading-relaxed text-slate-600">
-            Your <span className="font-medium text-slate-800">current part</span> tells the NMC
-            competency tracker which proficiencies should already be evidenced. Proficiencies that
-            aren't yet achieved are surfaced as gaps, and warnings escalate as you reach the part a
-            proficiency is tagged for — or your final part if it isn't tagged.
-          </p>
-          <p className="mt-3 text-xs text-slate-400">
-            Your PAD remains the official signed record. This is a personal study aid.
-          </p>
-        </Panel>
+        <div className="space-y-6">
+          {/* Live impact (U10): answers "so what?" as you edit the part, before save. */}
+          <Panel title="Due now" hint={`Part ${currentPart} of ${totalParts}`}>
+            {dueNow == null ? (
+              <p className="text-sm text-slate-400">
+                Enter a valid part to see how many proficiencies are due.
+              </p>
+            ) : (
+              <>
+                <p className="text-sm text-slate-600">
+                  <strong className="text-slate-800">
+                    {dueNow} proficienc{dueNow === 1 ? "y" : "ies"}
+                  </strong>{" "}
+                  due now at part {current} of {total}.
+                </p>
+                <Link to="/competencies/gaps" className={btnGhostSm + " mt-3"}>
+                  View gaps
+                </Link>
+              </>
+            )}
+          </Panel>
+
+          <Panel title="Why this matters" hint="How your part is used">
+            <p className="text-sm leading-relaxed text-slate-600">
+              Your <span className="font-medium text-slate-800">current part</span> tells the NMC
+              competency tracker which proficiencies should already be evidenced. Proficiencies that
+              aren't yet achieved are surfaced as gaps, and warnings escalate as you reach the part
+              a proficiency is tagged for — or your final part if it isn't tagged.
+            </p>
+            <p className="mt-3 text-xs text-slate-400">
+              Your PAD remains the official signed record. This is a personal study aid.
+            </p>
+          </Panel>
+        </div>
       </div>
 
       <DemoDataPanel userId={user.id} />

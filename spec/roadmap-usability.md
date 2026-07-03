@@ -426,7 +426,7 @@ Wave 3
 - [x] U2 · Home / Today dashboard
 - [x] U3 · Placement debrief view
 - [x] U9 · Golden-moment responses (4 small commits)
-- [ ] U10 · Profile current-impact panel
+- [x] U10 · Profile current-impact panel
 
 ## Provenance
 

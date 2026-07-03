@@ -30,6 +30,11 @@ Reuses `User` (`src/domain/types.ts`) — **no new persisted entity**. See
   part, total parts, start date, target registration date. A side panel explains
   how the current part drives competency gap warnings, with the standing reminder
   that the PAD remains the official signed record.
+- **Due now** (live impact panel, U10) — beside "Why this matters": "N proficiencies
+  due now at part X of Y → view gaps", computed with `surfaceGaps` against the part
+  **currently in the form** (before save), so changing the part number visibly changes
+  the count. On a save that changed the part, the confirmation appends "— N gaps now
+  due →".
 - **Demo data panel** — an opt-in tool (`DemoDataPanel`) to explore the app: **Load
   demo data** writes a realistic part-2 dataset across every screen
   (`data/seed/demo.ts` → `seedDemoData`, written through the `Repository` and
