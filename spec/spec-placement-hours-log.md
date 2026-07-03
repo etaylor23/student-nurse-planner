@@ -35,8 +35,9 @@ are exact (no 24h cap).
 ## Screens (built)
 
 - **Hours summary** — progress bar toward 2,300; a pace line ("≈ N shifts to go ·
-  on track for <month year>"); stat cards: counted, remaining, simulated (with
-  headroom under the 600 cap), planned (not counted); cap warning when reached.
+  on track for <month year>"); a **milestone note** at each quarter crossed
+  (25/50/75/100%, U9); stat cards: counted, remaining, simulated (with headroom under
+  the 600 cap), planned (not counted); cap warning when reached.
 - **Placements** — quick add (name + optional setting) and an editable list
   (inline rename, delete; delete warns when shifts reference the placement).
 - **Log a shift** — form: **start date**, placement, **optional start/end times

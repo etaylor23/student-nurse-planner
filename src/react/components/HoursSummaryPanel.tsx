@@ -7,6 +7,14 @@ function formatMonthYear(iso: string): string {
   return d.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
 }
 
+/** The one-line milestone note at each quarter of the practice-hours target (U9). */
+const MILESTONES: { at: number; note: (pct: number) => string }[] = [
+  { at: 100, note: () => "🎉 You've reached the full practice-hours target — every hour counted!" },
+  { at: 75, note: (p) => `Three-quarters there — ${p}% of your practice hours counted.` },
+  { at: 50, note: (p) => `Past the halfway mark — ${p}% counted. Keep going.` },
+  { at: 25, note: (p) => `A quarter of the way — ${p}% of your hours counted.` },
+];
+
 export function HoursSummaryPanel({
   summary,
   projection,
@@ -16,6 +24,7 @@ export function HoursSummaryPanel({
 }) {
   const pct = Math.round(summary.progressFraction * 100);
   const target = summary.targetHours.toLocaleString();
+  const milestone = MILESTONES.find((m) => pct >= m.at);
 
   return (
     <PageHero
@@ -52,6 +61,12 @@ export function HoursSummaryPanel({
         <p className="mt-2 text-xs text-slate-400">
           ≈ {projection.shiftsToGo.toLocaleString()} shifts to go
           {projection.finishDate && <> · on track for {formatMonthYear(projection.finishDate)}</>}
+        </p>
+      )}
+
+      {milestone && (
+        <p className="mt-3 rounded-xl bg-emerald-50 px-3.5 py-2 text-sm font-medium text-emerald-800 ring-1 ring-emerald-100">
+          {milestone.note(pct)}
         </p>
       )}
 
