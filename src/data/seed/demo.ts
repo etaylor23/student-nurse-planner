@@ -630,6 +630,92 @@ export async function seedDemoData(repo: Repository, userId: string): Promise<vo
     },
   });
 
+  // ---- Revision timetable (targets, topics with varied confidence, a session) ----
+  const mkTarget = async (
+    type: "EXAM" | "ASSIGNMENT" | "OSCE",
+    title: string,
+    daysAhead: number,
+    subjectId?: string,
+  ) => {
+    const target = await repo.createRevisionTarget({
+      userId,
+      type,
+      title,
+      date: isoDate(at(-daysAhead)),
+      subjectId,
+    });
+    feed.push({
+      entityType: "REVISION",
+      entityId: target.id,
+      action: "REVISION_TARGET_ADDED",
+      summary: `Added a ${type.toLowerCase()} target — “${title}”`,
+      entityLabel: title,
+    });
+  };
+  await mkTarget("EXAM", "Pharmacology written exam", 32, "subject_pharmacology");
+  await mkTarget("ASSIGNMENT", "Reflective essay submission", 12);
+  await mkTarget("OSCE", "Practical OSCE", 46, "subject_osce_prep");
+
+  const mkTopic = async (
+    subjectId: string,
+    title: string,
+    confidence: number,
+    opts: { reviewedDaysAgo?: number; nextDueDaysAhead?: number } = {},
+  ) => {
+    const topic = await repo.createRevisionTopic({
+      userId,
+      subjectId,
+      title,
+      confidence,
+      lastReviewed: opts.reviewedDaysAgo != null ? isoDate(at(opts.reviewedDaysAgo)) : undefined,
+      nextDue: opts.nextDueDaysAhead != null ? isoDate(at(-opts.nextDueDaysAhead)) : undefined,
+    });
+    feed.push({
+      entityType: "REVISION",
+      entityId: topic.id,
+      action: "REVISION_TOPIC_ADDED",
+      summary: `Added a revision topic — “${title}”`,
+      entityLabel: title,
+    });
+    return topic;
+  };
+  // Weak areas (low confidence) → resurface as "due now".
+  await mkTopic("subject_pharmacology", "Anticoagulant monitoring", 1, { reviewedDaysAgo: 3 });
+  await mkTopic("subject_pharmacology", "Beta blockers", 2, { reviewedDaysAgo: 5 });
+  await mkTopic("subject_numeracy", "Infusion rate calculations", 2, { reviewedDaysAgo: 4 });
+  // Reviewed + scheduled ahead → not due yet.
+  await mkTopic("subject_pharmacology", "Antibiotic classes", 4, { reviewedDaysAgo: 2, nextDueDaysAhead: 6 }); // prettier-ignore
+  await mkTopic("subject_anatomy_physiology", "The cardiac cycle", 3, { reviewedDaysAgo: 1, nextDueDaysAhead: 3 }); // prettier-ignore
+  const accountability = await mkTopic("subject_nmc_theory", "Accountability & the Code", 4, { reviewedDaysAgo: 6, nextDueDaysAhead: 2 }); // prettier-ignore
+
+  // A completed spaced-repetition session on the accountability topic.
+  const doneSession = await repo.createRevisionSession({
+    userId,
+    topicId: accountability.id,
+    method: "POMODORO",
+    scheduledStart: at(6, 18, 0).toISOString(),
+    scheduledEnd: at(6, 18, 25).toISOString(),
+    completed: true,
+    pomodoroCount: 1,
+    confidenceAfter: 4,
+  });
+  feed.push({
+    entityType: "REVISION",
+    entityId: doneSession.id,
+    action: "REVISION_SESSION_COMPLETED",
+    summary: "Completed a pomodoro session on “Accountability & the Code”",
+    entityLabel: "Accountability & the Code",
+  });
+  // An upcoming session scheduled on a shift-free evening (not logged until completed).
+  await repo.createRevisionSession({
+    userId,
+    topicId: accountability.id,
+    method: "POMODORO",
+    scheduledStart: at(-1, 18, 0).toISOString(),
+    scheduledEnd: at(-1, 18, 25).toISOString(),
+    completed: false,
+  });
+
   // ---- Write the activity feed last (chronological insertion order) ----
   for (const f of feed) {
     await repo.createLogItem({ userId, ...f });

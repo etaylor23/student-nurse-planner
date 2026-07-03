@@ -1,7 +1,15 @@
-# Spec — Revision Timetable  (Status: SPECCED)
+# Spec — Revision Timetable  (Status: BUILT)
 
 Plans revision around targets and shifts, with confidence tracking and weak-area
 resurfacing.
+
+**Built:** nested routes under `/revision` (Due now · Subjects · Timetable · Targets).
+Data: `Subject` (baseline seed + custom), `RevisionTarget`, `RevisionTopic` (confidence
+1–5 + spaced-repetition schedule), `RevisionSession`, via the additive Dexie `version(4)`.
+Pure logic in `logic/revision.ts` (spaced-repetition `nextDue`, `isTopicDue`/`resurface`,
+`daysUntil`) and `logic/revisionSchedule.ts` (shift-aware free-slot suggestion), both
+unit-tested. A Pomodoro `SessionRunner` captures confidence-after and reschedules the
+topic. Mutations flow through `useRevisionActions` (activity-log at the action layer).
 
 ## Decisions (locked)
 
@@ -49,19 +57,25 @@ Numeracy, OSCE Prep.
 
 ## Integrations
 
-None yet. (Planned shift-aware scheduling — excluding windows that overlap a
-`Shift` — is noted under Derived logic.)
+- **Weekly Planner / Placement Hours Log (built).** The Timetable's slot suggester reads
+  the shared `Shift` rows and excludes any window that overlaps a shift (plus
+  already-scheduled sessions), and links back to `/planner`.
+- **Medication Notes (built).** The Due-now view's numeracy card reads the existing
+  `CalcStat` aggregate (no parallel store) and links to `/medications/calc` (deep-linking
+  the weakest calc type).
 
-## Connections _(planned — this feature is SPECCED)_
+## Connections _(built)_
 
-Where this screen and others will feed into each other:
+Where this screen and others feed into each other:
 
-- **↔ Weekly Planner / Placement Hours Log.** Sessions schedule around the shared
-  `Shift` rows (exclude windows overlapping a shift); the `.ics` export may include
-  revision blocks.
-- **← Medication Notes.** The numeracy weak-area view can read the existing `CalcStat`
-  aggregate rather than its own store.
-- **→ Activity Log.** Completed sessions can append `LogItem`s.
+- **↔ Weekly Planner / Placement Hours Log.** Study sessions are suggested around the
+  shared `Shift` rows (never clashing with a shift) via `logic/revisionSchedule.ts`; the
+  Timetable links to the planner. (`.ics` revision blocks remain a future option.)
+- **← Medication Notes.** The numeracy weak-area reads the existing `CalcStat` aggregate
+  and links to the drug-calc practice screen — same skill, one source of truth.
+- **→ Activity Log.** Topic added / reviewed, target added and completed sessions append
+  `LogItem`s (`REVISION_*`); the feed filters under a "Revision" chip and links to
+  `/revision`.
 - **← NMC Foundations** _(reference)_. Baseline subjects come from the foundations facts.
 
 ## Data reuse

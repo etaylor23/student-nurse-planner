@@ -396,6 +396,69 @@ export interface ReflectionSectionInput {
   content: string;
 }
 
+// ---------- Revision timetable ----------
+
+export type RevisionTargetType = "EXAM" | "ASSIGNMENT" | "OSCE";
+export const REVISION_TARGET_TYPE_LABEL: Record<RevisionTargetType, string> = {
+  EXAM: "Exam",
+  ASSIGNMENT: "Assignment",
+  OSCE: "OSCE",
+};
+
+export type RevisionMethod = "SPACED_REPETITION" | "FIXED_BLOCK" | "POMODORO";
+export const REVISION_METHOD_LABEL: Record<RevisionMethod, string> = {
+  SPACED_REPETITION: "Spaced repetition",
+  FIXED_BLOCK: "Weekly block",
+  POMODORO: "Pomodoro",
+};
+
+/** Confidence scale for a revision topic (drives spaced-repetition + weak-area resurfacing). */
+export const REVISION_CONFIDENCE_MIN = 1;
+export const REVISION_CONFIDENCE_MAX = 5;
+
+/**
+ * A revision subject. `userId === null` denotes a built-in baseline subject (seeded,
+ * shared by every user — like `BreakRule` / baseline `Skill`); a set `userId` is a
+ * student's own subject.
+ */
+export interface Subject extends Entity {
+  userId: string | null; // null = built-in baseline (so not `UserOwned`, which is non-null)
+  name: string;
+}
+
+/** An exam / assignment / OSCE the student revises toward (any combination, all optional). */
+export interface RevisionTarget extends Entity, UserOwned, Created {
+  type: RevisionTargetType;
+  title: string;
+  date: string; // ISO date
+  subjectId?: string; // FK → Subject (optional)
+}
+
+/** A topic within a subject, carrying confidence + a spaced-repetition schedule. */
+export interface RevisionTopic extends Entity, UserOwned, Created {
+  subjectId: string; // FK → Subject
+  title: string;
+  confidence: number; // 1..5 — drives resurfacing + next-due
+  lastReviewed?: string; // ISO date
+  nextDue?: string; // ISO date (derived from confidence on review)
+}
+
+/** A planned or completed study session, scheduled around shifts. */
+export interface RevisionSession extends Entity, UserOwned, Created {
+  topicId?: string; // FK → RevisionTopic (optional — a session can be general)
+  method: RevisionMethod;
+  scheduledStart: string; // full ISO timestamp
+  scheduledEnd: string; // full ISO timestamp
+  completed: boolean;
+  pomodoroCount?: number; // completed pomodoros (POMODORO method)
+  confidenceAfter?: number; // 1..5, captured when a session completes
+}
+
+export type SubjectDraft = Omit<Subject, "id">;
+export type RevisionTargetDraft = Omit<RevisionTarget, "id" | "userId" | "createdAt">;
+export type RevisionTopicDraft = Omit<RevisionTopic, "id" | "userId" | "createdAt">;
+export type RevisionSessionDraft = Omit<RevisionSession, "id" | "userId" | "createdAt">;
+
 /**
  * Configurable break-deduction band. A raw shift duration that falls in
  * [minShiftMins, maxShiftMins] has `breakMins` deducted before counting.

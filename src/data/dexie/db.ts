@@ -26,6 +26,15 @@ const V3_ADDED_STORES: StoreName[] = [
   "reflectionTags",
 ];
 
+/** Stores added at version(4) — the Revision-timetable feature. Same additive
+ * pattern as V2/V3 (its own version because the app deploys per-feature). */
+const V4_ADDED_STORES: StoreName[] = [
+  "subjects",
+  "revisionTargets",
+  "revisionTopics",
+  "revisionSessions",
+];
+
 /**
  * IndexedDB binding for the PoC. The current schema and the table types both come
  * from the single registry in `../schema.ts` (one source for store↔type↔index), so
@@ -35,10 +44,10 @@ const V3_ADDED_STORES: StoreName[] = [
  * Migration policy: this is a local-only PoC, so we **rebuild rather than migrate**.
  * version(1) declares the original schema; version(2) **additively** introduces the
  * clinical-skills stores (see `V2_ADDED_STORES`); version(3) the reflection stores
- * (see `V3_ADDED_STORES`) — all without `.upgrade()` transforms, so deployed databases
- * gain the new stores with zero data loss. The database name is suffixed (`-v2`); bump
- * that suffix only when a change must force a clean rebuild (dropping/reshaping existing
- * data) rather than an additive store.
+ * (`V3_ADDED_STORES`); version(4) the revision stores (`V4_ADDED_STORES`) — all without
+ * `.upgrade()` transforms, so deployed databases gain the new stores with zero data
+ * loss. The database name is suffixed (`-v2`); bump that suffix only when a change must
+ * force a clean rebuild (dropping/reshaping existing data) rather than an additive store.
  */
 export class PlannerDb extends Dexie {
   // Table accessors, typed from the registry. Field names match the STORE_INDEXES
@@ -63,6 +72,10 @@ export class PlannerDb extends Dexie {
   reflectionSections!: Table<EntityMap["reflectionSections"], string>;
   tags!: Table<EntityMap["tags"], string>;
   reflectionTags!: Table<EntityMap["reflectionTags"], string>;
+  subjects!: Table<EntityMap["subjects"], string>;
+  revisionTargets!: Table<EntityMap["revisionTargets"], string>;
+  revisionTopics!: Table<EntityMap["revisionTopics"], string>;
+  revisionSessions!: Table<EntityMap["revisionSessions"], string>;
 
   constructor(name = "nurse-planner-v2") {
     super(name);
@@ -70,14 +83,19 @@ export class PlannerDb extends Dexie {
     // release's additions (Dexie inherits the rest). Splitting the chain — rather than
     // listing everything at v1 — is what makes Dexie create the new stores on an
     // already-migrated database without a transform.
-    const addedLater = new Set<string>([...V2_ADDED_STORES, ...V3_ADDED_STORES]);
+    const addedLater = new Set<string>([
+      ...V2_ADDED_STORES,
+      ...V3_ADDED_STORES,
+      ...V4_ADDED_STORES,
+    ]);
     const v1Stores = Object.fromEntries(
       Object.entries(STORE_INDEXES).filter(([k]) => !addedLater.has(k)),
     );
-    const v2Stores = Object.fromEntries(V2_ADDED_STORES.map((k) => [k, STORE_INDEXES[k]]));
-    const v3Stores = Object.fromEntries(V3_ADDED_STORES.map((k) => [k, STORE_INDEXES[k]]));
+    const later = (stores: StoreName[]) =>
+      Object.fromEntries(stores.map((k) => [k, STORE_INDEXES[k]]));
     this.version(1).stores(v1Stores);
-    this.version(2).stores(v2Stores);
-    this.version(3).stores(v3Stores);
+    this.version(2).stores(later(V2_ADDED_STORES));
+    this.version(3).stores(later(V3_ADDED_STORES));
+    this.version(4).stores(later(V4_ADDED_STORES));
   }
 }

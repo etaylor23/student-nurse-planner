@@ -24,11 +24,18 @@ import type {
   ReflectionSection,
   ReflectionSectionInput,
   ReflectionTag,
+  RevisionSession,
+  RevisionSessionDraft,
+  RevisionTarget,
+  RevisionTargetDraft,
+  RevisionTopic,
+  RevisionTopicDraft,
   Shift,
   Skill,
   SkillProgress,
   SkillSignOff,
   SkillStage,
+  Subject,
   Tag,
   User,
 } from "../../domain/types";
@@ -36,6 +43,7 @@ import { newId, nowIso } from "../../domain/ids";
 import { defaultBreakRules } from "../../logic/breakRules";
 import { seedProficiencies } from "../seed/proficiencies";
 import { seedSkills } from "../seed/skills";
+import { seedSubjects } from "../seed/subjects";
 import { PlannerDb } from "./db";
 
 /** Stable id for the PoC's single local user. */
@@ -76,6 +84,9 @@ export class DexieRepository implements Repository {
     // Annexe B baseline clinical skills (derived from the proficiencies; global).
     const skillCount = await this.db.skills.count();
     if (skillCount === 0) await this.db.skills.bulkPut(seedSkills);
+    // Baseline revision subjects (global reference data).
+    const subjectCount = await this.db.subjects.count();
+    if (subjectCount === 0) await this.db.subjects.bulkPut(seedSubjects);
     this.seeded = true;
   }
 
@@ -707,5 +718,98 @@ export class DexieRepository implements Repository {
     }));
     if (links.length > 0) await this.db.reflectionTags.bulkPut(links);
     return resolved;
+  }
+
+  // ---- Revision timetable ----
+  async listSubjects(userId: string): Promise<Subject[]> {
+    await this.ensureSeed();
+    const builtins = await this.db.subjects.filter((s) => s.userId === null).toArray();
+    const own = await this.db.subjects.where("userId").equals(userId).toArray();
+    return [...builtins, ...own].sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async addSubject(userId: string, name: string): Promise<Subject> {
+    const subject: Subject = { id: newId(), userId, name: name.trim() };
+    await this.db.subjects.put(subject);
+    return subject;
+  }
+
+  async listRevisionTargets(userId: string): Promise<RevisionTarget[]> {
+    const rows = await this.db.revisionTargets.where("userId").equals(userId).toArray();
+    // Soonest date first.
+    return rows.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  }
+
+  async createRevisionTarget(
+    input: RevisionTargetDraft & { userId: string },
+  ): Promise<RevisionTarget> {
+    const target: RevisionTarget = { ...input, id: newId(), createdAt: nowIso() };
+    await this.db.revisionTargets.put(target);
+    return target;
+  }
+
+  async deleteRevisionTarget(id: string): Promise<void> {
+    await this.db.revisionTargets.delete(id);
+  }
+
+  async listRevisionTopics(userId: string): Promise<RevisionTopic[]> {
+    return this.db.revisionTopics.where("userId").equals(userId).toArray();
+  }
+
+  async createRevisionTopic(
+    input: RevisionTopicDraft & { userId: string },
+  ): Promise<RevisionTopic> {
+    const topic: RevisionTopic = { ...input, id: newId(), createdAt: nowIso() };
+    await this.db.revisionTopics.put(topic);
+    return topic;
+  }
+
+  async updateRevisionTopic(
+    id: string,
+    patch: Partial<RevisionTopicDraft>,
+  ): Promise<RevisionTopic> {
+    const current = await this.db.revisionTopics.get(id);
+    if (!current) throw new Error(`RevisionTopic ${id} not found`);
+    const updated: RevisionTopic = { ...current, ...patch };
+    await this.db.revisionTopics.put(updated);
+    return updated;
+  }
+
+  async deleteRevisionTopic(id: string): Promise<void> {
+    await this.db.revisionTopics.delete(id);
+    // Cascade the topic's sessions.
+    const sessions = await this.db.revisionSessions.where("topicId").equals(id).toArray();
+    if (sessions.length > 0) await this.db.revisionSessions.bulkDelete(sessions.map((s) => s.id));
+  }
+
+  async listRevisionSessions(userId: string): Promise<RevisionSession[]> {
+    const rows = await this.db.revisionSessions.where("userId").equals(userId).toArray();
+    // Soonest scheduled first.
+    return rows.sort((a, b) =>
+      a.scheduledStart < b.scheduledStart ? -1 : a.scheduledStart > b.scheduledStart ? 1 : 0,
+    );
+  }
+
+  async createRevisionSession(
+    input: RevisionSessionDraft & { userId: string },
+  ): Promise<RevisionSession> {
+    const session: RevisionSession = { ...input, id: newId(), createdAt: nowIso() };
+    await this.db.revisionSessions.put(session);
+    return session;
+  }
+
+  async updateRevisionSession(
+    id: string,
+    patch: Partial<RevisionSessionDraft>,
+  ): Promise<RevisionSession> {
+    const current = await this.db.revisionSessions.get(id);
+    if (!current) throw new Error(`RevisionSession ${id} not found`);
+    const updated: RevisionSession = { ...current, ...patch };
+    await this.db.revisionSessions.put(updated);
+    return updated;
+  }
+
+  async deleteRevisionSession(id: string): Promise<void> {
+    await this.db.revisionSessions.delete(id);
   }
 }

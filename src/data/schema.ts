@@ -14,9 +14,13 @@ import type {
   Reflection,
   ReflectionSection,
   ReflectionTag,
+  RevisionSession,
+  RevisionTarget,
+  RevisionTopic,
   Shift,
   Skill,
   SkillProgress,
+  Subject,
   Tag,
   User,
 } from "../domain/types";
@@ -56,6 +60,10 @@ export interface EntityMap {
   reflectionSections: ReflectionSection;
   tags: Tag;
   reflectionTags: ReflectionTag;
+  subjects: Subject;
+  revisionTargets: RevisionTarget;
+  revisionTopics: RevisionTopic;
+  revisionSessions: RevisionSession;
 }
 
 /** The set of persisted store names (single source of truth). */
@@ -97,4 +105,10 @@ export const STORE_INDEXES: Record<StoreName, string> = {
   reflectionSections: "id, reflectionId, &[reflectionId+stage]",
   tags: "id, userId, &[userId+label]",
   reflectionTags: "id, reflectionId, tagId",
+  // Revision. Baseline subjects (userId null) are queried by filter (IndexedDB can't
+  // index null keys). `completed` is a boolean — not indexed; filtered in memory.
+  subjects: "id, userId, name",
+  revisionTargets: "id, userId, date, type",
+  revisionTopics: "id, userId, subjectId, [userId+subjectId], nextDue",
+  revisionSessions: "id, userId, topicId, scheduledStart",
 };

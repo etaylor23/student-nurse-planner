@@ -15,8 +15,12 @@ describe("hrefForEntity", () => {
     expect(hrefForEntity("MEDICATION_LOG", "log1")).toBe("/medications/log");
   });
 
+  it("sends revision entries to the revision hub (no per-row route)", () => {
+    expect(hrefForEntity("REVISION", "topic1")).toBe("/revision");
+  });
+
   it("returns null for unknown / unroutable entity types", () => {
-    expect(hrefForEntity("REVISION", "x1")).toBeNull();
+    expect(hrefForEntity("SELF_CARE", "x1")).toBeNull();
     expect(hrefForEntity("", "x")).toBeNull();
   });
 });

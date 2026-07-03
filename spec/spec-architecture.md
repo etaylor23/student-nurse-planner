@@ -391,7 +391,8 @@ model RevisionSession {
    **Built:** derived in `src/data/seed/skills.ts` from the `annexe: "B"` proficiencies
    (1:1 by code, `skill_B2.1` ↔ `prof_B2.1`) rather than re-seeded.
 3. **Subjects** — A&P, Pharmacology, Pathophysiology, NMC Theory, Numeracy,
-   OSCE Prep (i.e. all except bioscience).
+   OSCE Prep (i.e. all except bioscience). **Built:** baseline (`userId: null`) rows in
+   `src/data/seed/subjects.ts`; `subject_numeracy` is the join point to `CalcStat`.
 4. **Default `BreakRule` table** — `0–360min → 0`, `361–540min → 30`,
    `541+min → 60` (so 12.5h / 750min → 60min break → 11.5h).
 
@@ -413,7 +414,9 @@ model RevisionSession {
 5. Clinical skills (Annexe B seed + `EvidenceLink`) — **built** (3 views; baseline
    derived from the Annexe B proficiencies; stages + permanent sign-off; `SKILL`
    evidence picker now real, with auto-evidence on sign-off).
-6. Medication notes — **built** — + Revision timetable.
+6. Medication notes — **built** — + Revision timetable — **built** (targets, subjects →
+   topics with confidence, spaced-repetition resurfacing, Pomodoro session runner, and
+   shift-aware scheduling that never clashes with a `Shift`; numeracy reads `CalcStat`).
 
 ## App shell & routing
 
@@ -423,8 +426,8 @@ model RevisionSession {
   `DEFAULT_ROUTE` are derived from the sections. (Built: an ungrouped first section =
   `/home` (the hub); "Shifts & hours" = placement hours log + weekly planner;
   "Trackers" = competency tracker + clinical skills; "Study & wellbeing" = reflection
-  on practice + medication notes; an "Account" section = `/profile`. Revision timetable
-  and self-care remain disabled "Soon" items.)
+  on practice + medication notes + revision timetable; an "Account" section = `/profile`.
+  Self-care remains the disabled "Soon" item.)
 - **Home / Today** (`/home`, `HomePage`, U2) — the hub landing page: mounts existing
   hooks/components (on-shift strip, hours pace, `TopGaps`, skills-in-progress,
   `ActivityLog`) with no new data. See `spec-home.md`.
@@ -510,8 +513,9 @@ _(planned)_:
   post-shift debrief's "Write a reflection", the `ShiftReflections` panel in both shift
   editors, and reflections on the placement debrief (via `Reflection.shiftId`); the skill
   detail offers "Reflect on this skill" (prefilled title + tag).
-- **Revision Timetable ↔ Planner / Hours Log** _(planned)_. Shift-aware scheduling
-  excludes windows overlapping a `Shift`; numeracy weak-areas read `CalcStat`.
+- **Revision Timetable ↔ Planner / Hours Log.** The Timetable suggests study slots around
+  the shared `Shift` rows (never clashing with a shift) and links back to the planner;
+  the numeracy weak-area reads `CalcStat` and links to the med calc-practice screen.
 - **All screens → Activity Log.** Auditable actions append a generic `LogItem` that
   renders in the global feed (shifts, med actions, proficiency status + evidence
   link/unlink, profile updates; future features the same way).

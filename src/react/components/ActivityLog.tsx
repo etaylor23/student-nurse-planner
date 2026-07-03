@@ -6,7 +6,14 @@ import { LogList } from "./LogList";
 import { Panel } from "./ui";
 
 /** Feed filter chips → the entity types each one shows. `all` shows everything. */
-type FeedFilter = "all" | "shifts" | "meds" | "competencies" | "skills" | "reflections";
+type FeedFilter =
+  | "all"
+  | "shifts"
+  | "meds"
+  | "competencies"
+  | "skills"
+  | "reflections"
+  | "revision";
 const FILTERS: { key: FeedFilter; label: string }[] = [
   { key: "all", label: "All" },
   { key: "shifts", label: "Shifts" },
@@ -14,6 +21,7 @@ const FILTERS: { key: FeedFilter; label: string }[] = [
   { key: "competencies", label: "Competencies" },
   { key: "skills", label: "Skills" },
   { key: "reflections", label: "Reflections" },
+  { key: "revision", label: "Revision" },
 ];
 /** Which chip an entity type falls under (types with no chip only show under "All"). */
 const FEED_CATEGORY: Record<string, FeedFilter> = {
@@ -23,6 +31,7 @@ const FEED_CATEGORY: Record<string, FeedFilter> = {
   PROFICIENCY: "competencies",
   SKILL: "skills",
   REFLECTION: "reflections",
+  REVISION: "revision",
 };
 
 /**

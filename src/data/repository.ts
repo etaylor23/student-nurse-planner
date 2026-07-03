@@ -23,11 +23,18 @@ import type {
   ReflectionSection,
   ReflectionSectionInput,
   ReflectionTag,
+  RevisionSession,
+  RevisionSessionDraft,
+  RevisionTarget,
+  RevisionTargetDraft,
+  RevisionTopic,
+  RevisionTopicDraft,
   Shift,
   Skill,
   SkillProgress,
   SkillSignOff,
   SkillStage,
+  Subject,
   Tag,
   User,
 } from "../domain/types";
@@ -207,4 +214,25 @@ export interface Repository {
    * user) and rewrites the join rows. Returns the reflection's resulting tags.
    */
   setReflectionTags(userId: string, reflectionId: string, labels: string[]): Promise<Tag[]>;
+
+  // ---- Revision timetable ----
+  /** Baseline subjects (seeded) plus the user's own subjects. */
+  listSubjects(userId: string): Promise<Subject[]>;
+  /** Add a student's own subject. */
+  addSubject(userId: string, name: string): Promise<Subject>;
+
+  listRevisionTargets(userId: string): Promise<RevisionTarget[]>;
+  createRevisionTarget(input: RevisionTargetDraft & { userId: string }): Promise<RevisionTarget>;
+  deleteRevisionTarget(id: string): Promise<void>;
+
+  listRevisionTopics(userId: string): Promise<RevisionTopic[]>;
+  createRevisionTopic(input: RevisionTopicDraft & { userId: string }): Promise<RevisionTopic>;
+  updateRevisionTopic(id: string, patch: Partial<RevisionTopicDraft>): Promise<RevisionTopic>;
+  /** Delete a topic and cascade its sessions. */
+  deleteRevisionTopic(id: string): Promise<void>;
+
+  listRevisionSessions(userId: string): Promise<RevisionSession[]>;
+  createRevisionSession(input: RevisionSessionDraft & { userId: string }): Promise<RevisionSession>;
+  updateRevisionSession(id: string, patch: Partial<RevisionSessionDraft>): Promise<RevisionSession>;
+  deleteRevisionSession(id: string): Promise<void>;
 }

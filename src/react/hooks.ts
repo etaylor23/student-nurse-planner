@@ -14,8 +14,12 @@ import type {
   Reflection,
   ReflectionSection,
   ReflectionTag,
+  RevisionSession,
+  RevisionTarget,
+  RevisionTopic,
   Skill,
   SkillProgress,
+  Subject,
   Tag,
 } from "../domain/types";
 import { useRepository } from "./RepositoryContext";
@@ -291,6 +295,35 @@ export function useReflection(id: string | undefined) {
   }, [reload]);
 
   return { reflection, sections, tags, reload };
+}
+
+/** The user's revision data: subjects (baseline + own), targets, topics and sessions. */
+export function useRevision() {
+  const { repo, user } = useRepository();
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [targets, setTargets] = useState<RevisionTarget[]>([]);
+  const [topics, setTopics] = useState<RevisionTopic[]>([]);
+  const [sessions, setSessions] = useState<RevisionSession[]>([]);
+
+  const reload = useCallback(async () => {
+    if (!user) return;
+    const [s, tg, tp, se] = await Promise.all([
+      repo.listSubjects(user.id),
+      repo.listRevisionTargets(user.id),
+      repo.listRevisionTopics(user.id),
+      repo.listRevisionSessions(user.id),
+    ]);
+    setSubjects(s);
+    setTargets(tg);
+    setTopics(tp);
+    setSessions(se);
+  }, [repo, user]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  return { subjects, targets, topics, sessions, reload };
 }
 
 /** One skill with the user's progress against it (detail view). */

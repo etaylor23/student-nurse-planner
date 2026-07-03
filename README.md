@@ -49,7 +49,7 @@ these specs describe both what's built and what's next.
 | 5 | Weekly shift planner | **Built** |
 | 6 | Medication notes | **Built** |
 | 7 | Self-care checklist | **Deferred** |
-| 8 | Revision timetable | Specced — not built |
+| 8 | Revision timetable | **Built** |
 
 A **Profile / Settings** screen (`spec-profile.md`) was built alongside the competency
 tracker, since gap surfacing needs the student's current programme part. A **Home /
@@ -128,7 +128,9 @@ Full detail in [`spec-architecture.md`](./spec/spec-architecture.md). Summary:
    debrief, evidence suggestions and the activity feed).
 5. **Clinical skills tracker** — ✅ built (Annexe B baseline **derived** from the
    proficiency seed, plus `EvidenceLink` type `SKILL`).
-6. **Medication notes** — ✅ built — + **Revision timetable**.
+6. **Medication notes** — ✅ built — + **Revision timetable** — ✅ built (targets,
+   subjects → topics with confidence, spaced-repetition resurfacing, a Pomodoro runner,
+   and shift-aware scheduling; numeracy reads `CalcStat`).
 
 (**Self-care checklist** is deferred until the rest is in good shape.)
 
@@ -193,5 +195,5 @@ react-router-dom 7, Dexie 4, lucide-react, Vitest 2 (+ fake-indexeddb).
   built screens, in three waves. Self-contained brief — read it before starting
   new work.
 - [`spec-reflection.md`](./spec/spec-reflection.md) — **built.**
-- [`spec-revision-timetable.md`](./spec/spec-revision-timetable.md)
+- [`spec-revision-timetable.md`](./spec/spec-revision-timetable.md) — **built.**
 - [`spec-self-care.md`](./spec/spec-self-care.md) — **deferred.**

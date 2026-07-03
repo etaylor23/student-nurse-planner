@@ -24,6 +24,10 @@ const DOT: Record<string, string> = {
   REFLECTION_CREATED: "bg-violet-400",
   REFLECTION_UPDATED: "bg-slate-300",
   REFLECTION_DELETED: "bg-rose-400",
+  REVISION_TOPIC_ADDED: "bg-indigo-400",
+  REVISION_REVIEWED: "bg-amber-400",
+  REVISION_SESSION_COMPLETED: "bg-emerald-400",
+  REVISION_TARGET_ADDED: "bg-sky-400",
 };
 
 /** "2026-06-16T14:32:00.000Z" → "16 Jun 2026, 14:32" (local). */
