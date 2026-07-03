@@ -22,6 +22,7 @@ function snippet(sections: ReflectionSection[]): string {
 
 export function ReflectionListPage() {
   const { reflections, sections, tags, reflectionTags } = useReflections();
+  const { unlocked } = useReflectionLock();
   const [q, setQ] = useState("");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
 
@@ -53,12 +54,19 @@ export function ReflectionListPage() {
       const secs = sectionsByReflection.get(r.id) ?? [];
       const labels = tagLabelsByReflection.get(r.id) ?? [];
       if (tagFilter && !labels.includes(tagFilter)) return false;
+      // Don't let a locked (and not-unlocked) reflection's hidden body be searchable —
+      // that would leak private content the row itself hides. Title + tags only.
+      const gated = r.isLocked && !unlocked;
       return reflectionMatchesQuery(
-        { title: r.title, sectionContents: secs.map((s) => s.content), tagLabels: labels },
+        {
+          title: r.title,
+          sectionContents: gated ? [] : secs.map((s) => s.content),
+          tagLabels: labels,
+        },
         q,
       );
     });
-  }, [reflections, sectionsByReflection, tagLabelsByReflection, tagFilter, q]);
+  }, [reflections, sectionsByReflection, tagLabelsByReflection, tagFilter, q, unlocked]);
 
   return (
     <div className="space-y-4">

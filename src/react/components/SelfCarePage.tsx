@@ -47,18 +47,20 @@ export function SelfCarePage() {
     });
 
   const save = async () => {
-    await addCheckin({
+    const created = await addCheckin({
       date: todayIso(),
       shiftId: prefillShiftId || undefined,
       energy,
       note: note.trim() || undefined,
       items: joinItems([...checked]),
     });
-    setSaved(true);
+    if (!created) return; // nothing persisted (e.g. before the user has loaded) — don't clear
     setEnergy(undefined);
     setChecked(new Set());
     setNote("");
     await reload();
+    setSaved(true); // transient golden moment
+    setTimeout(() => setSaved(false), 3000);
   };
 
   return (

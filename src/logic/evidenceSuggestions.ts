@@ -95,8 +95,10 @@ export function suggestEvidence(
   const linkedReflections = linkedOfType("REFLECTION");
   const reflections = [...input.reflections.filter((r) => !linkedReflections.has(r.id))]
     .sort((a, b) => {
-      const ka = a.occurredOn ?? a.createdAt;
-      const kb = b.occurredOn ?? b.createdAt;
+      // Normalise to date granularity: occurredOn is "YYYY-MM-DD", createdAt is a full
+      // ISO timestamp, so comparing them raw would mis-rank a same-day occurred/created pair.
+      const ka = a.occurredOn ?? a.createdAt.slice(0, 10);
+      const kb = b.occurredOn ?? b.createdAt.slice(0, 10);
       return ka < kb ? 1 : ka > kb ? -1 : 0;
     })
     .slice(0, MAX_REFLECTIONS);

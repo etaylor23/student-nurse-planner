@@ -590,8 +590,9 @@ export class DexieRepository implements Repository {
   // ---- Reflection on practice ----
   async listReflections(userId: string): Promise<Reflection[]> {
     const rows = await this.db.reflections.where("userId").equals(userId).toArray();
-    // Newest first by the reflected-on date when set, else creation time.
-    const key = (r: Reflection) => r.occurredOn ?? r.createdAt;
+    // Newest first by the reflected-on date when set, else creation day. Normalised to
+    // date granularity (occurredOn is "YYYY-MM-DD"; createdAt is a full ISO timestamp).
+    const key = (r: Reflection) => r.occurredOn ?? r.createdAt.slice(0, 10);
     return rows.sort((a, b) => (key(a) < key(b) ? 1 : key(a) > key(b) ? -1 : 0));
   }
 

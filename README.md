@@ -113,8 +113,8 @@ Full detail in [`spec-architecture.md`](./spec/spec-architecture.md). Summary:
   button opens it as a drawer with a tap-to-close backdrop.
 - **Routing:** `react-router-dom` v7. Nav links for all features; **an item is
   disabled until its feature is implemented.** A **Home** hub leads the nav, so `/`
-  and unknown routes redirect to `/home` (the first enabled item); Revision and
-  Self-care remain the disabled "Soon" items.
+  and unknown routes redirect to `/home` (the first enabled item). All eight feature
+  nav items are now enabled.
 
 ## 6. Build order / roadmap
 

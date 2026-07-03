@@ -443,8 +443,8 @@ model SelfCareCheckin {          // gentle, private wellbeing check-in — never
   `DEFAULT_ROUTE` are derived from the sections. (Built: an ungrouped first section =
   `/home` (the hub); "Shifts & hours" = placement hours log + weekly planner;
   "Trackers" = competency tracker + clinical skills; "Study & wellbeing" = reflection
-  on practice + medication notes + revision timetable; an "Account" section = `/profile`.
-  self-care checklist. All eight features are now enabled.)
+  on practice + medication notes + revision timetable + self-care checklist; an
+  "Account" section = `/profile`. All eight features are now enabled.)
 - **Home / Today** (`/home`, `HomePage`, U2) — the hub landing page: mounts existing
   hooks/components (on-shift strip, hours pace, `TopGaps`, skills-in-progress,
   `ActivityLog`) with no new data. See `spec-home.md`.
