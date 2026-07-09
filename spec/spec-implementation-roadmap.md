@@ -18,10 +18,13 @@ take called out inline. Read this first, then the design specs it references:
   - **[YOU]** — a human-only action (AWS console, credentials, DNS, approvals). The agent
     should **stop and ask** when it reaches one.
   - **[GATE]** — a checkpoint: a human prerequisite or a sign-off before proceeding.
-- **Safety default:** the agent **authors** infra and app code but does **not** run
-  resource-creating or mutating cloud commands (`cdk bootstrap`, `cdk deploy`, `aws …`
-  writes) on its own. Those are **[YOU]** (run after review) or go through CI. Loosen this
-  only if you explicitly hand the agent a scoped profile and say so.
+- **Autonomy posture:** agents run under `--profile personal` in **auto mode** with a
+  project deny-list (`.claude/settings.json`) and a **$5/mo auto-enforcing AWS budget**, so
+  the agent **may run `cdk`/`aws` commands — including `cdk deploy` — autonomously** within
+  those rails. The auto-mode classifier still blocks genuinely destructive or
+  out-of-stack-costly actions (EC2/RDS/Redshift/SageMaker/EMR/ElastiCache, provisioned
+  DynamoDB), and you review at each phase **GATE**. `cdk bootstrap` (one-time,
+  account-privileged) is best run by you.
 
 ---
 
@@ -42,7 +45,7 @@ Some of these have **external lead time** (support tickets, DNS propagation) —
 | ⏳ Phase 0 (start early) | **SES: verify a sender identity + request production access** (sandbox exit) | Magic-link emails only reach arbitrary inboxes once SES is out of sandbox — this has a support-ticket lead time. Until then, only *verified* addresses receive links. |
 | ⏳ Phase 0 (optional, start early if wanted) | Register/confirm a **custom domain** (Route 53 or external) | For a branded URL + ACM TLS. **Optional** — the app runs fine on the CloudFront default `*.cloudfront.net` domain until you cut over. |
 | Phase 0 | Set up **GitHub → AWS deploy access** (an OIDC role is cleaner than long-lived secrets); agent supplies the trust policy, you create/approve it in AWS + add the GitHub side | So CI can deploy without static credentials in the repo. |
-| Phase 0 | Run (after reviewing) `cdk bootstrap` + the first `cdk deploy` to **dev** | Resource-creating commands are yours to run per the safety default. |
+| Phase 0 | Run `cdk bootstrap --profile personal` once (one-time, account-privileged) | Creates the CDK toolkit stack the OIDC role assumes. After bootstrap, the agent can `cdk deploy` within the auto-mode + budget rails. |
 | Phase 1 | Create a **test user** in the Cognito console; verify your email in SES if still sandboxed | You provisioned users manually (AdminCreateUser via console) — needed to log in and test. |
 | Phase 1 & 2 | **Sign off** the GATE demos (auth end-to-end; full online parity) | Human verification the seam holds before widening. |
 | Phase 2 | Provision the **real cohort** users in the Cognito console | Going beyond test users. |
