@@ -8,7 +8,9 @@ import globals from "globals";
 export default tseslint.config(
   // `.claude` holds tooling + git worktrees (which nest a full source copy under
   // .claude/worktrees/*); never lint those — they break `eslint .` run from the repo root.
-  { ignores: ["dist", "node_modules", ".claude"] },
+  // `infra` is a separate CDK project with its own toolchain; the *.generated.ts zod
+  // schemas are a codegen artefact (validated by ts-to-zod, not hand-written).
+  { ignores: ["dist", "node_modules", ".claude", "infra", "src/**/*.generated.ts"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

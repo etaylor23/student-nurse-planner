@@ -77,10 +77,14 @@ Full detail in [`spec-architecture.md`](./spec/spec-architecture.md). Summary:
   async **`Repository`** interface. The canonical data model is expressed as a
   Prisma schema (the future/remote shape); the PoC stores the same entity shapes
   locally.
-- **Multi-user ready, auth deferred:** every user-owned row carries `userId`.
-  The PoC uses a single local user (`LOCAL_USER_ID`). Per-student login is the
-  intended future standard, but **not yet** — the data model is set up so a
-  remote DB + auth is a drop-in (`<RepositoryProvider repo={...}>`).
+- **Multi-user ready, auth in progress:** every user-owned row carries `userId`.
+  The PoC uses a single local user (`LOCAL_USER_ID`). Per-student login + a remote
+  backend (AWS Cognito magic-link + a single owner-partitioned DynamoDB table +
+  Amazon Verified Permissions) is now being built behind the `Repository` seam
+  (`<RepositoryProvider repo={...}>`). **Phase 0 (infra scaffold) is authored and
+  `cdk synth`-clean but not yet deployed** — see [`infra/`](./infra/README.md) and
+  the [implementation roadmap](./spec/spec-implementation-roadmap.md). Guest mode
+  stays on Dexie.
 - **Reference/seed data is not user-owned:** the NMC proficiency master list,
   the baseline skills list, the baseline revision subjects, and the default
   break-rule table are shared seed data, not per-user.
@@ -175,12 +179,17 @@ Deps added beyond the base stack: `dexie`, `react-router-dom@^7`,
 npm install
 npm run dev        # http://localhost:5173
 npm run build      # tsc --noEmit && vite build
-npm run test       # vitest run (19 tests)
+npm run test       # vitest run (190 tests)
 npm run typecheck
+npm run gen:zod    # regenerate src/domain/schemas.generated.ts from types.ts (ts-to-zod)
 ```
 
 Stack: Vite 6, React 18, TypeScript 5, Tailwind v4 (`@tailwindcss/vite`),
-react-router-dom 7, Dexie 4, lucide-react, Vitest 2 (+ fake-indexeddb).
+react-router-dom 7, Dexie 4, lucide-react, Vitest 2 (+ fake-indexeddb), zod (server
+input-validation schemas, codegen'd via ts-to-zod).
+
+The remote backend lives in a separate CDK app under [`infra/`](./infra/README.md)
+(`cdk synth` / `cdk deploy` — see its README). It is not deployed yet.
 
 ## 10. Spec index
 
@@ -204,3 +213,16 @@ react-router-dom 7, Dexie 4, lucide-react, Vitest 2 (+ fake-indexeddb).
 - [`spec-self-care.md`](./spec/spec-self-care.md) — **built.**
 - [`notifications.md`](./spec/notifications.md) — web notifications; the self-care
   check-in "simulate" button is built, shift reminders are specced-not-built.
+
+### Backend migration (auth + DynamoDB) — in progress
+
+- [`spec-implementation-roadmap.md`](./spec/spec-implementation-roadmap.md) — **the build
+  playbook**: phases, [AGENT]/[YOU]/[GATE] steps, autonomy rails. Read first.
+- [`spec-auth.md`](./spec/spec-auth.md) — Cognito magic-link passwordless auth, token
+  handling, provisioning, the fate of local-only affordances.
+- [`spec-backend-dynamodb.md`](./spec/spec-backend-dynamodb.md) — single owner-partitioned
+  DynamoDB table, RPC API, AVP/Cedar authorisation, local-first sync.
+- [`spec-calendar-feed.md`](./spec/spec-calendar-feed.md) · [`spec-notifications-backend.md`](./spec/spec-notifications-backend.md)
+  — the two non-JWT surfaces (later phases).
+- [`infra/`](./infra/README.md) — the CDK app implementing Phase 0 (scaffolded, synths
+  clean, not yet deployed).

@@ -1,0 +1,55 @@
+name: Deploy backend (CDK)
+
+# Deploys the CDK app to an environment via the GitHub→AWS OIDC role (no stored secrets).
+#
+# Manual (workflow_dispatch) only for now: the FIRST deploy needs a human-run
+# `cdk bootstrap --profile personal` (Phase 0 GATE) before this can succeed. Once dev is
+# bootstrapped and the seam is proven, auto-deploy of dev on push to master (paths:
+# infra/**) can be enabled here.
+#
+# The OIDC role (arn:aws:iam::641364901830:role/github-actions-deploy) is scoped to assume
+# the CDK bootstrap roles — that is all `cdk deploy` needs.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        options: [dev, prod]
+        default: dev
+
+permissions:
+  id-token: write # request the GitHub OIDC token
+  contents: read
+
+jobs:
+  deploy:
+    name: cdk deploy NursePlanner-${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: infra/package-lock.json
+      - name: Assume AWS deploy role via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::641364901830:role/github-actions-deploy
+          aws-region: eu-west-2
+      - name: Install infra deps
+        working-directory: infra
+        run: npm ci
+      - name: Deploy
+        working-directory: infra
+        # SES_FROM_ADDRESS (a repo/org variable) overrides the placeholder sender identity
+        # once a real SES identity is verified. No --profile in CI: creds come from OIDC.
+        run: |
+          EXTRA=""
+          if [ -n "${{ vars.SES_FROM_ADDRESS }}" ]; then
+            EXTRA="-c sesFromAddress=${{ vars.SES_FROM_ADDRESS }}"
+          fi
+          npx cdk deploy "NursePlanner-${{ inputs.environment }}" \
+            --require-approval never --ci $EXTRA

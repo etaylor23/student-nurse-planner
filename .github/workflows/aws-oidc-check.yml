@@ -2,7 +2,8 @@ name: AWS OIDC connectivity check
 
 # Proves GitHub Actions can assume the AWS deploy role via OIDC (no stored secrets).
 # Runs when this file changes (so committing it self-tests) and on manual dispatch.
-# Phase 0 replaces the placeholder step with real `cdk deploy` steps.
+# Kept as a standalone connectivity smoke test; the real deploys live in
+# deploy-backend.yml (cdk deploy) and deploy-frontend.yml (S3 + CloudFront).
 
 on:
   workflow_dispatch:

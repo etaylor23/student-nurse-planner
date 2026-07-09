@@ -57,6 +57,18 @@ interface Repository {
 context. To move to a backend: implement `Repository` against the API and pass
 `<RepositoryProvider repo={new RestRepository(...)}>`.
 
+> **Backend migration (in progress).** The remote backend that binds this seam —
+> Cognito magic-link auth, a single owner-partitioned DynamoDB table, Amazon Verified
+> Permissions (Cedar), an RPC API, and later local-first sync — is specced in
+> [`spec-auth.md`](./spec-auth.md), [`spec-backend-dynamodb.md`](./spec-backend-dynamodb.md)
+> and sequenced by [`spec-implementation-roadmap.md`](./spec-implementation-roadmap.md).
+> The new backends are new `Repository` *implementations* (`ApiRepository`,
+> `DynamoRepository`, `SyncRepository`) swapped here — no HTTP/auth leaks into feature
+> code. **Phase 0** (the CDK infra under [`../infra/`](../infra/README.md)) is authored
+> and `cdk synth`-clean; nothing is deployed and no `Repository` implementation is
+> swapped yet. Server-side input validation uses `zod` schemas codegen'd from
+> `domain/types.ts` via ts-to-zod (`src/domain/schemas.generated.ts`).
+
 `ShiftsProvider` holds the one in-memory `Shift` list (plus the derived hours
 summary and pace projection) shared by every view via `useShifts()`, so a change
 in the hours log or the planner reflects in both — one fetch, no drift.

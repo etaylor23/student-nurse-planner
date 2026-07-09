@@ -13,6 +13,8 @@
     "postbuild": "cp dist/index.html dist/404.html",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "gen:zod": "ts-to-zod src/domain/types.ts src/domain/schemas.generated.ts",
+    "gen:zod:check": "ts-to-zod src/domain/types.ts src/domain/schemas.generated.ts && git diff --exit-code src/domain/schemas.generated.ts",
     "test:watch": "vitest",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -30,7 +32,8 @@
     "dexie": "^4.4.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.17.0"
+    "react-router-dom": "^7.17.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -47,6 +50,7 @@
     "globals": "^17.6.0",
     "prettier": "^3.8.4",
     "tailwindcss": "^4.3.1",
+    "ts-to-zod": "^5.1.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.61.1",
     "vite": "^6.4.3",

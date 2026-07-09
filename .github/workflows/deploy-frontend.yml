@@ -1,0 +1,60 @@
+name: Deploy frontend (S3 + CloudFront)
+
+# Builds the Vite SPA and publishes it to the environment's S3 bucket, then invalidates
+# CloudFront. Bucket name + distribution id are read from the CDK stack outputs, so this
+# only works AFTER the backend stack for that environment is deployed.
+#
+# Coexists with the GitHub Pages workflow (deploy.yml) until DNS cutover (roadmap §4
+# Phase 2). Manual for now; can become push-triggered on cutover.
+#
+# Requires the OIDC role to allow (beyond assuming CDK roles): cloudformation:DescribeStacks,
+# S3 read/write on the web bucket, and cloudfront:CreateInvalidation — see perms.json.
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        options: [dev, prod]
+        default: dev
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: publish SPA → NursePlanner-${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Build SPA
+        run: npm run build
+        env:
+          VITE_BASE: / # CloudFront serves at the domain root (GH Pages uses the sub-path)
+      - name: Assume AWS deploy role via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::641364901830:role/github-actions-deploy
+          aws-region: eu-west-2
+      - name: Resolve stack outputs
+        id: outputs
+        run: |
+          STACK="NursePlanner-${{ inputs.environment }}"
+          get() { aws cloudformation describe-stacks --stack-name "$STACK" \
+            --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
+          echo "bucket=$(get SpaBucketName)" >> "$GITHUB_OUTPUT"
+          echo "distribution=$(get DistributionId)" >> "$GITHUB_OUTPUT"
+      - name: Sync to S3
+        run: aws s3 sync dist/ "s3://${{ steps.outputs.outputs.bucket }}" --delete
+      - name: Invalidate CloudFront
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ steps.outputs.outputs.distribution }}" \
+            --paths "/*"

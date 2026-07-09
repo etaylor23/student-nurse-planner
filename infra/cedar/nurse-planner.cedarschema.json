@@ -1,0 +1,60 @@
+{
+  "NursePlanner": {
+    "entityTypes": {
+      "User": {
+        "shape": { "type": "Record", "attributes": {} }
+      },
+      "SensitiveRecord": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "owner": { "type": "Entity", "name": "User" }
+          }
+        }
+      },
+      "EvidenceRecord": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "owner": { "type": "Entity", "name": "User" }
+          }
+        }
+      },
+      "Reference": {
+        "shape": { "type": "Record", "attributes": {} }
+      }
+    },
+    "actions": {
+      "Read": {
+        "appliesTo": {
+          "principalTypes": ["User"],
+          "resourceTypes": ["SensitiveRecord", "EvidenceRecord", "Reference"]
+        }
+      },
+      "List": {
+        "appliesTo": {
+          "principalTypes": ["User"],
+          "resourceTypes": ["SensitiveRecord", "EvidenceRecord", "Reference"]
+        }
+      },
+      "Create": {
+        "appliesTo": {
+          "principalTypes": ["User"],
+          "resourceTypes": ["SensitiveRecord", "EvidenceRecord"]
+        }
+      },
+      "Update": {
+        "appliesTo": {
+          "principalTypes": ["User"],
+          "resourceTypes": ["SensitiveRecord", "EvidenceRecord"]
+        }
+      },
+      "Delete": {
+        "appliesTo": {
+          "principalTypes": ["User"],
+          "resourceTypes": ["SensitiveRecord", "EvidenceRecord"]
+        }
+      }
+    }
+  }
+}
