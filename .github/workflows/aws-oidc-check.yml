@@ -1,0 +1,27 @@
+name: AWS OIDC connectivity check
+
+# Proves GitHub Actions can assume the AWS deploy role via OIDC (no stored secrets).
+# Runs when this file changes (so committing it self-tests) and on manual dispatch.
+# Phase 0 replaces the placeholder step with real `cdk deploy` steps.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths: [".github/workflows/aws-oidc-check.yml"]
+
+permissions:
+  id-token: write # required to request the GitHub OIDC token
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assume AWS role via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::641364901830:role/github-actions-deploy
+          aws-region: eu-west-2
+      - name: Confirm identity
+        run: aws sts get-caller-identity
