@@ -87,11 +87,18 @@ export class Api extends Construct {
       userPoolClients: [userPoolClient],
     });
 
-    // Guarded interactive surface. Phase 0: health only. Phase 1 adds POST /api/rpc.
+    // Guarded interactive surface (Cognito JWT authorizer → 401 without a valid token).
     this.httpApi.addRoutes({
       path: "/api/health",
       methods: [HttpMethod.GET],
       integration: new HttpLambdaIntegration("RouterHealthInteg", routerFn),
+      authorizer,
+    });
+    // The RPC surface: POST { method, args } dispatched to DynamoRepository (Phase 1).
+    this.httpApi.addRoutes({
+      path: "/api/rpc",
+      methods: [HttpMethod.POST],
+      integration: new HttpLambdaIntegration("RouterRpcInteg", routerFn),
       authorizer,
     });
 

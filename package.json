@@ -25,6 +25,9 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1084.0",
+    "@aws-sdk/client-verifiedpermissions": "^3.1084.0",
+    "@aws-sdk/lib-dynamodb": "^3.1084.0",
     "@fullcalendar/daygrid": "^6.1.20",
     "@fullcalendar/interaction": "^6.1.20",
     "@fullcalendar/react": "^6.1.20",
@@ -36,12 +39,14 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@cedar-policy/cedar-wasm": "^4.11.2",
     "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.3.1",
     "@types/node": "^22.19.21",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.7.0",
+    "dynalite": "^3.2.2",
     "eslint": "^10.5.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",

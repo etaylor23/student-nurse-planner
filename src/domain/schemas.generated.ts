@@ -29,6 +29,7 @@ export const shiftStatusSchema = z.union([z.literal("PLANNED"), z.literal("COMPL
 
 export const userSchema = entitySchema.extend(createdSchema.shape).extend(updatedSchema.shape).extend({
     displayName: z.string(),
+    email: z.string().optional(),
     field: nursingFieldSchema,
     programmeType: programmeTypeSchema,
     currentPart: z.number(),

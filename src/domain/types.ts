@@ -50,6 +50,8 @@ export const SIMULATED_HOURS_CAP = 600;
 
 export interface User extends Entity, Created, Updated {
   displayName: string;
+  /** Sign-in email (from the Cognito token). Absent for the guest/local user. */
+  email?: string;
   field: NursingField;
   programmeType: ProgrammeType;
   currentPart: number; // student's current stage (1..totalParts)
