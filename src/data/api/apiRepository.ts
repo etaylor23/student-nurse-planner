@@ -155,21 +155,28 @@ export class ApiRepository implements Repository {
     return this.rpc<LogItem[]>("listLogItems", [userId, filter]);
   }
 
-  // ---- Reference data — served from the client bundle, no network (§2.4) ----
+  // ---- Reference data — bundled baseline merged with the user's remote custom rows (§2.4).
+  // Proficiencies are bundle-only (no custom tier); skills/subjects merge the seed baseline
+  // with the server's custom-only rows, mirroring today's DexieRepository merge.
   async listProficiencies(): Promise<Proficiency[]> {
     return seedProficiencies;
   }
   async getProficiency(id: string): Promise<Proficiency | undefined> {
     return seedProficiencies.find((p) => p.id === id);
   }
-  async listSkills(_userId: string): Promise<Skill[]> {
-    return seedSkills; // baseline only in Phase 1 (custom skills merge in Phase 2)
+  async listSkills(userId: string): Promise<Skill[]> {
+    // Baseline (bundled) + the user's custom skills (server returns custom-only).
+    return [...seedSkills, ...(await this.rpc<Skill[]>("listSkills", [userId]))];
   }
   async getSkill(id: string): Promise<Skill | undefined> {
-    return seedSkills.find((s) => s.id === id);
+    // Baseline is bundled; only a custom id needs the server.
+    const bundled = seedSkills.find((s) => s.id === id);
+    if (bundled) return bundled;
+    return this.rpc<Skill | undefined>("getSkill", [id]);
   }
-  async listSubjects(_userId: string): Promise<Subject[]> {
-    return seedSubjects; // baseline only in Phase 1
+  async listSubjects(userId: string): Promise<Subject[]> {
+    // Baseline (bundled) + the user's custom subjects (server returns custom-only).
+    return [...seedSubjects, ...(await this.rpc<Subject[]>("listSubjects", [userId]))];
   }
 
   // ---------------------------------------------------------------------------

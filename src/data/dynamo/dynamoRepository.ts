@@ -9,9 +9,28 @@ import type { Repository } from "../repository";
 import { newId, nowIso } from "../../domain/ids";
 import {
   breakRuleSchema,
+  calcDrillSchema,
+  calcStatSchema,
+  evidenceLinkSchema,
   logItemSchema,
+  medicationConditionSchema,
+  medicationLogSchema,
+  medicationSchema,
   placementSchema,
+  proficiencyProgressSchema,
+  proficiencyStatusEventSchema,
+  reflectionSchema,
+  reflectionSectionSchema,
+  reflectionTagSchema,
+  revisionSessionSchema,
+  revisionTargetSchema,
+  revisionTopicSchema,
+  selfCareCheckinSchema,
   shiftSchema,
+  skillProgressSchema,
+  skillSchema,
+  subjectSchema,
+  tagSchema,
   userSchema,
 } from "../../domain/schemas.generated";
 import type {
@@ -115,6 +134,31 @@ export class DynamoRepository implements Repository {
     shift: (id: string) => `SHIFT#${id}`,
     breakRule: (id: string) => `BREAKRULE#${id}`,
     log: (createdAt: string, id: string) => `LOG#${createdAt}#${id}`,
+    // ---- Phase 2 ----
+    medication: (id: string) => `MED#${id}`,
+    medicationCondition: (medicationId: string, condition: string) =>
+      `MEDCOND#${medicationId}#${condition}`,
+    medicationLog: (id: string) => `MEDLOG#${id}`,
+    calcDrill: (id: string) => `CALCDRILL#${id}`,
+    calcStat: (calcType: string) => `CALCSTAT#${calcType}`,
+    profProgress: (proficiencyId: string) => `PROFPROG#${proficiencyId}`,
+    // A timestamp keeps events chronological within a progress row; the id disambiguates
+    // two events written in the same millisecond (mirrors the LOG# key).
+    profEvent: (progressId: string, createdAt: string, id: string) =>
+      `PROFEVENT#${progressId}#${createdAt}#${id}`,
+    evidenceLink: (proficiencyId: string, id: string) => `EVLINK#${proficiencyId}#${id}`,
+    skill: (id: string) => `SKILL#${id}`,
+    skillProgress: (skillId: string) => `SKILLPROG#${skillId}`,
+    reflection: (id: string) => `REFLECTION#${id}`,
+    reflectionSection: (reflectionId: string, stage: string) =>
+      `REFSECTION#${reflectionId}#${stage}`,
+    tag: (labelLower: string) => `TAG#${labelLower}`,
+    reflectionTag: (reflectionId: string, tagId: string) => `REFTAG#${reflectionId}#${tagId}`,
+    subject: (id: string) => `SUBJECT#${id}`,
+    revisionTarget: (id: string) => `REVTARGET#${id}`,
+    revisionTopic: (id: string) => `REVTOPIC#${id}`,
+    revisionSession: (id: string) => `REVSESSION#${id}`,
+    selfCareCheckin: (id: string) => `SELFCARE#${id}`,
   };
 
   // ---- low-level helpers ----
@@ -352,213 +396,731 @@ export class DynamoRepository implements Repository {
   }
 
   // ---------------------------------------------------------------------------
-  // Phase 2: the remaining ~25 entities. Stubbed so the class satisfies the
-  // Repository interface; the router only dispatches the Phase 1 slice above.
+  // Phase 2 — the remaining entities. Same storage model as Phase 1: owner-scoped
+  // `begins_with` queries, deterministic/child SKs per §2.2, reads unmarshalled through
+  // the generated zod schemas (which strip the key/infra attributes), writes stamping
+  // `userId = this.sub`. `listProficiencies`/`getProficiency` stay unimplemented — the
+  // proficiency master list is bundled in the client and never dispatched here (§2.4).
   // ---------------------------------------------------------------------------
-  listMedications(): Promise<Medication[]> {
-    return notImpl("listMedications");
+
+  /** Informational monotonic version — bump on rewrite, start at 1 (§3.1, not an OCC gate). */
+  private nextVersion(raw: RawItem | undefined): number {
+    return raw ? (raw.version ?? 1) + 1 : 1;
   }
-  getMedication(): Promise<Medication | undefined> {
-    return notImpl("getMedication");
+
+  /**
+   * Delete a child/keyed item found by its domain `id` when the SK is not derivable from
+   * the id alone (`MEDCOND#<medId>#<condition>`, `EVLINK#<profId>#<id>`). Scans the small
+   * per-user prefix and deletes the SK whose stored `id` matches.
+   */
+  private async deleteByIdInPrefix(prefix: string, id: string): Promise<void> {
+    const rows = await this.queryPrefix(prefix);
+    for (const r of rows) {
+      if (r.id === id) {
+        await this.delete(r.SK as string);
+        return;
+      }
+    }
   }
-  createMedication(_input: MedicationDraft & { userId: string }): Promise<Medication> {
-    return notImpl("createMedication");
+
+  // ---- Medications ----
+  async listMedications(_userId: string): Promise<Medication[]> {
+    const rows = await this.queryPrefix("MED#");
+    return rows
+      .map((r) => medicationSchema.parse(r) as Medication)
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
-  updateMedication(): Promise<Medication> {
-    return notImpl("updateMedication");
+
+  async getMedication(id: string): Promise<Medication | undefined> {
+    const raw = await this.getRaw(DynamoRepository.sk.medication(id));
+    return raw ? (medicationSchema.parse(raw) as Medication) : undefined;
   }
-  deleteMedication(): Promise<void> {
-    return notImpl("deleteMedication");
+
+  async createMedication(input: MedicationDraft & { userId: string }): Promise<Medication> {
+    const ts = nowIso();
+    const med: Medication = {
+      ...input,
+      userId: this.sub,
+      id: newId(),
+      createdAt: ts,
+      updatedAt: ts,
+    };
+    await this.put("medications", DynamoRepository.sk.medication(med.id), med, 1);
+    return med;
   }
-  listMedicationConditions(): Promise<MedicationCondition[]> {
-    return notImpl("listMedicationConditions");
+
+  async updateMedication(id: string, patch: Partial<MedicationDraft>): Promise<Medication> {
+    const raw = await this.getRaw(DynamoRepository.sk.medication(id));
+    if (!raw) throw new Error(`Medication ${id} not found`);
+    const current = medicationSchema.parse(raw) as Medication;
+    const updated: Medication = { ...current, ...patch, id, userId: this.sub, updatedAt: nowIso() };
+    await this.put(
+      "medications",
+      DynamoRepository.sk.medication(id),
+      updated,
+      this.nextVersion(raw),
+    );
+    return updated;
   }
-  listConditionsForUser(): Promise<MedicationCondition[]> {
-    return notImpl("listConditionsForUser");
+
+  async deleteMedication(id: string): Promise<void> {
+    await this.delete(DynamoRepository.sk.medication(id));
+    // Cascade the med's conditions (child items keyed under MEDCOND#<id>#).
+    const conds = await this.queryPrefix(`MEDCOND#${id}#`);
+    for (const c of conds) await this.delete(c.SK as string);
   }
-  addMedicationCondition(): Promise<MedicationCondition> {
-    return notImpl("addMedicationCondition");
+
+  // ---- Medication conditions (child; owner from the parent med) ----
+  async listMedicationConditions(medicationId: string): Promise<MedicationCondition[]> {
+    const rows = await this.queryPrefix(`MEDCOND#${medicationId}#`);
+    return rows
+      .map((r) => medicationConditionSchema.parse(r) as MedicationCondition)
+      .sort((a, b) => (a.addedAt < b.addedAt ? -1 : a.addedAt > b.addedAt ? 1 : 0));
   }
-  removeMedicationCondition(): Promise<void> {
-    return notImpl("removeMedicationCondition");
+
+  async listConditionsForUser(_userId: string): Promise<MedicationCondition[]> {
+    const rows = await this.queryPrefix("MEDCOND#");
+    return rows.map((r) => medicationConditionSchema.parse(r) as MedicationCondition);
   }
-  listMedicationLogs(): Promise<MedicationLog[]> {
-    return notImpl("listMedicationLogs");
+
+  async addMedicationCondition(
+    medicationId: string,
+    condition: string,
+  ): Promise<MedicationCondition> {
+    const trimmed = condition.trim();
+    const row: MedicationCondition = {
+      id: newId(),
+      medicationId,
+      condition: trimmed,
+      addedAt: nowIso(),
+    };
+    await this.put(
+      "medicationConditions",
+      DynamoRepository.sk.medicationCondition(medicationId, trimmed),
+      row,
+      1,
+    );
+    return row;
   }
-  listMedicationLogsForShift(): Promise<MedicationLog[]> {
-    return notImpl("listMedicationLogsForShift");
+
+  async removeMedicationCondition(id: string): Promise<void> {
+    await this.deleteByIdInPrefix("MEDCOND#", id);
   }
-  listMedicationLogsForMedication(): Promise<MedicationLog[]> {
-    return notImpl("listMedicationLogsForMedication");
+
+  // ---- Medication log ----
+  async listMedicationLogs(_userId: string): Promise<MedicationLog[]> {
+    const rows = (await this.queryPrefix("MEDLOG#")).map(
+      (r) => medicationLogSchema.parse(r) as MedicationLog,
+    );
+    return rows.sort((a, b) =>
+      a.date !== b.date ? (a.date < b.date ? 1 : -1) : a.createdAt < b.createdAt ? 1 : -1,
+    );
   }
-  createMedicationLog(_input: MedicationLogDraft & { userId: string }): Promise<MedicationLog> {
-    return notImpl("createMedicationLog");
+
+  async listMedicationLogsForShift(shiftId: string): Promise<MedicationLog[]> {
+    const rows = (await this.queryPrefix("MEDLOG#"))
+      .map((r) => medicationLogSchema.parse(r) as MedicationLog)
+      .filter((r) => r.shiftId === shiftId);
+    return rows.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   }
-  deleteMedicationLog(): Promise<void> {
-    return notImpl("deleteMedicationLog");
+
+  async listMedicationLogsForMedication(medicationId: string): Promise<MedicationLog[]> {
+    const rows = (await this.queryPrefix("MEDLOG#"))
+      .map((r) => medicationLogSchema.parse(r) as MedicationLog)
+      .filter((r) => r.medicationId === medicationId);
+    return rows.sort((a, b) =>
+      a.date !== b.date ? (a.date < b.date ? 1 : -1) : a.createdAt < b.createdAt ? 1 : -1,
+    );
   }
-  listCalcDrills(): Promise<CalcDrill[]> {
-    return notImpl("listCalcDrills");
+
+  async createMedicationLog(
+    input: MedicationLogDraft & { userId: string },
+  ): Promise<MedicationLog> {
+    const log: MedicationLog = { ...input, userId: this.sub, id: newId(), createdAt: nowIso() };
+    await this.put("medicationLogs", DynamoRepository.sk.medicationLog(log.id), log, 1);
+    return log;
   }
-  createCalcDrill(_input: CalcDrillDraft & { userId: string }): Promise<CalcDrill> {
-    return notImpl("createCalcDrill");
+
+  async deleteMedicationLog(id: string): Promise<void> {
+    await this.delete(DynamoRepository.sk.medicationLog(id));
   }
-  updateCalcDrill(): Promise<CalcDrill> {
-    return notImpl("updateCalcDrill");
+
+  // ---- Calc drills ----
+  async listCalcDrills(_userId: string, filter?: { medicationId?: string }): Promise<CalcDrill[]> {
+    let rows = (await this.queryPrefix("CALCDRILL#")).map(
+      (r) => calcDrillSchema.parse(r) as CalcDrill,
+    );
+    if (filter?.medicationId) rows = rows.filter((r) => r.medicationId === filter.medicationId);
+    return rows.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   }
-  deleteCalcDrill(): Promise<void> {
-    return notImpl("deleteCalcDrill");
+
+  async createCalcDrill(input: CalcDrillDraft & { userId: string }): Promise<CalcDrill> {
+    const drill: CalcDrill = { ...input, userId: this.sub, id: newId(), createdAt: nowIso() };
+    await this.put("calcDrills", DynamoRepository.sk.calcDrill(drill.id), drill, 1);
+    return drill;
   }
-  listCalcStats(): Promise<CalcStat[]> {
-    return notImpl("listCalcStats");
+
+  async updateCalcDrill(id: string, patch: Partial<CalcDrillDraft>): Promise<CalcDrill> {
+    const raw = await this.getRaw(DynamoRepository.sk.calcDrill(id));
+    if (!raw) throw new Error(`CalcDrill ${id} not found`);
+    const current = calcDrillSchema.parse(raw) as CalcDrill;
+    const updated: CalcDrill = { ...current, ...patch, id, userId: this.sub };
+    await this.put("calcDrills", DynamoRepository.sk.calcDrill(id), updated, this.nextVersion(raw));
+    return updated;
   }
-  recordCalcAttempt(_userId: string, _calcType: CalcType, _correct: boolean): Promise<CalcStat> {
-    return notImpl("recordCalcAttempt");
+
+  async deleteCalcDrill(id: string): Promise<void> {
+    await this.delete(DynamoRepository.sk.calcDrill(id));
   }
+
+  // ---- Calc stats (bounded per-type aggregate; deterministic upsert) ----
+  async listCalcStats(_userId: string): Promise<CalcStat[]> {
+    const rows = await this.queryPrefix("CALCSTAT#");
+    return rows.map((r) => calcStatSchema.parse(r) as CalcStat);
+  }
+
+  async recordCalcAttempt(
+    _userId: string,
+    calcType: CalcType,
+    correct: boolean,
+  ): Promise<CalcStat> {
+    const sk = DynamoRepository.sk.calcStat(calcType);
+    const raw = await this.getRaw(sk);
+    const current = raw ? (calcStatSchema.parse(raw) as CalcStat) : undefined;
+    const next: CalcStat = {
+      id: `${this.sub}:${calcType}`,
+      userId: this.sub,
+      calcType,
+      attempts: (current?.attempts ?? 0) + 1,
+      correct: (current?.correct ?? 0) + (correct ? 1 : 0),
+      lastAttempted: nowIso(),
+    };
+    await this.put("calcStats", sk, next, this.nextVersion(raw));
+    return next;
+  }
+
+  // ---- NMC proficiencies — bundled in the client, never stored server-side (§2.4) ----
   listProficiencies(): Promise<Proficiency[]> {
     return notImpl("listProficiencies");
   }
   getProficiency(): Promise<Proficiency | undefined> {
     return notImpl("getProficiency");
   }
-  listProficiencyProgress(): Promise<ProficiencyProgress[]> {
-    return notImpl("listProficiencyProgress");
+
+  // ---- Proficiency progress + status history ----
+  async listProficiencyProgress(_userId: string): Promise<ProficiencyProgress[]> {
+    const rows = await this.queryPrefix("PROFPROG#");
+    return rows.map((r) => proficiencyProgressSchema.parse(r) as ProficiencyProgress);
   }
-  getProficiencyProgress(): Promise<ProficiencyProgress | undefined> {
-    return notImpl("getProficiencyProgress");
-  }
-  setProficiencyStatus(
+
+  async getProficiencyProgress(
     _userId: string,
-    _proficiencyId: string,
-    _change: ProficiencyStatusChange,
+    proficiencyId: string,
+  ): Promise<ProficiencyProgress | undefined> {
+    const raw = await this.getRaw(DynamoRepository.sk.profProgress(proficiencyId));
+    return raw ? (proficiencyProgressSchema.parse(raw) as ProficiencyProgress) : undefined;
+  }
+
+  async setProficiencyStatus(
+    _userId: string,
+    proficiencyId: string,
+    change: ProficiencyStatusChange,
   ): Promise<ProficiencyProgress> {
-    return notImpl("setProficiencyStatus");
+    const sk = DynamoRepository.sk.profProgress(proficiencyId);
+    const raw = await this.getRaw(sk);
+    const existing = raw
+      ? (proficiencyProgressSchema.parse(raw) as ProficiencyProgress)
+      : undefined;
+    const progress: ProficiencyProgress = {
+      id: existing?.id ?? newId(),
+      userId: this.sub,
+      proficiencyId,
+      status: change.status,
+      targetPart: existing?.targetPart,
+      updatedAt: nowIso(),
+    };
+    await this.put("proficiencyProgress", sk, progress, this.nextVersion(raw));
+    const event: ProficiencyStatusEvent = {
+      id: newId(),
+      progressId: progress.id,
+      status: change.status,
+      partIndex: change.partIndex,
+      assessorName: change.assessorName,
+      note: change.note,
+      occurredAt: change.occurredAt,
+      createdAt: nowIso(),
+    };
+    await this.put(
+      "proficiencyStatusEvents",
+      DynamoRepository.sk.profEvent(progress.id, event.createdAt, event.id),
+      event,
+      1,
+    );
+    return progress;
   }
-  setProficiencyTargetPart(): Promise<ProficiencyProgress> {
-    return notImpl("setProficiencyTargetPart");
+
+  async setProficiencyTargetPart(
+    _userId: string,
+    proficiencyId: string,
+    targetPart: number | undefined,
+  ): Promise<ProficiencyProgress> {
+    const sk = DynamoRepository.sk.profProgress(proficiencyId);
+    const raw = await this.getRaw(sk);
+    const existing = raw
+      ? (proficiencyProgressSchema.parse(raw) as ProficiencyProgress)
+      : undefined;
+    const progress: ProficiencyProgress = {
+      id: existing?.id ?? newId(),
+      userId: this.sub,
+      proficiencyId,
+      status: existing?.status ?? "NOT_YET_ACHIEVED",
+      targetPart,
+      updatedAt: nowIso(),
+    };
+    await this.put("proficiencyProgress", sk, progress, this.nextVersion(raw));
+    return progress;
   }
-  listProficiencyStatusEvents(): Promise<ProficiencyStatusEvent[]> {
-    return notImpl("listProficiencyStatusEvents");
+
+  async listProficiencyStatusEvents(progressId: string): Promise<ProficiencyStatusEvent[]> {
+    const rows = (await this.queryPrefix(`PROFEVENT#${progressId}#`)).map(
+      (r) => proficiencyStatusEventSchema.parse(r) as ProficiencyStatusEvent,
+    );
+    // Newest assessment first; tie-break on creation order.
+    return rows.sort((a, b) =>
+      a.occurredAt !== b.occurredAt
+        ? a.occurredAt < b.occurredAt
+          ? 1
+          : -1
+        : a.createdAt < b.createdAt
+          ? 1
+          : -1,
+    );
   }
-  listEvidenceLinks(): Promise<EvidenceLink[]> {
-    return notImpl("listEvidenceLinks");
+
+  // ---- Evidence links (polymorphic) ----
+  async listEvidenceLinks(proficiencyId: string): Promise<EvidenceLink[]> {
+    const rows = (await this.queryPrefix(`EVLINK#${proficiencyId}#`)).map(
+      (r) => evidenceLinkSchema.parse(r) as EvidenceLink,
+    );
+    return rows.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   }
-  listEvidenceLinksForUser(): Promise<EvidenceLink[]> {
-    return notImpl("listEvidenceLinksForUser");
+
+  async listEvidenceLinksForUser(_userId: string): Promise<EvidenceLink[]> {
+    const rows = await this.queryPrefix("EVLINK#");
+    return rows.map((r) => evidenceLinkSchema.parse(r) as EvidenceLink);
   }
-  createEvidenceLink(_input: EvidenceLinkDraft & { userId: string }): Promise<EvidenceLink> {
-    return notImpl("createEvidenceLink");
+
+  async createEvidenceLink(input: EvidenceLinkDraft & { userId: string }): Promise<EvidenceLink> {
+    const link: EvidenceLink = { ...input, userId: this.sub, id: newId(), createdAt: nowIso() };
+    await this.put(
+      "evidenceLinks",
+      DynamoRepository.sk.evidenceLink(link.proficiencyId, link.id),
+      link,
+      1,
+    );
+    return link;
   }
-  deleteEvidenceLink(): Promise<void> {
-    return notImpl("deleteEvidenceLink");
+
+  async deleteEvidenceLink(id: string): Promise<void> {
+    await this.deleteByIdInPrefix("EVLINK#", id);
   }
-  listSkills(): Promise<Skill[]> {
-    return notImpl("listSkills");
+
+  // ---- Clinical skills (CUSTOM only server-side; Annexe B baseline is bundled) ----
+  async listSkills(_userId: string): Promise<Skill[]> {
+    const rows = await this.queryPrefix("SKILL#");
+    return rows
+      .map((r) => skillSchema.parse(r) as Skill)
+      .sort((a, b) => a.orderIndex - b.orderIndex || a.name.localeCompare(b.name));
   }
-  getSkill(): Promise<Skill | undefined> {
-    return notImpl("getSkill");
+
+  async getSkill(id: string): Promise<Skill | undefined> {
+    const raw = await this.getRaw(DynamoRepository.sk.skill(id));
+    return raw ? (skillSchema.parse(raw) as Skill) : undefined;
   }
-  addCustomSkill(): Promise<Skill> {
-    return notImpl("addCustomSkill");
+
+  async addCustomSkill(_userId: string, input: { name: string; category: string }): Promise<Skill> {
+    // Order custom skills after every built-in (which top out well below 1000).
+    const ownCount = (await this.queryPrefix("SKILL#")).length;
+    const skill: Skill = {
+      id: newId(),
+      userId: this.sub,
+      name: input.name.trim(),
+      category: input.category.trim() || "Custom skills",
+      source: "CUSTOM",
+      orderIndex: 1000 + ownCount,
+    };
+    await this.put("skills", DynamoRepository.sk.skill(skill.id), skill, 1);
+    return skill;
   }
-  deleteCustomSkill(): Promise<void> {
-    return notImpl("deleteCustomSkill");
+
+  async deleteCustomSkill(id: string): Promise<void> {
+    const raw = await this.getRaw(DynamoRepository.sk.skill(id));
+    // Baseline skills live in the client bundle, not this partition — an unknown id is a
+    // no-op here (unlike Dexie, which can see the baseline and throws for it).
+    if (!raw) return;
+    const skill = skillSchema.parse(raw) as Skill;
+    if (skill.source !== "CUSTOM") throw new Error("Cannot delete a built-in baseline skill");
+    await this.delete(DynamoRepository.sk.skill(id));
+    // Drop the user's progress row for it (deterministic SKILLPROG#<skillId>).
+    await this.delete(DynamoRepository.sk.skillProgress(id));
   }
-  listSkillProgress(): Promise<SkillProgress[]> {
-    return notImpl("listSkillProgress");
+
+  async listSkillProgress(_userId: string): Promise<SkillProgress[]> {
+    const rows = await this.queryPrefix("SKILLPROG#");
+    return rows.map((r) => skillProgressSchema.parse(r) as SkillProgress);
   }
-  getSkillProgress(): Promise<SkillProgress | undefined> {
-    return notImpl("getSkillProgress");
+
+  async getSkillProgress(_userId: string, skillId: string): Promise<SkillProgress | undefined> {
+    const raw = await this.getRaw(DynamoRepository.sk.skillProgress(skillId));
+    return raw ? (skillProgressSchema.parse(raw) as SkillProgress) : undefined;
   }
-  setSkillStage(_userId: string, _skillId: string, _stage: SkillStage): Promise<SkillProgress> {
-    return notImpl("setSkillStage");
+
+  async setSkillStage(_userId: string, skillId: string, stage: SkillStage): Promise<SkillProgress> {
+    const sk = DynamoRepository.sk.skillProgress(skillId);
+    const raw = await this.getRaw(sk);
+    const existing = raw ? (skillProgressSchema.parse(raw) as SkillProgress) : undefined;
+    // Preserve any existing sign-off — changing stage never un-signs-off a skill.
+    const next: SkillProgress = {
+      id: existing?.id ?? newId(),
+      userId: this.sub,
+      skillId,
+      stage,
+      signedOff: existing?.signedOff ?? false,
+      signOffByName: existing?.signOffByName,
+      signOffLocation: existing?.signOffLocation,
+      signOffDate: existing?.signOffDate,
+      evidenceNote: existing?.evidenceNote,
+      shiftId: existing?.shiftId, // preserve the sign-off's shift across stage changes
+      updatedAt: nowIso(),
+    };
+    await this.put("skillProgress", sk, next, this.nextVersion(raw));
+    return next;
   }
-  signOffSkill(_userId: string, _skillId: string, _signOff: SkillSignOff): Promise<SkillProgress> {
-    return notImpl("signOffSkill");
+
+  async signOffSkill(
+    _userId: string,
+    skillId: string,
+    signOff: SkillSignOff,
+  ): Promise<SkillProgress> {
+    const sk = DynamoRepository.sk.skillProgress(skillId);
+    const raw = await this.getRaw(sk);
+    const existing = raw ? (skillProgressSchema.parse(raw) as SkillProgress) : undefined;
+    // signedOff only ever goes true here — there is no un-sign-off path (no refresh).
+    const next: SkillProgress = {
+      id: existing?.id ?? newId(),
+      userId: this.sub,
+      skillId,
+      stage: existing?.stage ?? "OBSERVED",
+      signedOff: true,
+      signOffByName: signOff.signOffByName?.trim() || undefined,
+      signOffLocation: signOff.signOffLocation?.trim() || undefined,
+      signOffDate: signOff.signOffDate || undefined,
+      evidenceNote: signOff.evidenceNote?.trim() || undefined,
+      shiftId: signOff.shiftId || existing?.shiftId || undefined,
+      updatedAt: nowIso(),
+    };
+    await this.put("skillProgress", sk, next, this.nextVersion(raw));
+    return next;
   }
-  listReflections(): Promise<Reflection[]> {
-    return notImpl("listReflections");
+
+  // ---- Reflection on practice ----
+  async listReflections(_userId: string): Promise<Reflection[]> {
+    const rows = (await this.queryPrefix("REFLECTION#")).map(
+      (r) => reflectionSchema.parse(r) as Reflection,
+    );
+    // Newest first by the reflected-on date when set, else creation day.
+    const key = (r: Reflection) => r.occurredOn ?? r.createdAt.slice(0, 10);
+    return rows.sort((a, b) => (key(a) < key(b) ? 1 : key(a) > key(b) ? -1 : 0));
   }
-  getReflection(): Promise<Reflection | undefined> {
-    return notImpl("getReflection");
+
+  async getReflection(id: string): Promise<Reflection | undefined> {
+    const raw = await this.getRaw(DynamoRepository.sk.reflection(id));
+    return raw ? (reflectionSchema.parse(raw) as Reflection) : undefined;
   }
-  listReflectionSections(): Promise<ReflectionSection[]> {
-    return notImpl("listReflectionSections");
+
+  async listReflectionSections(reflectionId: string): Promise<ReflectionSection[]> {
+    const rows = await this.queryPrefix(`REFSECTION#${reflectionId}#`);
+    return rows.map((r) => reflectionSectionSchema.parse(r) as ReflectionSection);
   }
-  listReflectionSectionsForUser(): Promise<ReflectionSection[]> {
-    return notImpl("listReflectionSectionsForUser");
+
+  async listReflectionSectionsForUser(_userId: string): Promise<ReflectionSection[]> {
+    const rows = await this.queryPrefix("REFSECTION#");
+    return rows.map((r) => reflectionSectionSchema.parse(r) as ReflectionSection);
   }
-  createReflection(
-    _input: ReflectionDraft & { userId: string },
-    _sections: ReflectionSectionInput[],
+
+  async createReflection(
+    input: ReflectionDraft & { userId: string },
+    sections: ReflectionSectionInput[],
   ): Promise<Reflection> {
-    return notImpl("createReflection");
+    const ts = nowIso();
+    const reflection: Reflection = {
+      ...input,
+      userId: this.sub,
+      id: newId(),
+      createdAt: ts,
+      updatedAt: ts,
+    };
+    await this.put("reflections", DynamoRepository.sk.reflection(reflection.id), reflection, 1);
+    await this.writeReflectionSections(reflection.id, sections);
+    return reflection;
   }
-  updateReflection(): Promise<Reflection> {
-    return notImpl("updateReflection");
+
+  async updateReflection(
+    id: string,
+    patch: Partial<ReflectionDraft>,
+    sections?: ReflectionSectionInput[],
+  ): Promise<Reflection> {
+    const raw = await this.getRaw(DynamoRepository.sk.reflection(id));
+    if (!raw) throw new Error(`Reflection ${id} not found`);
+    const current = reflectionSchema.parse(raw) as Reflection;
+    const updated: Reflection = { ...current, ...patch, id, userId: this.sub, updatedAt: nowIso() };
+    await this.put(
+      "reflections",
+      DynamoRepository.sk.reflection(id),
+      updated,
+      this.nextVersion(raw),
+    );
+    if (sections) {
+      // Replace the stage set (a stage that goes blank must disappear).
+      const existing = await this.queryPrefix(`REFSECTION#${id}#`);
+      for (const s of existing) await this.delete(s.SK as string);
+      await this.writeReflectionSections(id, sections);
+    }
+    return updated;
   }
-  deleteReflection(): Promise<void> {
-    return notImpl("deleteReflection");
+
+  /** Write a reflection's non-empty stage sections (deterministic ids/keys per stage). */
+  private async writeReflectionSections(
+    reflectionId: string,
+    sections: ReflectionSectionInput[],
+  ): Promise<void> {
+    const rows: ReflectionSection[] = sections
+      .filter((s) => s.content.trim() !== "")
+      .map((s) => ({
+        id: `${reflectionId}:${s.stage}`,
+        reflectionId,
+        stage: s.stage,
+        content: s.content.trim(),
+      }));
+    for (const row of rows) {
+      await this.put(
+        "reflectionSections",
+        DynamoRepository.sk.reflectionSection(reflectionId, row.stage),
+        row,
+        1,
+      );
+    }
   }
-  listTags(): Promise<Tag[]> {
-    return notImpl("listTags");
+
+  async deleteReflection(id: string): Promise<void> {
+    await this.delete(DynamoRepository.sk.reflection(id));
+    const sections = await this.queryPrefix(`REFSECTION#${id}#`);
+    for (const s of sections) await this.delete(s.SK as string);
+    const tagLinks = await this.queryPrefix(`REFTAG#${id}#`);
+    for (const t of tagLinks) await this.delete(t.SK as string);
+    // A reflection may be attached to proficiencies as REFLECTION evidence — drop those.
+    const evLinks = await this.queryPrefix("EVLINK#");
+    for (const l of evLinks) {
+      if (l.evidenceType === "REFLECTION" && l.evidenceId === id) await this.delete(l.SK as string);
+    }
   }
-  listReflectionTags(): Promise<ReflectionTag[]> {
-    return notImpl("listReflectionTags");
+
+  // ---- Tags (reflection labels; deterministic per label) ----
+  async listTags(_userId: string): Promise<Tag[]> {
+    const rows = await this.queryPrefix("TAG#");
+    return rows
+      .map((r) => tagSchema.parse(r) as Tag)
+      .sort((a, b) => a.label.localeCompare(b.label));
   }
-  setReflectionTags(_userId: string, _reflectionId: string, _labels: string[]): Promise<Tag[]> {
-    return notImpl("setReflectionTags");
+
+  async listReflectionTags(_userId: string): Promise<ReflectionTag[]> {
+    const rows = await this.queryPrefix("REFTAG#");
+    return rows.map((r) => reflectionTagSchema.parse(r) as ReflectionTag);
   }
-  listSubjects(): Promise<Subject[]> {
-    return notImpl("listSubjects");
+
+  async setReflectionTags(_userId: string, reflectionId: string, labels: string[]): Promise<Tag[]> {
+    // Normalise: trim, drop blanks, dedupe case-insensitively (keeping the first form).
+    const seen = new Set<string>();
+    const clean: string[] = [];
+    for (const raw of labels) {
+      const label = raw.trim();
+      const key = label.toLowerCase();
+      if (label === "" || seen.has(key)) continue;
+      seen.add(key);
+      clean.push(label);
+    }
+    // Upsert each tag by label (deterministic TAG#<labelLower>), reusing an existing row.
+    const existingTags = (await this.queryPrefix("TAG#")).map((r) => tagSchema.parse(r) as Tag);
+    const byLabel = new Map(existingTags.map((t) => [t.label.toLowerCase(), t]));
+    const resolved: Tag[] = [];
+    for (const label of clean) {
+      const found = byLabel.get(label.toLowerCase());
+      if (found) {
+        resolved.push(found);
+      } else {
+        const tag: Tag = { id: newId(), userId: this.sub, label };
+        await this.put("tags", DynamoRepository.sk.tag(label.toLowerCase()), tag, 1);
+        byLabel.set(label.toLowerCase(), tag);
+        resolved.push(tag);
+      }
+    }
+    // Rewrite this reflection's join rows.
+    const old = await this.queryPrefix(`REFTAG#${reflectionId}#`);
+    for (const o of old) await this.delete(o.SK as string);
+    for (const t of resolved) {
+      const link: ReflectionTag = { id: `${reflectionId}:${t.id}`, reflectionId, tagId: t.id };
+      await this.put(
+        "reflectionTags",
+        DynamoRepository.sk.reflectionTag(reflectionId, t.id),
+        link,
+        1,
+      );
+    }
+    return resolved;
   }
-  addSubject(): Promise<Subject> {
-    return notImpl("addSubject");
+
+  // ---- Revision timetable ----
+  async listSubjects(_userId: string): Promise<Subject[]> {
+    const rows = await this.queryPrefix("SUBJECT#");
+    return rows
+      .map((r) => subjectSchema.parse(r) as Subject)
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
-  listRevisionTargets(): Promise<RevisionTarget[]> {
-    return notImpl("listRevisionTargets");
+
+  async addSubject(_userId: string, name: string): Promise<Subject> {
+    const subject: Subject = { id: newId(), userId: this.sub, name: name.trim() };
+    await this.put("subjects", DynamoRepository.sk.subject(subject.id), subject, 1);
+    return subject;
   }
-  createRevisionTarget(_input: RevisionTargetDraft & { userId: string }): Promise<RevisionTarget> {
-    return notImpl("createRevisionTarget");
+
+  async listRevisionTargets(_userId: string): Promise<RevisionTarget[]> {
+    const rows = (await this.queryPrefix("REVTARGET#")).map(
+      (r) => revisionTargetSchema.parse(r) as RevisionTarget,
+    );
+    // Soonest date first.
+    return rows.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   }
-  deleteRevisionTarget(): Promise<void> {
-    return notImpl("deleteRevisionTarget");
+
+  async createRevisionTarget(
+    input: RevisionTargetDraft & { userId: string },
+  ): Promise<RevisionTarget> {
+    const target: RevisionTarget = { ...input, userId: this.sub, id: newId(), createdAt: nowIso() };
+    await this.put("revisionTargets", DynamoRepository.sk.revisionTarget(target.id), target, 1);
+    return target;
   }
-  listRevisionTopics(): Promise<RevisionTopic[]> {
-    return notImpl("listRevisionTopics");
+
+  async deleteRevisionTarget(id: string): Promise<void> {
+    await this.delete(DynamoRepository.sk.revisionTarget(id));
   }
-  createRevisionTopic(_input: RevisionTopicDraft & { userId: string }): Promise<RevisionTopic> {
-    return notImpl("createRevisionTopic");
+
+  async listRevisionTopics(_userId: string): Promise<RevisionTopic[]> {
+    const rows = await this.queryPrefix("REVTOPIC#");
+    return rows.map((r) => revisionTopicSchema.parse(r) as RevisionTopic);
   }
-  updateRevisionTopic(): Promise<RevisionTopic> {
-    return notImpl("updateRevisionTopic");
+
+  async createRevisionTopic(
+    input: RevisionTopicDraft & { userId: string },
+  ): Promise<RevisionTopic> {
+    const topic: RevisionTopic = { ...input, userId: this.sub, id: newId(), createdAt: nowIso() };
+    await this.put("revisionTopics", DynamoRepository.sk.revisionTopic(topic.id), topic, 1);
+    return topic;
   }
-  deleteRevisionTopic(): Promise<void> {
-    return notImpl("deleteRevisionTopic");
+
+  async updateRevisionTopic(
+    id: string,
+    patch: Partial<RevisionTopicDraft>,
+  ): Promise<RevisionTopic> {
+    const raw = await this.getRaw(DynamoRepository.sk.revisionTopic(id));
+    if (!raw) throw new Error(`RevisionTopic ${id} not found`);
+    const current = revisionTopicSchema.parse(raw) as RevisionTopic;
+    const updated: RevisionTopic = { ...current, ...patch, id, userId: this.sub };
+    await this.put(
+      "revisionTopics",
+      DynamoRepository.sk.revisionTopic(id),
+      updated,
+      this.nextVersion(raw),
+    );
+    return updated;
   }
-  listRevisionSessions(): Promise<RevisionSession[]> {
-    return notImpl("listRevisionSessions");
+
+  async deleteRevisionTopic(id: string): Promise<void> {
+    await this.delete(DynamoRepository.sk.revisionTopic(id));
+    // Cascade the topic's sessions (a general session with no topicId survives).
+    const sessions = await this.queryPrefix("REVSESSION#");
+    for (const s of sessions) {
+      if (s.topicId === id) await this.delete(s.SK as string);
+    }
   }
-  createRevisionSession(
-    _input: RevisionSessionDraft & { userId: string },
+
+  async listRevisionSessions(_userId: string): Promise<RevisionSession[]> {
+    const rows = (await this.queryPrefix("REVSESSION#")).map(
+      (r) => revisionSessionSchema.parse(r) as RevisionSession,
+    );
+    // Soonest scheduled first.
+    return rows.sort((a, b) =>
+      a.scheduledStart < b.scheduledStart ? -1 : a.scheduledStart > b.scheduledStart ? 1 : 0,
+    );
+  }
+
+  async createRevisionSession(
+    input: RevisionSessionDraft & { userId: string },
   ): Promise<RevisionSession> {
-    return notImpl("createRevisionSession");
+    const session: RevisionSession = {
+      ...input,
+      userId: this.sub,
+      id: newId(),
+      createdAt: nowIso(),
+    };
+    await this.put("revisionSessions", DynamoRepository.sk.revisionSession(session.id), session, 1);
+    return session;
   }
-  updateRevisionSession(): Promise<RevisionSession> {
-    return notImpl("updateRevisionSession");
+
+  async updateRevisionSession(
+    id: string,
+    patch: Partial<RevisionSessionDraft>,
+  ): Promise<RevisionSession> {
+    const raw = await this.getRaw(DynamoRepository.sk.revisionSession(id));
+    if (!raw) throw new Error(`RevisionSession ${id} not found`);
+    const current = revisionSessionSchema.parse(raw) as RevisionSession;
+    const updated: RevisionSession = { ...current, ...patch, id, userId: this.sub };
+    await this.put(
+      "revisionSessions",
+      DynamoRepository.sk.revisionSession(id),
+      updated,
+      this.nextVersion(raw),
+    );
+    return updated;
   }
-  deleteRevisionSession(): Promise<void> {
-    return notImpl("deleteRevisionSession");
+
+  async deleteRevisionSession(id: string): Promise<void> {
+    await this.delete(DynamoRepository.sk.revisionSession(id));
   }
-  listSelfCareCheckins(): Promise<SelfCareCheckin[]> {
-    return notImpl("listSelfCareCheckins");
+
+  // ---- Self-care check-ins ----
+  async listSelfCareCheckins(_userId: string): Promise<SelfCareCheckin[]> {
+    const rows = (await this.queryPrefix("SELFCARE#")).map(
+      (r) => selfCareCheckinSchema.parse(r) as SelfCareCheckin,
+    );
+    // Newest first: check-in date, then creation order.
+    return rows.sort((a, b) =>
+      a.date !== b.date ? (a.date < b.date ? 1 : -1) : a.createdAt < b.createdAt ? 1 : -1,
+    );
   }
-  createSelfCareCheckin(
-    _input: SelfCareCheckinDraft & { userId: string },
+
+  async createSelfCareCheckin(
+    input: SelfCareCheckinDraft & { userId: string },
   ): Promise<SelfCareCheckin> {
-    return notImpl("createSelfCareCheckin");
+    const checkin: SelfCareCheckin = {
+      ...input,
+      userId: this.sub,
+      id: newId(),
+      createdAt: nowIso(),
+    };
+    await this.put("selfCareCheckins", DynamoRepository.sk.selfCareCheckin(checkin.id), checkin, 1);
+    return checkin;
   }
-  deleteSelfCareCheckin(): Promise<void> {
-    return notImpl("deleteSelfCareCheckin");
+
+  async deleteSelfCareCheckin(id: string): Promise<void> {
+    await this.delete(DynamoRepository.sk.selfCareCheckin(id));
   }
 }
