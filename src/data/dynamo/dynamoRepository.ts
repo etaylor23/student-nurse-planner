@@ -1,11 +1,11 @@
 import {
-  DeleteCommand,
   type DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
   QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
 import type { Repository } from "../repository";
+import type { SyncRow } from "../sync/protocol";
 import { newId, nowIso } from "../../domain/ids";
 import {
   breakRuleSchema,
@@ -161,12 +161,25 @@ export class DynamoRepository implements Repository {
     selfCareCheckin: (id: string) => `SELFCARE#${id}`,
   };
 
+  /** Tombstone reap horizon (spec §5: DynamoDB TTL reaps soft-deletes after ~90 days). */
+  private static readonly TOMBSTONE_TTL_DAYS = 90;
+  private static tombstoneTtl(): number {
+    return Math.floor(Date.now() / 1000) + DynamoRepository.TOMBSTONE_TTL_DAYS * 24 * 60 * 60;
+  }
+
   // ---- low-level helpers ----
-  private async getRaw(sk: string): Promise<RawItem | undefined> {
+  /** The stored item exactly as-is — INCLUDING tombstones (for sync + delete/merge). */
+  private async getRawUnfiltered(sk: string): Promise<RawItem | undefined> {
     const res = await this.doc.send(
       new GetCommand({ TableName: this.tableName, Key: { PK: this.pk(), SK: sk } }),
     );
     return res.Item as RawItem | undefined;
+  }
+
+  /** A live item — tombstones read as absent, so the app never sees soft-deleted rows. */
+  private async getRaw(sk: string): Promise<RawItem | undefined> {
+    const raw = await this.getRawUnfiltered(sk);
+    return raw && raw.deleted === true ? undefined : raw;
   }
 
   private async put(
@@ -188,10 +201,24 @@ export class DynamoRepository implements Repository {
     await this.doc.send(new PutCommand({ TableName: this.tableName, Item: item }));
   }
 
+  /**
+   * Soft-delete (spec §5): never a `DeleteCommand`. The row is rewritten with
+   * `deleted: true`, a bumped `updatedAt` LWW clock, a bumped `version`, and a ~90-day
+   * `ttl`. Idempotent — an already-tombstoned (or absent) key is a no-op, so double
+   * deletes and cascades over stale rows don't error. The tombstone syncs like any row
+   * and is reaped by DynamoDB TTL.
+   */
   private async delete(sk: string): Promise<void> {
-    await this.doc.send(
-      new DeleteCommand({ TableName: this.tableName, Key: { PK: this.pk(), SK: sk } }),
-    );
+    const raw = await this.getRawUnfiltered(sk);
+    if (!raw || raw.deleted === true) return;
+    const tombstone = {
+      ...raw,
+      updatedAt: nowIso(),
+      version: (raw.version ?? 1) + 1,
+      deleted: true,
+      ttl: DynamoRepository.tombstoneTtl(),
+    };
+    await this.doc.send(new PutCommand({ TableName: this.tableName, Item: tombstone }));
   }
 
   private async queryPrefix(prefix: string): Promise<RawItem[]> {
@@ -206,7 +233,10 @@ export class DynamoRepository implements Repository {
           ExclusiveStartKey,
         }),
       );
-      for (const it of res.Items ?? []) items.push(it as RawItem);
+      // Filter tombstones — all normal reads/lists must not see soft-deleted rows.
+      for (const it of res.Items ?? []) {
+        if ((it as RawItem).deleted !== true) items.push(it as RawItem);
+      }
       ExclusiveStartKey = res.LastEvaluatedKey;
     } while (ExclusiveStartKey);
     return items;
@@ -249,7 +279,8 @@ export class DynamoRepository implements Repository {
     for (const it of all) await this.delete(it.SK as string);
   }
 
-  private async queryAll(): Promise<RawItem[]> {
+  /** Whole-partition scan, looping `LastEvaluatedKey` (correct past 1 MB — spec §2.3). */
+  private async scanPartition(includeDeleted: boolean): Promise<RawItem[]> {
     const items: RawItem[] = [];
     let ExclusiveStartKey: Record<string, unknown> | undefined;
     do {
@@ -261,10 +292,16 @@ export class DynamoRepository implements Repository {
           ExclusiveStartKey,
         }),
       );
-      for (const it of res.Items ?? []) items.push(it as RawItem);
+      for (const it of res.Items ?? []) {
+        if (includeDeleted || (it as RawItem).deleted !== true) items.push(it as RawItem);
+      }
       ExclusiveStartKey = res.LastEvaluatedKey;
     } while (ExclusiveStartKey);
     return items;
+  }
+
+  private async queryAll(): Promise<RawItem[]> {
+    return this.scanPartition(false);
   }
 
   // ---- Break rules (only the user's OWN custom rules; defaults live in the client
@@ -1122,5 +1159,137 @@ export class DynamoRepository implements Repository {
 
   async deleteSelfCareCheckin(id: string): Promise<void> {
     await this.delete(DynamoRepository.sk.selfCareCheckin(id));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sync transport (spec-backend-dynamodb.md §5). NOT part of the Repository interface —
+  // dispatched by the router as extra allow-listed methods. Server still owns the
+  // partition (PK = USER#<sub>), so every row read/written is the caller's own.
+  // ---------------------------------------------------------------------------
+
+  /** The domain-object shape the client stores + the LWW envelope, minus key/infra attrs. */
+  private static toSyncRow(raw: RawItem): SyncRow {
+    const item = { ...raw };
+    // Strip key + infra attributes; the domain fields (incl. `id`/`updatedAt`) remain.
+    for (const k of ["PK", "SK", "owner", "version", "ttl", "entityType", "deleted"]) {
+      delete (item as Record<string, unknown>)[k];
+    }
+    return {
+      entityType: String(raw.entityType),
+      id: String(raw.id),
+      updatedAt: String(raw.updatedAt),
+      deleted: raw.deleted === true,
+      item,
+    };
+  }
+
+  /**
+   * Full-partition pull (spec §5). Every row in the caller's partition — INCLUDING
+   * tombstones — changed since `since` (or all when absent), so the client can LWW-merge.
+   */
+  async syncPull(since?: string): Promise<SyncRow[]> {
+    const all = await this.scanPartition(true);
+    const changed = since ? all.filter((r) => String(r.updatedAt) > since) : all;
+    return changed.map((r) => DynamoRepository.toSyncRow(r));
+  }
+
+  /**
+   * State-based batch upsert (spec §5). Each row is LWW-merged: apply only if its
+   * `updatedAt` is >= the stored row's (server-authoritative, ties → apply). Idempotent by
+   * id. Returns the resolved row per input (the applied write, or the server's winner).
+   * The server stamps `owner`/`userId` from the JWT `sub`, never the client's value.
+   */
+  async syncPush(rows: SyncRow[]): Promise<SyncRow[]> {
+    const resolved: SyncRow[] = [];
+    for (const row of rows) resolved.push(await this.mergeRow(row));
+    return resolved;
+  }
+
+  private async mergeRow(row: SyncRow): Promise<SyncRow> {
+    const sk = DynamoRepository.skFor(row.entityType, row.item);
+    if (!sk) return row; // unknown/reference entity — not stored server-side; echo back
+    const existing = await this.getRawUnfiltered(sk);
+    const applies = !existing || row.updatedAt >= String(existing.updatedAt);
+    if (!applies) return DynamoRepository.toSyncRow(existing!);
+
+    const item: Record<string, unknown> = { ...row.item, id: row.id };
+    // Ownership is the server's to stamp (spec F1/§7) — never trust the client's userId.
+    if ("userId" in item && item.userId !== null && item.userId !== undefined) {
+      item.userId = this.sub;
+    }
+    const stored: RawItem = {
+      ...item,
+      PK: this.pk(),
+      SK: sk,
+      owner: this.sub,
+      entityType: row.entityType,
+      updatedAt: row.updatedAt,
+      version: (existing?.version ?? 0) + 1,
+      deleted: row.deleted,
+      ...(row.deleted ? { ttl: DynamoRepository.tombstoneTtl() } : {}),
+    };
+    await this.doc.send(new PutCommand({ TableName: this.tableName, Item: stored }));
+    return DynamoRepository.toSyncRow(stored);
+  }
+
+  /**
+   * The SK a domain item is stored under — derived from the item's fields, mirroring the
+   * `sk` map. Reference entities (`proficiencies`) return `undefined`: they're bundled in
+   * the client (§2.4) and never persisted server-side, so pushes for them are dropped.
+   */
+  private static skFor(entityType: string, item: Record<string, unknown>): string | undefined {
+    const s = (v: unknown) => String(v);
+    switch (entityType) {
+      case "users":
+        return "PROFILE";
+      case "breakRules":
+        return `BREAKRULE#${s(item.id)}`;
+      case "placements":
+        return `PLACEMENT#${s(item.id)}`;
+      case "shifts":
+        return `SHIFT#${s(item.id)}`;
+      case "logItems":
+        return `LOG#${s(item.createdAt)}#${s(item.id)}`;
+      case "medications":
+        return `MED#${s(item.id)}`;
+      case "medicationConditions":
+        return `MEDCOND#${s(item.medicationId)}#${s(item.condition)}`;
+      case "medicationLogs":
+        return `MEDLOG#${s(item.id)}`;
+      case "calcDrills":
+        return `CALCDRILL#${s(item.id)}`;
+      case "calcStats":
+        return `CALCSTAT#${s(item.calcType)}`;
+      case "proficiencyProgress":
+        return `PROFPROG#${s(item.proficiencyId)}`;
+      case "proficiencyStatusEvents":
+        return `PROFEVENT#${s(item.progressId)}#${s(item.createdAt)}#${s(item.id)}`;
+      case "evidenceLinks":
+        return `EVLINK#${s(item.proficiencyId)}#${s(item.id)}`;
+      case "skills":
+        return `SKILL#${s(item.id)}`;
+      case "skillProgress":
+        return `SKILLPROG#${s(item.skillId)}`;
+      case "reflections":
+        return `REFLECTION#${s(item.id)}`;
+      case "reflectionSections":
+        return `REFSECTION#${s(item.reflectionId)}#${s(item.stage)}`;
+      case "tags":
+        return `TAG#${s(item.label).toLowerCase()}`;
+      case "reflectionTags":
+        return `REFTAG#${s(item.reflectionId)}#${s(item.tagId)}`;
+      case "subjects":
+        return `SUBJECT#${s(item.id)}`;
+      case "revisionTargets":
+        return `REVTARGET#${s(item.id)}`;
+      case "revisionTopics":
+        return `REVTOPIC#${s(item.id)}`;
+      case "revisionSessions":
+        return `REVSESSION#${s(item.id)}`;
+      case "selfCareCheckins":
+        return `SELFCARE#${s(item.id)}`;
+      default:
+        return undefined; // includes "proficiencies" (bundled reference — never synced)
+    }
   }
 }

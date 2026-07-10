@@ -136,6 +136,13 @@ const METHODS: Record<string, { verb: Verb; tier: Tier }> = {
   listSelfCareCheckins: { verb: "List", tier: "SensitiveRecord" },
   createSelfCareCheckin: { verb: "Create", tier: "SensitiveRecord" },
   deleteSelfCareCheckin: { verb: "Delete", tier: "SensitiveRecord" },
+  // ---- Phase 3: local-first sync transport (spec §5) ----
+  // Coarse EvidenceRecord gate: in v1 the only policy is owner==principal (§4.3), so the
+  // decision is identical across tiers — and the server derives owner from the JWT sub and
+  // only ever touches the caller's own partition, so a batch that includes SensitiveRecord
+  // rows (reflections/self-care) is still gated to the owner. syncPull=List, syncPush=Update.
+  syncPull: { verb: "List", tier: "EvidenceRecord" },
+  syncPush: { verb: "Update", tier: "EvidenceRecord" },
 };
 
 /**

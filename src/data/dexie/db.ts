@@ -39,6 +39,57 @@ const V4_ADDED_STORES: StoreName[] = [
 const V5_ADDED_STORES: StoreName[] = ["selfCareCheckins"];
 
 /**
+ * A durable, state-based outbox entry (spec-backend-dynamodb.md §5). One row per changed
+ * record, keyed by `entityType#id` so a fresh mutation of the same record OVERWRITES its
+ * pending entry (state-based = last state wins, inherently idempotent). `item` is the
+ * resulting domain object (a put) or the last-known state (a tombstone). Only the
+ * `SyncRepository` writes here; the reconciler drains it via `syncPush`.
+ */
+export interface OutboxRow {
+  /** `${entityType}#${id}` — the primary key (one pending state per record). */
+  key: string;
+  entityType: string;
+  id: string;
+  /** The LWW clock stamped at capture time (what the server merges + the client compares). */
+  updatedAt: string;
+  deleted: boolean;
+  item: Record<string, unknown>;
+}
+
+/**
+ * The client's authoritative per-record LWW clock + tombstone marker, for EVERY record it
+ * knows about (locally written or pulled). Kept separate from the domain rows so those
+ * stay pure primitives, and separate from the outbox so records with no pending push still
+ * have a clock to LWW-compare an incoming pull against.
+ */
+export interface RecordMetaRow {
+  key: string;
+  entityType: string;
+  id: string;
+  updatedAt: string;
+  deleted: boolean;
+}
+
+/** Small key/value store for sync bookkeeping (the `lastPull` watermark). */
+export interface SyncMetaRow {
+  key: string;
+  value: string;
+}
+
+/**
+ * Stores added at version(6) — the local-first sync layer (spec §5). Same additive
+ * pattern as V2–V5; these are NOT domain entities (not in `STORE_INDEXES`/`EntityMap`),
+ * so they're declared directly rather than derived from the registry. Guest/PoC databases
+ * gain three empty stores they never use; the sync layer only touches them when a
+ * signed-in `SyncRepository` is active.
+ */
+const SYNC_STORES: Record<string, string> = {
+  outbox: "key, updatedAt",
+  recordMeta: "key",
+  syncMeta: "key",
+};
+
+/**
  * IndexedDB binding for the PoC. The current schema and the table types both come
  * from the single registry in `../schema.ts` (one source for store↔type↔index), so
  * they can't drift: each table accessor is typed `Table<EntityMap[name]>` and the
@@ -81,6 +132,10 @@ export class PlannerDb extends Dexie {
   revisionTopics!: Table<EntityMap["revisionTopics"], string>;
   revisionSessions!: Table<EntityMap["revisionSessions"], string>;
   selfCareCheckins!: Table<EntityMap["selfCareCheckins"], string>;
+  // Sync-layer stores (version 6) — see SYNC_STORES / the row interfaces above.
+  outbox!: Table<OutboxRow, string>;
+  recordMeta!: Table<RecordMetaRow, string>;
+  syncMeta!: Table<SyncMetaRow, string>;
 
   constructor(name = "nurse-planner-v2") {
     super(name);
@@ -104,5 +159,6 @@ export class PlannerDb extends Dexie {
     this.version(3).stores(later(V3_ADDED_STORES));
     this.version(4).stores(later(V4_ADDED_STORES));
     this.version(5).stores(later(V5_ADDED_STORES));
+    this.version(6).stores(SYNC_STORES);
   }
 }

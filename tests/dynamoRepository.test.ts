@@ -751,6 +751,165 @@ describe("DynamoRepository — self-care check-ins", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Phase 3 — tombstones + the sync transport (spec-backend-dynamodb.md §5).
+// ---------------------------------------------------------------------------
+
+describe("DynamoRepository — tombstones (soft delete)", () => {
+  it("hides deleted rows from all normal reads/lists/gets", async () => {
+    const repo = repoFor();
+    const u = await repo.getCurrentUser();
+    const shift = await repo.createShift({
+      userId: u.id,
+      date: "2026-05-01",
+      shiftType: "EARLY",
+      entryMode: "NET",
+      netHours: 7,
+      isSimulated: false,
+      status: "PLANNED",
+    });
+    await repo.deleteShift(shift.id);
+    // Soft-deleted: gone from every app-facing read.
+    expect(await repo.getShift(shift.id)).toBeUndefined();
+    expect(await repo.listShifts(u.id)).toHaveLength(0);
+    // ...but still physically present as a tombstone (visible only to syncPull).
+    const pulled = await repo.syncPull();
+    const tomb = pulled.find((r) => r.entityType === "shifts" && r.id === shift.id);
+    expect(tomb).toBeDefined();
+    expect(tomb!.deleted).toBe(true);
+  });
+
+  it("is idempotent — deleting an already-deleted row is a no-op", async () => {
+    const repo = repoFor();
+    const u = await repo.getCurrentUser();
+    const p = await repo.createPlacement({ userId: u.id, name: "Ward X" });
+    await repo.deletePlacement(p.id);
+    await expect(repo.deletePlacement(p.id)).resolves.toBeUndefined();
+    expect(await repo.listPlacements(u.id)).toHaveLength(0);
+  });
+});
+
+describe("DynamoRepository — syncPull", () => {
+  it("returns the whole partition incl. tombstones, filtered by `since`", async () => {
+    const repo = repoFor();
+    const u = await repo.getCurrentUser();
+    const early = await repo.createShift({
+      userId: u.id,
+      date: "2026-05-01",
+      shiftType: "EARLY",
+      entryMode: "NET",
+      netHours: 7,
+      isSimulated: false,
+      status: "PLANNED",
+    });
+    await new Promise((r) => setTimeout(r, 5));
+    const watermark = new Date().toISOString();
+    await new Promise((r) => setTimeout(r, 5));
+    const late = await repo.createShift({
+      userId: u.id,
+      date: "2026-05-02",
+      shiftType: "LATE",
+      entryMode: "NET",
+      netHours: 7,
+      isSimulated: false,
+      status: "PLANNED",
+    });
+
+    const full = await repo.syncPull();
+    // Full pull carries the profile + both shifts, each with the LWW envelope.
+    expect(full.some((r) => r.entityType === "users")).toBe(true);
+    expect(
+      full
+        .filter((r) => r.entityType === "shifts")
+        .map((r) => r.id)
+        .sort(),
+    ).toEqual([early.id, late.id].sort());
+    expect(full.every((r) => typeof r.updatedAt === "string" && r.deleted === false)).toBe(true);
+
+    // Incremental pull returns only rows changed strictly after the watermark.
+    const delta = await repo.syncPull(watermark);
+    expect(delta.map((r) => r.id)).toContain(late.id);
+    expect(delta.map((r) => r.id)).not.toContain(early.id);
+  });
+});
+
+describe("DynamoRepository — syncPush (LWW merge)", () => {
+  function shiftRow(
+    id: string,
+    userId: string,
+    updatedAt: string,
+    extra: Record<string, unknown> = {},
+  ) {
+    return {
+      entityType: "shifts",
+      id,
+      updatedAt,
+      deleted: false,
+      item: {
+        id,
+        userId,
+        date: "2026-05-01",
+        shiftType: "EARLY",
+        entryMode: "NET",
+        netHours: 7,
+        isSimulated: false,
+        status: "PLANNED",
+        createdAt: "2026-05-01T00:00:00.000Z",
+        updatedAt,
+        ...extra,
+      },
+    };
+  }
+
+  it("applies a newer write and rejects an older one (server-authoritative)", async () => {
+    const repo = repoFor();
+    const u = await repo.getCurrentUser();
+    const id = "shift-lww-1";
+    await repo.syncPush([
+      shiftRow(id, u.id, "2026-06-02T10:00:00.000Z", { supervisingRnName: "T2" }),
+    ]);
+    // Older write loses.
+    const older = await repo.syncPush([
+      shiftRow(id, u.id, "2026-06-01T10:00:00.000Z", { supervisingRnName: "T1" }),
+    ]);
+    expect(older[0].item.supervisingRnName).toBe("T2"); // server echoes its winner
+    expect((await repo.getShift(id))!.supervisingRnName).toBe("T2");
+    // Newer write wins.
+    await repo.syncPush([
+      shiftRow(id, u.id, "2026-06-03T10:00:00.000Z", { supervisingRnName: "T3" }),
+    ]);
+    expect((await repo.getShift(id))!.supervisingRnName).toBe("T3");
+  });
+
+  it("is idempotent — pushing the same row twice yields one row, not a duplicate", async () => {
+    const repo = repoFor();
+    const u = await repo.getCurrentUser();
+    const row = shiftRow("shift-idem", u.id, "2026-06-02T10:00:00.000Z");
+    await repo.syncPush([row]);
+    await repo.syncPush([row]); // tie → apply, same value; no duplicate row
+    expect(await repo.listShifts(u.id)).toHaveLength(1);
+  });
+
+  it("ignores a client-supplied userId — the server stamps the JWT sub", async () => {
+    const repo = repoFor("real@example.com");
+    const me = await repo.getCurrentUser();
+    await repo.syncPush([shiftRow("shift-attack", "attacker-sub", "2026-06-02T10:00:00.000Z")]);
+    const stored = await repo.getShift("shift-attack");
+    expect(stored!.userId).toBe(me.id); // overridden to the principal
+  });
+
+  it("applies a tombstone push (soft-delete via sync) and hides the row", async () => {
+    const repo = repoFor();
+    const u = await repo.getCurrentUser();
+    const id = "shift-tomb";
+    await repo.syncPush([shiftRow(id, u.id, "2026-06-02T10:00:00.000Z")]);
+    await repo.syncPush([{ ...shiftRow(id, u.id, "2026-06-03T10:00:00.000Z"), deleted: true }]);
+    expect(await repo.getShift(id)).toBeUndefined();
+    const pulled = await repo.syncPull();
+    expect(pulled.find((r) => r.id === id)!.deleted).toBe(true);
+  });
+});
+
 describe("DynamoRepository — Phase 2 JWT scoping", () => {
   it("scopes Phase 2 entities to the principal — a second user sees none of the first's data", async () => {
     const alice = repoFor("alice@example.com");

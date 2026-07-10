@@ -51,10 +51,10 @@ import { PlannerDb } from "./db";
 /** Stable id for the PoC's single local user. */
 export const LOCAL_USER_ID = "local-user";
 
-function defaultUser(): User {
+function defaultUser(id: string): User {
   const ts = nowIso();
   return {
-    id: LOCAL_USER_ID,
+    id,
     displayName: "Me",
     field: "ADULT",
     programmeType: "BSC_3YR",
@@ -66,18 +66,28 @@ function defaultUser(): User {
 }
 
 export class DexieRepository implements Repository {
-  private db: PlannerDb;
+  // `protected` so the sync layer's `SyncRepository` subclass can reach the same Dexie
+  // instance for its outbox/reconciler; behaviour is otherwise unchanged.
+  protected db: PlannerDb;
   private seeded = false;
+  /**
+   * The id the local "current user" is seeded under. Defaults to `LOCAL_USER_ID` for the
+   * PoC/guest single-user world; the sync layer passes the Cognito `sub` so the local
+   * half is keyed identically to the server partition (pulled rows carry `userId = sub`,
+   * so lists scoped to `getCurrentUser().id` see them).
+   */
+  private readonly localUserId: string;
 
-  constructor(db: PlannerDb = new PlannerDb()) {
+  constructor(db: PlannerDb = new PlannerDb(), localUserId: string = LOCAL_USER_ID) {
     this.db = db;
+    this.localUserId = localUserId;
   }
 
   /** Idempotent: create the local user, default break rules + proficiency list. */
   async ensureSeed(): Promise<void> {
     if (this.seeded) return;
-    const existing = await this.db.users.get(LOCAL_USER_ID);
-    if (!existing) await this.db.users.put(defaultUser());
+    const existing = await this.db.users.get(this.localUserId);
+    if (!existing) await this.db.users.put(defaultUser(this.localUserId));
     const ruleCount = await this.db.breakRules.count();
     if (ruleCount === 0) await this.db.breakRules.bulkPut(defaultBreakRules());
     // National NMC proficiency master list (global reference data).
@@ -95,7 +105,7 @@ export class DexieRepository implements Repository {
   async getCurrentUser(): Promise<User> {
     await this.ensureSeed();
     // Non-null after seeding.
-    return (await this.db.users.get(LOCAL_USER_ID))!;
+    return (await this.db.users.get(this.localUserId))!;
   }
 
   async updateUser(patch: Partial<Omit<User, "id" | "createdAt">>): Promise<User> {
