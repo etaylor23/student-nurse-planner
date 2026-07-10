@@ -6,7 +6,7 @@ import {
   MailFromBehaviorOnMxFailure,
 } from "aws-cdk-lib/aws-ses";
 import {
-  CnameRecord,
+  CfnRecordSet,
   MxRecord,
   TxtRecord,
   type IHostedZone,
@@ -60,18 +60,22 @@ export class Email extends Construct {
     });
 
     // ---- Easy DKIM: 3 CNAMEs. The token *name* attributes are already fully qualified
-    // (`<token>._domainkey.<domain>`), so Route 53 uses them as-is. ----
+    // (`<token>._domainkey.<domain>`) but are deploy-time TOKENS, so the L2 `CnameRecord`
+    // can't tell they already end in the zone name and would append it again (→
+    // `..._domainkey.placemate.uk.placemate.uk`). Use the L1 `CfnRecordSet`, which writes
+    // `name` verbatim — this is exactly how CDK's own EasyDkim.bind() creates them. ----
     const dkim = [
       { name: this.identity.dkimDnsTokenName1, value: this.identity.dkimDnsTokenValue1 },
       { name: this.identity.dkimDnsTokenName2, value: this.identity.dkimDnsTokenValue2 },
       { name: this.identity.dkimDnsTokenName3, value: this.identity.dkimDnsTokenValue3 },
     ];
     dkim.forEach((d, i) => {
-      new CnameRecord(this, `Dkim${i + 1}`, {
-        zone: hostedZone,
-        recordName: d.name,
-        domainName: d.value,
-        ttl: RECORD_TTL,
+      new CfnRecordSet(this, `Dkim${i + 1}`, {
+        hostedZoneId: hostedZone.hostedZoneId,
+        name: d.name,
+        type: "CNAME",
+        resourceRecords: [d.value],
+        ttl: RECORD_TTL.toSeconds().toString(),
       });
     });
 
