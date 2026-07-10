@@ -62,11 +62,10 @@ const BASE: Record<EnvName, EnvConfig> = {
     name: "dev",
     account: ACCOUNT,
     region: REGION,
-    // The magic-link sender. Currently the verified single-address identity; flips to
-    // `hello@placemate.uk` once the placemate.uk SES DOMAIN identity is verified
-    // (Easy DKIM live) — see HANDOVER-placemate-domain.md §E.5. Keeping the verified
-    // address until then avoids regressing a working login.
-    sesFromAddress: "ellis.taylor499@gmail.com",
+    // The magic-link sender. The placemate.uk SES DOMAIN identity is verified
+    // (Easy DKIM + custom MAIL FROM live), so we send from the branded address on the
+    // verified domain (SPF+DKIM+DMARC aligned for inbox deliverability).
+    sesFromAddress: "hello@placemate.uk",
     // Magic-link redirect origins: Vite dev server + the CloudFront default domain +
     // the custom domain. The CSP `connect-src` is same-origin ('self') under any of them.
     allowedOrigins: [
