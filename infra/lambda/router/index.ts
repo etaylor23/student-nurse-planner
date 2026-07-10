@@ -7,6 +7,13 @@ import { VerifiedPermissionsClient } from "@aws-sdk/client-verifiedpermissions";
 import { makeDocClient } from "../../../src/data/dynamo/dynamoClient";
 import { DynamoRepository } from "../../../src/data/dynamo/dynamoRepository";
 import { makeAuthorize, type Tier, type Verb } from "../../../src/data/dynamo/authorize";
+import { RelationshipStore } from "../../../src/data/dynamo/relationships";
+import {
+  type Caller,
+  CrossUserAccess,
+  CrossUserError,
+  tierForEntity,
+} from "../../../src/data/dynamo/crossUser";
 import {
   calcDrillDraftSchema,
   evidenceLinkDraftSchema,
@@ -39,6 +46,17 @@ const doc = makeDocClient();
 const authorize = makeAuthorize({
   client: new VerifiedPermissionsClient({}),
   policyStoreId: POLICY_STORE_ID,
+});
+// Phase 4 cross-user machinery (spec §4.5). Caller-independent — the caller sub is passed
+// per request; the RelationshipStore only ever writes the caller's own grants, and the
+// CrossUserAccess gate loads-then-authorizes + audits every non-owner read.
+const relationships = new RelationshipStore(doc, TABLE);
+const crossUser = new CrossUserAccess({
+  doc,
+  tableName: TABLE,
+  userPoolId: USER_POOL_ID,
+  authorize,
+  relationships,
 });
 
 /** Method → (verb, tier). This map is also the dispatch allow-list. Verb follows the CRUD
@@ -176,6 +194,76 @@ function json(statusCode: number, body: unknown): APIGatewayProxyResultV2 {
   return { statusCode, headers: { "content-type": "application/json" }, body: JSON.stringify(body) };
 }
 
+/**
+ * Phase 4 cross-user + relationship dispatch (spec-backend-dynamodb.md §4.5). These are NOT
+ * plain single-user Repository methods, so they route through a separate path:
+ *  - Own-grant WRITES are owner-scoped — the caller is always the owner of what they share
+ *    (a share is proven with the `Share` action via owner-all) or the student naming their
+ *    own mentor. The server derives every owner/student from the verified JWT `sub`.
+ *  - Cross-user READS (getSharedRecord / listMenteeRecords) run the load-then-authorize gate
+ *    (§4.4) + audit inside CrossUserAccess.
+ */
+const CROSS_USER = new Set([
+  "shareRecord",
+  "revokeShare",
+  "listSharedWithMe",
+  "addMentorship",
+  "removeMentorship",
+  "listMyMentees",
+  "listMyMentors",
+  "getSharedRecord",
+  "listMenteeRecords",
+]);
+
+async function dispatchCrossUser(
+  method: string,
+  args: unknown[],
+  caller: Caller,
+): Promise<unknown> {
+  const s = (v: unknown): string => (typeof v === "string" ? v : "");
+  const opt = (v: unknown): string | undefined => (typeof v === "string" ? v : undefined);
+  switch (method) {
+    case "shareRecord": {
+      const entityType = s(args[0]);
+      const resourceId = s(args[1]);
+      const grantee = s(args[2]);
+      const tier = tierForEntity(entityType);
+      // Owner-scoped: the caller IS the owner. Prove ownership via the Share action (owner-all).
+      const ok = await authorize({
+        identityToken: caller.identityToken,
+        action: "Share",
+        tier,
+        resourceId,
+        ownerId: `${USER_POOL_ID}|${caller.sub}`,
+      });
+      if (!ok) throw new CrossUserError("forbidden");
+      await relationships.shareRecord(caller.sub, entityType, resourceId, tier, grantee);
+      return { ok: true };
+    }
+    case "revokeShare":
+      await relationships.revokeShare(caller.sub, s(args[0]), s(args[1]), s(args[2]));
+      return { ok: true };
+    case "listSharedWithMe":
+      return relationships.listSharedWithMe(caller.sub);
+    case "addMentorship":
+      await relationships.addMentorship(caller.sub, s(args[0]));
+      return { ok: true };
+    case "removeMentorship":
+      await relationships.removeMentorship(caller.sub, s(args[0]));
+      return { ok: true };
+    case "listMyMentees":
+      return relationships.listMyMentees(caller.sub);
+    case "listMyMentors":
+      return relationships.listMyMentors(caller.sub);
+    case "getSharedRecord":
+      return crossUser.getSharedRecord(caller, s(args[0]), s(args[1]), s(args[2]), opt(args[3]));
+    case "listMenteeRecords":
+      return crossUser.listMenteeRecords(caller, s(args[0]), s(args[1]), opt(args[2]));
+    default:
+      throw new CrossUserError("unsupported_entity");
+  }
+}
+
 export const handler = async (
   event: APIGatewayProxyEventV2WithJWTAuthorizer,
 ): Promise<APIGatewayProxyResultV2> => {
@@ -205,6 +293,26 @@ export const handler = async (
     }
     const method = typeof payload.method === "string" ? payload.method : "";
     const args = Array.isArray(payload.args) ? payload.args : [];
+
+    const identityToken = (event.headers?.authorization ?? event.headers?.Authorization ?? "").replace(
+      /^Bearer\s+/i,
+      "",
+    );
+
+    // Phase 4: cross-user + relationship methods route through their own path (they are not
+    // plain Repository methods). Each does its own owner-scoped authorize / load-then-authorize.
+    if (CROSS_USER.has(method)) {
+      try {
+        const result = await dispatchCrossUser(method, args, { sub, identityToken });
+        return json(200, { result });
+      } catch (err) {
+        if (err instanceof CrossUserError) {
+          return json(err.code === "forbidden" ? 403 : 400, { error: err.code, method });
+        }
+        return json(500, { error: "internal", detail: err instanceof Error ? err.message : String(err) });
+      }
+    }
+
     const spec = METHODS[method];
     if (!spec) return json(404, { error: "unknown_method", method });
 
@@ -215,11 +323,6 @@ export const handler = async (
         return json(400, { error: "invalid_input", method });
       }
     }
-
-    const identityToken = (event.headers?.authorization ?? event.headers?.Authorization ?? "").replace(
-      /^Bearer\s+/i,
-      "",
-    );
     // resourceId: a concrete id where args[0] is one, else a scope marker. In v1 the
     // decision only turns on owner==principal (ownerSub = the caller), so this is
     // informational for the authz decision but useful in the audit trail later.

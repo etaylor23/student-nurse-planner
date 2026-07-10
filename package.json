@@ -16,7 +16,7 @@
     "gen:zod": "ts-to-zod src/domain/types.ts src/domain/schemas.generated.ts",
     "gen:zod:check": "ts-to-zod src/domain/types.ts src/domain/schemas.generated.ts && git diff --exit-code src/domain/schemas.generated.ts",
     "test:watch": "vitest",
-    "lint": "eslint .",
+    "lint": "eslint . --quiet",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

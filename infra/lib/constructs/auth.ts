@@ -2,6 +2,7 @@ import { Duration, RemovalPolicy } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import {
   AccountRecovery,
+  CfnUserPoolGroup,
   type UserPool,
   type UserPoolClient,
 } from "aws-cdk-lib/aws-cognito";
@@ -68,5 +69,16 @@ export class Auth extends Construct {
       refreshTokenValidity: Duration.days(30),
     });
     this.userPoolClientId = this.userPoolClient.userPoolClientId;
+
+    // Admin break-glass group (spec-backend-dynamodb.md §4.5, Phase 4). Membership is
+    // HUMAN-MANAGED (admins added via the Cognito console); we only create the group here.
+    // The token's `cognito:groups` claim carries it; the AVP identity source's
+    // groupConfiguration maps it to NursePlanner::Group::"admins" so the admin-breakglass
+    // Cedar policy (`principal in Group::"admins"`) resolves at runtime.
+    new CfnUserPoolGroup(this, "AdminsGroup", {
+      userPoolId: this.userPool.userPoolId,
+      groupName: "admins",
+      description: "Support / break-glass admins (broadest grant — audited on every use)",
+    });
   }
 }

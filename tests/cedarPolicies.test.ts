@@ -13,13 +13,17 @@ const here = dirname(fileURLToPath(import.meta.url));
 const cedarDir = join(here, "..", "infra", "cedar");
 const schema = JSON.parse(readFileSync(join(cedarDir, "nurse-planner.cedarschema.json"), "utf8"));
 const policyFile = (n: string) => readFileSync(join(cedarDir, "policies", n), "utf8");
+// The Authz construct substitutes the pool id into admin-breakglass's __USER_POOL_ID__
+// placeholder at deploy (AVP names the Cognito group `<userPoolId>|<groupName>`); mirror
+// that here with a fixed test pool so the admin test matches the shipped semantics.
+const TEST_POOL = "eu-west-2_testpool";
 const policies = {
   staticPolicies: [
     policyFile("owner-all.cedar"),
     policyFile("reference-read.cedar"),
     policyFile("mentor-read.cedar"),
     policyFile("share-read.cedar"),
-    policyFile("admin-breakglass.cedar"),
+    policyFile("admin-breakglass.cedar").replace("__USER_POOL_ID__", TEST_POOL),
   ].join("\n"),
 };
 
@@ -243,7 +247,8 @@ describe("Cedar Phase 4 — per-item share (the only SensitiveRecord cross-user 
 });
 
 describe("Cedar Phase 4 — admin break-glass (Cognito group)", () => {
-  const admins = { type: `${NS}::Group`, id: "admins" };
+  // AVP names the Cognito group entity `<userPoolId>|<groupName>` — match the templated policy.
+  const admins = { type: `${NS}::Group`, id: `${TEST_POOL}|admins` };
   it("an admin-group member may act on any record (incl. Sensitive)", () => {
     for (const verb of ["Read", "Update", "Delete"]) {
       expect(
