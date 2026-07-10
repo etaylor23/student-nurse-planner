@@ -23,11 +23,23 @@ import {
 } from "aws-cdk-lib/aws-cloudfront";
 import { HttpOrigin, S3BucketOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 import type { HttpApi } from "aws-cdk-lib/aws-apigatewayv2";
+import type { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
+import {
+  ARecord,
+  AaaaRecord,
+  RecordTarget,
+  type IHostedZone,
+} from "aws-cdk-lib/aws-route53";
+import { CloudFrontTarget } from "aws-cdk-lib/aws-route53-targets";
 import type { EnvConfig } from "../config";
 
 export interface WebProps {
   config: EnvConfig;
   httpApi: HttpApi;
+  /** us-east-1 ACM cert (cross-region ref). Required when `config.customDomain` is set. */
+  certificate?: ICertificate;
+  /** The delegated zone. Required when `config.customDomain` is set. */
+  hostedZone?: IHostedZone;
 }
 
 /**
@@ -51,7 +63,10 @@ export class Web extends Construct {
 
   constructor(scope: Construct, id: string, props: WebProps) {
     super(scope, id);
-    const { config, httpApi } = props;
+    const { config, httpApi, certificate, hostedZone } = props;
+    if (config.customDomain && (!certificate || !hostedZone)) {
+      throw new Error("Web: config.customDomain requires both certificate and hostedZone");
+    }
 
     this.bucket = new Bucket(this, "SpaBucket", {
       bucketName: `nurse-planner-web-${config.name}-${config.account}`,
@@ -121,6 +136,11 @@ function handler(event) {
       comment: `Student Nurse Planner (${config.name})`,
       defaultRootObject: "index.html",
       minimumProtocolVersion: SecurityPolicyProtocol.TLS_V1_2_2021,
+      // Custom domain: adding aliases + cert to the existing distribution is an in-place
+      // update (the *.cloudfront.net domain keeps working). Omitted when unset.
+      ...(config.customDomain
+        ? { domainNames: [config.customDomain.domainName], certificate }
+        : {}),
       defaultBehavior: {
         origin: S3BucketOrigin.withOriginAccessControl(this.bucket),
         viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
@@ -148,5 +168,20 @@ function handler(event) {
         },
       },
     });
+
+    // Route 53 alias records: <domainName> → this CloudFront distribution (A + AAAA).
+    if (config.customDomain && hostedZone) {
+      const target = RecordTarget.fromAlias(new CloudFrontTarget(this.distribution));
+      new ARecord(this, "AliasA", {
+        zone: hostedZone,
+        recordName: config.customDomain.domainName,
+        target,
+      });
+      new AaaaRecord(this, "AliasAAAA", {
+        zone: hostedZone,
+        recordName: config.customDomain.domainName,
+        target,
+      });
+    }
   }
 }

@@ -3,16 +3,28 @@ import type { App } from "aws-cdk-lib";
 export type EnvName = "dev" | "prod";
 
 /**
- * Optional CloudFront custom domain. Omit to use the default `*.cloudfront.net`
- * domain (the roadmap treats a custom domain as deferrable — Phase 0 §Acceptance).
- * NOTE: an ACM certificate for CloudFront MUST live in `us-east-1`.
+ * Optional custom domain served from Route 53 (`hostedZoneName` = the root domain / zone
+ * apex, e.g. `placemate.uk`). When set, the stack:
+ *   - attaches `domainName` (e.g. `app.placemate.uk`) + an ACM cert to the CloudFront
+ *     distribution and creates the A/AAAA alias records, and
+ *   - verifies the `hostedZoneName` domain as an SES sending identity with Easy DKIM,
+ *     a custom MAIL FROM (`mail.<hostedZoneName>`), SPF and DMARC — all as records in
+ *     the zone.
+ * The zone is created out-of-band (its NS delegated at the registrar) and referenced by
+ * id here; every record within it is managed as IaC. Omit to use the default
+ * `*.cloudfront.net` domain and the address-based SES sender.
+ *
+ * NOTE: the CloudFront ACM certificate MUST live in `us-east-1`, so it is owned by a
+ * dedicated us-east-1 `CertificateStack` and consumed here via CDK cross-region
+ * references — there is no cert ARN to configure by hand. See HANDOVER-placemate-domain.md.
  */
 export interface CustomDomainConfig {
+  /** CloudFront alias for the SPA, e.g. `app.placemate.uk`. */
   domainName: string;
+  /** Route 53 public hosted zone id for the root domain. */
   hostedZoneId: string;
+  /** Root domain / zone apex, e.g. `placemate.uk`. Also the SES sending domain. */
   hostedZoneName: string;
-  /** ACM cert ARN in us-east-1. */
-  certificateArn: string;
 }
 
 export interface EnvConfig {
@@ -42,19 +54,32 @@ const ACCOUNT = "641364901830";
 const REGION = "eu-west-2";
 
 const BASE: Record<EnvName, EnvConfig> = {
+  // NOTE: the "dev" env has been PROMOTED IN PLACE to production (the live env behind
+  // https://app.placemate.uk). The physical stack name stays `NursePlanner-dev` on
+  // purpose — renaming would replace every resource (pool/users/data/CloudFront/SPA).
+  // It carries prod posture: retainData + custom domain + verified SES sending domain.
   dev: {
     name: "dev",
     account: ACCOUNT,
     region: REGION,
-    // Placeholder — the human verifies a real SES identity (roadmap §1). Synth/deploy
-    // succeed with a placeholder; only sending requires a verified identity.
-    sesFromAddress: "no-reply@studentnurseplanner.invalid",
-    // Magic-link redirect origins: the Vite dev server + the deployed CloudFront domain.
+    // The magic-link sender. Currently the verified single-address identity; flips to
+    // `hello@placemate.uk` once the placemate.uk SES DOMAIN identity is verified
+    // (Easy DKIM live) — see HANDOVER-placemate-domain.md §E.5. Keeping the verified
+    // address until then avoids regressing a working login.
+    sesFromAddress: "ellis.taylor499@gmail.com",
+    // Magic-link redirect origins: Vite dev server + the CloudFront default domain +
+    // the custom domain. The CSP `connect-src` is same-origin ('self') under any of them.
     allowedOrigins: [
       "http://localhost:5173",
       "https://dufbsm93sx7h9.cloudfront.net",
+      "https://app.placemate.uk",
     ],
-    retainData: false,
+    retainData: true,
+    customDomain: {
+      domainName: "app.placemate.uk",
+      hostedZoneId: "Z01422912TXS1SRHFVF2E",
+      hostedZoneName: "placemate.uk",
+    },
   },
   prod: {
     name: "prod",

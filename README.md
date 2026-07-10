@@ -77,14 +77,18 @@ Full detail in [`spec-architecture.md`](./spec/spec-architecture.md). Summary:
   async **`Repository`** interface. The canonical data model is expressed as a
   Prisma schema (the future/remote shape); the PoC stores the same entity shapes
   locally.
-- **Multi-user ready, auth in progress:** every user-owned row carries `userId`.
-  The PoC uses a single local user (`LOCAL_USER_ID`). Per-student login + a remote
-  backend (AWS Cognito magic-link + a single owner-partitioned DynamoDB table +
-  Amazon Verified Permissions) is now being built behind the `Repository` seam
-  (`<RepositoryProvider repo={...}>`). **Phase 0 (infra scaffold) is authored and
-  `cdk synth`-clean but not yet deployed** — see [`infra/`](./infra/README.md) and
-  the [implementation roadmap](./spec/spec-implementation-roadmap.md). Guest mode
-  stays on Dexie.
+- **Multi-user, live in production:** every user-owned row carries `userId`. The
+  remote backend (AWS Cognito magic-link + a single owner-partitioned DynamoDB table +
+  Amazon Verified Permissions + local-first sync) is built behind the `Repository` seam
+  (`<RepositoryProvider repo={...}>`) and **deployed live at
+  [https://app.placemate.uk](https://app.placemate.uk)** (CloudFront + ACM cert in
+  us-east-1; same-origin `/api`). Magic-link mail sends from **hello@placemate.uk** on a
+  Route 53-hosted domain with SPF + DKIM + custom MAIL FROM + DMARC for inbox
+  deliverability. Signed-in users run local-first sync over the remote; **guest mode
+  stays on Dexie.** See [`infra/`](./infra/README.md), the
+  [implementation roadmap](./spec/spec-implementation-roadmap.md), and
+  [`HANDOVER-placemate-domain.md`](./HANDOVER-placemate-domain.md) for the domain/SES
+  cutover.
 - **Reference/seed data is not user-owned:** the NMC proficiency master list,
   the baseline skills list, the baseline revision subjects, and the default
   break-rule table are shared seed data, not per-user.

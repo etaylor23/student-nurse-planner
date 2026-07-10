@@ -64,9 +64,13 @@ context. To move to a backend: implement `Repository` against the API and pass
 > and sequenced by [`spec-implementation-roadmap.md`](./spec-implementation-roadmap.md).
 > The new backends are new `Repository` *implementations* (`ApiRepository`,
 > `DynamoRepository`, `SyncRepository`) swapped here — no HTTP/auth leaks into feature
-> code. **Phase 0** (the CDK infra under [`../infra/`](../infra/README.md)) is authored
-> and `cdk synth`-clean; nothing is deployed and no `Repository` implementation is
-> swapped yet. Server-side input validation uses `zod` schemas codegen'd from
+> code. **Phases 0–4 are built, deployed and live** (the CDK app under
+> [`../infra/`](../infra/README.md)): signed-in users run local-first sync over the
+> remote; the app is served from **https://app.placemate.uk** (CloudFront + an ACM cert
+> in us-east-1) and magic-link mail is sent from **hello@placemate.uk** on a
+> Route 53-hosted `placemate.uk` domain with SPF + DKIM + custom MAIL FROM + DMARC. The
+> live env is the `NursePlanner-dev` stack promoted in place to production posture
+> (`retainData`). Server-side input validation uses `zod` schemas codegen'd from
 > `domain/types.ts` via ts-to-zod (`src/domain/schemas.generated.ts`).
 
 `ShiftsProvider` holds the one in-memory `Shift` list (plus the derived hours
