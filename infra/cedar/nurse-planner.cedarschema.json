@@ -1,14 +1,23 @@
 {
   "NursePlanner": {
     "entityTypes": {
+      "Group": {
+        "shape": { "type": "Record", "attributes": {} }
+      },
       "User": {
+        "memberOfTypes": ["Group"],
         "shape": { "type": "Record", "attributes": {} }
       },
       "SensitiveRecord": {
         "shape": {
           "type": "Record",
           "attributes": {
-            "owner": { "type": "Entity", "name": "User" }
+            "owner": { "type": "Entity", "name": "User" },
+            "sharedWith": {
+              "type": "Set",
+              "required": false,
+              "element": { "type": "Entity", "name": "User" }
+            }
           }
         }
       },
@@ -16,7 +25,17 @@
         "shape": {
           "type": "Record",
           "attributes": {
-            "owner": { "type": "Entity", "name": "User" }
+            "owner": { "type": "Entity", "name": "User" },
+            "mentors": {
+              "type": "Set",
+              "required": false,
+              "element": { "type": "Entity", "name": "User" }
+            },
+            "sharedWith": {
+              "type": "Set",
+              "required": false,
+              "element": { "type": "Entity", "name": "User" }
+            }
           }
         }
       },
@@ -50,6 +69,12 @@
         }
       },
       "Delete": {
+        "appliesTo": {
+          "principalTypes": ["User"],
+          "resourceTypes": ["SensitiveRecord", "EvidenceRecord"]
+        }
+      },
+      "Share": {
         "appliesTo": {
           "principalTypes": ["User"],
           "resourceTypes": ["SensitiveRecord", "EvidenceRecord"]
