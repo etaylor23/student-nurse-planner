@@ -1,5 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { RepositoryProvider } from "./react/RepositoryContext";
+import { AuthGate } from "./auth/AuthGate";
 import { ShiftsProvider } from "./react/ShiftsContext";
 import { AppLayout } from "./react/components/AppLayout";
 import { HomePage } from "./react/components/HomePage";
@@ -20,7 +20,7 @@ const basename = import.meta.env.BASE_URL.replace(/\/$/, "") || "/";
 
 export function App() {
   return (
-    <RepositoryProvider>
+    <AuthGate>
       <ShiftsProvider>
         <BrowserRouter basename={basename}>
           <AppLayout>
@@ -43,6 +43,6 @@ export function App() {
           </AppLayout>
         </BrowserRouter>
       </ShiftsProvider>
-    </RepositoryProvider>
+    </AuthGate>
   );
 }

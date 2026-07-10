@@ -32,7 +32,7 @@ export function ProfilePage() {
 }
 
 function ProfileForm({ user }: { user: User }) {
-  const { repo, reloadUser } = useRepository();
+  const { repo, reloadUser, isGuest, logout } = useRepository();
   const { proficiencies, progress } = useProficiencies();
   const [displayName, setDisplayName] = useState(user.displayName);
   const [programmeType, setProgrammeType] = useState<ProgrammeType>(user.programmeType);
@@ -90,6 +90,16 @@ function ProfileForm({ user }: { user: User }) {
         eyebrow="Account"
         title="Your profile"
         subtitle="Your programme details. The current part drives the competency tracker's gap warnings."
+        aside={
+          <div className="flex flex-col items-end gap-1.5">
+            <span className="text-xs text-slate-500">
+              {isGuest ? "Guest — this device only" : (user.email ?? "Signed in")}
+            </span>
+            <button type="button" className={btnGhostSm} onClick={() => void logout()}>
+              {isGuest ? "Sign in" : "Sign out"}
+            </button>
+          </div>
+        }
       />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
@@ -239,7 +249,9 @@ function ProfileForm({ user }: { user: User }) {
         </div>
       </div>
 
-      <DemoDataPanel userId={user.id} />
+      {/* Demo data + local wipe are a guest-mode affordance (spec-auth §3): real accounts
+          start empty apart from bundled reference data. */}
+      {isGuest && <DemoDataPanel userId={user.id} />}
     </div>
   );
 }

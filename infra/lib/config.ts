@@ -49,7 +49,11 @@ const BASE: Record<EnvName, EnvConfig> = {
     // Placeholder — the human verifies a real SES identity (roadmap §1). Synth/deploy
     // succeed with a placeholder; only sending requires a verified identity.
     sesFromAddress: "no-reply@studentnurseplanner.invalid",
-    allowedOrigins: ["http://localhost:5173"],
+    // Magic-link redirect origins: the Vite dev server + the deployed CloudFront domain.
+    allowedOrigins: [
+      "http://localhost:5173",
+      "https://dufbsm93sx7h9.cloudfront.net",
+    ],
     retainData: false,
   },
   prod: {
