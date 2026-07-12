@@ -1,0 +1,73 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { SITE } from "../consts";
+import { breadcrumb } from "../schema";
+
+const title = "Privacy Policy | PlaceMate";
+const description =
+  "How PlaceMate handles data: privacy-first, cookieless analytics with no cookie banner, no patient-identifiable data, and how to contact us about your information.";
+const updated = "12 July 2026";
+
+const jsonLd = [
+  breadcrumb([
+    { name: "Home", path: "/" },
+    { name: "Privacy", path: "/privacy" },
+  ]),
+];
+---
+
+<Layout title={title} description={description} jsonLd={jsonLd}>
+  <article class="mx-auto max-w-3xl px-4 py-16 sm:px-6">
+    <h1 class="text-4xl font-bold tracking-tight text-slate-900">Privacy Policy</h1>
+    <p class="mt-2 text-sm text-slate-500">Last updated {updated}</p>
+
+    <div class="mt-8 space-y-8 text-slate-600">
+      <section>
+        <h2 class="text-lg font-semibold text-slate-900">Who this covers</h2>
+        <p class="mt-2 leading-relaxed">
+          This policy explains how the PlaceMate website at placemate.uk handles information. The
+          PlaceMate app at <a href={SITE.appUrl} rel="noopener" class="text-emerald-700 hover:underline"
+            >app.placemate.uk</a
+          > has its own handling for the data you choose to enter; see below.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-lg font-semibold text-slate-900">Analytics — no cookies, no banner</h2>
+        <p class="mt-2 leading-relaxed">
+          We use privacy-first, cookieless analytics (Plausible) to understand which pages are
+          useful. It does not use cookies, does not track you across sites, and does not collect
+          personal data — so this website shows no cookie-consent banner. We only see aggregated
+          figures such as page views and referrers.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-lg font-semibold text-slate-900">Information you send us</h2>
+        <p class="mt-2 leading-relaxed">
+          If you email us (for example at {SITE.email}) we receive your message and email address so
+          we can reply. We do not sell your data or use it for advertising.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-lg font-semibold text-slate-900">The PlaceMate app</h2>
+        <p class="mt-2 leading-relaxed">
+          In the app, data you enter (such as your hours, proficiencies and reflections) is stored
+          to power the app. In demo mode it stays on your device; with an account it is stored
+          privately to you. PlaceMate is designed to hold no patient-identifiable information —
+          please keep patient details out of your notes and reflections.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-lg font-semibold text-slate-900">Your rights &amp; contact</h2>
+        <p class="mt-2 leading-relaxed">
+          Under UK GDPR you have rights over your personal data, including access and erasure. To
+          exercise them, or for any privacy question, email
+          <a href={`mailto:${SITE.email}`} class="text-emerald-700 hover:underline">{SITE.email}</a>.
+        </p>
+      </section>
+    </div>
+  </article>
+</Layout>

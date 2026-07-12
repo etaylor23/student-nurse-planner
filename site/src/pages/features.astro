@@ -1,0 +1,81 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Icon from "../components/Icon.astro";
+import CtaSection from "../components/CtaSection.astro";
+import { FEATURES } from "../data/features";
+import { webApplication, breadcrumb } from "../schema";
+
+const title = "Features — placement hours, NMC proficiencies & more | PlaceMate";
+const description =
+  "Everything PlaceMate does for UK student nurses: a placement hours tracker, NMC proficiency and clinical skills tracking, a shift planner, drug-calculation practice, Gibbs reflections and a revision timetable.";
+
+const jsonLd = [
+  webApplication(),
+  breadcrumb([
+    { name: "Home", path: "/" },
+    { name: "Features", path: "/features" },
+  ]),
+];
+---
+
+<Layout title={title} description={description} jsonLd={jsonLd}>
+  <section class="mx-auto max-w-6xl px-4 pb-4 pt-16 sm:px-6">
+    <p class="text-sm font-semibold uppercase tracking-wider text-emerald-600">Features</p>
+    <h1 class="mt-3 max-w-3xl text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
+      One app for placements, proficiencies and revision
+    </h1>
+    <p class="mt-5 max-w-2xl text-lg text-slate-600">
+      PlaceMate brings together the tools UK student nurses juggle across notebooks, spreadsheets
+      and half a dozen apps — built around the NMC standards, and connected so your evidence flows
+      from one to the next.
+    </p>
+  </section>
+
+  <div class="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+    <div class="space-y-6">
+      {
+        FEATURES.map((f, i) => (
+          <article
+            id={f.id}
+            class="grid items-center gap-8 rounded-3xl border border-slate-200 bg-white p-8 md:grid-cols-2 md:p-10"
+          >
+            <div class:list={[i % 2 === 1 ? "md:order-2" : ""]}>
+              <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                <Icon name={f.icon} class="h-7 w-7" />
+              </div>
+              <h2 class="mt-4 text-2xl font-bold tracking-tight text-slate-900">{f.name}</h2>
+              <p class="mt-1 font-medium text-emerald-700">{f.tagline}</p>
+              <p class="mt-3 leading-relaxed text-slate-600">{f.body}</p>
+              <ul class="mt-5 space-y-2.5">
+                {f.points.map((point) => (
+                  <li class="flex items-start gap-3 text-sm text-slate-700">
+                    <svg
+                      class="mt-0.5 h-5 w-5 shrink-0 text-emerald-500"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="m5 13 4 4L19 7" />
+                    </svg>
+                    <span>{point}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div class:list={["hidden md:block", i % 2 === 1 ? "md:order-1" : ""]}>
+              <div class="flex aspect-[4/3] items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-50 to-slate-50">
+                <Icon name={f.icon} class="h-20 w-20 text-emerald-300" />
+              </div>
+            </div>
+          </article>
+        ))
+      }
+    </div>
+  </div>
+
+  <CtaSection heading="Try it on your next shift" />
+</Layout>

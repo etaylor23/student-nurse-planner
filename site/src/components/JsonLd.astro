@@ -1,0 +1,10 @@
+---
+// Renders one JSON-LD block. `schema` is any schema.org node (or an array/@graph).
+// set:html avoids Astro HTML-escaping the JSON (escaped entities break parsers).
+interface Props {
+  schema: unknown;
+}
+const { schema } = Astro.props;
+---
+
+<script type="application/ld+json" is:inline set:html={JSON.stringify(schema)} />

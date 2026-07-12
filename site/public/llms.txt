@@ -1,0 +1,23 @@
+# PlaceMate
+
+> PlaceMate is a free, all-in-one web app for UK student nurses. It helps them track their placement (practice) hours, log their NMC proficiencies and clinical skills, plan shifts and revision, keep medication notes, practise drug calculations, and write structured reflections — all built around the Nursing and Midwifery Council (NMC) standards.
+
+Key facts (verified against the NMC Standards of proficiency for registered nurses, 2024):
+
+- UK pre-registration nursing requires a minimum of 4,600 programme hours: at least 2,300 theory and at least 2,300 supervised practice (placement) hours. Up to 600 of the practice hours may be simulated learning. PlaceMate tracks progress toward the 2,300-hour practice target.
+- The NMC proficiencies are organised into 7 platforms plus Annexe A (communication skills) and Annexe B (11 nursing procedures). PlaceMate tracks all 219 individual proficiency statements.
+- PlaceMate is student-first and starts with the adult field of nursing.
+- PlaceMate is free for students, uses privacy-first cookieless analytics (no cookie banner), and is designed to hold no patient-identifiable data.
+- PlaceMate is independent and not affiliated with or endorsed by the NMC.
+
+The app lives at https://app.placemate.uk. The marketing site is https://placemate.uk.
+
+## Pages
+
+- [Home](https://placemate.uk/): what PlaceMate is and who it's for.
+- [Features](https://placemate.uk/features): placement hours tracker, NMC proficiency tracker, clinical skills passport, weekly shift planner, medication notes & drug-calculation practice, guided Gibbs reflections, revision timetable, self-care check-ins.
+- [Pricing](https://placemate.uk/pricing): free for student nurses.
+- [FAQ](https://placemate.uk/faq): answers on placement hours, NMC proficiencies, the PAD (Practice Assessment Document), reflections, drug calculations, and privacy.
+- [For universities](https://placemate.uk/for-universities): how PlaceMate supports nursing programmes and practice-placement teams.
+- [About](https://placemate.uk/about): what PlaceMate is and its independence from the NMC.
+- [Contact](https://placemate.uk/contact): hello@placemate.uk.

@@ -1,0 +1,5 @@
+# Astro build output + caches (root .gitignore already covers node_modules/dist,
+# but keep this explicit for the sub-package).
+dist/
+.astro/
+node_modules/

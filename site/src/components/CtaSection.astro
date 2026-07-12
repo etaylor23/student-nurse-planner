@@ -1,0 +1,41 @@
+---
+import Button from "./Button.astro";
+import { CTA } from "../consts";
+interface Props {
+  heading?: string;
+  sub?: string;
+}
+const {
+  heading = "Start planning your placements today",
+  sub = "Free for student nurses. Try the demo instantly — no account needed.",
+} = Astro.props;
+---
+
+<section class="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+  <div
+    class="rounded-3xl bg-gradient-to-br from-emerald-600 to-emerald-700 px-6 py-12 text-center sm:px-12"
+  >
+    <h2 class="mx-auto max-w-2xl text-2xl font-bold tracking-tight text-white sm:text-3xl">
+      {heading}
+    </h2>
+    <p class="mx-auto mt-3 max-w-xl text-emerald-50">{sub}</p>
+    <div class="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+      <Button
+        href={CTA.signup.href}
+        external
+        variant="secondary"
+        class="w-full border-transparent bg-white text-emerald-700 hover:bg-emerald-50 sm:w-auto"
+      >
+        {CTA.signup.label}
+      </Button>
+      <Button
+        href={CTA.demo.href}
+        external
+        variant="secondary"
+        class="w-full border-white/40 bg-transparent text-white hover:bg-white/10 sm:w-auto"
+      >
+        {CTA.demo.label}
+      </Button>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,32 @@
+---
+// JS-free FAQ accordion (native <details>). The same Q&A also feeds FAQPage JSON-LD.
+import type { Faq } from "../data/faqs";
+interface Props {
+  faqs: Faq[];
+}
+const { faqs } = Astro.props;
+---
+
+<div class="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white">
+  {
+    faqs.map((f) => (
+      <details class="group px-5">
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 py-4 text-left text-[15px] font-semibold text-slate-900 [&::-webkit-details-marker]:hidden">
+          {f.q}
+          <svg
+            class="h-5 w-5 shrink-0 text-slate-400 transition group-open:rotate-45"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </summary>
+        <p class="pb-5 text-sm leading-relaxed text-slate-600">{f.a}</p>
+      </details>
+    ))
+  }
+</div>

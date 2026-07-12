@@ -1,0 +1,19 @@
+{
+  "name": "placemate-site",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "PlaceMate marketing website (placemate.uk apex) — static Astro brochure. See ../spec/spec-corporate-website.md",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "og": "node scripts/gen-og.mjs"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.6.0",
+    "@tailwindcss/vite": "^4.3.1",
+    "astro": "^5.18.2",
+    "tailwindcss": "^4.3.1"
+  }
+}

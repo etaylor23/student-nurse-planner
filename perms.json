@@ -20,6 +20,12 @@
       "Resource": ["arn:aws:s3:::nurse-planner-web-*", "arn:aws:s3:::nurse-planner-web-*/*"]
     },
     {
+      "Sid": "PublishMarketingSite",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+      "Resource": ["arn:aws:s3:::placemate-marketing-*", "arn:aws:s3:::placemate-marketing-*/*"]
+    },
+    {
       "Sid": "InvalidateCloudFront",
       "Effect": "Allow",
       "Action": "cloudfront:CreateInvalidation",

@@ -1,0 +1,90 @@
+---
+import "../styles/global.css";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import JsonLd from "../components/JsonLd.astro";
+import { SITE } from "../consts";
+
+interface Props {
+  title: string;
+  description: string;
+  /** OG/Twitter image path (site-relative). A branded per-page PNG lives in /og/. */
+  image?: string;
+  /** schema.org nodes to embed as JSON-LD for this page. */
+  jsonLd?: unknown[];
+  noindex?: boolean;
+  ogType?: "website" | "article";
+}
+
+const {
+  title,
+  description,
+  image = "/og/default.png",
+  jsonLd = [],
+  noindex = false,
+  ogType = "website",
+} = Astro.props;
+
+// Canonical is the clean apex form: never www, never a trailing slash (matches how
+// @astrojs/sitemap emits URLs under trailingSlash:'never', so canonical === sitemap loc).
+const canonical = new URL(Astro.url.pathname, Astro.site).href.replace(/\/$/, "") || String(Astro.site);
+const ogImage = new URL(image, Astro.site).href;
+const isProd = import.meta.env.PROD;
+---
+
+<!doctype html>
+<html lang={SITE.locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex, follow" />}
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <meta name="theme-color" content="#059669" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content={ogType} />
+    <meta property="og:site_name" content={SITE.name} />
+    <meta property="og:locale" content="en_GB" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+
+    {jsonLd.map((schema) => <JsonLd schema={schema} />)}
+
+    {
+      isProd && (
+        <script
+          is:inline
+          defer
+          data-domain="placemate.uk"
+          src="https://plausible.io/js/script.js"
+        />
+      )
+    }
+  </head>
+  <body class="min-h-dvh bg-white text-slate-700 antialiased">
+    <a
+      href="#main"
+      class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-emerald-600 focus:px-4 focus:py-2 focus:text-white"
+      >Skip to content</a
+    >
+    <Header />
+    <main id="main"><slot /></main>
+    <Footer />
+  </body>
+</html>

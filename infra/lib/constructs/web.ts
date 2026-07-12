@@ -98,6 +98,12 @@ export class Web extends Construct {
     const securityHeaders = new ResponseHeadersPolicy(this, "SecurityHeaders", {
       responseHeadersPolicyName: `nurse-planner-${config.name}-security`,
       comment: "Strict CSP + security headers for the SPA (spec-auth.md §1.3)",
+      // The SPA is client-rendered and must NOT compete with (or leak thin pages into) the
+      // search index — the marketing apex (placemate.uk) is the single indexed entity.
+      // `follow` still lets crawlers traverse links. See spec-corporate-website.md §3.
+      customHeadersBehavior: {
+        customHeaders: [{ header: "X-Robots-Tag", value: "noindex, follow", override: true }],
+      },
       securityHeadersBehavior: {
         contentSecurityPolicy: { contentSecurityPolicy: csp, override: true },
         strictTransportSecurity: {

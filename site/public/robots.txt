@@ -1,0 +1,37 @@
+# PlaceMate — placemate.uk (marketing site). AEO posture: maximise AI discovery.
+# All crawlers, including AI retrieval + training bots, are welcome. See
+# spec/spec-corporate-website.md §7.
+
+# --- AI assistants / answer engines (explicitly allowed) ---
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+# --- Everyone else ---
+User-agent: *
+Allow: /
+
+Sitemap: https://placemate.uk/sitemap-index.xml

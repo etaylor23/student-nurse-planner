@@ -1,0 +1,26 @@
+---
+// CTA / link button. `variant` primary (emerald) or secondary (outline). Renders an
+// anchor; external app links get rel/target and a Plausible outbound class hook.
+interface Props {
+  href: string;
+  variant?: "primary" | "secondary";
+  class?: string;
+  external?: boolean;
+}
+const { href, variant = "primary", class: className = "", external = false } = Astro.props;
+
+const base =
+  "inline-flex items-center justify-center rounded-lg px-5 py-2.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60";
+const styles = {
+  primary: "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700",
+  secondary: "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
+};
+---
+
+<a
+  href={href}
+  class={`${base} ${styles[variant]} ${className}`}
+  {...external ? { rel: "noopener" } : {}}
+>
+  <slot />
+</a>
