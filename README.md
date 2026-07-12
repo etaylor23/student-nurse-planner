@@ -229,6 +229,9 @@ The remote backend lives in a separate CDK app under [`infra/`](./infra/README.m
 - [`spec-dns-email.md`](./spec/spec-dns-email.md) — **LIVE**: placemate.uk on Route 53,
   `app.placemate.uk` (CloudFront + ACM), and SES sending from `hello@placemate.uk` with
   SPF + DKIM + custom MAIL FROM + DMARC.
+- [`spec-corporate-website.md`](./spec/spec-corporate-website.md) — **PLANNED**: lean Astro
+  brochure on the `placemate.uk` apex, engineered for Google SEO + AI-assistant discovery
+  (keyword map, structured data, `llms.txt`, off-site levers).
 - [`spec-calendar-feed.md`](./spec/spec-calendar-feed.md) · [`spec-notifications-backend.md`](./spec/spec-notifications-backend.md)
   — the two non-JWT surfaces (later phases).
 - [`infra/`](./infra/README.md) — the CDK app implementing Phase 0 (scaffolded, synths
