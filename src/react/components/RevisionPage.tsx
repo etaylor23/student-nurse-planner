@@ -47,7 +47,7 @@ export function RevisionPage() {
         aside={
           topics.length > 0 || targets.length > 0 ? (
             <div>
-              <div className="text-2xl font-semibold tabular-nums tracking-tight text-slate-900">
+              <div className="text-2xl font-semibold tabular-nums tracking-tight text-ink">
                 {dueCount}
               </div>
               <div className="text-xs text-slate-400">

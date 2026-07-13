@@ -88,7 +88,7 @@ export function PlacementBreakdown({
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-3">
-                <span className="text-sm font-semibold tabular-nums text-slate-900">
+                <span className="text-sm font-semibold tabular-nums text-ink">
                   {r.counted} h
                 </span>
                 {r.placementId && (

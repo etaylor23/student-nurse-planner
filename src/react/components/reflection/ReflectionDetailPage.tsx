@@ -93,7 +93,7 @@ export function ReflectionDetailPage() {
   const header = (
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <h1 className="text-xl font-semibold tracking-tight text-slate-900">{reflection.title}</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-ink">{reflection.title}</h1>
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
           <ModelBadge />
           {reflection.isLocked && <LockBadge />}

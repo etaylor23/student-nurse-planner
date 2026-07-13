@@ -27,7 +27,7 @@ export function NumeracyPanel() {
       ) : (
         <div className="space-y-3">
           <p className="text-sm text-slate-600">
-            <span className="text-2xl font-semibold tabular-nums text-slate-900">{pct}%</span>{" "}
+            <span className="text-2xl font-semibold tabular-nums text-ink">{pct}%</span>{" "}
             accuracy across {summary.total.attempts} attempt
             {summary.total.attempts === 1 ? "" : "s"}.
           </p>

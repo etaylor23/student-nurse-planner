@@ -44,7 +44,7 @@ export function ReflectionPage() {
         aside={
           reflections.length > 0 ? (
             <div>
-              <div className="text-2xl font-semibold tabular-nums tracking-tight text-slate-900">
+              <div className="text-2xl font-semibold tabular-nums tracking-tight text-ink">
                 {reflections.length}
               </div>
               <div className="text-xs text-slate-400">

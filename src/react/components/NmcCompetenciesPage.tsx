@@ -36,7 +36,7 @@ export function NmcCompetenciesPage() {
         aside={
           proficiencies.length > 0 ? (
             <div>
-              <div className="text-2xl font-semibold tabular-nums tracking-tight text-slate-900">
+              <div className="text-2xl font-semibold tabular-nums tracking-tight text-ink">
                 {percent}%
               </div>
               <div className="text-xs text-slate-400">achieved · {gapCount} gaps</div>

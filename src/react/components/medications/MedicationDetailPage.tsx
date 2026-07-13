@@ -148,7 +148,7 @@ export function MedicationDetailPage() {
           <Link to="/medications" className="text-xs font-medium text-emerald-600">
             ← All medications
           </Link>
-          <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-ink">
             {medication.name}
           </h2>
           {medication.brandNames && (

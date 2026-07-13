@@ -8,7 +8,7 @@ const SENTINEL = Number.MAX_SAFE_INTEGER;
 
 // Compact, right-sized number field (no `w-full`, unlike the shared inputCls).
 const numInput =
-  "w-16 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-sm tabular-nums text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25";
+  "w-16 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-sm tabular-nums text-ink shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25";
 
 /** One bounded band in the editor: "shifts up to `upto` hours → `brk` min break". */
 type Threshold = { upto: string; brk: string };

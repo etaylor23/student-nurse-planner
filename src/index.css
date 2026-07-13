@@ -1,5 +1,57 @@
 @import "tailwindcss";
 
+/* =====================================================================
+   BRAND TOKENS — single source of truth for colour.
+   Mirrored (for humans) in /colour-palette.html at the repo root.
+
+   Tailwind v4 turns each `--color-<name>-<shade>` into utilities
+   (`bg-primary-600`, `text-secondary-600`, `text-ink`, …) AND exposes it
+   as a CSS variable on :root, so plain CSS below can use var(--color-…).
+
+     primary   = Emerald  — the inspiring lead (CTAs, active, progress, success)
+     secondary = NHS Blue — the trust anchor  (links, info, headers, 2nd buttons)
+     accent    = Coral    — warmth, used sparingly (self-care, gentle nudges)
+     ink       = off-black text (never pure #000); slate stays for neutrals
+   ===================================================================== */
+@theme {
+  /* Primary — Emerald */
+  --color-primary-50: #ecfdf5;
+  --color-primary-100: #d1fae5;
+  --color-primary-200: #a7f3d0;
+  --color-primary-300: #6ee7b7;
+  --color-primary-400: #34d399;
+  --color-primary-500: #10b981;
+  --color-primary-600: #059669;
+  --color-primary-700: #047857;
+  --color-primary-800: #065f46;
+  --color-primary-900: #064e3b;
+
+  /* Secondary — NHS Blue (built on the official NHS blues) */
+  --color-secondary-50: #e8f1fb;
+  --color-secondary-100: #cfe4f7;
+  --color-secondary-200: #a3caee;
+  --color-secondary-300: #6badde;
+  --color-secondary-400: #2f8fd6;
+  --color-secondary-500: #0072ce;
+  --color-secondary-600: #005eb8; /* NHS Blue — the core secondary */
+  --color-secondary-700: #004b95;
+  --color-secondary-800: #003087;
+  --color-secondary-900: #00265f;
+
+  /* Accent — Coral */
+  --color-accent-50: #fff1ee;
+  --color-accent-100: #ffe4e6;
+  --color-accent-200: #fecdd3;
+  --color-accent-300: #fda4af;
+  --color-accent-400: #fb7185; /* core accent */
+  --color-accent-500: #f43f5e;
+  --color-accent-600: #e11d48;
+  --color-accent-700: #be123c;
+
+  /* Ink — softened off-black for headings & primary text */
+  --color-ink: #16212f;
+}
+
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
@@ -7,6 +59,13 @@
   body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Default text is off-black, not the browser's pure black. */
+    color: var(--color-ink);
+  }
+  /* Brand-tinted text selection instead of the OS default. */
+  ::selection {
+    background-color: var(--color-primary-100);
+    color: var(--color-primary-900);
   }
 }
 
@@ -17,7 +76,7 @@
   --fc-page-bg-color: #ffffff;
   --fc-neutral-bg-color: #f8fafc; /* slate-50 */
   --fc-today-bg-color: #f3fbf7; /* very faint emerald wash */
-  --fc-now-indicator-color: #059669; /* emerald-600 */
+  --fc-now-indicator-color: var(--color-primary-600);
   --fc-highlight-color: rgba(16, 185, 129, 0.13); /* click-drag selection tint */
   font-size: 0.875rem;
 }
@@ -32,7 +91,7 @@
   font-size: 1.125rem;
   font-weight: 600;
   letter-spacing: -0.01em;
-  color: #0f172a; /* slate-900 */
+  color: var(--color-ink);
 }
 
 /* Buttons → match the app's ghost / primary buttons */
@@ -50,7 +109,7 @@
 }
 .fc-theme-wrap .fc-button:hover {
   background: #f8fafc;
-  color: #0f172a;
+  color: var(--color-ink);
 }
 .fc-theme-wrap .fc-button:focus-visible {
   outline: none;
@@ -58,9 +117,9 @@
 }
 .fc-theme-wrap .fc-button-primary:not(:disabled).fc-button-active,
 .fc-theme-wrap .fc-button-primary:not(:disabled):active {
-  background: #ecfdf5; /* emerald-50 */
-  border-color: #6ee7b7; /* emerald-300 */
-  color: #047857; /* emerald-700 */
+  background: var(--color-primary-50);
+  border-color: var(--color-primary-300);
+  color: var(--color-primary-700);
 }
 .fc-theme-wrap .fc-button:disabled {
   opacity: 0.5;
@@ -90,7 +149,7 @@
   background: var(--fc-today-bg-color);
 }
 .fc-theme-wrap .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion {
-  color: #059669;
+  color: var(--color-primary-600);
 }
 
 /* Time-grid — airier rows, faint axis labels */
@@ -103,8 +162,8 @@
   color: #94a3b8; /* slate-400 */
 }
 .fc-theme-wrap .fc-timegrid-now-indicator-arrow {
-  background: #059669;
-  border-color: #059669;
+  background: var(--color-primary-600);
+  border-color: var(--color-primary-600);
 }
 
 /* Month day cells — refined numbers, dim out-of-month, hover affordance */
@@ -115,7 +174,7 @@
   text-decoration: none;
 }
 .fc-theme-wrap .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
-  color: #059669;
+  color: var(--color-primary-600);
   font-weight: 600;
 }
 .fc-theme-wrap .fc-day-other .fc-daygrid-day-number {
@@ -150,24 +209,24 @@
   color: #475569;
 }
 .fc-theme-wrap .ev-counted {
-  background: #dcfce7;
-  color: #047857;
+  background: var(--color-primary-100);
+  color: var(--color-primary-700);
 }
 .fc-theme-wrap .ev-sim {
-  background: #e0f2fe;
-  color: #0369a1;
+  background: var(--color-secondary-50);
+  color: var(--color-secondary-700);
 }
 /* The event currently open in the editor — a clear "active/selected" state that
    stands out over any status colour. */
 .fc-theme-wrap .fc-event.ev-active {
-  background: #10b981; /* emerald-500 */
+  background: var(--color-primary-500);
   color: #ffffff;
   box-shadow:
     0 0 0 2px #ffffff,
-    0 0 0 4px #10b981; /* halo so the selection pops over the grid */
+    0 0 0 4px var(--color-primary-500); /* halo so the selection pops over the grid */
 }
 /* Draft highlight for a not-yet-saved shift being configured in the side panel */
 .fc-theme-wrap .fc-bg-event.ev-draft {
-  background-color: #10b981; /* emerald-500 */
+  background-color: var(--color-primary-500);
   opacity: 0.16;
 }

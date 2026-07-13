@@ -40,7 +40,7 @@ export function LoginScreen({ onContinueAsGuest }: { onContinueAsGuest: () => vo
         <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600">
           Student Nurse Planner
         </p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Sign in</h1>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">Sign in</h1>
 
         {redeeming ? (
           <p className="mt-4 text-sm text-slate-600">Signing you in…</p>

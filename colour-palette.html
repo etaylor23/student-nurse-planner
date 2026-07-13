@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Placemate — Colour Palette Guide</title>
+    <style>
+      /* =====================================================================
+         PLACEMATE — COLOUR PALETTE GUIDE
+         Single source of truth for the brand colours. The same values live as
+         CSS variables in src/index.css (@theme block). If you change one, change
+         the other. Open this file in a browser for the visual reference.
+         ===================================================================== */
+      :root {
+        --bg: #ffffff;
+        --surface: #f8fafc;
+        --border: #e2e8f0;
+        --ink: #16212f;
+        --ink-soft: #64748b;
+        --ink-faint: #94a3b8;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0b1220;
+          --surface: #131c2e;
+          --border: #26324a;
+          --ink: #f1f5f9;
+          --ink-soft: #94a3b8;
+          --ink-faint: #64748b;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        color: var(--ink);
+        background: var(--surface);
+        margin: 0;
+        padding: 40px 24px 80px;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 900px;
+        margin: 0 auto;
+      }
+      header.hd {
+        margin-bottom: 34px;
+      }
+      .kicker {
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+        font-weight: 700;
+        margin: 0 0 8px;
+      }
+      h1 {
+        font-size: 28px;
+        letter-spacing: -0.02em;
+        margin: 0 0 8px;
+      }
+      .lede {
+        font-size: 15px;
+        color: var(--ink-soft);
+        max-width: 60ch;
+        line-height: 1.55;
+        margin: 0;
+      }
+      h2.sec {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+        margin: 40px 0 14px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      /* hero role cards */
+      .heroes {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+      }
+      @media (max-width: 640px) {
+        .heroes {
+          grid-template-columns: 1fr;
+        }
+      }
+      .hero {
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        overflow: hidden;
+        background: var(--bg);
+      }
+      .hero .chip {
+        height: 104px;
+        display: flex;
+        align-items: flex-end;
+        padding: 12px 14px;
+      }
+      .hero .role {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.95);
+      }
+      .hero .meta {
+        padding: 13px 15px 16px;
+      }
+      .hero .nm {
+        font-size: 15px;
+        font-weight: 700;
+      }
+      .hero .hx {
+        font-size: 12px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        color: var(--ink-soft);
+        margin-top: 3px;
+      }
+      .hero .tok {
+        font-size: 11px;
+        font-family: ui-monospace, monospace;
+        color: var(--ink-faint);
+        margin-top: 2px;
+      }
+      .hero .desc {
+        font-size: 12.5px;
+        color: var(--ink-soft);
+        margin-top: 9px;
+        line-height: 1.5;
+      }
+      .wcag {
+        display: inline-block;
+        margin-top: 10px;
+        font-size: 10px;
+        font-weight: 600;
+        padding: 3px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        color: var(--ink-soft);
+      }
+
+      /* ramps */
+      .ramp-block {
+        margin-bottom: 16px;
+      }
+      .ramp-label {
+        font-size: 12px;
+        color: var(--ink-soft);
+        margin: 0 0 6px;
+        font-weight: 600;
+      }
+      .ramp {
+        display: flex;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+      }
+      .ramp .sw {
+        flex: 1;
+        height: 54px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding-bottom: 5px;
+        font-size: 9px;
+        font-family: ui-monospace, monospace;
+      }
+
+      /* semantic chips */
+      .sem {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 9px;
+      }
+      .sem .s {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12.5px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 6px 13px 6px 7px;
+        background: var(--bg);
+      }
+      .sem .dot {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+      }
+
+      /* in-context mockup */
+      .mock {
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        overflow: hidden;
+        background: var(--bg);
+      }
+      .mockbar {
+        background: #005eb8;
+        color: #fff;
+        padding: 13px 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .mockbar .brand {
+        font-size: 15px;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+      }
+      .mockbar .brand span {
+        opacity: 0.72;
+        font-weight: 600;
+      }
+      .mockbar .who {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.22);
+      }
+      .mockbody {
+        padding: 18px;
+      }
+      .mocktitle {
+        font-size: 14px;
+        font-weight: 700;
+        margin: 0 0 3px;
+      }
+      .mocksub {
+        font-size: 12.5px;
+        color: var(--ink-soft);
+        margin: 0 0 14px;
+      }
+      .shifts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+      .sh {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 5px 11px;
+        border-radius: 8px;
+      }
+      .sh.plan {
+        background: #f1f5f9;
+        color: #475569;
+      }
+      .sh.count {
+        background: #d1fae5;
+        color: #047857;
+      }
+      .sh.sim {
+        background: #e8f1fb;
+        color: #004b95;
+      }
+      .btns {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+      .btn {
+        font-size: 12.5px;
+        font-weight: 600;
+        padding: 9px 16px;
+        border-radius: 10px;
+        border: 1px solid transparent;
+      }
+      .btn.primary {
+        background: #059669;
+        color: #fff;
+      }
+      .btn.secondary {
+        background: #fff;
+        color: #005eb8;
+        border-color: #005eb8;
+      }
+      .nudge {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #fff1ee;
+        border: 1px solid #fecdd3;
+        color: #9f3b2e;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 8px 13px;
+        border-radius: 999px;
+      }
+      .nudge .heart {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #fb7185;
+      }
+      @media (prefers-color-scheme: dark) {
+        .nudge {
+          background: #2a1a17;
+          border-color: #4a2a24;
+          color: #ffb4a6;
+        }
+        .sh.plan {
+          background: #1e293b;
+          color: #cbd5e1;
+        }
+        .btn.secondary {
+          background: transparent;
+          color: #63b3ff;
+          border-color: #3d7fd6;
+        }
+      }
+
+      /* usage table */
+      .usage {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      .usage th,
+      .usage td {
+        text-align: left;
+        padding: 9px 12px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+      }
+      .usage th {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--ink-faint);
+        font-weight: 700;
+      }
+      .usage td.c {
+        white-space: nowrap;
+      }
+      .usage .swm {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        vertical-align: middle;
+        margin-right: 7px;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        padding: 1px 5px;
+      }
+      footer.ft {
+        margin-top: 44px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+        font-size: 12px;
+        color: var(--ink-faint);
+        line-height: 1.6;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="hd">
+        <p class="kicker">Placemate · brand</p>
+        <h1>Colour palette guide</h1>
+        <p class="lede">
+          A calm, professional system for a student-nurse companion app. Emerald leads (growth,
+          health, calm); NHS blue anchors it (trust, credibility); a whisper of coral keeps it
+          human. Neutrals are slate, text is off-black. These values are mirrored as CSS variables
+          in <code>src/index.css</code> — that file is the source of truth in code.
+        </p>
+      </header>
+
+      <h2 class="sec">Core roles</h2>
+      <div class="heroes">
+        <div class="hero">
+          <div class="chip" style="background: #059669"><span class="role">Primary</span></div>
+          <div class="meta">
+            <div class="nm">Emerald</div>
+            <div class="hx">#10B981 · #059669</div>
+            <div class="tok">--color-primary-*</div>
+            <div class="desc">
+              Growth, health, calm. The inspiring lead — CTAs, active states, progress, success.
+            </div>
+            <span class="wcag">Use 700 for small text on white</span>
+          </div>
+        </div>
+        <div class="hero">
+          <div class="chip" style="background: #005eb8"><span class="role">Secondary</span></div>
+          <div class="meta">
+            <div class="nm">NHS Blue</div>
+            <div class="hx">#005EB8</div>
+            <div class="tok">--color-secondary-600</div>
+            <div class="desc">
+              Trust &amp; clinical credibility. The anchor — headers, links, informational surfaces,
+              secondary buttons.
+            </div>
+            <span class="wcag">AA on white · 5.6:1</span>
+          </div>
+        </div>
+        <div class="hero">
+          <div class="chip" style="background: #fb7185"><span class="role">Accent</span></div>
+          <div class="meta">
+            <div class="nm">Coral</div>
+            <div class="hx">#FB7185</div>
+            <div class="tok">--color-accent-400</div>
+            <div class="desc">
+              Warmth &amp; care. Used sparingly (5–10%) for wellbeing, self-care, gentle nudges.
+            </div>
+            <span class="wcag">Decorative / large text only</span>
+          </div>
+        </div>
+      </div>
+
+      <h2 class="sec">Tonal ramps</h2>
+
+      <div class="ramp-block">
+        <p class="ramp-label">Emerald — <code>--color-primary-{50…900}</code></p>
+        <div class="ramp">
+          <div class="sw" style="background: #ecfdf5; color: #065f46">50</div>
+          <div class="sw" style="background: #d1fae5; color: #065f46">100</div>
+          <div class="sw" style="background: #a7f3d0; color: #065f46">200</div>
+          <div class="sw" style="background: #6ee7b7; color: #065f46">300</div>
+          <div class="sw" style="background: #34d399; color: #064e3b">400</div>
+          <div class="sw" style="background: #10b981; color: #fff">500</div>
+          <div class="sw" style="background: #059669; color: #fff">600</div>
+          <div class="sw" style="background: #047857; color: #fff">700</div>
+          <div class="sw" style="background: #065f46; color: #fff">800</div>
+          <div class="sw" style="background: #064e3b; color: #fff">900</div>
+        </div>
+      </div>
+
+      <div class="ramp-block">
+        <p class="ramp-label">
+          NHS Blue — <code>--color-secondary-{50…900}</code> (built on official NHS blues)
+        </p>
+        <div class="ramp">
+          <div class="sw" style="background: #e8f1fb; color: #003087">50</div>
+          <div class="sw" style="background: #cfe4f7; color: #003087">100</div>
+          <div class="sw" style="background: #a3caee; color: #003087">200</div>
+          <div class="sw" style="background: #6badde; color: #003087">300</div>
+          <div class="sw" style="background: #2f8fd6; color: #fff">400</div>
+          <div class="sw" style="background: #0072ce; color: #fff">500</div>
+          <div class="sw" style="background: #005eb8; color: #fff">600</div>
+          <div class="sw" style="background: #004b95; color: #fff">700</div>
+          <div class="sw" style="background: #003087; color: #fff">800</div>
+          <div class="sw" style="background: #00265f; color: #fff">900</div>
+        </div>
+      </div>
+
+      <div class="ramp-block">
+        <p class="ramp-label">Coral — <code>--color-accent-{50…700}</code></p>
+        <div class="ramp">
+          <div class="sw" style="background: #fff1ee; color: #9f1239">50</div>
+          <div class="sw" style="background: #ffe4e6; color: #9f1239">100</div>
+          <div class="sw" style="background: #fecdd3; color: #9f1239">200</div>
+          <div class="sw" style="background: #fda4af; color: #9f1239">300</div>
+          <div class="sw" style="background: #fb7185; color: #fff">400</div>
+          <div class="sw" style="background: #f43f5e; color: #fff">500</div>
+          <div class="sw" style="background: #e11d48; color: #fff">600</div>
+          <div class="sw" style="background: #be123c; color: #fff">700</div>
+        </div>
+      </div>
+
+      <div class="ramp-block">
+        <p class="ramp-label">
+          Slate — neutrals for surfaces &amp; secondary text (Tailwind <code>slate-*</code>).
+          Darkest text is the <code>--color-ink</code> off-black, not pure #000.
+        </p>
+        <div class="ramp">
+          <div class="sw" style="background: #f8fafc; color: #334155">50</div>
+          <div class="sw" style="background: #f1f5f9; color: #334155">100</div>
+          <div class="sw" style="background: #e2e8f0; color: #334155">200</div>
+          <div class="sw" style="background: #cbd5e1; color: #334155">300</div>
+          <div class="sw" style="background: #94a3b8; color: #fff">400</div>
+          <div class="sw" style="background: #64748b; color: #fff">500</div>
+          <div class="sw" style="background: #475569; color: #fff">600</div>
+          <div class="sw" style="background: #334155; color: #fff">700</div>
+          <div class="sw" style="background: #1e293b; color: #fff">800</div>
+          <div class="sw" style="background: #16212f; color: #fff">ink</div>
+        </div>
+      </div>
+
+      <h2 class="sec">Semantic roles</h2>
+      <div class="sem">
+        <div class="s"><span class="dot" style="background: #059669"></span>Success · emerald</div>
+        <div class="s"><span class="dot" style="background: #005eb8"></span>Info · NHS blue</div>
+        <div class="s"><span class="dot" style="background: #f59e0b"></span>Warning · amber</div>
+        <div class="s"><span class="dot" style="background: #dc2626"></span>Danger · red</div>
+      </div>
+
+      <h2 class="sec">In context</h2>
+      <div class="mock">
+        <div class="mockbar">
+          <div class="brand">Place<span>mate</span></div>
+          <div class="who"></div>
+        </div>
+        <div class="mockbody">
+          <p class="mocktitle">Week 6 · Ward placement</p>
+          <p class="mocksub">Royal Infirmary · 22.5 hrs counted this week</p>
+          <div class="shifts">
+            <span class="sh count">Long day · counted</span>
+            <span class="sh plan">Night · planned</span>
+            <span class="sh sim">Study · simulated</span>
+          </div>
+          <div class="btns">
+            <span class="btn primary">Log a shift</span>
+            <span class="btn secondary">View hours</span>
+            <span class="nudge"><span class="heart"></span>Take a breather</span>
+          </div>
+        </div>
+      </div>
+
+      <h2 class="sec">Where each colour goes</h2>
+      <table class="usage">
+        <thead>
+          <tr>
+            <th>Colour</th>
+            <th>Use for</th>
+            <th>Avoid</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="c"><span class="swm" style="background: #059669"></span>Emerald</td>
+            <td>Primary buttons, active nav, progress bars, "counted", success states.</td>
+            <td>Long body text at 500/600 weight (contrast) — step to 700.</td>
+          </tr>
+          <tr>
+            <td class="c"><span class="swm" style="background: #005eb8"></span>NHS blue</td>
+            <td>Text links, secondary buttons, info states, headers, the app wordmark.</td>
+            <td>Competing with emerald as a second "primary" CTA on the same view.</td>
+          </tr>
+          <tr>
+            <td class="c"><span class="swm" style="background: #fb7185"></span>Coral</td>
+            <td>Self-care / wellbeing touches, gentle encouragement, one small highlight.</td>
+            <td>Anything &gt;10% of a screen; never for errors (that's red).</td>
+          </tr>
+          <tr>
+            <td class="c"><span class="swm" style="background: #16212f"></span>Ink</td>
+            <td>Headings and primary text — the softened off-black.</td>
+            <td>Pure #000; harsh on screens and clashes with the cool palette.</td>
+          </tr>
+          <tr>
+            <td class="c"><span class="swm" style="background: #64748b"></span>Slate</td>
+            <td>Secondary text, borders, surfaces, disabled states.</td>
+            <td>Letting it become the whole app — that's the "dull" trap.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <footer class="ft">
+        Source of truth in code: <code>src/index.css</code> (<code>@theme</code> block). Utilities
+        follow Tailwind naming — <code>bg-primary-600</code>, <code>text-secondary-600</code>,
+        <code>text-ink</code>, <code>bg-accent-400</code>. Keep this file and the CSS in sync.
+      </footer>
+    </div>
+  </body>
+</html>

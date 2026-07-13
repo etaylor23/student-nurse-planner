@@ -216,7 +216,7 @@ function CalcExam({
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm">
         <p className="text-sm font-medium text-slate-400">Exam complete · {time}</p>
-        <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">
+        <p className="mt-2 text-3xl font-semibold tracking-tight text-ink">
           {score}/{EXAM_SIZE}
         </p>
         <span

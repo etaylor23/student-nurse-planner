@@ -195,6 +195,53 @@ input-validation schemas, codegen'd via ts-to-zod).
 The remote backend lives in a separate CDK app under [`infra/`](./infra/README.md)
 (`cdk synth` / `cdk deploy` — see its README). It is not deployed yet.
 
+### Build & deployment (CI/CD)
+
+Three deployables, each built separately:
+
+| Target | Build | Output |
+|--------|-------|--------|
+| **App SPA** | `npm run build` (`tsc --noEmit && vite build`) | `dist/` |
+| **Marketing site** (placemate.uk) | `cd site && npm run build` | `site/dist/` |
+| **Backend** (CDK) | `cd infra && npx cdk deploy NursePlanner-<env>` | AWS CloudFormation |
+
+GitHub Actions (`.github/workflows/`) does the rest. All AWS access is via the
+GitHub→AWS **OIDC role** `github-actions-deploy` in account `641364901830` — **no
+stored secrets**.
+
+**What a push to `master` triggers automatically:**
+
+| Workflow | Runs when | Does |
+|----------|-----------|------|
+| `ci.yml` | every push to `master` + every PR | Checks only — typecheck, `gen:zod` drift, tests, `cdk synth`. **No deploy.** |
+| `deploy.yml` | every push to `master` | Builds the SPA → **GitHub Pages** (legacy `/student-nurse-planner/` mirror; coexists until DNS cutover). |
+| `deploy-marketing.yml` | push to `master` **only when `site/**` changes** | Builds the Astro site → `NursePlanner-Marketing` S3 bucket → CloudFront invalidation → **placemate.uk**. |
+
+**Manual-only (`workflow_dispatch`, choose `dev`/`prod`):**
+
+| Workflow | Does |
+|----------|------|
+| `deploy-frontend.yml` | Builds the SPA → `NursePlanner-<env>` S3 bucket → CloudFront invalidation → **app.placemate.uk**. |
+| `deploy-backend.yml` | `cdk deploy NursePlanner-<env>` (the first deploy of an env needs a human `cdk bootstrap` — Phase 0 gate). |
+
+Trigger a manual deploy from the Actions tab, or via the CLI:
+
+```bash
+gh workflow run "Deploy frontend (S3 + CloudFront)" -f environment=dev    # then prod
+gh workflow run "Deploy backend (CDK)"             -f environment=dev
+```
+
+**Consequences worth remembering:**
+
+- **The app is not auto-deployed to `app.placemate.uk`.** A push runs CI and updates
+  the GitHub Pages mirror, but the CloudFront app only updates when someone runs
+  **Deploy frontend** manually (dev, then prod). App-only changes (e.g. anything under
+  `src/`) never touch the marketing site.
+- **The marketing site only rebuilds when `site/**` changes** — app changes don't
+  trigger it, and vice-versa.
+- A backend/CDK change (`infra/**`) is **manual** too — `cdk synth` runs in CI for
+  safety, but `cdk deploy` is never automatic.
+
 ## 10. Spec index
 
 - [`spec-architecture.md`](./spec/spec-architecture.md) — data model (full Prisma

@@ -34,16 +34,26 @@ export const card =
   "min-w-0 rounded-2xl bg-white p-6 ring-1 ring-slate-200/70 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_18px_44px_-28px_rgba(16,24,40,0.22)]";
 
 export const inputCls =
-  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25";
+  "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-ink shadow-sm transition placeholder:text-slate-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/25";
 
 export const btnPrimary =
-  "inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700 active:scale-[.99]";
+  "inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-primary-700 active:scale-[.99]";
+
+// Secondary CTA — NHS blue. The trust-coloured counterpart to the emerald
+// primary, for actions that sit alongside (not competing with) the main CTA.
+export const btnSecondary =
+  "inline-flex items-center justify-center gap-1.5 rounded-xl bg-secondary-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-secondary-700 active:scale-[.99]";
 
 export const btnGhost =
   "inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[.99]";
 
 export const btnGhostSm =
   "inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 active:scale-[.99]";
+
+// Inline text link — NHS blue, the conventional link colour. Use for links
+// that sit inside body copy (not for buttons or nav).
+export const link =
+  "font-medium text-secondary-700 underline-offset-2 transition-colors hover:text-secondary-800 hover:underline";
 
 /**
  * The page hero: an eyebrow, title and subtitle on the left, an optional metric
@@ -67,11 +77,11 @@ export function PageHero({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           {eyebrow && (
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-primary-600">
               {eyebrow}
             </p>
           )}
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">{title}</h1>
           {subtitle && <p className="mt-1 max-w-md text-sm text-slate-500">{subtitle}</p>}
         </div>
         {aside && <div className="text-right">{aside}</div>}
@@ -106,7 +116,7 @@ export function Panel({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           {step != null && (
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-50 text-xs font-semibold text-primary-700 ring-1 ring-primary-100">
               {step}
             </span>
           )}
@@ -140,7 +150,7 @@ export function StatTile({
         {dot && <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />}
         <span className="text-xs font-medium text-slate-500">{label}</span>
       </div>
-      <div className="mt-2 text-2xl font-semibold tabular-nums tracking-tight text-slate-900">
+      <div className="mt-2 text-2xl font-semibold tabular-nums tracking-tight text-ink">
         {value}
       </div>
       {sub && <div className="mt-0.5 text-xs text-slate-400">{sub}</div>}

@@ -46,10 +46,10 @@ function NavItemLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => v
       to={item.path}
       onClick={onNavigate}
       className={({ isActive }) =>
-        "group/link flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 " +
+        "group/link flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 " +
         (isActive
-          ? "bg-emerald-50 font-medium text-emerald-700"
-          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900")
+          ? "bg-primary-50 font-medium text-primary-700"
+          : "text-slate-600 hover:bg-slate-100 hover:text-ink")
       }
     >
       <NavIcon item={item} />
@@ -122,11 +122,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
   }, [location.pathname]);
 
   return (
-    <div className="relative min-h-screen bg-slate-50 text-slate-900">
-      {/* Soft, brand-tinted wash at the top — depth without distraction. */}
+    <div className="relative min-h-screen bg-slate-50 text-ink">
+      {/* Soft two-tone brand wash at the top — emerald easing into NHS blue,
+          for depth and a hint of both brand colours without distraction. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-gradient-to-b from-emerald-50/70 via-emerald-50/10 to-transparent"
+        className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-gradient-to-b from-primary-50/80 via-secondary-50/25 to-transparent"
       />
 
       {/* ---------- Top header bar (full-bleed, edge to edge) ---------- */}
@@ -150,10 +151,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </svg>
         </button>
         <Link to="/" className="flex items-center gap-2.5" aria-label="Student Nurse Planner home">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-sm font-semibold text-white shadow-sm">
+          {/* Two-tone brand mark: emerald → NHS blue, previewing the logo direction. */}
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary-500 to-secondary-600 text-sm font-semibold text-white shadow-sm">
             SN
           </span>
-          <span className="text-[15px] font-semibold tracking-tight text-slate-900">
+          <span className="text-[15px] font-semibold tracking-tight text-ink">
             Student Nurse Planner
           </span>
         </Link>

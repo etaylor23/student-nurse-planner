@@ -370,7 +370,7 @@ export function PlannerPage() {
         subtitle="Plan shifts on the calendar, then tick them off — they're the same shifts as your hours log."
         aside={
           <>
-            <div className="text-2xl font-semibold tabular-nums tracking-tight text-slate-900">
+            <div className="text-2xl font-semibold tabular-nums tracking-tight text-ink">
               {summary.practiceHours}
               <span className="text-base font-normal text-slate-400">
                 {" "}

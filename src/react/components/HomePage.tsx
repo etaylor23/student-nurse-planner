@@ -7,7 +7,7 @@ import { useRepository } from "../RepositoryContext";
 import { ActivityLog } from "./ActivityLog";
 import { TopGaps } from "./competencies/TopGaps";
 import { SignedOffBadge, SkillStageBadge } from "./skills/shared";
-import { PageHero, Panel, btnGhost, btnGhostSm, btnPrimary } from "./ui";
+import { PageHero, Panel, btnGhost, btnGhostSm, btnPrimary, link } from "./ui";
 
 /**
  * Home / Today (U2) — the hub landing page. New data of its own; it just mounts the
@@ -53,7 +53,7 @@ export function HomePage() {
         subtitle="Your day at a glance — pick up where you left off, and capture as you go."
         aside={
           <>
-            <div className="text-2xl font-semibold tabular-nums tracking-tight text-slate-900">
+            <div className="text-2xl font-semibold tabular-nums tracking-tight text-ink">
               {summary.practiceHours}
               <span className="text-base font-normal text-slate-400">
                 {" "}
@@ -106,7 +106,7 @@ export function HomePage() {
           <Panel title="No upcoming shifts">
             <p className="text-sm text-slate-500">
               Plan your next shift on the{" "}
-              <Link to="/planner" className="font-medium text-emerald-700">
+              <Link to="/planner" className={link}>
                 weekly planner
               </Link>
               .
@@ -123,7 +123,7 @@ export function HomePage() {
             </Link>
           }
         >
-          <div className="text-2xl font-semibold tabular-nums text-slate-900">
+          <div className="text-2xl font-semibold tabular-nums text-ink">
             {summary.practiceHours}
             <span className="text-base font-normal text-slate-400">
               {" "}
@@ -153,7 +153,7 @@ export function HomePage() {
           {recentSkills.length === 0 ? (
             <p className="text-sm text-slate-400">
               No skills started yet —{" "}
-              <Link to="/skills" className="font-medium text-emerald-700">
+              <Link to="/skills" className={link}>
                 pick one to track
               </Link>
               .

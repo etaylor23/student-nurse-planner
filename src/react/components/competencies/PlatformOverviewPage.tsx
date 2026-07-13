@@ -127,7 +127,7 @@ export function PlatformOverviewPage() {
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600">
                   {g.annexe === "NONE" ? `Platform ${g.platform}` : `Annexe ${g.annexe}`}
                 </span>
-                <span className="text-sm font-semibold tabular-nums text-slate-900">
+                <span className="text-sm font-semibold tabular-nums text-ink">
                   {g.percentAchieved}%
                 </span>
               </div>

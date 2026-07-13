@@ -135,7 +135,7 @@ export function MedicationListPage() {
                   className="absolute inset-0 rounded-xl"
                   aria-label={`Open ${m.name}`}
                 />
-                <p className="font-medium text-slate-900">
+                <p className="font-medium text-ink">
                   {m.name}
                   {m.highAlert && (
                     <span

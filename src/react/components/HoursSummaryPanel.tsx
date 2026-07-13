@@ -33,7 +33,7 @@ export function HoursSummaryPanel({
       subtitle={`Counting toward ${target} practice hours. Your PAD stays the official record.`}
       aside={
         <>
-          <div className="text-3xl font-semibold tabular-nums tracking-tight text-slate-900">
+          <div className="text-3xl font-semibold tabular-nums tracking-tight text-ink">
             {summary.practiceHours}
             <span className="text-lg font-normal text-slate-400"> / {target} h</span>
           </div>
