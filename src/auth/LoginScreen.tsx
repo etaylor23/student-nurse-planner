@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { usePasswordless } from "amazon-cognito-passwordless-auth/react";
 import { btnGhost, btnPrimary, card, inputCls } from "../react/components/ui";
+import { Logo } from "../react/components/Logo";
 
 /**
  * The logged-out screen (spec-auth §2.1, §2.4) — a first-class page, not an error.
@@ -37,10 +38,8 @@ export function LoginScreen({ onContinueAsGuest }: { onContinueAsGuest: () => vo
   return (
     <div className="flex min-h-dvh items-center justify-center bg-slate-50 px-4 py-10">
       <div className={`${card} w-full max-w-md`}>
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600">
-          Student Nurse Planner
-        </p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">Sign in</h1>
+        <Logo size={34} className="mb-4" />
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">Sign in</h1>
 
         {redeeming ? (
           <p className="mt-4 text-sm text-slate-600">Signing you in…</p>

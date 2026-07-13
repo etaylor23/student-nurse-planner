@@ -70,7 +70,7 @@ export function buildIcs(shifts: Shift[], placements: Placement[], dtstamp?: str
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Student Nurse Planner//EN",
+    "PRODID:-//Placemate//EN",
     "CALSCALE:GREGORIAN",
     ...shifts.flatMap((s) =>
       eventLines(s, s.placementId ? nameById.get(s.placementId) : undefined, stamp),

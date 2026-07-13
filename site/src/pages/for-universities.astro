@@ -5,9 +5,9 @@ import Icon from "../components/Icon.astro";
 import { SITE, FACTS } from "../consts";
 import { organization, breadcrumb } from "../schema";
 
-const title = "PlaceMate for universities — practice placement support";
+const title = "Placemate for universities — practice placement support";
 const description =
-  "PlaceMate helps nursing students arrive at placement organised and evidence-ready, aligned to the NMC proficiencies. Exploring partnerships with UK universities and practice-placement teams.";
+  "Placemate helps nursing students arrive at placement organised and evidence-ready, aligned to the NMC proficiencies. Exploring partnerships with UK universities and practice-placement teams.";
 
 const jsonLd = [
   organization(),
@@ -39,16 +39,16 @@ const points = [
 <Layout title={title} description={description} jsonLd={jsonLd}>
   <section class="mx-auto max-w-6xl px-4 pt-16 sm:px-6">
     <p class="text-sm font-semibold uppercase tracking-wider text-emerald-600">For universities</p>
-    <h1 class="mt-3 max-w-3xl text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
+    <h1 class="mt-3 max-w-3xl text-4xl font-bold tracking-tight text-ink sm:text-5xl">
       Placement support that starts with the student
     </h1>
     <p class="mt-5 max-w-2xl text-lg text-slate-600">
-      PlaceMate is student-first today: individual nurses use it free to stay organised across
+      Placemate is student-first today: individual nurses use it free to stay organised across
       placement. For course leaders and practice-placement teams, that means learners who arrive
       engaged, evidence-ready and aligned to the NMC standards.
     </p>
     <div class="mt-8">
-      <Button href={`mailto:${SITE.email}?subject=PlaceMate%20for%20universities`}>
+      <Button href={`mailto:${SITE.email}?subject=Placemate%20for%20universities`}>
         Talk to us about your cohort
       </Button>
     </div>
@@ -62,7 +62,7 @@ const points = [
             <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
               <Icon name={p.icon} />
             </div>
-            <h2 class="mt-4 text-lg font-semibold text-slate-900">{p.title}</h2>
+            <h2 class="mt-4 text-lg font-semibold text-ink">{p.title}</h2>
             <p class="mt-2 text-sm leading-relaxed text-slate-600">{p.body}</p>
           </div>
         ))
@@ -72,7 +72,7 @@ const points = [
 
   <section class="bg-slate-50">
     <div class="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6">
-      <h2 class="text-2xl font-bold tracking-tight text-slate-900">
+      <h2 class="text-2xl font-bold tracking-tight text-ink">
         Exploring institutional partnerships
       </h2>
       <p class="mx-auto mt-3 max-w-2xl text-slate-600">
@@ -81,7 +81,7 @@ const points = [
         what comes next, we'd love to hear from you.
       </p>
       <div class="mt-7">
-        <Button href={`mailto:${SITE.email}?subject=PlaceMate%20partnership`}>
+        <Button href={`mailto:${SITE.email}?subject=Placemate%20partnership`}>
           Get in touch
         </Button>
       </div>

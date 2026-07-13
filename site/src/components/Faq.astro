@@ -11,7 +11,7 @@ const { faqs } = Astro.props;
   {
     faqs.map((f) => (
       <details class="group px-5">
-        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 py-4 text-left text-[15px] font-semibold text-slate-900 [&::-webkit-details-marker]:hidden">
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 py-4 text-left text-[15px] font-semibold text-ink [&::-webkit-details-marker]:hidden">
           {f.q}
           <svg
             class="h-5 w-5 shrink-0 text-slate-400 transition group-open:rotate-45"

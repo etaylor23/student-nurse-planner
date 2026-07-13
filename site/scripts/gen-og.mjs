@@ -14,12 +14,13 @@ mkdirSync(join(pub, "og"), { recursive: true });
 
 const FONT = "Helvetica Neue, Helvetica, Arial, sans-serif";
 
-// The pin+check mark, parameterised by size + corner radius (0 = full-bleed for iOS).
+// The heart-pin mark on a gradient tile (emerald → NHS blue), parameterised by size +
+// corner radius (0 = full-bleed for iOS). Matches public/placemate-mark.svg + Logo.astro.
 const mark = (size, radius) => `
-  <rect width="${size}" height="${size}" rx="${radius}" fill="#059669"/>
-  <g transform="translate(${size * 0.09} ${size * 0.09}) scale(${(size * 0.82) / 32})">
-    <path d="M16 3c-4.7 0-8.5 3.8-8.5 8.5 0 5.9 7 12.8 8 13.6.3.3.7.3 1 0 1-.8 8-7.7 8-13.6C24.5 6.8 20.7 3 16 3Z" fill="#fff" fill-opacity="0.22"/>
-    <path d="m11.4 12.2 3 3 5.6-6" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <defs><linearGradient id="pm${size}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#10b981"/><stop offset="1" stop-color="#005eb8"/></linearGradient></defs>
+  <rect width="${size}" height="${size}" rx="${radius}" fill="url(#pm${size})"/>
+  <g transform="translate(${size * 0.14} ${size * 0.14}) scale(${size * 0.03})">
+    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="#fff"/>
   </g>`;
 
 const ogSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
@@ -35,18 +36,18 @@ const ogSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630"
   <!-- brand lockup -->
   <g transform="translate(80 70)">
     <g transform="translate(0 0)">${mark(56, 14)}</g>
-    <text x="72" y="40" font-family="${FONT}" font-size="34" font-weight="700" fill="#0f172a">Place<tspan fill="#059669">Mate</tspan></text>
+    <text x="72" y="40" font-family="${FONT}" font-size="34" font-weight="800" fill="#16212f">place<tspan fill="#059669">mate</tspan></text>
   </g>
 
   <!-- headline -->
-  <text x="80" y="270" font-family="${FONT}" font-size="76" font-weight="800" fill="#0f172a" letter-spacing="-2">The planner for</text>
-  <text x="80" y="356" font-family="${FONT}" font-size="76" font-weight="800" fill="#0f172a" letter-spacing="-2">UK student nurses</text>
+  <text x="80" y="270" font-family="${FONT}" font-size="76" font-weight="800" fill="#16212f" letter-spacing="-2">The planner for</text>
+  <text x="80" y="356" font-family="${FONT}" font-size="76" font-weight="800" fill="#16212f" letter-spacing="-2">UK student nurses</text>
 
   <!-- subline -->
   <text x="80" y="430" font-family="${FONT}" font-size="34" font-weight="600" fill="#047857">Placement hours · NMC proficiencies · shifts · revision</text>
 
   <!-- footer -->
-  <text x="80" y="560" font-family="${FONT}" font-size="30" font-weight="700" fill="#0f172a">placemate.uk</text>
+  <text x="80" y="560" font-family="${FONT}" font-size="30" font-weight="700" fill="#16212f">placemate.uk</text>
   <text x="1120" y="560" text-anchor="end" font-family="${FONT}" font-size="26" font-weight="600" fill="#64748b">Free for student nurses</text>
 
   <!-- decorative faded mark -->

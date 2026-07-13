@@ -1,7 +1,7 @@
 ---
-// PlaceMate wordmark: an emerald rounded-square "pin + check" mark next to the name.
-// `markOnly` reuses just the badge (e.g. compact header on mobile). The same mark art
-// lives in public/favicon.svg and the OG generator (scripts/gen-og.mjs) — keep in sync.
+// Placemate logo: the heart-pin mark (place + care) next to the lowercase wordmark
+// ("place" in ink, "mate" in the emerald primary). The mark art matches
+// public/placemate-mark.svg, the p-tile favicon and the OG generator — keep in sync.
 interface Props {
   class?: string;
   markOnly?: boolean;
@@ -9,32 +9,33 @@ interface Props {
 const { class: className = "", markOnly = false } = Astro.props;
 ---
 
-<span class={`inline-flex items-center gap-2 ${className}`}>
+<span class={`inline-flex items-center gap-2.5 ${className}`}>
   <svg
-    width="28"
-    height="28"
-    viewBox="0 0 32 32"
-    fill="none"
+    width="30"
+    height="30"
+    viewBox="0 0 64 64"
     xmlns="http://www.w3.org/2000/svg"
     aria-hidden="true"
     class="shrink-0"
   >
-    <rect width="32" height="32" rx="8" fill="#059669"></rect>
+    <defs>
+      <linearGradient id="pmGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#10b981"></stop>
+        <stop offset="1" stop-color="#005eb8"></stop>
+      </linearGradient>
+    </defs>
     <path
-      d="M16 7c-3.6 0-6.5 2.9-6.5 6.5 0 4.4 5.3 9.6 6 10.2.3.3.7.3 1 0 .7-.6 6-5.8 6-10.2C22.5 9.9 19.6 7 16 7Z"
+      d="M32 7 C 21 7 12 16 12 27 C 12 38 25 52 31 57.5 C 31.6 58.1 32.4 58.1 33 57.5 C 39 52 52 38 52 27 C 52 16 43 7 32 7 Z"
+      fill="url(#pmGrad)"></path>
+    <path
+      d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
       fill="#fff"
-      fill-opacity="0.22"></path>
-    <path
-      d="m12.7 13.6 2.3 2.3 4.3-4.6"
-      stroke="#fff"
-      stroke-width="2.2"
-      stroke-linecap="round"
-      stroke-linejoin="round"></path>
+      transform="translate(21.8 14.6) scale(0.85)"></path>
   </svg>
   {
     !markOnly && (
-      <span class="text-lg font-semibold tracking-tight text-slate-900">
-        Place<span class="text-emerald-600">Mate</span>
+      <span class="text-lg font-extrabold lowercase tracking-tight text-ink">
+        place<span class="text-emerald-600">mate</span>
       </span>
     )
   }

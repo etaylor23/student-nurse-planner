@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { NAV_SECTIONS, type NavItem } from "../nav";
+import { Logo } from "./Logo";
 
 /** Minimal line icons keyed by nav path. Inherit color + size from the parent. */
 const ICONS: Record<string, ReactNode> = {
@@ -150,14 +151,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <path d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <Link to="/" className="flex items-center gap-2.5" aria-label="Student Nurse Planner home">
-          {/* Two-tone brand mark: emerald → NHS blue, previewing the logo direction. */}
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary-500 to-secondary-600 text-sm font-semibold text-white shadow-sm">
-            SN
-          </span>
-          <span className="text-[15px] font-semibold tracking-tight text-ink">
-            Student Nurse Planner
-          </span>
+        <Link to="/" className="flex items-center" aria-label="Placemate home">
+          <Logo size={30} />
         </Link>
       </header>
 

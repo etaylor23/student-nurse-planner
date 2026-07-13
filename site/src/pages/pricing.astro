@@ -4,9 +4,9 @@ import Button from "../components/Button.astro";
 import { SITE, CTA } from "../consts";
 import { breadcrumb } from "../schema";
 
-const title = "Pricing — PlaceMate is free for student nurses";
+const title = "Pricing — Placemate is free for student nurses";
 const description =
-  "PlaceMate is free for UK student nurses — every feature, no card required. See what's included and how the free plan works.";
+  "Placemate is free for UK student nurses — every feature, no card required. See what's included and how the free plan works.";
 
 const included = [
   "Placement hours tracker",
@@ -44,7 +44,7 @@ const jsonLd = [
 <Layout title={title} description={description} jsonLd={jsonLd}>
   <section class="mx-auto max-w-6xl px-4 pt-16 text-center sm:px-6">
     <p class="text-sm font-semibold uppercase tracking-wider text-emerald-600">Pricing</p>
-    <h1 class="mt-3 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
+    <h1 class="mt-3 text-4xl font-bold tracking-tight text-ink sm:text-5xl">
       Free for student nurses
     </h1>
     <p class="mx-auto mt-5 max-w-xl text-lg text-slate-600">
@@ -58,12 +58,12 @@ const jsonLd = [
       <!-- Student plan -->
       <div class="rounded-3xl border-2 border-emerald-500 bg-white p-8 shadow-sm">
         <div class="flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-slate-900">Student</h2>
+          <h2 class="text-lg font-semibold text-ink">Student</h2>
           <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
             Free
           </span>
         </div>
-        <p class="mt-4 text-4xl font-bold text-slate-900">£0</p>
+        <p class="mt-4 text-4xl font-bold text-ink">£0</p>
         <p class="mt-1 text-sm text-slate-500">forever, for individual student nurses</p>
         <Button href={CTA.signup.href} external class="mt-6 w-full">{CTA.signup.label}</Button>
         <ul class="mt-6 space-y-2.5">
@@ -91,11 +91,11 @@ const jsonLd = [
 
       <!-- Universities -->
       <div class="rounded-3xl border border-slate-200 bg-slate-50 p-8">
-        <h2 class="text-lg font-semibold text-slate-900">Universities</h2>
-        <p class="mt-4 text-2xl font-bold text-slate-900">Let's talk</p>
+        <h2 class="text-lg font-semibold text-ink">Universities</h2>
+        <p class="mt-4 text-2xl font-bold text-ink">Let's talk</p>
         <p class="mt-1 text-sm text-slate-500">cohort features for nursing programmes</p>
         <Button
-          href={`mailto:${SITE.email}?subject=PlaceMate%20for%20universities`}
+          href={`mailto:${SITE.email}?subject=Placemate%20for%20universities`}
           variant="secondary"
           class="mt-6 w-full"
         >
@@ -105,14 +105,14 @@ const jsonLd = [
           We're building toward tools for course leaders and practice-placement teams. If you'd like
           to help shape them for your cohort, get in touch — see
           <a href="/for-universities" class="font-medium text-emerald-700 hover:text-emerald-800">
-            PlaceMate for universities</a
+            Placemate for universities</a
           >.
         </p>
       </div>
     </div>
 
     <p class="mx-auto mt-8 max-w-2xl text-center text-sm text-slate-500">
-      PlaceMate is in early access. You can start instantly in demo mode on your device, or create a
+      Placemate is in early access. You can start instantly in demo mode on your device, or create a
       free account to sync across devices.
     </p>
   </section>
