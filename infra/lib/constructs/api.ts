@@ -51,6 +51,11 @@ export class Api extends Construct {
       ...commonFnProps,
       functionName: `nurse-planner-router-${config.name}`,
       entry: path.join(LAMBDA_DIR, "router", "index.ts"),
+      // `zod` is imported transitively by the bundled app code (src/domain/schemas.generated).
+      // Keep it a runtime dependency rather than bundling it, so esbuild doesn't have to
+      // resolve it from the repo-root node_modules (absent when CI installs only infra/).
+      // CDK installs it into the function from infra/package-lock.json.
+      bundling: { ...commonFnProps.bundling, nodeModules: ["zod"] },
       environment: {
         TABLE_NAME: table.tableName,
         POLICY_STORE_ID: policyStore.attrPolicyStoreId,
