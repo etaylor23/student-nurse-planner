@@ -4,13 +4,23 @@ name: Deploy frontend (S3 + CloudFront)
 # CloudFront. Bucket name + distribution id are read from the CDK stack outputs, so this
 # only works AFTER the backend stack for that environment is deployed.
 #
-# Coexists with the GitHub Pages workflow (deploy.yml) until DNS cutover (roadmap §4
-# Phase 2). Manual for now; can become push-triggered on cutover.
+# AUTO on push to master when app sources change (path-filtered below) → deploys to the
+# live env (`dev` — promoted-in-place to prod, see infra/lib/config.ts). Also runnable
+# manually against any env via the Run workflow button.
 #
 # Requires the OIDC role to allow (beyond assuming CDK roles): cloudformation:DescribeStacks,
 # S3 read/write on the web bucket, and cloudfront:CreateInvalidation — see perms.json.
 
 on:
+  push:
+    branches: [master]
+    paths:
+      - "src/**"
+      - "index.html"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.config.ts"
+      - "tsconfig*.json"
   workflow_dispatch:
     inputs:
       environment:
@@ -23,10 +33,18 @@ permissions:
   id-token: write
   contents: read
 
+# One deploy per env at a time; a newer push supersedes an in-flight one.
+concurrency:
+  group: deploy-frontend-${{ inputs.environment || 'dev' }}
+  cancel-in-progress: true
+
 jobs:
   deploy:
-    name: publish SPA → NursePlanner-${{ inputs.environment }}
+    name: publish SPA → NursePlanner-${{ inputs.environment || 'dev' }}
     runs-on: ubuntu-latest
+    # On push, `inputs` is empty → fall back to the live `dev` env.
+    env:
+      ENVIRONMENT: ${{ inputs.environment || 'dev' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -37,7 +55,7 @@ jobs:
       - name: Build SPA
         run: npm run build
         env:
-          VITE_BASE: / # CloudFront serves at the domain root (GH Pages uses the sub-path)
+          VITE_BASE: / # CloudFront serves at the domain root.
           # Public Cognito client config (repo Variables, not secrets).
           VITE_COGNITO_REGION: ${{ vars.VITE_COGNITO_REGION || 'eu-west-2' }}
           VITE_COGNITO_USER_POOL_ID: ${{ vars.VITE_COGNITO_USER_POOL_ID }}
@@ -51,7 +69,7 @@ jobs:
       - name: Resolve stack outputs
         id: outputs
         run: |
-          STACK="NursePlanner-${{ inputs.environment }}"
+          STACK="NursePlanner-$ENVIRONMENT"
           get() { aws cloudformation describe-stacks --stack-name "$STACK" \
             --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
           echo "bucket=$(get SpaBucketName)" >> "$GITHUB_OUTPUT"

@@ -3,8 +3,8 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
-  // Served at "/" locally; the GitHub Pages deploy sets VITE_BASE to the repo
-  // sub-path (e.g. "/student-nurse-planner/") so asset URLs resolve there.
+  // Served at the domain root everywhere (local dev + CloudFront). VITE_BASE is
+  // kept as an escape hatch for serving under a sub-path if ever needed.
   base: process.env.VITE_BASE || "/",
   plugins: [react(), tailwindcss()],
   server: {

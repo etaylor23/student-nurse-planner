@@ -10,7 +10,6 @@
     "test": "vitest run",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "postbuild": "cp dist/index.html dist/404.html",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "gen:zod": "ts-to-zod src/domain/types.ts src/domain/schemas.generated.ts",

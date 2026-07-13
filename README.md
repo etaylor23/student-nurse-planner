@@ -197,50 +197,46 @@ The remote backend lives in a separate CDK app under [`infra/`](./infra/README.m
 
 ### Build & deployment (CI/CD)
 
-Three deployables, each built separately:
+**Push to `master` and the right things ship — automatically, by path.** Each of the
+three deployables auto-deploys _only when its own files change_; change several and
+several ship. Everything runs on **GitHub Actions** (`.github/workflows/`), which is
+**free** on this public repo, via the GitHub→AWS **OIDC role** `github-actions-deploy`
+in account `641364901830` — **no stored secrets, no build servers, no paid CI**.
 
-| Target | Build | Output |
-|--------|-------|--------|
-| **App SPA** | `npm run build` (`tsc --noEmit && vite build`) | `dist/` |
-| **Marketing site** (placemate.uk) | `cd site && npm run build` | `site/dist/` |
-| **Backend** (CDK) | `cd infra && npx cdk deploy NursePlanner-<env>` | AWS CloudFormation |
+There is **no GitHub Pages** — it was retired. The single live app is on CloudFront.
 
-GitHub Actions (`.github/workflows/`) does the rest. All AWS access is via the
-GitHub→AWS **OIDC role** `github-actions-deploy` in account `641364901830` — **no
-stored secrets**.
+| Deployable | Build | Auto-deploys on push to `master` when… | Lands on |
+|------------|-------|----------------------------------------|----------|
+| **App SPA** (`deploy-frontend.yml`) | `npm run build` | `src/**`, `index.html`, `package*.json`, `vite.config.ts`, `tsconfig*.json` change | S3 + CloudFront → **app.placemate.uk** |
+| **Backend / CDK** (`deploy-backend.yml`) | `cdk deploy` | `infra/**` changes | AWS (DynamoDB, Cognito, API GW, CloudFront) |
+| **Marketing site** (`deploy-marketing.yml`) | `cd site && npm run build` | `site/**` changes | S3 + CloudFront → **placemate.uk** |
 
-**What a push to `master` triggers automatically:**
+Plus `ci.yml` on **every** push + PR: typecheck, `gen:zod` drift, tests, `cdk synth`
+(checks only, no deploy).
 
-| Workflow | Runs when | Does |
-|----------|-----------|------|
-| `ci.yml` | every push to `master` + every PR | Checks only — typecheck, `gen:zod` drift, tests, `cdk synth`. **No deploy.** |
-| `deploy.yml` | every push to `master` | Builds the SPA → **GitHub Pages** (legacy `/student-nurse-planner/` mirror; coexists until DNS cutover). |
-| `deploy-marketing.yml` | push to `master` **only when `site/**` changes** | Builds the Astro site → `NursePlanner-Marketing` S3 bucket → CloudFront invalidation → **placemate.uk**. |
-
-**Manual-only (`workflow_dispatch`, choose `dev`/`prod`):**
-
-| Workflow | Does |
-|----------|------|
-| `deploy-frontend.yml` | Builds the SPA → `NursePlanner-<env>` S3 bucket → CloudFront invalidation → **app.placemate.uk**. |
-| `deploy-backend.yml` | `cdk deploy NursePlanner-<env>` (the first deploy of an env needs a human `cdk bootstrap` — Phase 0 gate). |
-
-Trigger a manual deploy from the Actions tab, or via the CLI:
+**Target environment.** Auto-deploys target the **`dev`** stack (`NursePlanner-dev`),
+which is **promoted-in-place to production** — it _is_ the live env behind
+app.placemate.uk (custom domain, verified SES, `retainData`; see
+[`infra/lib/config.ts`](./infra/lib/config.ts)). The `prod` config is an unused
+placeholder. Both deploy workflows also accept a manual run against a chosen env:
 
 ```bash
-gh workflow run "Deploy frontend (S3 + CloudFront)" -f environment=dev    # then prod
+gh workflow run "Deploy frontend (S3 + CloudFront)" -f environment=dev
 gh workflow run "Deploy backend (CDK)"             -f environment=dev
 ```
 
-**Consequences worth remembering:**
+**Why it's cheap & fast.** Path filters mean a change builds only what it touches (no
+whole-repo rebuilds). S3 syncs are incremental (`--delete` prunes stale keys); each
+deploy issues a single `/*` CloudFront invalidation (within the 1,000/month free tier).
+Per-env `concurrency` groups collapse redundant in-flight runs.
 
-- **The app is not auto-deployed to `app.placemate.uk`.** A push runs CI and updates
-  the GitHub Pages mirror, but the CloudFront app only updates when someone runs
-  **Deploy frontend** manually (dev, then prod). App-only changes (e.g. anything under
-  `src/`) never touch the marketing site.
-- **The marketing site only rebuilds when `site/**` changes** — app changes don't
-  trigger it, and vice-versa.
-- A backend/CDK change (`infra/**`) is **manual** too — `cdk synth` runs in CI for
-  safety, but `cdk deploy` is never automatic.
+**Notes.**
+
+- The **first** CDK deploy of an env needs a one-time human `cdk bootstrap` (`dev` is
+  already bootstrapped).
+- Backend auto-deploy depends on `cdk synth` succeeding — see the known
+  `Could not resolve "zod"` synth issue in the infra Lambda bundling; fix that before
+  relying on push-triggered backend deploys.
 
 ## 10. Spec index
 

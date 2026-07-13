@@ -2,15 +2,21 @@ name: Deploy backend (CDK)
 
 # Deploys the CDK app to an environment via the GitHub→AWS OIDC role (no stored secrets).
 #
-# Manual (workflow_dispatch) only for now: the FIRST deploy needs a human-run
-# `cdk bootstrap --profile personal` (Phase 0 GATE) before this can succeed. Once dev is
-# bootstrapped and the seam is proven, auto-deploy of dev on push to master (paths:
-# infra/**) can be enabled here.
+# AUTO on push to master when infra sources change (path-filtered below) → deploys to the
+# live env (`dev` — promoted-in-place to prod, see infra/lib/config.ts). Also runnable
+# manually against any env via the Run workflow button.
+#
+# NOTE: the FIRST deploy of an env needs a human-run `cdk bootstrap --profile personal`
+# (Phase 0 gate) before this can succeed; `dev` is already bootstrapped.
 #
 # The OIDC role (arn:aws:iam::641364901830:role/github-actions-deploy) is scoped to assume
 # the CDK bootstrap roles — that is all `cdk deploy` needs.
 
 on:
+  push:
+    branches: [master]
+    paths:
+      - "infra/**"
   workflow_dispatch:
     inputs:
       environment:
@@ -23,10 +29,18 @@ permissions:
   id-token: write # request the GitHub OIDC token
   contents: read
 
+# One CDK deploy per env at a time; never cancel an in-flight CloudFormation update.
+concurrency:
+  group: deploy-backend-${{ inputs.environment || 'dev' }}
+  cancel-in-progress: false
+
 jobs:
   deploy:
-    name: cdk deploy NursePlanner-${{ inputs.environment }}
+    name: cdk deploy NursePlanner-${{ inputs.environment || 'dev' }}
     runs-on: ubuntu-latest
+    # On push, `inputs` is empty → fall back to the live `dev` env.
+    env:
+      ENVIRONMENT: ${{ inputs.environment || 'dev' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -51,5 +65,5 @@ jobs:
           if [ -n "${{ vars.SES_FROM_ADDRESS }}" ]; then
             EXTRA="-c sesFromAddress=${{ vars.SES_FROM_ADDRESS }}"
           fi
-          npx cdk deploy "NursePlanner-${{ inputs.environment }}" \
+          npx cdk deploy "NursePlanner-$ENVIRONMENT" \
             --require-approval never --ci $EXTRA
