@@ -1,7 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import Button from "../components/Button.astro";
-import { SITE, CTA, FACTS } from "../consts";
+import { SITE, CTA, FACTS, SHOW_SIGNUP_CTA } from "../consts";
 import { organization, breadcrumb } from "../schema";
 
 const title = "About Placemate — the planner for UK student nurses";
@@ -55,7 +55,7 @@ const jsonLd = [
     </div>
 
     <div class="mt-10 flex flex-col gap-3 sm:flex-row">
-      <Button href={CTA.signup.href} external>{CTA.signup.label}</Button>
+      {SHOW_SIGNUP_CTA && <Button href={CTA.signup.href} external>{CTA.signup.label}</Button>}
       <Button href={`mailto:${SITE.email}`} variant="secondary">Contact us</Button>
     </div>
   </article>

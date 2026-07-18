@@ -1,6 +1,6 @@
 ---
 import Button from "./Button.astro";
-import { CTA } from "../consts";
+import { CTA, SHOW_SIGNUP_CTA } from "../consts";
 interface Props {
   heading?: string;
   sub?: string;
@@ -20,14 +20,16 @@ const {
     </h2>
     <p class="mx-auto mt-3 max-w-xl text-emerald-50">{sub}</p>
     <div class="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
-      <Button
-        href={CTA.signup.href}
-        external
-        variant="secondary"
-        class="w-full border-transparent bg-white text-emerald-700 hover:bg-emerald-50 sm:w-auto"
-      >
-        {CTA.signup.label}
-      </Button>
+      {SHOW_SIGNUP_CTA && (
+        <Button
+          href={CTA.signup.href}
+          external
+          variant="secondary"
+          class="w-full border-transparent bg-white text-emerald-700 hover:bg-emerald-50 sm:w-auto"
+        >
+          {CTA.signup.label}
+        </Button>
+      )}
       <Button
         href={CTA.demo.href}
         external

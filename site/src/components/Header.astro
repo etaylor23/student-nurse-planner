@@ -1,7 +1,7 @@
 ---
 import Logo from "./Logo.astro";
 import Button from "./Button.astro";
-import { NAV, CTA } from "../consts";
+import { NAV, CTA, SHOW_SIGNUP_CTA } from "../consts";
 
 const path = Astro.url.pathname.replace(/\/$/, "") || "/";
 const isActive = (href: string) => path === href;
@@ -34,7 +34,9 @@ const isActive = (href: string) => path === href;
 
     <div class="hidden items-center gap-3 md:flex">
       <Button href={CTA.demo.href} variant="secondary" external>{CTA.demo.label}</Button>
-      <Button href={CTA.signup.href} variant="primary" external>{CTA.signup.label}</Button>
+      {SHOW_SIGNUP_CTA && (
+        <Button href={CTA.signup.href} variant="primary" external>{CTA.signup.label}</Button>
+      )}
     </div>
 
     <!-- Mobile menu: JS-free <details> disclosure. -->
@@ -70,9 +72,11 @@ const isActive = (href: string) => path === href;
           <Button href={CTA.demo.href} variant="secondary" external class="w-full">
             {CTA.demo.label}
           </Button>
-          <Button href={CTA.signup.href} variant="primary" external class="w-full">
-            {CTA.signup.label}
-          </Button>
+          {SHOW_SIGNUP_CTA && (
+            <Button href={CTA.signup.href} variant="primary" external class="w-full">
+              {CTA.signup.label}
+            </Button>
+          )}
         </div>
       </div>
     </details>

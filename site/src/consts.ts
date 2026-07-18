@@ -24,6 +24,12 @@ export const CTA = {
   demo: { label: "Try the demo", href: SITE.appUrl },
 } as const;
 
+// TEMP (beta invite phase): hide every public "Sign up free" CTA so visitors don't
+// create accounts before we've sent their personal magic-link invite. Flip back to
+// `true` to restore the signup buttons site-wide. Where signup was the only CTA
+// (the pricing card) the "Try the demo" button shows in its place while this is off.
+export const SHOW_SIGNUP_CTA: boolean = false;
+
 // VERIFIED citable facts (spec/spec-nmc-foundations.md → "Hours" and the 219-statement seed).
 export const FACTS = {
   practiceHours: 2300, // min NMC PRACTICE hours the app tracks toward

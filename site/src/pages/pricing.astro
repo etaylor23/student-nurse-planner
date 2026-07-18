@@ -1,7 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import Button from "../components/Button.astro";
-import { SITE, CTA } from "../consts";
+import { SITE, CTA, SHOW_SIGNUP_CTA } from "../consts";
 import { breadcrumb } from "../schema";
 
 const title = "Pricing — Placemate is free for student nurses";
@@ -65,7 +65,13 @@ const jsonLd = [
         </div>
         <p class="mt-4 text-4xl font-bold text-ink">£0</p>
         <p class="mt-1 text-sm text-slate-500">forever, for individual student nurses</p>
-        <Button href={CTA.signup.href} external class="mt-6 w-full">{CTA.signup.label}</Button>
+        {
+          SHOW_SIGNUP_CTA ? (
+            <Button href={CTA.signup.href} external class="mt-6 w-full">{CTA.signup.label}</Button>
+          ) : (
+            <Button href={CTA.demo.href} external class="mt-6 w-full">{CTA.demo.label}</Button>
+          )
+        }
         <ul class="mt-6 space-y-2.5">
           {
             included.map((item) => (

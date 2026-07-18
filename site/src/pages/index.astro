@@ -5,7 +5,7 @@ import FeatureCard from "../components/FeatureCard.astro";
 import Faq from "../components/Faq.astro";
 import CtaSection from "../components/CtaSection.astro";
 import Icon from "../components/Icon.astro";
-import { SITE, CTA, FACTS } from "../consts";
+import { SITE, CTA, FACTS, SHOW_SIGNUP_CTA } from "../consts";
 import { FEATURES } from "../data/features";
 import { FAQS } from "../data/faqs";
 import { organization, website, webApplication, faqPage } from "../schema";
@@ -46,7 +46,9 @@ const jsonLd = [organization(), website(), webApplication(), faqPage(homeFaqs)];
           revision, and practise drug calculations — all in one free app, on any device.
         </p>
         <div class="mt-8 flex flex-col gap-3 sm:flex-row">
-          <Button href={CTA.signup.href} external class="w-full sm:w-auto">{CTA.signup.label}</Button>
+          {SHOW_SIGNUP_CTA && (
+            <Button href={CTA.signup.href} external class="w-full sm:w-auto">{CTA.signup.label}</Button>
+          )}
           <Button href={CTA.demo.href} external variant="secondary" class="w-full sm:w-auto">
             {CTA.demo.label}
           </Button>

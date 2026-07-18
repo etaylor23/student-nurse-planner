@@ -1,6 +1,6 @@
 ---
 import Logo from "./Logo.astro";
-import { SITE, CTA } from "../consts";
+import { SITE, CTA, SHOW_SIGNUP_CTA } from "../consts";
 
 const year = new Date().getFullYear();
 
@@ -37,13 +37,17 @@ const cols = [
       <div class="max-w-xs">
         <a href="/" class="flex items-center" aria-label="Placemate home"><Logo /></a>
         <p class="mt-3 text-sm text-slate-500">{SITE.tagline}.</p>
-        <a
-          href={CTA.signup.href}
-          rel="noopener"
-          class="mt-4 inline-flex text-sm font-semibold text-emerald-700 hover:text-emerald-800"
-        >
-          {CTA.signup.label} →
-        </a>
+        {
+          SHOW_SIGNUP_CTA && (
+            <a
+              href={CTA.signup.href}
+              rel="noopener"
+              class="mt-4 inline-flex text-sm font-semibold text-emerald-700 hover:text-emerald-800"
+            >
+              {CTA.signup.label} →
+            </a>
+          )
+        }
       </div>
       {
         cols.map((col) => (
