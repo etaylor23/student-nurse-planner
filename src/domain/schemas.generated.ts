@@ -36,7 +36,8 @@ export const userSchema = entitySchema.extend(createdSchema.shape).extend(update
     totalParts: z.number(),
     startDate: z.string().optional(),
     targetRegistrationDate: z.string().optional(),
-    onboardingTourDismissedAt: z.string().optional()
+    onboardingTourDismissedAt: z.string().optional(),
+    aiRecallInterestAt: z.string().optional()
 });
 
 export const placementSchema = entitySchema.extend(userOwnedSchema.shape).extend(createdSchema.shape).extend({

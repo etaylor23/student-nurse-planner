@@ -60,6 +60,8 @@ export interface User extends Entity, Created, Updated {
   targetRegistrationDate?: string; // ISO date
   /** When the first-run onboarding example flow was dismissed (ISO). Absent = still show it. */
   onboardingTourDismissedAt?: string;
+  /** When the user registered interest in the (coming-soon) AI note-recall feature (ISO). */
+  aiRecallInterestAt?: string;
 }
 
 export interface Placement extends Entity, UserOwned, Created {

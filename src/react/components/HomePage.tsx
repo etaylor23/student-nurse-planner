@@ -6,6 +6,7 @@ import { usePlacements, useShifts, useSkills } from "../hooks";
 import { useRepository } from "../RepositoryContext";
 import { ActivityLog } from "./ActivityLog";
 import { ExampleFlow } from "./home/ExampleFlow";
+import { AiRecallTeaser } from "./home/AiRecallTeaser";
 import { TopGaps } from "./competencies/TopGaps";
 import { SignedOffBadge, SkillStageBadge } from "./skills/shared";
 import { PageHero, Panel, btnGhost, btnGhostSm, btnPrimary, link } from "./ui";
@@ -199,6 +200,9 @@ export function HomePage() {
 
       {/* While the tour occupies the right column, activity gets its own full-width row. */}
       {showTour && <ActivityLog />}
+
+      {/* Coming-soon teaser for AI note recall — always at the foot of Home. */}
+      <AiRecallTeaser />
     </div>
   );
 }
