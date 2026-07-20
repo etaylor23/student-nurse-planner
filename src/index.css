@@ -86,6 +86,19 @@
   animation: pm-attention 1.4s ease-out 3;
 }
 
+/* Onboarding mindmap — gentle staggered reveal of each spoke. Applied only via the
+   `motion-safe:` variant, so under prefers-reduced-motion the diagram is simply shown. */
+@keyframes mm-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* ---------- FullCalendar theme (scoped to .fc-theme-wrap) ---------- */
 /* Scoped overrides win over FullCalendar's runtime-injected CSS by specificity. */
 .fc-theme-wrap {

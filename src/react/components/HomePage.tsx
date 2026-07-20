@@ -7,6 +7,7 @@ import { useRepository } from "../RepositoryContext";
 import { ActivityLog } from "./ActivityLog";
 import { ExampleFlow } from "./home/ExampleFlow";
 import { AiRecallTeaser } from "./home/AiRecallTeaser";
+import { MindmapBand } from "./home/MindmapBand";
 import { TopGaps } from "./competencies/TopGaps";
 import { SignedOffBadge, SkillStageBadge } from "./skills/shared";
 import { PageHero, Panel, btnGhost, btnGhostSm, btnPrimary, link } from "./ui";
@@ -69,6 +70,9 @@ export function HomePage() {
       >
         <AiRecallTeaser />
       </PageHero>
+
+      {/* Onboarding: an illustrative "how it all connects" mindmap above the tour. */}
+      {showTour && <MindmapBand />}
 
       {/* Two-column dashboard: left = stacked hours / shifts / skills; right =
           the getting-started tour, or recent activity once the tour is hidden. */}
