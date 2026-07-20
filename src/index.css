@@ -98,6 +98,13 @@
     transform: none;
   }
 }
+/* Directional "flow" along the mindmap connectors — dashes drift toward the
+   destination. motion-safe only, so reduced-motion sees static dashed lines. */
+@keyframes mm-flow {
+  to {
+    stroke-dashoffset: -14;
+  }
+}
 
 /* ---------- FullCalendar theme (scoped to .fc-theme-wrap) ---------- */
 /* Scoped overrides win over FullCalendar's runtime-injected CSS by specificity. */
