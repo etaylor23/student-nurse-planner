@@ -6,6 +6,7 @@ import { ShiftMedicationsTab } from "./shift/ShiftMedicationsTab";
 import { ShiftSkillsTab } from "./shift/ShiftSkillsTab";
 import { ShiftReflectionsTab } from "./shift/ShiftReflectionsTab";
 import { ShiftEvidenceTab } from "./shift/ShiftEvidenceTab";
+import { ShiftProgressBanner } from "./shift/ShiftProgressBanner";
 
 type NewShift = { date: string; startTime?: string; endTime?: string };
 
@@ -38,6 +39,7 @@ export function ShiftModal({
   mode,
   shift,
   locked,
+  celebrate = false,
   placements,
   prefill,
   lastPlacementId,
@@ -53,6 +55,8 @@ export function ShiftModal({
   mode: "new" | "edit";
   shift: Shift | null;
   locked: boolean;
+  /** True right after this shift was marked worked → show the celebratory banner. */
+  celebrate?: boolean;
   placements: Placement[];
   prefill?: NewShift | null;
   lastPlacementId?: string;
@@ -70,6 +74,9 @@ export function ShiftModal({
   const tabScrollRef = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState<TabKey>("medications");
   const [flash, setFlash] = useState(false);
+  // The celebratory banner shows once per mark-worked (the modal remounts on the
+  // status change), then can be dismissed.
+  const [bannerDismissed, setBannerDismissed] = useState(false);
 
   // Esc closes; Tab is trapped inside the panel.
   useEffect(() => {
@@ -240,6 +247,10 @@ export function ShiftModal({
         {/* Locked core — the shift fields. Scrolls internally if it outgrows its
             share of the modal, so the tab bar + tab content stay reachable. */}
         <div className="shrink-0 overflow-y-auto border-b border-slate-200/70 px-5 py-5 sm:max-h-[46vh] sm:px-6">
+          {/* Celebratory progress the instant a shift is marked worked. */}
+          {celebrate && shift && !bannerDismissed && (
+            <ShiftProgressBanner shift={shift} onDismiss={() => setBannerDismissed(true)} />
+          )}
           {/* Mobile-only action row (the header hides them under sm). */}
           {mode === "edit" && !locked && (
             <div className="mb-4 flex items-center gap-4 sm:hidden">

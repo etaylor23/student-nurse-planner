@@ -23,7 +23,6 @@ import { useRepository } from "../RepositoryContext";
 import { downloadText } from "../download";
 import { ActivityLog } from "./ActivityLog";
 import { PlacementPalette } from "./PlacementPalette";
-import { ShiftDebrief } from "./ShiftDebrief";
 import { ShiftModal } from "./ShiftModal";
 import { PageHero, Panel, btnGhostSm, btnPrimary } from "./ui";
 
@@ -54,8 +53,9 @@ export function PlannerPage() {
   const modalOpen = isNewRoute || !!editingShift;
   // Bumped after an in-place save so the modal can flash a "Saved" confirmation.
   const [savedTick, setSavedTick] = useState(0);
-  // The just-completed shift whose post-shift debrief (U1) is showing.
-  const [debriefShiftId, setDebriefShiftId] = useState<string | null>(null);
+  // The shift just marked worked → the modal shows its celebratory progress banner
+  // (the old post-shift debrief, U1, now inline). Cleared when the modal closes.
+  const [justCompletedId, setJustCompletedId] = useState<string | null>(null);
 
   // Backspace/Delete on a selected event deletes it (single stable listener that
   // reads the latest state via this ref, set on each render below).
@@ -75,7 +75,10 @@ export function PlannerPage() {
 
   const openNew = (ns: NewShift) => navigate("/planner/new", { state: ns });
   const openEdit = (shift: Shift) => navigate(`/planner/${shift.id}`);
-  const close = () => navigate("/planner");
+  const close = () => {
+    setJustCompletedId(null);
+    navigate("/planner");
+  };
 
   if (loading || !user) {
     return <div className="text-sm text-slate-500">Loading…</div>;
@@ -85,9 +88,6 @@ export function PlannerPage() {
   // Default a new shift to the placement of the most recent shift (listShifts is
   // newest-date first) — usually you're still at the same ward.
   const lastPlacementId = shifts.find((s) => s.placementId)?.placementId;
-  const debriefShift = debriefShiftId
-    ? (shifts.find((s) => s.id === debriefShiftId) ?? null)
-    : null;
 
   const events: EventInput[] = shifts.map((s) => ({
     id: s.id,
@@ -116,10 +116,9 @@ export function PlannerPage() {
   };
 
   const completeShift = async (id: string) => {
-    if (await markWorked(id)) {
-      close();
-      setDebriefShiftId(id); // open the post-shift debrief (U1)
-    }
+    // Stay in the modal on the now-completed shift and celebrate inline (the modal
+    // remounts locked on the status change; `justCompletedId` triggers the banner).
+    if (await markWorked(id)) setJustCompletedId(id);
   };
 
   // Delete the selected (unlocked) shift on Backspace/Delete — unless the user is
@@ -279,10 +278,6 @@ export function PlannerPage() {
         }
       />
 
-      {debriefShift && (
-        <ShiftDebrief shift={debriefShift} onDismiss={() => setDebriefShiftId(null)} />
-      )}
-
       <PlacementPalette placements={placements} />
 
       <Panel
@@ -410,6 +405,7 @@ export function PlannerPage() {
           mode={editingShift ? "edit" : "new"}
           shift={editingShift}
           locked={locked}
+          celebrate={!!editingShift && editingShift.id === justCompletedId}
           placements={placements}
           prefill={prefill}
           lastPlacementId={lastPlacementId}

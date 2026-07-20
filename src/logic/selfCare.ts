@@ -82,7 +82,7 @@ export function joinItems(keys: string[]): string {
 
 /**
  * A "hard shift" worth a gentle post-shift check-in nudge: a night, a long day, or a
- * long counted span (~11h+). Pure — drives the ShiftDebrief wellbeing prompt.
+ * long counted span (~11h+). Pure — drives the shift modal's wellbeing prompt.
  */
 export function isHardShift(shift: Pick<Shift, "shiftType" | "netHours">): boolean {
   return shift.shiftType === "NIGHT" || shift.shiftType === "LONG_DAY" || shift.netHours >= 11;
