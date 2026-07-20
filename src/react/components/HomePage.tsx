@@ -4,10 +4,12 @@ import { formatHumanDate, hhmm } from "../../logic/calendar";
 import { findCurrentShift, nextShift } from "../../logic/shiftContext";
 import { usePlacements, useShifts, useSkills } from "../hooks";
 import { useRepository } from "../RepositoryContext";
+import { useNudges } from "../useNudges";
 import { ActivityLog } from "./ActivityLog";
 import { ExampleFlow } from "./home/ExampleFlow";
 import { AiRecallTeaser } from "./home/AiRecallTeaser";
 import { MindmapBand } from "./home/MindmapBand";
+import { NudgeList } from "./Nudge";
 import { TopGaps } from "./competencies/TopGaps";
 import { SignedOffBadge, SkillStageBadge } from "./skills/shared";
 import { PageHero, Panel, btnGhost, btnGhostSm, btnPrimary, link } from "./ui";
@@ -24,6 +26,7 @@ export function HomePage() {
   const { placements } = usePlacements();
   const { skills, progress: skillProgress } = useSkills();
   const navigate = useNavigate();
+  const nudges = useNudges();
 
   const placeName = new Map(placements.map((p) => [p.id, p.name]));
   const skillName = new Map(skills.map((s) => [s.id, s.name]));
@@ -73,6 +76,9 @@ export function HomePage() {
 
       {/* Onboarding: an illustrative "how it all connects" mindmap above the tour. */}
       {showTour && <MindmapBand />}
+
+      {/* Uniform next-step nudges — the canonical prompt surface (logic/nudges.ts). */}
+      <NudgeList nudges={nudges} />
 
       {/* Two-column dashboard: left = stacked hours / shifts / skills; right =
           the getting-started tour, or recent activity once the tour is hidden. */}
