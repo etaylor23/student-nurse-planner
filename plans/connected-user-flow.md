@@ -1,7 +1,8 @@
 # Investigation — Connected user flow & platform cohesiveness
 
-**Status:** Open investigation (opened 2026-07-20) · Triggered by the first-run
-example-flow review in [2026-07-20-home-example-flow.md](2026-07-20-home-example-flow.md)
+**Status:** Investigated → planned (2026-07-20) · Triggered by the first-run
+example-flow review in [2026-07-20-home-example-flow.md](2026-07-20-home-example-flow.md) ·
+**Resulting plan:** [2026-07-20-elite-user-flow.md](2026-07-20-elite-user-flow.md)
 
 ## Why this exists
 
@@ -86,8 +87,83 @@ connected, the platform is cohesive. If each lives in its own silo, it isn't.
 - There's a visible spine (shift / placement) tying activity together.
 - Onboarding communicates a connected flow **and a destination**, not a task list.
 
+## Decisions & ideas (2026-07-20 grill)
+
+**Reframe from the grill:** the connective plumbing is already ~80% built (see "current
+state" above). The elite move is to make it *felt everywhere* and wire the last gaps —
+**not** to rebuild.
+
+### North star
+
+Turn the scattered, on-paper, out-of-order reality of placement into one connected,
+signposted journey: capturing a note anywhere is easy, consistent and guided, and **every
+note visibly counts toward NMC registration**.
+
+### Locked decisions
+
+| Branch | Decision |
+|---|---|
+| Elite lens | Blend: **amplify capture** + **signpost into a mindmap**, leveraging existing plumbing |
+| Capture model | **Consistent per-feature capture + richer guided prompts.** Universal quick-capture **deferred** |
+| Signposts | **All three:** inline contextual · animated mindmap · dynamic next-step nudges |
+| Inline scope | **Surface the (already-wired) evidence triad pervasively** — capture-moment, list views, a persistent shift view; bidirectional |
+| Mindmap data | **Illustrative concept first, live later** |
+| Mindmap placement | **Onboarding band** — full-width between hero and dashboard, shown with the getting-started tour |
+| Journey signposts | **Dynamic next-step nudges** (not a static ribbon) |
+| Phasing | **Substance first, then show** |
+| Success | **Comprehension + evidence density (behavioural) + connective completeness (coverage)** |
+
+### Ideas bank (concrete)
+
+**Capture (amplify note-taking):**
+- One shared capture component/pattern reused across clinical skills, reflection and
+  medications so they feel like one system.
+- Standardise the guided templates: Gibbs (reflection), step-lists (skills), calc drills (meds).
+- *(Later)* universal quick-capture: jot anywhere → tag (skill / reflection / competency /
+  shift) → routes into the right record. Matches the "capture haphazardly first, structure
+  after" paper reality.
+
+**Inline signposts (the mindmap, woven in context):**
+- The **REFLECTION** and **SKILL** evidence pickers are **already wired** (SkillDetailPage /
+  ReflectionDetailPage "Link to a proficiency"; ProficiencyDetailPage handles all four
+  types). The gap is **pervasiveness** — surface these links beyond the detail pages.
+- On a capture: *"Evidences proficiency Y · on shift Z"* (links both ways).
+- On a competency: *"Evidenced by N items across M shifts"* → list, each linking to source.
+- On a shift: *"What this shift gave you"* — promote `ShiftDebrief`'s model into a
+  persistent shift view (not just the debrief moment).
+- One shared "link to a competency / shift" affordance across features.
+
+**Animated mindmap (Home):**
+- Illustrative animation — *a shift blooms into skills → competencies → hours → reflection*.
+- Onboarding band, full-width between hero and dashboard, shown while the tour is active.
+- Later: morph into the user's live graph.
+
+**Next-step nudges:**
+- Context-aware prompts that advance the flow: worked a shift → capture; captured → tag to
+  a competency; evidence added → check your gaps.
+- State-derived from existing hooks; placed where relevant; subtle + dismissible.
+
+### Guardrails
+
+- **Over-signposting** → keep signposts subtle and dismissible; clarity, not noise.
+- **Home density** → the mindmap lives only in the onboarding zone (with the tour).
+- **Evidence-link UX** must be genuinely low-friction — make-or-break for the density metric.
+- **No schema/backend change expected** — surfacing rides existing `EvidenceLink` storage;
+  self-owned records → no new authz.
+
+### Definition of done
+
+- **Comprehension:** a student can articulate *"when I log X, it also does Y and Z."*
+- **Evidence density (behavioural):** share of captures linked to a competency climbs;
+  reflections/skills actually evidence proficiencies (the wiring exists; the gap is
+  discoverability + friction at the capture moment).
+- **Connective completeness (coverage):** every capture type can evidence competencies ·
+  every record shows connections both ways · every relevant screen has a next-step · the
+  mindmap ships.
+
 ## Related
 
+- [2026-07-20-elite-user-flow.md](2026-07-20-elite-user-flow.md) — the phased plan from these decisions
 - [2026-07-20-home-example-flow.md](2026-07-20-home-example-flow.md) — the review that
   triggered this
 - [spec-home.md](../spec/spec-home.md) — "connective tissue"

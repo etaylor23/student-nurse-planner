@@ -26,3 +26,12 @@ of work.
 
 > Plans 3 and 4 both add an optional field to the `User` type — batch them into one
 > `npm run gen:zod` when implementing.
+
+## Cohesiveness / elite user flow
+
+- **[connected-user-flow.md](connected-user-flow.md)** — investigation into whether the
+  platform reads as one connected journey or a bundle of siloed tools.
+- **[2026-07-20-elite-user-flow.md](2026-07-20-elite-user-flow.md)** — the resulting
+  phased plan: wire the evidence gaps + inline signposts (substance), then the animated
+  mindmap, next-step nudges and capture polish (show). Note-first, signposted, "every
+  note counts toward registration".
