@@ -66,7 +66,9 @@ export function HomePage() {
             <div className="text-xs font-medium text-emerald-600">{pct}% counted</div>
           </>
         }
-      />
+      >
+        <AiRecallTeaser />
+      </PageHero>
 
       {/* Two-column dashboard: left = stacked hours / shifts / skills; right =
           the getting-started tour, or recent activity once the tour is hidden. */}
@@ -200,9 +202,6 @@ export function HomePage() {
 
       {/* While the tour occupies the right column, activity gets its own full-width row. */}
       {showTour && <ActivityLog />}
-
-      {/* Coming-soon teaser for AI note recall — always at the foot of Home. */}
-      <AiRecallTeaser />
     </div>
   );
 }
