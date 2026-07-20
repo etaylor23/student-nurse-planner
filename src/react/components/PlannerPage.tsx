@@ -73,12 +73,16 @@ export function PlannerPage() {
     if (openShiftDate) calRef.current?.getApi().gotoDate(openShiftDate);
   }, [openShiftDate]);
 
+  // The celebration is a one-time moment: clear it whenever the modal closes by
+  // any route (backdrop/Esc/close, or browser back), so reopening a completed
+  // shift doesn't re-celebrate.
+  useEffect(() => {
+    if (!modalOpen) setJustCompletedId(null);
+  }, [modalOpen]);
+
   const openNew = (ns: NewShift) => navigate("/planner/new", { state: ns });
   const openEdit = (shift: Shift) => navigate(`/planner/${shift.id}`);
-  const close = () => {
-    setJustCompletedId(null);
-    navigate("/planner");
-  };
+  const close = () => navigate("/planner");
 
   if (loading || !user) {
     return <div className="text-sm text-slate-500">Loading…</div>;
