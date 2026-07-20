@@ -88,3 +88,34 @@ every shift shows what it produced; attaching evidence is one tap from the captu
   once its action is done.
 - **Metric hook**: log/derive "share of captures with ≥1 evidence link" to track the
   evidence-density success measure.
+
+## Implementation status (2026-07-20) — complete
+
+All guide phases were worked through and committed. Recurring finding: the connective
+engine was already ~80% built, so most phases were *surfacing / uniformity*, not new plumbing.
+
+- ✅ Evidence wiring — already present (all four types); stale comment fixed (`38623ce`).
+- ✅ Persistent shift spine — already present (`ShiftEvidence` on planner + hours log).
+- ✅ List-view "evidences N" badges (`523dc65`).
+- ✅ Animated mindmap band (`6a7391f`).
+- ✅ Uniform nudge system + Home surface (`af090e7`) + conservative supersession (`9470ee3`).
+- ✅ Capture-moment "attach as evidence" nudge, unified across skill + reflection (`996b46a`).
+- ✅ Capture-consistency / guided-prompt audit — result below.
+
+### Capture-consistency / guided-prompt audit — result: already consistent + guided
+
+No standardisation refactor needed. Findings:
+
+- **Shared design system** across every capture surface — the reflection editor, skill
+  detail, shift form, medication pages and self-care all build on the same primitives
+  (`PageHero` / `Panel` / `inputCls` / `btnPrimary`).
+- **Guided prompts present per feature**: reflection surfaces the Gibbs cycle's framing
+  question + helper per stage (`logic/gibbs.ts` → `ReflectionEditor`); skills use the
+  observed → assisted → performed stage scaffold; self-care has a 13-item catalogue;
+  medication has calc-drill practice.
+- The one cross-surface inconsistency — the "attach as evidence" prompt — is now unified
+  via `AttachEvidenceNudge`.
+
+Conclusion: capture is already consistent and guided; forcing a shared `CaptureCard`
+refactor would be risky make-work. Deferred by design: universal quick-capture, and
+upgrading the mindmap from illustrative to the user's live graph.
