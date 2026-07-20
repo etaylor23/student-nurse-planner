@@ -1,6 +1,13 @@
 # Plan — Shift editor as a full-width modal with inline capture tabs
 
-**Status:** Planned (grilled 2026-07-20) · **Effort:** ~1.5–2 days · Large
+**Status:** ✅ DONE (shipped 2026-07-20, master `7cce002`…`69fa348`) · grilled 2026-07-20 · Large
+
+All 8 phases built, verified in the browser (guest + demo data) and pushed to master:
+ShiftModal shell + URL routing; inline Reflections / Competency-evidence / Medications
+(extracted `ShiftMedLogForm`) / Skills (`ShiftSkillSignOff`) tabs; mark-worked celebrates
+inline (`ShiftDebrief` retired); Hours-log editing centralised in the modal (per-shift list
+components `ShiftMedications/Skills/Reflections/History` deleted); mobile full-screen with a
+collapsible core.
 
 ## Goal
 
