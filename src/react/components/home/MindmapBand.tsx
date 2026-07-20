@@ -1,27 +1,40 @@
+import { type KeyboardEvent } from "react";
+import { useNavigate } from "react-router-dom";
+
 /**
- * Illustrative onboarding mindmap — "capture once, it feeds everything". A hub-and-spoke
- * concept diagram shown above the getting-started tour on Home, teaching the connected
- * model before the user has any data of their own. (Later: swap for the user's live graph.)
+ * Illustrative onboarding mindmap — "capture once, feed everything". A hub-and-spoke
+ * concept diagram shown beside the getting-started tour on Home, teaching the connected
+ * model before the user has data of their own. (Later: swap for the user's live graph.)
  *
- * The spokes reveal with a gentle stagger via the `motion-safe:` variant only, so under
- * prefers-reduced-motion the diagram is simply shown, fully and statically.
+ * Each node is clickable (and keyboard-operable) — it deep-links to that section, so the
+ * diagram doubles as navigation. Spokes reveal with a gentle stagger via the
+ * `motion-safe:` variant only, so under prefers-reduced-motion the diagram is simply shown.
  */
 interface Spoke {
   label: string;
   x: number;
   y: number;
   dot: string;
+  href: string;
 }
 
-const HUB = { x: 300, y: 160 };
+const HUB = { x: 300, y: 160, href: "/planner", label: "the planner" };
 const SPOKES: Spoke[] = [
-  { label: "Clinical skills", x: 300, y: 48, dot: "#059669" },
-  { label: "NMC competencies", x: 496, y: 160, dot: "#005eb8" },
-  { label: "Practice hours", x: 300, y: 272, dot: "#10b981" },
-  { label: "Reflections", x: 104, y: 160, dot: "#fb7185" },
+  { label: "Clinical skills", x: 300, y: 48, dot: "#059669", href: "/skills" },
+  { label: "NMC competencies", x: 496, y: 160, dot: "#005eb8", href: "/competencies" },
+  { label: "Practice hours", x: 300, y: 272, dot: "#10b981", href: "/placement-hours" },
+  { label: "Reflections", x: 104, y: 160, dot: "#fb7185", href: "/reflection" },
 ];
 
 export function MindmapBand() {
+  const navigate = useNavigate();
+  const onKey = (href: string) => (e: KeyboardEvent<SVGGElement>) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      navigate(href);
+    }
+  };
+
   return (
     <section
       aria-label="How PlaceMate connects"
@@ -31,20 +44,20 @@ export function MindmapBand() {
         How it all connects
       </p>
       <h2 className="mt-1 text-center text-lg font-semibold tracking-tight text-ink">
-        Capture once — it feeds everything
+        Capture once — feed everything
       </h2>
 
       <div className="mx-auto mt-3 max-w-[560px]">
-        <svg
-          viewBox="0 0 600 320"
-          className="w-full"
-          role="img"
-          aria-label="A shift connects to clinical skills, NMC competencies, practice hours and reflections"
-        >
+        <svg viewBox="0 0 600 320" className="w-full">
           {SPOKES.map((s, i) => (
             <g
               key={s.label}
-              className="motion-safe:[animation:mm-reveal_0.6s_ease-out_both]"
+              role="link"
+              tabIndex={0}
+              aria-label={`Go to ${s.label}`}
+              onClick={() => navigate(s.href)}
+              onKeyDown={onKey(s.href)}
+              className="group cursor-pointer motion-safe:[animation:mm-reveal_0.6s_ease-out_both]"
               style={{ animationDelay: `${0.25 + i * 0.22}s` }}
             >
               <line
@@ -55,6 +68,7 @@ export function MindmapBand() {
                 stroke="#a7f3d0"
                 strokeWidth={2}
                 strokeLinecap="round"
+                className="transition-colors group-hover:stroke-primary-400"
               />
               <rect
                 x={s.x - 90}
@@ -64,6 +78,7 @@ export function MindmapBand() {
                 rx={22}
                 fill="#ffffff"
                 stroke="#e2e8f0"
+                className="transition-colors group-hover:fill-primary-50 group-hover:stroke-primary-300 group-focus-visible:stroke-primary-400"
               />
               <circle cx={s.x - 70} cy={s.y} r={4} fill={s.dot} />
               <text
@@ -74,25 +89,43 @@ export function MindmapBand() {
                 fontSize={13}
                 fontWeight={500}
                 fill="#334155"
+                className="transition-colors group-hover:fill-primary-800"
               >
                 {s.label}
               </text>
             </g>
           ))}
 
-          {/* Hub, drawn on top of the connectors. */}
-          <rect x={HUB.x - 66} y={HUB.y - 26} width={132} height={52} rx={26} fill="#059669" />
-          <text
-            x={HUB.x}
-            y={HUB.y}
-            textAnchor="middle"
-            dominantBaseline="central"
-            fontSize={16}
-            fontWeight={700}
-            fill="#ffffff"
+          {/* Hub, drawn on top of the connectors — links to the planner. */}
+          <g
+            role="link"
+            tabIndex={0}
+            aria-label="Go to the planner"
+            onClick={() => navigate(HUB.href)}
+            onKeyDown={onKey(HUB.href)}
+            className="group cursor-pointer"
           >
-            A shift
-          </text>
+            <rect
+              x={HUB.x - 66}
+              y={HUB.y - 26}
+              width={132}
+              height={52}
+              rx={26}
+              fill="#059669"
+              className="transition-colors group-hover:fill-primary-700"
+            />
+            <text
+              x={HUB.x}
+              y={HUB.y}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize={16}
+              fontWeight={700}
+              fill="#ffffff"
+            >
+              A shift
+            </text>
+          </g>
         </svg>
       </div>
 
