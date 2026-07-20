@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import * as Sentry from "@sentry/react";
 import type { Repository } from "../data/repository";
 import type { User } from "../domain/types";
 import { DexieRepository } from "../data/dexie/dexieRepository";
@@ -55,6 +56,15 @@ export function RepositoryProvider({
       active = false;
     };
   }, [repository]);
+
+  // Bind the current user to Sentry so feedback + errors are attributable.
+  useEffect(() => {
+    if (user) {
+      Sentry.setUser({ id: user.id, email: user.email, username: user.displayName });
+    } else {
+      Sentry.setUser(null);
+    }
+  }, [user]);
 
   const value: RepositoryContextValue = {
     repo: repository,

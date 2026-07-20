@@ -69,6 +69,23 @@
   }
 }
 
+/* One-time attention pulse for the feedback trigger (motion-gating is done in
+   JS, so this only ever runs when the user allows motion). */
+@keyframes pm-attention {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+.pm-attention {
+  animation: pm-attention 1.4s ease-out 3;
+}
+
 /* ---------- FullCalendar theme (scoped to .fc-theme-wrap) ---------- */
 /* Scoped overrides win over FullCalendar's runtime-injected CSS by specificity. */
 .fc-theme-wrap {

@@ -1,3 +1,4 @@
+import "./observability/sentry"; // side effect: Sentry.init() — first, so bootstrap errors are captured
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./auth/passwordlessConfig"; // side effect: Passwordless.configure(...) — must run first
