@@ -74,17 +74,16 @@ export function HomePage() {
         <AiRecallTeaser />
       </PageHero>
 
-      {/* Onboarding: an illustrative "how it all connects" mindmap above the tour. */}
-      {showTour && <MindmapBand />}
-
       {/* Uniform next-step nudges — the canonical prompt surface (logic/nudges.ts). */}
       <NudgeList nudges={nudges} />
 
       {/* Two-column dashboard: left = stacked hours / shifts / skills; right =
           the getting-started tour, or recent activity once the tour is hidden. */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
-        {/* Left — hours pace, upcoming shifts, skills in progress, stacked. */}
+        {/* Left — onboarding mindmap (adjacent to "Your first steps"), then hours pace,
+            upcoming shifts, skills in progress, stacked. */}
         <div className="space-y-6">
+          {showTour && <MindmapBand />}
           <Panel
             title="Hours pace"
             hint="Counting toward your practice hours"
