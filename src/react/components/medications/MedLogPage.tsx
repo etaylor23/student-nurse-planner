@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { MED_LOG_TYPE_LABEL, type MedLogType, type Shift } from "../../../domain/types";
-import { ADMIN_ROUTES } from "../../../data/bnf";
 import { formatHumanDate, hhmm, isoDate } from "../../../logic/calendar";
 import { findCurrentShift, recentShifts } from "../../../logic/shiftContext";
 import { useMedicationLogs, useMedications, usePlacements, useShifts } from "../../hooks";
 import { useRepository } from "../../RepositoryContext";
-import { Panel, btnPrimary, inputCls } from "../ui";
+import { Panel, inputCls } from "../ui";
+import { ShiftMedLogForm } from "./ShiftMedLogForm";
 
 const todayIso = () => isoDate(new Date());
 
@@ -24,7 +24,7 @@ export function MedLogPage() {
   const { medications } = useMedications();
   const { shifts } = useShifts();
   const { placements } = usePlacements();
-  const { repo, user } = useRepository();
+  const { repo } = useRepository();
   const { type: typeSlug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -44,11 +44,6 @@ export function MedLogPage() {
   const currentShift = useMemo(() => findCurrentShift(shifts, Date.now()), [shifts]);
   const recent = useMemo(() => recentShifts(shifts, todayIso()), [shifts]);
 
-  const [medicationId, setMedicationId] = useState(prefill.prefillMedicationId ?? "");
-  const [type, setType] = useState<MedLogType>("OBSERVED");
-  const [date, setDate] = useState(todayIso());
-  const [route, setRoute] = useState("");
-  const [notes, setNotes] = useState("");
   // `picked === null` means "auto-follow the current shift" (derived live so it's
   // right once shifts load); once the user chooses, their pick wins ("" = no shift).
   // A prefilled shift (from a shift editor's "Log a medication") pins that shift.
@@ -79,37 +74,6 @@ export function MedLogPage() {
     return recent;
   }, [recent, selectedShift]);
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-    const created = await repo.createMedicationLog({
-      userId: user.id,
-      medicationId: medicationId || undefined,
-      shiftId: shiftId || undefined,
-      type,
-      date,
-      route: route || undefined,
-      notes: notes.trim() || undefined,
-    });
-    // Audit: med logs are actions-in-a-shift, so they join the global Activity feed.
-    const loggedMed = medicationId ? (medName.get(medicationId) ?? "a medication") : "a medication";
-    const linked = shiftId ? shiftById.get(shiftId) : undefined;
-    await repo.createLogItem({
-      userId: user.id,
-      entityType: "MEDICATION_LOG",
-      entityId: created.id,
-      entityLabel: loggedMed,
-      action: "MED_LOGGED",
-      summary: `${MED_LOG_TYPE_LABEL[type]} ${loggedMed}${linked ? ` in ${shiftLabel(linked, placeName)}` : ""}`,
-    });
-    setMedicationId("");
-    setRoute("");
-    setNotes("");
-    setDate(todayIso());
-    setPicked(null); // re-default to the current shift
-    await reload();
-  };
-
   const remove = async (id: string) => {
     if (!window.confirm("Delete this log entry?")) return;
     await repo.deleteMedicationLog(id);
@@ -123,7 +87,7 @@ export function MedLogPage() {
         title="Log a med"
         hint="Observed or administered — no patient-identifiable info"
       >
-        <form onSubmit={submit} className="space-y-4">
+        <div className="space-y-4">
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium text-slate-700">Shift</span>
             <select
@@ -153,69 +117,16 @@ export function MedLogPage() {
             </span>
           </label>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-medium text-slate-700">Medication</span>
-              <select
-                value={medicationId}
-                onChange={(e) => setMedicationId(e.target.value)}
-                className={inputCls}
-              >
-                <option value="">Not linked</option>
-                {medications.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-medium text-slate-700">Type</span>
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value as MedLogType)}
-                className={inputCls}
-              >
-                <option value="OBSERVED">Observed</option>
-                <option value="ADMINISTERED">Administered</option>
-              </select>
-            </label>
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-medium text-slate-700">Date</span>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className={inputCls}
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-medium text-slate-700">Route</span>
-              <select value={route} onChange={(e) => setRoute(e.target.value)} className={inputCls}>
-                <option value="">—</option>
-                {ADMIN_ROUTES.map((r) => (
-                  <option key={r}>{r}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-medium text-slate-700">Notes</span>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-              className={inputCls}
-              placeholder="What you learned — no patient-identifiable information."
-            />
-            <span className="mt-1 block text-xs text-amber-700">
-              Never record anything that could identify a patient.
-            </span>
-          </label>
-          <button type="submit" className={btnPrimary}>
-            Add to log
-          </button>
-        </form>
+          {/* The shift is chosen above; the shared form owns the med fields + save. */}
+          <ShiftMedLogForm
+            shiftId={shiftId}
+            prefillMedicationId={prefill.prefillMedicationId}
+            onLogged={() => {
+              setPicked(null); // re-default to the current shift
+              void reload();
+            }}
+          />
+        </div>
       </Panel>
 
       <Panel

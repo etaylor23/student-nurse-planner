@@ -2,8 +2,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { Placement, Shift, ShiftDraft } from "../../domain/types";
 import { ShiftForm } from "./ShiftForm";
-import { ShiftMedications } from "./ShiftMedications";
 import { ShiftSkills } from "./ShiftSkills";
+import { ShiftMedicationsTab } from "./shift/ShiftMedicationsTab";
 import { ShiftReflectionsTab } from "./shift/ShiftReflectionsTab";
 import { ShiftEvidenceTab } from "./shift/ShiftEvidenceTab";
 
@@ -138,7 +138,7 @@ export function ShiftModal({
 
   const tabPanel: ReactNode = shift ? (
     tab === "medications" ? (
-      <ShiftMedications shift={shift} />
+      <ShiftMedicationsTab shift={shift} />
     ) : tab === "skills" ? (
       <ShiftSkills shift={shift} />
     ) : tab === "reflections" ? (
