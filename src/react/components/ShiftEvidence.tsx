@@ -15,7 +15,17 @@ interface Row {
  * shift to a proficiency and unlink it here, so placement experience feeds the PAD
  * from where you log it.
  */
-export function ShiftEvidence({ shift }: { shift: Shift }) {
+export function ShiftEvidence({
+  shift,
+  flush = false,
+  onChange,
+}: {
+  shift: Shift;
+  /** Drop the leading divider/margin — for use as the first thing in a modal tab. */
+  flush?: boolean;
+  /** Called after a link/unlink so an outer view can refresh (e.g. re-derive gaps). */
+  onChange?: () => void;
+}) {
   const { repo, user } = useRepository();
   const [rows, setRows] = useState<Row[]>([]);
   const [picking, setPicking] = useState(false);
@@ -59,6 +69,7 @@ export function ShiftEvidence({ shift }: { shift: Shift }) {
     });
     setPicking(false);
     await reload();
+    onChange?.();
   };
 
   const unlink = async (row: Row) => {
@@ -73,12 +84,13 @@ export function ShiftEvidence({ shift }: { shift: Shift }) {
       summary: `Removed a placement shift from ${row.proficiency.code}`,
     });
     await reload();
+    onChange?.();
   };
 
   const linkedIds = new Set(rows.map((r) => r.proficiency.id));
 
   return (
-    <div className="mt-5 border-t border-slate-100 pt-4">
+    <div className={flush ? "" : "mt-5 border-t border-slate-100 pt-4"}>
       <div className="mb-2.5 flex items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
           Competency evidence
