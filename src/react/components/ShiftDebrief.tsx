@@ -62,8 +62,10 @@ export function ShiftDebrief({ shift, onDismiss }: { shift: Shift; onDismiss: ()
     setEvidenceKey((k) => k + 1);
   };
 
+  // Aligned with the uniform nudge look (components/Nudge.tsx): ring, not border, with a
+  // brand-tinted hover. These are contextual capture actions, so they stay a compact grid.
   const promptCls =
-    "flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50/50 hover:text-emerald-800";
+    "flex items-center gap-2 rounded-xl bg-white px-3 py-2.5 text-left text-sm font-medium text-slate-700 ring-1 ring-slate-200 transition hover:bg-primary-50/60 hover:text-primary-800 hover:ring-primary-200";
 
   return (
     <Panel title="Shift logged ✓" hint="Capture it while it's fresh — the day's still in your head">

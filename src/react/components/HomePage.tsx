@@ -172,13 +172,7 @@ export function HomePage() {
             }
           >
             {recentSkills.length === 0 ? (
-              <p className="text-sm text-slate-400">
-                No skills started yet —{" "}
-                <Link to="/skills" className={link}>
-                  pick one to track
-                </Link>
-                .
-              </p>
+              <p className="text-sm text-slate-400">No skills started yet.</p>
             ) : (
               <ul className="divide-y divide-slate-100">
                 {recentSkills.map((p) => (
