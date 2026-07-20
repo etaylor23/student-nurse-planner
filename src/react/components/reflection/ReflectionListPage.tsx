@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { GIBBS_STAGES, type Reflection, type ReflectionSection } from "../../../domain/types";
 import { gibbsCompleteness, reflectionMatchesQuery } from "../../../logic/gibbs";
 import { formatHumanDate } from "../../../logic/calendar";
-import { useReflections } from "../../hooks";
+import { useProficiencies, useReflections } from "../../hooks";
 import { useReflectionLock } from "../../reflectionLock";
 import { btnGhostSm, btnPrimary, inputCls } from "../ui";
 import { CompletenessMeter, LockBadge, TagPills } from "./shared";
@@ -22,6 +22,7 @@ function snippet(sections: ReflectionSection[]): string {
 
 export function ReflectionListPage() {
   const { reflections, sections, tags, reflectionTags } = useReflections();
+  const { evidenceLinks } = useProficiencies();
   const { unlocked } = useReflectionLock();
   const [q, setQ] = useState("");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
@@ -48,6 +49,16 @@ export function ReflectionListPage() {
     }
     return map;
   }, [reflectionTags, tagLabelById]);
+
+  // How many NMC proficiencies each reflection evidences — the "this counts" signpost on
+  // the list, so the PAD link is visible without opening each reflection.
+  const evidenceCountByReflection = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const l of evidenceLinks) {
+      if (l.evidenceType === "REFLECTION") m.set(l.evidenceId, (m.get(l.evidenceId) ?? 0) + 1);
+    }
+    return m;
+  }, [evidenceLinks]);
 
   const visible = useMemo(() => {
     return reflections.filter((r) => {
@@ -126,6 +137,7 @@ export function ReflectionListPage() {
                   reflection={r}
                   sections={sectionsByReflection.get(r.id) ?? []}
                   tagLabels={tagLabelsByReflection.get(r.id) ?? []}
+                  evidenceCount={evidenceCountByReflection.get(r.id) ?? 0}
                 />
               ))}
             </ul>
@@ -140,10 +152,12 @@ function ReflectionRow({
   reflection,
   sections,
   tagLabels,
+  evidenceCount,
 }: {
   reflection: Reflection;
   sections: ReflectionSection[];
   tagLabels: string[];
+  evidenceCount: number;
 }) {
   const completeness = gibbsCompleteness(sections);
   const dateLabel = reflection.occurredOn ? formatHumanDate(reflection.occurredOn) : null;
@@ -158,7 +172,29 @@ function ReflectionRow({
             <p className="truncate font-medium text-slate-800">{reflection.title}</p>
             {dateLabel && <p className="mt-0.5 text-xs text-slate-400">{dateLabel}</p>}
           </div>
-          {reflection.isLocked && <LockBadge />}
+          <div className="flex shrink-0 items-center gap-2">
+            {evidenceCount > 0 && (
+              <span
+                title={`Evidences ${evidenceCount} NMC proficienc${evidenceCount === 1 ? "y" : "ies"}`}
+                className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2 py-0.5 text-[10px] font-medium text-primary-700 ring-1 ring-primary-100"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-2.5 w-2.5"
+                  aria-hidden="true"
+                >
+                  <path d="M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8" />
+                </svg>
+                {evidenceCount}
+              </span>
+            )}
+            {reflection.isLocked && <LockBadge />}
+          </div>
         </div>
         {reflection.isLocked ? (
           <p className="mt-2 text-sm text-slate-400">Locked — open to unlock and read.</p>

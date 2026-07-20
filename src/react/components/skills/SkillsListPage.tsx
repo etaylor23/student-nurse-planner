@@ -10,7 +10,7 @@ import {
   skillStageOf,
   type SkillFilter,
 } from "../../../logic/skills";
-import { useSkills } from "../../hooks";
+import { useProficiencies, useSkills } from "../../hooks";
 import { Panel, btnPrimary, inputCls } from "../ui";
 import { SignedOffBadge, SkillStageBadge } from "./shared";
 
@@ -24,6 +24,7 @@ const FILTERS: { key: SkillFilter; label: string }[] = [
 /** Skills list — searchable + stage-filtered, grouped by category. */
 export function SkillsListPage() {
   const { skills, progress } = useSkills();
+  const { evidenceLinks } = useProficiencies();
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<SkillFilter>("ALL");
   // Carried in from a shift editor's "Sign off a skill" CTA — passed on to the chosen
@@ -33,6 +34,15 @@ export function SkillsListPage() {
   const linkState = prefillShiftId ? { prefillShiftId } : undefined;
 
   const bySkill = useMemo(() => progressBySkill(progress), [progress]);
+  // How many NMC proficiencies each skill evidences — the "this counts" signpost, so the
+  // link to the PAD is visible from the list, not just the skill's detail page.
+  const evidenceCount = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const l of evidenceLinks) {
+      if (l.evidenceType === "SKILL") m.set(l.evidenceId, (m.get(l.evidenceId) ?? 0) + 1);
+    }
+    return m;
+  }, [evidenceLinks]);
   const groups = useMemo(() => {
     const matching = skills.filter(
       (s) => skillMatchesQuery(s, q) && skillMatchesFilter(bySkill.get(s.id), filter),
@@ -100,6 +110,7 @@ export function SkillsListPage() {
             <ul className="divide-y divide-slate-100">
               {g.skills.map((s) => {
                 const prog = bySkill.get(s.id);
+                const evCount = evidenceCount.get(s.id) ?? 0;
                 return (
                   <li key={s.id}>
                     <Link
@@ -124,6 +135,26 @@ export function SkillsListPage() {
                         )}
                       </span>
                       <span className="flex shrink-0 items-center gap-2">
+                        {evCount > 0 && (
+                          <span
+                            title={`Evidences ${evCount} NMC proficienc${evCount === 1 ? "y" : "ies"}`}
+                            className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2 py-0.5 text-[10px] font-medium text-primary-700 ring-1 ring-primary-100"
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth={2}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="h-2.5 w-2.5"
+                              aria-hidden="true"
+                            >
+                              <path d="M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8" />
+                            </svg>
+                            {evCount}
+                          </span>
+                        )}
                         {prog?.signedOff ? (
                           <SignedOffBadge />
                         ) : (
