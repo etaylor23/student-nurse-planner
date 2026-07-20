@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { Placement, Shift, ShiftDraft } from "../../domain/types";
+import { formatHumanDate, hhmm } from "../../logic/calendar";
 import { ShiftForm } from "./ShiftForm";
 import { ShiftMedicationsTab } from "./shift/ShiftMedicationsTab";
 import { ShiftSkillsTab } from "./shift/ShiftSkillsTab";
@@ -77,6 +78,10 @@ export function ShiftModal({
   // The celebratory banner shows once per mark-worked (the modal remounts on the
   // status change), then can be dismissed.
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  // On mobile the core collapses to an essentials summary so the capture tabs get
+  // the screen; tap the summary to expand the full fields. Ignored at sm+ (the
+  // full core always shows there).
+  const [coreExpanded, setCoreExpanded] = useState(false);
 
   // Esc closes; Tab is trapped inside the panel.
   useEffect(() => {
@@ -154,6 +159,22 @@ export function ShiftModal({
       <ShiftEvidenceTab shift={shift} />
     )
   ) : null;
+
+  // Essentials for the mobile collapsed-core summary bar.
+  const placementName = shift?.placementId
+    ? (placements.find((p) => p.id === shift.placementId)?.name ?? null)
+    : null;
+  const coreTimes =
+    shift?.startAt && shift?.endAt
+      ? `${hhmm(new Date(shift.startAt))}–${hhmm(new Date(shift.endAt))}`
+      : shift
+        ? `${shift.netHours} h`
+        : "";
+  const statusLabel = shift?.isSimulated
+    ? "Simulated"
+    : shift?.status === "COMPLETED"
+      ? "Counted"
+      : "Planned";
 
   return createPortal(
     <div className="fixed inset-0 z-[60] flex sm:items-center sm:justify-center sm:p-6">
@@ -246,11 +267,58 @@ export function ShiftModal({
 
         {/* Locked core — the shift fields. Scrolls internally if it outgrows its
             share of the modal, so the tab bar + tab content stay reachable. */}
-        <div className="shrink-0 overflow-y-auto border-b border-slate-200/70 px-5 py-5 sm:max-h-[46vh] sm:px-6">
+        <div
+          className={
+            "shrink-0 overflow-y-auto border-b border-slate-200/70 px-5 py-5 sm:max-h-[46vh] sm:px-6 " +
+            // On mobile, an expanded core scrolls within ~55vh so the tabs stay
+            // reachable below; collapsed it's just the short summary.
+            (shift && coreExpanded ? "max-h-[55vh]" : "")
+          }
+        >
           {/* Celebratory progress the instant a shift is marked worked. */}
           {celebrate && shift && !bannerDismissed && (
             <ShiftProgressBanner shift={shift} onDismiss={() => setBannerDismissed(true)} />
           )}
+
+          {/* Mobile: a tappable essentials summary that expands the full fields,
+              so the capture tabs stay within reach on a small screen. */}
+          {shift && (
+            <button
+              type="button"
+              onClick={() => setCoreExpanded((v) => !v)}
+              aria-expanded={coreExpanded}
+              className="mb-3 flex w-full items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-left ring-1 ring-slate-200/60 sm:hidden"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-slate-800">
+                  {formatHumanDate(shift.date)}
+                  {placementName ? ` · ${placementName}` : ""}
+                </p>
+                <p className="truncate text-xs text-slate-400">
+                  {coreTimes} · {statusLabel}
+                </p>
+              </div>
+              <span className="shrink-0 text-xs font-medium text-emerald-600">
+                {coreExpanded ? "Hide" : "Details"}
+              </span>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={
+                  "h-4 w-4 shrink-0 text-slate-400 transition-transform " +
+                  (coreExpanded ? "rotate-180" : "")
+                }
+                aria-hidden="true"
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+          )}
+
           {/* Mobile-only action row (the header hides them under sm). */}
           {mode === "edit" && !locked && (
             <div className="mb-4 flex items-center gap-4 sm:hidden">
@@ -273,18 +341,23 @@ export function ShiftModal({
               </button>
             </div>
           )}
-          <ShiftForm
-            placements={placements}
-            initial={shift ?? undefined}
-            initialDate={shift ? undefined : prefill?.date}
-            initialStartTime={shift ? undefined : prefill?.startTime}
-            initialEndTime={shift ? undefined : prefill?.endTime}
-            initialPlacementId={shift ? undefined : lastPlacementId}
-            locked={locked}
-            onSubmit={onSubmit}
-            onCancel={onCancel}
-            onUnlock={mode === "edit" ? onUnlock : undefined}
-          />
+
+          {/* The full fields — always shown at sm+; on mobile only when expanded
+              (a new shift has no summary to collapse behind, so it shows). */}
+          <div className={shift && !coreExpanded ? "hidden sm:block" : "block"}>
+            <ShiftForm
+              placements={placements}
+              initial={shift ?? undefined}
+              initialDate={shift ? undefined : prefill?.date}
+              initialStartTime={shift ? undefined : prefill?.startTime}
+              initialEndTime={shift ? undefined : prefill?.endTime}
+              initialPlacementId={shift ? undefined : lastPlacementId}
+              locked={locked}
+              onSubmit={onSubmit}
+              onCancel={onCancel}
+              onUnlock={mode === "edit" ? onUnlock : undefined}
+            />
+          </div>
         </div>
 
         {/* Capture tabs — only once the shift exists (a new shift has nothing to
