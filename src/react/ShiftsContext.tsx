@@ -125,7 +125,9 @@ export function useShiftActions() {
     }
   };
 
-  const saveShift = async (draft: ShiftDraft, editingId: string | null): Promise<boolean> => {
+  // Returns the saved shift (so a caller can transition a just-created shift into
+  // edit mode), or null if the save didn't go ahead (duplicate cancelled / no user).
+  const saveShift = async (draft: ShiftDraft, editingId: string | null): Promise<Shift | null> => {
     const duplicate = shifts.some(
       (s) =>
         s.id !== editingId &&
@@ -136,7 +138,7 @@ export function useShiftActions() {
       duplicate &&
       !window.confirm("You already logged a shift on this date at this placement. Add it anyway?")
     ) {
-      return false;
+      return null;
     }
     const before = editingId ? shifts.find((s) => s.id === editingId) : undefined;
     let saved: Shift | undefined;
@@ -159,7 +161,7 @@ export function useShiftActions() {
       }
     }
     await reload();
-    return true;
+    return saved ?? null;
   };
 
   const deleteShift = async (shift: Shift): Promise<boolean> => {

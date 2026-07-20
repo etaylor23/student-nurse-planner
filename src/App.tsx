@@ -28,6 +28,7 @@ export function App() {
               <Route path="/home" element={<HomePage />} />
               <Route path="/placement-hours" element={<HoursLogPage />} />
               <Route path="/planner" element={<PlannerPage />} />
+              <Route path="/planner/new" element={<PlannerPage />} />
               <Route path="/planner/:shiftId" element={<PlannerPage />} />
               <Route path="/placements/:id" element={<PlacementDetailPage />} />
               <Route path="/medications/*" element={<MedicationNotesPage />} />

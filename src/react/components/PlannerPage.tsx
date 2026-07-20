@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useMatch, useNavigate, useParams } from "react-router-dom";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { EventInput } from "@fullcalendar/core";
-import { SHIFT_TYPE_LABEL, type Shift } from "../../domain/types";
+import { SHIFT_TYPE_LABEL, type Shift, type ShiftDraft } from "../../domain/types";
 import {
   clampResizeSpan,
-  composeShiftTimes,
   hhmm,
   isAllDay,
   isoDate,
@@ -25,12 +24,7 @@ import { downloadText } from "../download";
 import { ActivityLog } from "./ActivityLog";
 import { PlacementPalette } from "./PlacementPalette";
 import { ShiftDebrief } from "./ShiftDebrief";
-import { ShiftForm, type ShiftDraft } from "./ShiftForm";
-import { ShiftHistory } from "./ShiftHistory";
-import { ShiftMedications } from "./ShiftMedications";
-import { ShiftEvidence } from "./ShiftEvidence";
-import { ShiftSkills } from "./ShiftSkills";
-import { ShiftReflections } from "./ShiftReflections";
+import { ShiftModal } from "./ShiftModal";
 import { PageHero, Panel, btnGhostSm, btnPrimary } from "./ui";
 
 type NewShift = { date: string; startTime?: string; endTime?: string };
@@ -45,15 +39,21 @@ export function PlannerPage() {
   const { saveShift, deleteShift, markWorked, reactivateShift, editShift, copyShift, addShift } =
     useShiftActions();
   const { rules } = useBreakRules();
-  // The shift open in the editor is URL-driven (/planner/:shiftId), read live from
-  // the list so its lock state stays current. New-shift drafts are local state.
+  // The shift editor is a URL-driven modal: `/planner/:shiftId` edits (read live
+  // from the list so its lock state stays current), `/planner/new` creates. A new
+  // shift's calendar-slot prefill rides in on the route's router state.
   const { shiftId } = useParams();
+  const isNewRoute = !!useMatch("/planner/new");
+  const location = useLocation();
   const navigate = useNavigate();
   const editingShift = shiftId ? (shifts.find((s) => s.id === shiftId) ?? null) : null;
   const locked = editingShift?.status === "COMPLETED";
-  const [newShift, setNewShift] = useState<NewShift | null>(null);
-  // Live draft for the calendar highlight; kept in step with the form's fields.
-  const [draft, setDraft] = useState<NewShift | null>(null);
+  const prefill = isNewRoute
+    ? ((location.state as NewShift | null) ?? { date: isoDate(new Date()) })
+    : null;
+  const modalOpen = isNewRoute || !!editingShift;
+  // Bumped after an in-place save so the modal can flash a "Saved" confirmation.
+  const [savedTick, setSavedTick] = useState(0);
   // The just-completed shift whose post-shift debrief (U1) is showing.
   const [debriefShiftId, setDebriefShiftId] = useState<string | null>(null);
 
@@ -73,21 +73,9 @@ export function PlannerPage() {
     if (openShiftDate) calRef.current?.getApi().gotoDate(openShiftDate);
   }, [openShiftDate]);
 
-  const openNew = (ns: NewShift) => {
-    if (shiftId) navigate("/planner");
-    setNewShift(ns);
-    setDraft(ns);
-  };
-  const openEdit = (shift: Shift) => {
-    setNewShift(null);
-    setDraft(null);
-    navigate(`/planner/${shift.id}`);
-  };
-  const close = () => {
-    setNewShift(null);
-    setDraft(null);
-    if (shiftId) navigate("/planner");
-  };
+  const openNew = (ns: NewShift) => navigate("/planner/new", { state: ns });
+  const openEdit = (shift: Shift) => navigate(`/planner/${shift.id}`);
+  const close = () => navigate("/planner");
 
   if (loading || !user) {
     return <div className="text-sm text-slate-500">Loading…</div>;
@@ -113,26 +101,14 @@ export function PlannerPage() {
     extendedProps: { shift: s },
   }));
 
-  // A persistent, live "draft" highlight while a NEW shift is being configured —
-  // driven by `draft`, which the form updates as its date/times change. Compose
-  // absolute datetimes so an overnight draft renders across midnight.
-  const draftShift = draft
-    ? { date: draft.date, ...composeShiftTimes(draft.date, draft.startTime, draft.endTime) }
-    : null;
-  const draftEvent: EventInput | null = draftShift
-    ? {
-        id: "__draft__",
-        start: shiftStart(draftShift),
-        end: shiftEnd(draftShift),
-        allDay: isAllDay(draftShift),
-        display: "background",
-        classNames: ["ev-draft"],
-      }
-    : null;
-  const calendarEvents = draftEvent ? [...events, draftEvent] : events;
-
+  // Save from the modal. A brand-new shift transitions into edit mode on itself
+  // (stay in the modal → its capture tabs light up); an edit saves in place and
+  // flashes a "Saved" confirmation without leaving the shift.
   const submitShift = async (draft: ShiftDraft) => {
-    if (await saveShift(draft, editingShift?.id ?? null)) close();
+    const saved = await saveShift(draft, editingShift?.id ?? null);
+    if (!saved) return;
+    if (editingShift) setSavedTick((n) => n + 1);
+    else navigate(`/planner/${saved.id}`, { replace: true });
   };
 
   const removeShift = async (shift: Shift) => {
@@ -283,85 +259,6 @@ export function PlannerPage() {
     );
   };
 
-  const sidebar =
-    editingShift || newShift ? (
-      <Panel
-        title={locked ? "Locked shift" : editingShift ? "Edit shift" : "New shift"}
-        hint={editingShift ? undefined : "Fill in the details and save"}
-        action={
-          editingShift && !locked ? (
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => void completeShift(editingShift.id)}
-                className="text-xs font-medium text-emerald-600"
-              >
-                Mark worked
-              </button>
-              <button
-                type="button"
-                onClick={() => void copyShift(editingShift)}
-                title="Duplicate this shift — then drag the copy to another day"
-                className="text-xs font-medium text-slate-600"
-              >
-                Make a copy
-              </button>
-              <button
-                type="button"
-                onClick={() => void removeShift(editingShift)}
-                title="Delete (Backspace)"
-                className="text-xs font-medium text-rose-600"
-              >
-                Delete
-              </button>
-            </div>
-          ) : undefined
-        }
-      >
-        <ShiftForm
-          key={
-            editingShift
-              ? `edit-${editingShift.id}-${editingShift.status}`
-              : `new-${newShift?.date}-${newShift?.startTime ?? ""}-${newShift?.endTime ?? ""}`
-          }
-          placements={placements}
-          initial={editingShift ?? undefined}
-          initialDate={editingShift ? undefined : newShift?.date}
-          initialStartTime={editingShift ? undefined : newShift?.startTime}
-          initialEndTime={editingShift ? undefined : newShift?.endTime}
-          initialPlacementId={editingShift ? undefined : lastPlacementId}
-          locked={locked}
-          onDraftChange={editingShift ? undefined : setDraft}
-          onSubmit={submitShift}
-          onCancel={close}
-          onUnlock={editingShift ? () => void reactivateShift(editingShift) : undefined}
-        />
-        {editingShift && <ShiftMedications shift={editingShift} />}
-        {editingShift && <ShiftSkills shift={editingShift} />}
-        {editingShift && <ShiftReflections shift={editingShift} />}
-        {editingShift && <ShiftEvidence shift={editingShift} />}
-        {editingShift && <ShiftHistory shift={editingShift} />}
-      </Panel>
-    ) : (
-      <Panel title="Add a shift" hint="Pick a time on the calendar">
-        <p className="text-sm leading-relaxed text-slate-500">
-          Click a day — or drag across the hours you worked — and it opens here, ready to save.
-          Click an existing shift to edit it.
-        </p>
-        <p className="mt-2 text-sm leading-relaxed text-slate-500">
-          Or drag a placement chip from the palette above straight onto the calendar to drop a shift
-          at that ward.
-        </p>
-        <button
-          type="button"
-          onClick={() => openNew({ date: isoDate(new Date()) })}
-          className={`${btnPrimary} mt-4`}
-        >
-          New shift
-        </button>
-      </Panel>
-    );
-
   return (
     <div className="space-y-6">
       <PageHero
@@ -388,12 +285,12 @@ export function PlannerPage() {
 
       <PlacementPalette placements={placements} />
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
-        <Panel
-          title="Your shifts"
-          hint="Click a day or drag across hours to add · drag a shift to move · click to edit"
-          className="min-w-0"
-          action={
+      <Panel
+        title="Your shifts"
+        hint="Click a day or drag across hours to add · drag a shift to move · click to edit"
+        className="min-w-0"
+        action={
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() =>
@@ -407,96 +304,125 @@ export function PlannerPage() {
             >
               Add to calendar (.ics)
             </button>
-          }
-        >
-          <div className="fc-theme-wrap">
-            <FullCalendar
-              ref={calRef}
-              plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-              initialView="timeGridWeek"
-              firstDay={1}
-              headerToolbar={{
-                left: "prev,next today",
-                center: "title",
-                right: "dayGridMonth,timeGridWeek,timeGridDay",
-              }}
-              height={680}
-              scrollTime="07:00:00"
-              nowIndicator
-              eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
-              slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
-              editable
-              droppable
-              selectable
-              selectMirror
-              selectMinDistance={5}
-              slotMinTime="00:00:00"
-              slotMaxTime="24:00:00"
-              dayMaxEvents
-              events={calendarEvents}
-              eventContent={(arg) => {
-                const shift = arg.event.extendedProps.shift as Shift | undefined;
-                return shift ? renderChip(shift, arg.timeText) : undefined;
-              }}
-              dateClick={(arg) => openNew({ date: arg.dateStr.slice(0, 10) })}
-              select={(arg) =>
-                openNew(
-                  arg.allDay
-                    ? { date: isoDate(arg.start) }
-                    : {
-                        date: isoDate(arg.start),
-                        startTime: hhmm(arg.start),
-                        endTime: hhmm(arg.end),
-                      },
-                )
-              }
-              eventClick={(arg) => {
-                const shift = arg.event.extendedProps.shift as Shift | undefined;
-                if (shift) openEdit(shift);
-              }}
-              eventDrop={(arg) => {
-                const ev = arg.event;
-                const shift = ev.extendedProps.shift as Shift | undefined;
-                if (shift && ev.start) void applyMove(shift, ev.start, ev.allDay, ev.end);
-              }}
-              eventResize={(arg) => {
-                const ev = arg.event;
-                const shift = ev.extendedProps.shift as Shift | undefined;
-                if (shift && !ev.allDay && ev.start && ev.end)
-                  void applyResize(shift, ev.start, ev.end);
-                else arg.revert();
-              }}
-              eventReceive={(info) => {
-                // A placement chip was dropped → create a 2h planned shift, then
-                // remove FullCalendar's temporary event (we render from our store).
-                const placementId = info.event.extendedProps.placementId as string | undefined;
-                const start = info.event.start;
-                info.event.remove();
-                if (start) void addShift(droppedShiftDraft(start, 120, placementId, rules));
-              }}
-            />
+            <button
+              type="button"
+              onClick={() => openNew({ date: isoDate(new Date()) })}
+              className={btnPrimary}
+            >
+              New shift
+            </button>
           </div>
+        }
+      >
+        <div className="fc-theme-wrap">
+          <FullCalendar
+            ref={calRef}
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            initialView="timeGridWeek"
+            firstDay={1}
+            headerToolbar={{
+              left: "prev,next today",
+              center: "title",
+              right: "dayGridMonth,timeGridWeek,timeGridDay",
+            }}
+            height={680}
+            scrollTime="07:00:00"
+            nowIndicator
+            eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
+            slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
+            editable
+            droppable
+            selectable
+            selectMirror
+            selectMinDistance={5}
+            slotMinTime="00:00:00"
+            slotMaxTime="24:00:00"
+            dayMaxEvents
+            events={events}
+            eventContent={(arg) => {
+              const shift = arg.event.extendedProps.shift as Shift | undefined;
+              return shift ? renderChip(shift, arg.timeText) : undefined;
+            }}
+            dateClick={(arg) => openNew({ date: arg.dateStr.slice(0, 10) })}
+            select={(arg) =>
+              openNew(
+                arg.allDay
+                  ? { date: isoDate(arg.start) }
+                  : {
+                      date: isoDate(arg.start),
+                      startTime: hhmm(arg.start),
+                      endTime: hhmm(arg.end),
+                    },
+              )
+            }
+            eventClick={(arg) => {
+              const shift = arg.event.extendedProps.shift as Shift | undefined;
+              if (shift) openEdit(shift);
+            }}
+            eventDrop={(arg) => {
+              const ev = arg.event;
+              const shift = ev.extendedProps.shift as Shift | undefined;
+              if (shift && ev.start) void applyMove(shift, ev.start, ev.allDay, ev.end);
+            }}
+            eventResize={(arg) => {
+              const ev = arg.event;
+              const shift = ev.extendedProps.shift as Shift | undefined;
+              if (shift && !ev.allDay && ev.start && ev.end)
+                void applyResize(shift, ev.start, ev.end);
+              else arg.revert();
+            }}
+            eventReceive={(info) => {
+              // A placement chip was dropped → create a 2h planned shift, then
+              // remove FullCalendar's temporary event (we render from our store).
+              const placementId = info.event.extendedProps.placementId as string | undefined;
+              const start = info.event.start;
+              info.event.remove();
+              if (start) void addShift(droppedShiftDraft(start, 120, placementId, rules));
+            }}
+          />
+        </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-sm bg-slate-300" />
-              Planned
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-sm bg-emerald-400" />
-              Counted
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-sm bg-sky-400" />
-              Simulated
-            </span>
-          </div>
-        </Panel>
-
-        <div className="xl:sticky xl:top-6 xl:self-start">{sidebar}</div>
-      </div>
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-sm bg-slate-300" />
+            Planned
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-sm bg-emerald-400" />
+            Counted
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-sm bg-sky-400" />
+            Simulated
+          </span>
+        </div>
+      </Panel>
 
       <ActivityLog />
+
+      {modalOpen && (
+        <ShiftModal
+          key={
+            editingShift
+              ? `edit-${editingShift.id}-${editingShift.status}`
+              : `new-${prefill?.date}-${prefill?.startTime ?? ""}-${prefill?.endTime ?? ""}`
+          }
+          mode={editingShift ? "edit" : "new"}
+          shift={editingShift}
+          locked={locked}
+          placements={placements}
+          prefill={prefill}
+          lastPlacementId={lastPlacementId}
+          saved={savedTick}
+          onSubmit={submitShift}
+          onCancel={close}
+          onClose={close}
+          onDelete={() => editingShift && void removeShift(editingShift)}
+          onCopy={() => editingShift && void copyShift(editingShift)}
+          onMarkWorked={() => editingShift && void completeShift(editingShift.id)}
+          onUnlock={() => editingShift && void reactivateShift(editingShift)}
+        />
+      )}
     </div>
   );
 }
