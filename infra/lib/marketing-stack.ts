@@ -16,7 +16,7 @@ import {
 } from "aws-cdk-lib/aws-cloudfront";
 import { S3BucketOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 import { Certificate } from "aws-cdk-lib/aws-certificatemanager";
-import { AaaaRecord, ARecord, HostedZone, RecordTarget } from "aws-cdk-lib/aws-route53";
+import { ARecord, HostedZone, RecordTarget } from "aws-cdk-lib/aws-route53";
 import { CloudFrontTarget } from "aws-cdk-lib/aws-route53-targets";
 
 export interface MarketingStackProps extends StackProps {
@@ -44,7 +44,8 @@ export interface MarketingStackProps extends StackProps {
  *   - CloudFront: apex + www aliases, reused us-east-1 cert, security headers + a
  *     marketing CSP (allows the Plausible analytics vendor), and a viewer-request function
  *     that (a) 301s www → apex and (b) maps Astro `directory`-format paths to /index.html.
- *   - Route 53 A + AAAA aliases for apex AND www → this distribution.
+ *   - Route 53 A aliases for apex AND www → this distribution (IPv6/AAAA deliberately
+ *     not published — see the AliasA loop below for why).
  */
 export class MarketingStack extends Stack {
   constructor(scope: Construct, id: string, props: MarketingStackProps) {
@@ -85,7 +86,10 @@ export class MarketingStack extends Stack {
         strictTransportSecurity: {
           accessControlMaxAge: Duration.days(365),
           includeSubdomains: true,
-          preload: true,
+          // `preload` intentionally dropped: avoid being locked into the browser HSTS
+          // preload list while diagnosing NHS-network reachability (delisting is slow).
+          // HSTS itself stays (365d max-age + includeSubdomains). See
+          // plans/2026-07-20-nhs-wifi-access.md.
           override: true,
         },
         contentTypeOptions: { override: true },
@@ -188,12 +192,16 @@ function handler(event) {
       zoneName: hostedZoneName,
     });
     const target = RecordTarget.fromAlias(new CloudFrontTarget(distribution));
+    // IPv6 (AaaaRecord) deliberately NOT published: half-working IPv6 on NHS/hospital
+    // guest WiFi is a classic cause of "the network connection was lost" that works on
+    // cellular but not WiFi. Publishing A-only makes clients resolve IPv4, which
+    // CloudFront serves universally. Fully reversible (re-add AaaaRecord). See
+    // plans/2026-07-20-nhs-wifi-access.md.
     for (const [rid, name] of [
       ["Apex", apexDomain],
       ["Www", wwwDomain],
     ] as const) {
       new ARecord(this, `AliasA${rid}`, { zone, recordName: name, target });
-      new AaaaRecord(this, `AliasAAAA${rid}`, { zone, recordName: name, target });
     }
 
     new CfnOutput(this, "MarketingBucketName", { value: bucket.bucketName });
