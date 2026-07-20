@@ -122,8 +122,9 @@ export const PROFICIENCY_STATUS_LABEL: Record<ProficiencyStatus, string> = {
 
 /**
  * The kind of record attached to a proficiency as evidence (the polymorphic
- * `EvidenceLink` discriminator). SHIFT and MED_LOG are wired now; REFLECTION and
- * SKILL are defined ahead of those features being built (stub pickers today).
+ * `EvidenceLink` discriminator). All four types are wired: shift + med-log evidence
+ * from their logs, and skill + reflection evidence from their detail pages via the
+ * "Link to a proficiency" picker.
  */
 export type EvidenceType = "REFLECTION" | "SKILL" | "SHIFT" | "MED_LOG";
 export const EVIDENCE_TYPE_LABEL: Record<EvidenceType, string> = {
