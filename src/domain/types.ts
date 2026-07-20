@@ -58,6 +58,8 @@ export interface User extends Entity, Created, Updated {
   totalParts: number; // varies by programme (BSc 3yr -> 3)
   startDate?: string; // ISO date
   targetRegistrationDate?: string; // ISO date
+  /** When the first-run onboarding example flow was dismissed (ISO). Absent = still show it. */
+  onboardingTourDismissedAt?: string;
 }
 
 export interface Placement extends Entity, UserOwned, Created {

@@ -5,6 +5,7 @@ import { findCurrentShift, nextShift } from "../../logic/shiftContext";
 import { usePlacements, useShifts, useSkills } from "../hooks";
 import { useRepository } from "../RepositoryContext";
 import { ActivityLog } from "./ActivityLog";
+import { ExampleFlow } from "./home/ExampleFlow";
 import { TopGaps } from "./competencies/TopGaps";
 import { SignedOffBadge, SkillStageBadge } from "./skills/shared";
 import { PageHero, Panel, btnGhost, btnGhostSm, btnPrimary, link } from "./ui";
@@ -44,6 +45,7 @@ export function HomePage() {
     .slice(0, 3);
 
   const firstName = user.displayName.trim().split(/\s+/)[0] || "there";
+  const showTour = !user.onboardingTourDismissedAt;
 
   return (
     <div className="space-y-6">
@@ -65,122 +67,138 @@ export function HomePage() {
         }
       />
 
-      {/* Today at a glance — next shift, hours pace and skills on one row (1/3 each). */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {current ? (
-          <Panel title="On shift now" hint={label(current)}>
-            <p className="mb-3 text-sm text-slate-500">
-              You're in a shift — capture what you see while it's fresh.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() =>
-                  navigate("/medications/log", { state: { prefillShiftId: current.id } })
-                }
-                className={btnPrimary}
-              >
-                Log a medication
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate("/skills", { state: { prefillShiftId: current.id } })}
-                className={btnGhost}
-              >
-                Update a skill
-              </button>
-              <Link to={`/planner/${current.id}`} className={btnGhost}>
-                Open in planner
+      {/* Two-column dashboard: left = stacked hours / shifts / skills; right =
+          the getting-started tour, or recent activity once the tour is hidden. */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+        {/* Left — hours pace, upcoming shifts, skills in progress, stacked. */}
+        <div className="space-y-6">
+          <Panel
+            title="Hours pace"
+            hint="Counting toward your practice hours"
+            action={
+              <Link to="/placement-hours" className={btnGhostSm}>
+                Hours log
               </Link>
+            }
+          >
+            <div className="text-2xl font-semibold tabular-nums text-ink">
+              {summary.practiceHours}
+              <span className="text-base font-normal text-slate-400">
+                {" "}
+                / {summary.targetHours.toLocaleString()} h
+              </span>
             </div>
-          </Panel>
-        ) : upcoming ? (
-          <Panel title="Next shift" hint={`${formatHumanDate(upcoming.date)} · ${label(upcoming)}`}>
-            <div className="flex flex-wrap gap-2">
-              <Link to={`/planner/${upcoming.id}`} className={btnPrimary}>
-                Open in planner
-              </Link>
+            <div className="text-sm font-medium text-emerald-600">{pct}% complete</div>
+            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
             </div>
+            {projection.shiftsToGo != null && (
+              <p className="mt-2 text-xs text-slate-400">
+                ≈ {projection.shiftsToGo.toLocaleString()} shifts to go
+              </p>
+            )}
           </Panel>
-        ) : (
-          <Panel title="No upcoming shifts">
-            <p className="text-sm text-slate-500">
-              Plan your next shift on the{" "}
-              <Link to="/planner" className={link}>
-                weekly planner
-              </Link>
-              .
-            </p>
-          </Panel>
-        )}
 
-        <Panel
-          title="Hours pace"
-          hint="Counting toward your practice hours"
-          action={
-            <Link to="/placement-hours" className={btnGhostSm}>
-              Hours log
-            </Link>
-          }
-        >
-          <div className="text-2xl font-semibold tabular-nums text-ink">
-            {summary.practiceHours}
-            <span className="text-base font-normal text-slate-400">
-              {" "}
-              / {summary.targetHours.toLocaleString()} h
-            </span>
-          </div>
-          <div className="text-sm font-medium text-emerald-600">{pct}% complete</div>
-          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
-          </div>
-          {projection.shiftsToGo != null && (
-            <p className="mt-2 text-xs text-slate-400">
-              ≈ {projection.shiftsToGo.toLocaleString()} shifts to go
-            </p>
-          )}
-        </Panel>
-
-        <Panel
-          title="Skills in progress"
-          hint={`${inProgress.length} on the go`}
-          action={
-            <Link to="/skills" className={btnGhostSm}>
-              All skills
-            </Link>
-          }
-        >
-          {recentSkills.length === 0 ? (
-            <p className="text-sm text-slate-400">
-              No skills started yet —{" "}
-              <Link to="/skills" className={link}>
-                pick one to track
-              </Link>
-              .
-            </p>
+          {current ? (
+            <Panel title="On shift now" hint={label(current)}>
+              <p className="mb-3 text-sm text-slate-500">
+                You're in a shift — capture what you see while it's fresh.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate("/medications/log", { state: { prefillShiftId: current.id } })
+                  }
+                  className={btnPrimary}
+                >
+                  Log a medication
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate("/skills", { state: { prefillShiftId: current.id } })}
+                  className={btnGhost}
+                >
+                  Update a skill
+                </button>
+                <Link to={`/planner/${current.id}`} className={btnGhost}>
+                  Open in planner
+                </Link>
+              </div>
+            </Panel>
+          ) : upcoming ? (
+            <Panel
+              title="Next shift"
+              hint={`${formatHumanDate(upcoming.date)} · ${label(upcoming)}`}
+            >
+              <div className="flex flex-wrap gap-2">
+                <Link to={`/planner/${upcoming.id}`} className={btnPrimary}>
+                  Open in planner
+                </Link>
+              </div>
+            </Panel>
           ) : (
-            <ul className="divide-y divide-slate-100">
-              {recentSkills.map((p) => (
-                <li key={p.id}>
-                  <Link
-                    to={`/skills/${p.skillId}`}
-                    className="flex items-center gap-2 py-2.5 transition first:pt-0 last:pb-0 hover:bg-slate-50"
-                  >
-                    <span className="min-w-0 flex-1 truncate text-sm text-slate-700">
-                      {skillName.get(p.skillId) ?? "Skill"}
-                    </span>
-                    {p.signedOff ? <SignedOffBadge /> : <SkillStageBadge stage={p.stage} />}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <Panel title="No upcoming shifts">
+              <p className="text-sm text-slate-500">
+                Plan your next shift on the{" "}
+                <Link to="/planner" className={link}>
+                  weekly planner
+                </Link>
+                .
+              </p>
+            </Panel>
           )}
-        </Panel>
+
+          <Panel
+            title="Skills in progress"
+            hint={`${inProgress.length} on the go`}
+            action={
+              <Link to="/skills" className={btnGhostSm}>
+                All skills
+              </Link>
+            }
+          >
+            {recentSkills.length === 0 ? (
+              <p className="text-sm text-slate-400">
+                No skills started yet —{" "}
+                <Link to="/skills" className={link}>
+                  pick one to track
+                </Link>
+                .
+              </p>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {recentSkills.map((p) => (
+                  <li key={p.id}>
+                    <Link
+                      to={`/skills/${p.skillId}`}
+                      className="flex items-center gap-2 py-2.5 transition first:pt-0 last:pb-0 hover:bg-slate-50"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-sm text-slate-700">
+                        {skillName.get(p.skillId) ?? "Skill"}
+                      </span>
+                      {p.signedOff ? <SignedOffBadge /> : <SkillStageBadge stage={p.stage} />}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+        </div>
+
+        {/* Right — the getting-started tour, or recent activity once it's hidden.
+            When the tour exists, `order-first` floats it above the left column on
+            mobile (single-column) so new users meet the guide first; `lg:order-none`
+            restores source order (left, then right) once the two columns appear. */}
+        <div className={`space-y-6 ${showTour ? "order-first lg:order-none" : ""}`}>
+          {showTour ? <ExampleFlow /> : <ActivityLog />}
+        </div>
       </div>
 
       <TopGaps />
 
-      <ActivityLog />
+      {/* While the tour occupies the right column, activity gets its own full-width row. */}
+      {showTour && <ActivityLog />}
     </div>
   );
 }

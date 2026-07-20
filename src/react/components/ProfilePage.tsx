@@ -84,6 +84,11 @@ function ProfileForm({ user }: { user: User }) {
     setSaved(true);
   };
 
+  const replayTour = async () => {
+    await repo.updateUser({ onboardingTourDismissedAt: undefined });
+    await reloadUser();
+  };
+
   return (
     <div className="space-y-6">
       <PageHero
@@ -245,6 +250,25 @@ function ProfileForm({ user }: { user: User }) {
             <p className="mt-3 text-xs text-slate-400">
               Your PAD remains the official signed record. This is a personal study aid.
             </p>
+          </Panel>
+
+          <Panel title="Getting started" hint="The first-run tour on your Home page">
+            {user.onboardingTourDismissedAt ? (
+              <>
+                <p className="text-sm text-slate-600">You've hidden the getting-started tour.</p>
+                <button type="button" onClick={() => void replayTour()} className={btnGhostSm + " mt-3"}>
+                  Replay the tour
+                </button>
+              </>
+            ) : (
+              <p className="text-sm text-slate-600">
+                The getting-started tour is showing on your{" "}
+                <Link to="/home" className="font-medium hover:underline">
+                  Home page
+                </Link>
+                .
+              </p>
+            )}
           </Panel>
         </div>
       </div>
