@@ -15,6 +15,7 @@ import { usePlacements, useProficiencies, useShifts, useSkill } from "../../hook
 import { useRepository } from "../../RepositoryContext";
 import { useSkillActions } from "../../useSkillActions";
 import { ProficiencyPicker } from "../competencies/ProficiencyPicker";
+import { AttachEvidenceNudge } from "../AttachEvidenceNudge";
 import { Panel, btnGhostSm, btnPrimary, inputCls } from "../ui";
 import { SignedOffBadge, SkillStageBadge } from "./shared";
 
@@ -235,9 +236,7 @@ export function SkillDetailPage() {
               →
             </p>
           ) : (
-            <p className="text-sm text-slate-400">
-              Not yet attached as evidence for any proficiency.
-            </p>
+            <AttachEvidenceNudge message="Not yet attached as evidence — link it below to feed your PAD." />
           )}
           {pickerOpen ? (
             <ProficiencyPicker

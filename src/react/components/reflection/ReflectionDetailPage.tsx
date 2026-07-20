@@ -12,6 +12,7 @@ import { usePlacements, useProficiencies, useReflection, useShifts } from "../..
 import { useReflectionLock } from "../../reflectionLock";
 import { useReflectionActions } from "../../useReflectionActions";
 import { ProficiencyPicker } from "../competencies/ProficiencyPicker";
+import { AttachEvidenceNudge } from "../AttachEvidenceNudge";
 import { Panel, btnGhostSm, btnPrimary, inputCls } from "../ui";
 import { CompletenessMeter, LockBadge, ModelBadge, TagPills } from "./shared";
 import { ReflectionEditor } from "./ReflectionEditor";
@@ -256,7 +257,7 @@ export function ReflectionDetailPage() {
             hint="Attach this reflection as evidence for your PAD"
           >
             {linkedProficiencies.length === 0 ? (
-              <p className="text-sm text-slate-400">Not linked to any proficiency yet.</p>
+              <AttachEvidenceNudge message="Not linked to a proficiency yet — attach it below as evidence to feed your PAD." />
             ) : (
               <ul className="divide-y divide-slate-100">
                 {linkedProficiencies.map(({ link, prof }) => (
