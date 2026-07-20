@@ -4,8 +4,8 @@ import type { Placement, Shift, ShiftDraft } from "../../domain/types";
 import { ShiftForm } from "./ShiftForm";
 import { ShiftMedications } from "./ShiftMedications";
 import { ShiftSkills } from "./ShiftSkills";
-import { ShiftReflections } from "./ShiftReflections";
 import { ShiftEvidence } from "./ShiftEvidence";
+import { ShiftReflectionsTab } from "./shift/ShiftReflectionsTab";
 
 type NewShift = { date: string; startTime?: string; endTime?: string };
 
@@ -142,7 +142,7 @@ export function ShiftModal({
     ) : tab === "skills" ? (
       <ShiftSkills shift={shift} />
     ) : tab === "reflections" ? (
-      <ShiftReflections shift={shift} />
+      <ShiftReflectionsTab shift={shift} />
     ) : (
       <ShiftEvidence shift={shift} />
     )
