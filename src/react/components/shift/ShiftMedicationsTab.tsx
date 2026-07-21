@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, Route, Routes } from "react-router-dom";
+import { Link, Route, Routes, useNavigate } from "react-router-dom";
 import { MED_LOG_TYPE_LABEL, type MedicationLog, type Shift } from "../../../domain/types";
 import { EMPTY_FILTERS, type MedFilters } from "../../../logic/medicationFilters";
 import { useMedications } from "../../hooks";
 import { useRepository } from "../../RepositoryContext";
 import { MedicationCatalog } from "../medications/MedicationCatalog";
+import { MedicationFormPage } from "../medications/MedicationFormPage";
 import { ShiftMedLogForm } from "../medications/ShiftMedLogForm";
 import { Tabs } from "../Tabs";
+import { btnGhostSm } from "../ui";
 import { CaptureConfirmation, SeeFullLink, TabHeading, useCaptureFlash } from "./shared";
 
 /**
@@ -33,7 +35,8 @@ export function ShiftMedicationsTab({ shift }: { shift: Shift }) {
 
       <Routes>
         <Route index element={<MedLogView shift={shift} />} />
-        <Route path="catalog" element={<CatalogView />} />
+        <Route path="catalog" element={<CatalogView base={base} />} />
+        <Route path="catalog/new" element={<MedAddView base={base} />} />
       </Routes>
     </div>
   );
@@ -109,14 +112,30 @@ function MedLogView({ shift }: { shift: Shift }) {
   );
 }
 
-/** Sub-tab 2: the global medication catalog (local filter state; details open out). */
-function CatalogView() {
+/** Sub-tab 2: the global medication catalog (local filter state; details open out).
+ *  "Add medication" opens the form inline at .../catalog/new — no navigating away. */
+function CatalogView({ base }: { base: string }) {
   const [filters, setFilters] = useState<MedFilters>(EMPTY_FILTERS);
   return (
-    <MedicationCatalog
-      filters={filters}
-      onFilterChange={(patch) => setFilters((f) => ({ ...f, ...patch }))}
-      onClear={() => setFilters(EMPTY_FILTERS)}
-    />
+    <div>
+      <div className="mb-3 flex justify-end">
+        <Link to={`${base}/catalog/new`} className={btnGhostSm}>
+          + Add medication
+        </Link>
+      </div>
+      <MedicationCatalog
+        filters={filters}
+        onFilterChange={(patch) => setFilters((f) => ({ ...f, ...patch }))}
+        onClear={() => setFilters(EMPTY_FILTERS)}
+      />
+    </div>
   );
+}
+
+/** Add a new reference card inline (reuses the standalone MedicationFormPage,
+ *  embedded); saving or cancelling returns to the catalog. */
+function MedAddView({ base }: { base: string }) {
+  const navigate = useNavigate();
+  const backToCatalog = () => navigate(`${base}/catalog`);
+  return <MedicationFormPage onSaved={backToCatalog} onCancel={backToCatalog} />;
 }

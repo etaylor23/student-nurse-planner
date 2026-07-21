@@ -23,7 +23,15 @@ import { Panel, btnGhost, btnPrimary, inputCls } from "../ui";
 
 const CALC_TYPES = Object.keys(CALC_TYPE_LABEL) as CalcType[];
 
-export function MedicationFormPage() {
+export function MedicationFormPage({
+  onSaved,
+  onCancel,
+}: {
+  /** When set, the form saves in place (no navigation) and calls these — for
+   *  embedding in the shift modal's Medications → catalog "Add medication". */
+  onSaved?: (id: string) => void;
+  onCancel?: () => void;
+} = {}) {
   const { id } = useParams();
   const { medication } = useMedication(id);
   // Wait for the record before prefilling the edit form.
@@ -34,7 +42,14 @@ export function MedicationFormPage() {
       </Panel>
     );
   }
-  return <MedicationForm key={id ?? "new"} medication={id ? medication : undefined} />;
+  return (
+    <MedicationForm
+      key={id ?? "new"}
+      medication={id ? medication : undefined}
+      onSaved={onSaved}
+      onCancel={onCancel}
+    />
+  );
 }
 
 function field(label: string, control: React.ReactNode, hint?: string) {
@@ -47,8 +62,17 @@ function field(label: string, control: React.ReactNode, hint?: string) {
   );
 }
 
-function MedicationForm({ medication }: { medication?: Medication }) {
+function MedicationForm({
+  medication,
+  onSaved,
+  onCancel,
+}: {
+  medication?: Medication;
+  onSaved?: (id: string) => void;
+  onCancel?: () => void;
+}) {
   const editing = !!medication;
+  const embedded = !!onSaved;
   const { repo, user } = useRepository();
   const navigate = useNavigate();
 
@@ -94,7 +118,8 @@ function MedicationForm({ medication }: { medication?: Medication }) {
 
     if (editing && medication) {
       await repo.updateMedication(medication.id, draft);
-      navigate(`/medications/${medication.id}`);
+      if (onSaved) onSaved(medication.id);
+      else navigate(`/medications/${medication.id}`);
       return;
     }
 
@@ -119,191 +144,208 @@ function MedicationForm({ medication }: { medication?: Medication }) {
       prompt,
       answer,
     });
-    navigate(`/medications/${saved.id}`);
+    if (onSaved) onSaved(saved.id);
+    else navigate(`/medications/${saved.id}`);
   };
 
+  const formBody = (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {field(
+          "Generic name",
+          <Autocomplete
+            value={name}
+            onChange={setName}
+            options={GENERIC_NAMES}
+            ariaLabel="Generic name"
+            placeholder="e.g. Amoxicillin — type to search"
+          />,
+        )}
+        {field(
+          "Brand name(s)",
+          <input
+            type="text"
+            value={brandNames}
+            onChange={(e) => setBrandNames(e.target.value)}
+            className={inputCls}
+            placeholder="Optional"
+          />,
+        )}
+        {field(
+          "Drug class",
+          <Autocomplete
+            value={drugClass}
+            onChange={setDrugClass}
+            options={DRUG_CLASSES}
+            ariaLabel="Drug class"
+            placeholder="Optional — type to search"
+          />,
+        )}
+        {field(
+          "Body system",
+          <Autocomplete
+            value={bodySystem}
+            onChange={setBodySystem}
+            options={BODY_SYSTEMS}
+            ariaLabel="Body system"
+            placeholder="Optional — type to search"
+          />,
+        )}
+      </div>
+
+      {field(
+        "Routes",
+        <div className="flex flex-wrap gap-1.5">
+          {ADMIN_ROUTES.map((r) => {
+            const on = routes.includes(r);
+            return (
+              <button
+                type="button"
+                key={r}
+                onClick={() => toggleRoute(r)}
+                className={
+                  "rounded-full px-3 py-1 text-sm font-medium transition " +
+                  (on
+                    ? "bg-emerald-600 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200")
+                }
+              >
+                {r}
+              </button>
+            );
+          })}
+        </div>,
+      )}
+
+      {field(
+        "Mechanism of action",
+        <textarea
+          value={mechanismOfAction}
+          onChange={(e) => setMechanismOfAction(e.target.value)}
+          rows={2}
+          className={inputCls}
+          placeholder="How it works — e.g. inhibits bacterial cell-wall synthesis"
+        />,
+      )}
+
+      {field(
+        "Side effects",
+        <TagInput
+          value={sideEffects}
+          onChange={setSideEffects}
+          options={SIDE_EFFECTS}
+          ariaLabel="Side effects"
+          placeholder="Type to search — e.g. Vom… → Vomiting"
+        />,
+        "Type-ahead suggestions from a stubbed BNF list; add your own too.",
+      )}
+
+      {field(
+        "Monitoring",
+        <TagInput
+          value={monitoring}
+          onChange={setMonitoring}
+          options={MONITORING}
+          ariaLabel="Monitoring"
+          placeholder="Type to search — e.g. U&E, INR, blood glucose"
+        />,
+      )}
+
+      {field(
+        "Key notes",
+        <textarea
+          value={keyNotes}
+          onChange={(e) => setKeyNotes(e.target.value)}
+          rows={4}
+          className={inputCls}
+          placeholder="Anything else worth remembering — cautions, interactions, exam tips…"
+        />,
+      )}
+
+      <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-3">
+        <input
+          type="checkbox"
+          checked={highAlert}
+          onChange={(e) => setHighAlert(e.target.checked)}
+          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500/30"
+        />
+        <span className="text-sm">
+          <span className="font-medium text-slate-700">High-alert medication</span>
+          <span className="mt-0.5 block text-xs text-slate-400">
+            Flags drugs that carry a heightened risk of harm if used in error (e.g. insulin,
+            anticoagulants, opioids) — a study-awareness marker, not clinical advice.
+          </span>
+        </span>
+      </label>
+
+      {!editing &&
+        field(
+          "First condition",
+          <input
+            type="text"
+            value={firstCondition}
+            onChange={(e) => setFirstCondition(e.target.value)}
+            className={inputCls}
+            placeholder="What was it used for? (optional — add more later)"
+          />,
+          "You can append more conditions over time as you meet the drug again.",
+        )}
+
+      {error && (
+        <p className="rounded-xl bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700 ring-1 ring-rose-100">
+          {error}
+        </p>
+      )}
+
+      <div className="flex gap-2">
+        <button type="submit" disabled={saving} className={btnPrimary}>
+          {editing ? "Save changes" : "Add medication"}
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            onCancel
+              ? onCancel()
+              : navigate(editing && medication ? `/medications/${medication.id}` : "/medications")
+          }
+          className={btnGhost}
+        >
+          Cancel
+        </button>
+      </div>
+
+      <p className="border-t border-slate-100 pt-3 text-xs text-slate-400">
+        Name, drug-class and body-system suggestions are real UK data from{" "}
+        <a
+          href={BNF_SOURCE.url}
+          target="_blank"
+          rel="noreferrer"
+          className="font-medium text-slate-500 underline decoration-slate-300 underline-offset-2 hover:text-emerald-700"
+        >
+          {BNF_SOURCE.publisher} {BNF_SOURCE.title}
+        </a>{" "}
+        ({BNF_SOURCE.licence}, {BNF_SOURCE.version}). Side-effect and monitoring suggestions are a
+        curated list. A study aid — not a clinical reference.
+      </p>
+    </form>
+  );
+
+  if (embedded) {
+    return (
+      <div>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+          Add a medication
+        </p>
+        {formBody}
+      </div>
+    );
+  }
   return (
     <Panel
       title={editing ? "Edit medication" : "Add a medication"}
       hint="Optional fields are still worth a thought — class, system and condition build the links."
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {field(
-            "Generic name",
-            <Autocomplete
-              value={name}
-              onChange={setName}
-              options={GENERIC_NAMES}
-              ariaLabel="Generic name"
-              placeholder="e.g. Amoxicillin — type to search"
-            />,
-          )}
-          {field(
-            "Brand name(s)",
-            <input
-              type="text"
-              value={brandNames}
-              onChange={(e) => setBrandNames(e.target.value)}
-              className={inputCls}
-              placeholder="Optional"
-            />,
-          )}
-          {field(
-            "Drug class",
-            <Autocomplete
-              value={drugClass}
-              onChange={setDrugClass}
-              options={DRUG_CLASSES}
-              ariaLabel="Drug class"
-              placeholder="Optional — type to search"
-            />,
-          )}
-          {field(
-            "Body system",
-            <Autocomplete
-              value={bodySystem}
-              onChange={setBodySystem}
-              options={BODY_SYSTEMS}
-              ariaLabel="Body system"
-              placeholder="Optional — type to search"
-            />,
-          )}
-        </div>
-
-        {field(
-          "Routes",
-          <div className="flex flex-wrap gap-1.5">
-            {ADMIN_ROUTES.map((r) => {
-              const on = routes.includes(r);
-              return (
-                <button
-                  type="button"
-                  key={r}
-                  onClick={() => toggleRoute(r)}
-                  className={
-                    "rounded-full px-3 py-1 text-sm font-medium transition " +
-                    (on
-                      ? "bg-emerald-600 text-white"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200")
-                  }
-                >
-                  {r}
-                </button>
-              );
-            })}
-          </div>,
-        )}
-
-        {field(
-          "Mechanism of action",
-          <textarea
-            value={mechanismOfAction}
-            onChange={(e) => setMechanismOfAction(e.target.value)}
-            rows={2}
-            className={inputCls}
-            placeholder="How it works — e.g. inhibits bacterial cell-wall synthesis"
-          />,
-        )}
-
-        {field(
-          "Side effects",
-          <TagInput
-            value={sideEffects}
-            onChange={setSideEffects}
-            options={SIDE_EFFECTS}
-            ariaLabel="Side effects"
-            placeholder="Type to search — e.g. Vom… → Vomiting"
-          />,
-          "Type-ahead suggestions from a stubbed BNF list; add your own too.",
-        )}
-
-        {field(
-          "Monitoring",
-          <TagInput
-            value={monitoring}
-            onChange={setMonitoring}
-            options={MONITORING}
-            ariaLabel="Monitoring"
-            placeholder="Type to search — e.g. U&E, INR, blood glucose"
-          />,
-        )}
-
-        {field(
-          "Key notes",
-          <textarea
-            value={keyNotes}
-            onChange={(e) => setKeyNotes(e.target.value)}
-            rows={4}
-            className={inputCls}
-            placeholder="Anything else worth remembering — cautions, interactions, exam tips…"
-          />,
-        )}
-
-        <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-3">
-          <input
-            type="checkbox"
-            checked={highAlert}
-            onChange={(e) => setHighAlert(e.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500/30"
-          />
-          <span className="text-sm">
-            <span className="font-medium text-slate-700">High-alert medication</span>
-            <span className="mt-0.5 block text-xs text-slate-400">
-              Flags drugs that carry a heightened risk of harm if used in error (e.g. insulin,
-              anticoagulants, opioids) — a study-awareness marker, not clinical advice.
-            </span>
-          </span>
-        </label>
-
-        {!editing &&
-          field(
-            "First condition",
-            <input
-              type="text"
-              value={firstCondition}
-              onChange={(e) => setFirstCondition(e.target.value)}
-              className={inputCls}
-              placeholder="What was it used for? (optional — add more later)"
-            />,
-            "You can append more conditions over time as you meet the drug again.",
-          )}
-
-        {error && (
-          <p className="rounded-xl bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700 ring-1 ring-rose-100">
-            {error}
-          </p>
-        )}
-
-        <div className="flex gap-2">
-          <button type="submit" disabled={saving} className={btnPrimary}>
-            {editing ? "Save changes" : "Add medication"}
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              navigate(editing && medication ? `/medications/${medication.id}` : "/medications")
-            }
-            className={btnGhost}
-          >
-            Cancel
-          </button>
-        </div>
-
-        <p className="border-t border-slate-100 pt-3 text-xs text-slate-400">
-          Name, drug-class and body-system suggestions are real UK data from{" "}
-          <a
-            href={BNF_SOURCE.url}
-            target="_blank"
-            rel="noreferrer"
-            className="font-medium text-slate-500 underline decoration-slate-300 underline-offset-2 hover:text-emerald-700"
-          >
-            {BNF_SOURCE.publisher} {BNF_SOURCE.title}
-          </a>{" "}
-          ({BNF_SOURCE.licence}, {BNF_SOURCE.version}). Side-effect and monitoring suggestions are a
-          curated list. A study aid — not a clinical reference.
-        </p>
-      </form>
+      {formBody}
     </Panel>
   );
 }
