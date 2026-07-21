@@ -4,7 +4,7 @@ import { suggestProficienciesForShift } from "../../../logic/evidenceSuggestions
 import { useMedicationLogs, useProficiencies } from "../../hooks";
 import { useRepository } from "../../RepositoryContext";
 import { ShiftEvidence } from "../ShiftEvidence";
-import { CaptureConfirmation, useCaptureFlash } from "./shared";
+import { CaptureConfirmation, SeeFullLink, useCaptureFlash } from "./shared";
 
 /**
  * The Competency evidence capture tab: the gaps this shift could plausibly
@@ -55,6 +55,10 @@ export function ShiftEvidenceTab({ shift }: { shift: Shift }) {
 
   return (
     <div>
+      <div className="mb-3 flex items-center justify-end">
+        <SeeFullLink to="/competencies">See full competency tracker</SeeFullLink>
+      </div>
+
       <CaptureConfirmation message={message} />
 
       {suggested.length > 0 && (
