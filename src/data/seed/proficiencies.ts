@@ -6,6 +6,7 @@
 // sub-bullets in Annexe A s.4 and Annexe B s.1 are folded into their parent's
 // statement text, verbatim. 219 statements total.
 import type { Proficiency } from "../../domain/types";
+import { sentenceCase } from "../../logic/text";
 
 /** Provenance for the seeded proficiency master list — surfaced in the UI. */
 export interface ProficiencySource {
@@ -37,7 +38,10 @@ export const PLATFORM_DESCRIPTIONS: Record<string, string> = {
   B: "The nursing procedures that a newly registered nurse must be able to demonstrate to meet the proficiency outcomes outlined in the main body of this document.",
 };
 
-export const seedProficiencies: Proficiency[] = [
+// The raw generated statements are lower-cased at source; `seedProficiencies`
+// (below) presents them in sentence case. Everything downstream — the competency
+// tracker, gaps, evidence, and the derived clinical skills — inherits from that.
+const rawProficiencies: Proficiency[] = [
   {
     id: "prof_1.1",
     code: "1.1",
@@ -2247,3 +2251,13 @@ export const seedProficiencies: Proficiency[] = [
     statement: "undertake safe storage, transportation and disposal of medicinal products.",
   },
 ];
+
+/**
+ * The seeded master list, statements presented in sentence case (the generator
+ * emits them lower-cased). Sentence-casing here means the derived clinical skills
+ * (`seed/skills.ts`) and every proficiency surface read consistently.
+ */
+export const seedProficiencies: Proficiency[] = rawProficiencies.map((p) => ({
+  ...p,
+  statement: sentenceCase(p.statement),
+}));
