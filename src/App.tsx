@@ -29,7 +29,9 @@ export function App() {
               <Route path="/placement-hours" element={<HoursLogPage />} />
               <Route path="/planner" element={<PlannerPage />} />
               <Route path="/planner/new" element={<PlannerPage />} />
-              <Route path="/planner/:shiftId" element={<PlannerPage />} />
+              {/* Splat: the shift modal hosts its capture tabs as nested routes
+                  (/planner/:shiftId/medications, .../reflection/new, …). */}
+              <Route path="/planner/:shiftId/*" element={<PlannerPage />} />
               <Route path="/placements/:id" element={<PlacementDetailPage />} />
               <Route path="/medications/*" element={<MedicationNotesPage />} />
               <Route path="/competencies/*" element={<NmcCompetenciesPage />} />

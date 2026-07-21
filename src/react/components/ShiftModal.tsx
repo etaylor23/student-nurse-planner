@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import type { Placement, Shift, ShiftDraft } from "../../domain/types";
-import { formatHumanDate, hhmm } from "../../logic/calendar";
 import { ShiftForm } from "./ShiftForm";
+import { Tabs, type TabItem } from "./Tabs";
 import { ShiftMedicationsTab } from "./shift/ShiftMedicationsTab";
 import { ShiftSkillsTab } from "./shift/ShiftSkillsTab";
 import { ShiftReflectionsTab } from "./shift/ShiftReflectionsTab";
@@ -11,27 +12,20 @@ import { ShiftProgressBanner } from "./shift/ShiftProgressBanner";
 
 type NewShift = { date: string; startTime?: string; endTime?: string };
 
-const TABS = [
-  { key: "medications", label: "Medications" },
-  { key: "skills", label: "Skills" },
-  { key: "reflections", label: "Reflections" },
-  { key: "evidence", label: "Competency evidence" },
-] as const;
-type TabKey = (typeof TABS)[number]["key"];
-
 /** Selector for the elements the focus trap cycles through. */
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
- * The shift editor as a near-full-width modal — the spine of the app. The core
- * shift fields (`ShiftForm`) sit locked at the top with the header actions
- * (Mark worked · Make a copy · Delete); the capture flow lives in inline tabs
- * (Medications · Skills · Reflections · Competency evidence) so a student never
- * leaves the shift they're working on.
+ * The shift editor as a near-full-width modal — the spine of the app. It's a
+ * URL-driven nested-route host: the shift's core fields are the first tab
+ * (`/planner/:id`), and the capture flow lives in sibling tabs — Medications
+ * (`/medications`), Skills (`/skills`), Reflections (`/reflection`), Competency
+ * evidence (`/competencies`) — each deep-linkable and back-button friendly, so a
+ * student never leaves the shift they're working on.
  *
- * URL-driven from `PlannerPage` (`/planner/:shiftId` edit, `/planner/new` create);
- * Esc / backdrop / close all navigate back to `/planner`. Full-screen on mobile.
+ * The header (title · Mark worked · Make a copy · Delete · close) and the
+ * mark-worked celebration band stay put across every tab. Full-screen on mobile.
  *
  * A11y: `role="dialog"` + `aria-modal`, a focus trap, focus restore on close,
  * body scroll-lock, and Esc-to-close.
@@ -56,7 +50,7 @@ export function ShiftModal({
   mode: "new" | "edit";
   shift: Shift | null;
   locked: boolean;
-  /** True right after this shift was marked worked → show the celebratory banner. */
+  /** True right after this shift was marked worked → show the celebratory band. */
   celebrate?: boolean;
   placements: Placement[];
   prefill?: NewShift | null;
@@ -72,16 +66,10 @@ export function ShiftModal({
   onClose: () => void;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
-  const tabScrollRef = useRef<HTMLDivElement>(null);
-  const [tab, setTab] = useState<TabKey>("medications");
   const [flash, setFlash] = useState(false);
-  // The celebratory banner shows once per mark-worked (the modal remounts on the
+  // The celebratory band shows once per mark-worked (the modal remounts on the
   // status change), then can be dismissed.
   const [bannerDismissed, setBannerDismissed] = useState(false);
-  // On mobile the core collapses to an essentials summary so the capture tabs get
-  // the screen; tap the summary to expand the full fields. Ignored at sm+ (the
-  // full core always shows there).
-  const [coreExpanded, setCoreExpanded] = useState(false);
 
   // Esc closes; Tab is trapped inside the panel.
   useEffect(() => {
@@ -116,8 +104,6 @@ export function ShiftModal({
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    // Focus the panel so the trap + Esc work immediately, without stealing focus
-    // from an autofocused field inside the form.
     panelRef.current?.focus();
     return () => {
       document.body.style.overflow = prevOverflow;
@@ -133,13 +119,6 @@ export function ShiftModal({
     return () => window.clearTimeout(t);
   }, [saved]);
 
-  // Reset the tab scroll to the top when switching tabs, so the panel always
-  // opens at its start (the captured list) rather than mid-scroll.
-  const selectTab = (key: TabKey) => {
-    setTab(key);
-    tabScrollRef.current?.scrollTo({ top: 0 });
-  };
-
   const title = mode === "edit" ? (locked ? "Locked shift" : "Edit shift") : "New shift";
   const subtitle =
     mode === "edit"
@@ -148,33 +127,31 @@ export function ShiftModal({
         : "The shift, and everything you captured on it"
       : "Fill in the details, then save to start capturing against it";
 
-  const tabPanel: ReactNode = shift ? (
-    tab === "medications" ? (
-      <ShiftMedicationsTab shift={shift} />
-    ) : tab === "skills" ? (
-      <ShiftSkillsTab shift={shift} />
-    ) : tab === "reflections" ? (
-      <ShiftReflectionsTab shift={shift} />
-    ) : (
-      <ShiftEvidenceTab shift={shift} />
-    )
-  ) : null;
+  const base = shift ? `/planner/${shift.id}` : "";
+  const tabItems: TabItem[] = [
+    { to: base, label: "Shift", end: true },
+    { to: `${base}/medications`, label: "Medications" },
+    { to: `${base}/skills`, label: "Skills" },
+    { to: `${base}/reflection`, label: "Reflections" },
+    { to: `${base}/competencies`, label: "Competency evidence" },
+  ];
 
-  // Essentials for the mobile collapsed-core summary bar.
-  const placementName = shift?.placementId
-    ? (placements.find((p) => p.id === shift.placementId)?.name ?? null)
-    : null;
-  const coreTimes =
-    shift?.startAt && shift?.endAt
-      ? `${hhmm(new Date(shift.startAt))}–${hhmm(new Date(shift.endAt))}`
-      : shift
-        ? `${shift.netHours} h`
-        : "";
-  const statusLabel = shift?.isSimulated
-    ? "Simulated"
-    : shift?.status === "COMPLETED"
-      ? "Counted"
-      : "Planned";
+  // The shift's core fields — the "Shift" tab (index route), and the whole body in
+  // new mode (before there's anything to capture against).
+  const shiftFormEl = (
+    <ShiftForm
+      placements={placements}
+      initial={shift ?? undefined}
+      initialDate={shift ? undefined : prefill?.date}
+      initialStartTime={shift ? undefined : prefill?.startTime}
+      initialEndTime={shift ? undefined : prefill?.endTime}
+      initialPlacementId={shift ? undefined : lastPlacementId}
+      locked={locked}
+      onSubmit={onSubmit}
+      onCancel={onCancel}
+      onUnlock={mode === "edit" ? onUnlock : undefined}
+    />
+  );
 
   return createPortal(
     <div className="fixed inset-0 z-[60] flex sm:items-center sm:justify-center sm:p-6">
@@ -192,7 +169,7 @@ export function ShiftModal({
         tabIndex={-1}
         className="pm-modal-panel relative z-10 flex h-full w-full flex-col bg-white shadow-2xl outline-none sm:h-auto sm:max-h-[92vh] sm:max-w-5xl sm:rounded-2xl"
       >
-        {/* Header — title + core actions + close, always visible. */}
+        {/* Header — title + core actions + close, always visible across tabs. */}
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200/70 px-5 py-4 sm:px-6">
           <div className="min-w-0">
             <h2 className="text-base font-semibold tracking-tight text-ink">{title}</h2>
@@ -217,7 +194,7 @@ export function ShiftModal({
               </span>
             )}
             {mode === "edit" && !locked && (
-              <div className="hidden items-center gap-3 sm:flex">
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={onMarkWorked}
@@ -229,7 +206,7 @@ export function ShiftModal({
                   type="button"
                   onClick={onCopy}
                   title="Duplicate this shift — then drag the copy to another day"
-                  className="text-xs font-medium text-slate-600 hover:text-slate-800"
+                  className="hidden text-xs font-medium text-slate-600 hover:text-slate-800 sm:inline"
                 >
                   Make a copy
                 </button>
@@ -265,139 +242,38 @@ export function ShiftModal({
           </div>
         </div>
 
-        {/* Locked core — the shift fields. Scrolls internally if it outgrows its
-            share of the modal, so the tab bar + tab content stay reachable. */}
-        <div
-          className={
-            "shrink-0 overflow-y-auto border-b border-slate-200/70 px-5 py-5 sm:max-h-[46vh] sm:px-6 " +
-            // On mobile, an expanded core scrolls within ~55vh so the tabs stay
-            // reachable below; collapsed it's just the short summary.
-            (shift && coreExpanded ? "max-h-[55vh]" : "")
-          }
-        >
-          {/* Celebratory progress the instant a shift is marked worked. */}
-          {celebrate && shift && !bannerDismissed && (
+        {/* Celebratory progress the instant a shift is marked worked — a band that
+            stays visible whatever tab you're on. */}
+        {celebrate && shift && !bannerDismissed && (
+          <div className="shrink-0 border-b border-slate-200/70 px-5 pt-4 sm:px-6">
             <ShiftProgressBanner shift={shift} onDismiss={() => setBannerDismissed(true)} />
-          )}
-
-          {/* Mobile: a tappable essentials summary that expands the full fields,
-              so the capture tabs stay within reach on a small screen. */}
-          {shift && (
-            <button
-              type="button"
-              onClick={() => setCoreExpanded((v) => !v)}
-              aria-expanded={coreExpanded}
-              className="mb-3 flex w-full items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-left ring-1 ring-slate-200/60 sm:hidden"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-slate-800">
-                  {formatHumanDate(shift.date)}
-                  {placementName ? ` · ${placementName}` : ""}
-                </p>
-                <p className="truncate text-xs text-slate-400">
-                  {coreTimes} · {statusLabel}
-                </p>
-              </div>
-              <span className="shrink-0 text-xs font-medium text-emerald-600">
-                {coreExpanded ? "Hide" : "Details"}
-              </span>
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={
-                  "h-4 w-4 shrink-0 text-slate-400 transition-transform " +
-                  (coreExpanded ? "rotate-180" : "")
-                }
-                aria-hidden="true"
-              >
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-            </button>
-          )}
-
-          {/* Mobile-only action row (the header hides them under sm). */}
-          {mode === "edit" && !locked && (
-            <div className="mb-4 flex items-center gap-4 sm:hidden">
-              <button
-                type="button"
-                onClick={onMarkWorked}
-                className="text-xs font-medium text-emerald-600"
-              >
-                Mark worked
-              </button>
-              <button type="button" onClick={onCopy} className="text-xs font-medium text-slate-600">
-                Make a copy
-              </button>
-              <button
-                type="button"
-                onClick={onDelete}
-                className="text-xs font-medium text-rose-600"
-              >
-                Delete
-              </button>
-            </div>
-          )}
-
-          {/* The full fields — always shown at sm+; on mobile only when expanded
-              (a new shift has no summary to collapse behind, so it shows). */}
-          <div className={shift && !coreExpanded ? "hidden sm:block" : "block"}>
-            <ShiftForm
-              placements={placements}
-              initial={shift ?? undefined}
-              initialDate={shift ? undefined : prefill?.date}
-              initialStartTime={shift ? undefined : prefill?.startTime}
-              initialEndTime={shift ? undefined : prefill?.endTime}
-              initialPlacementId={shift ? undefined : lastPlacementId}
-              locked={locked}
-              onSubmit={onSubmit}
-              onCancel={onCancel}
-              onUnlock={mode === "edit" ? onUnlock : undefined}
-            />
-          </div>
-        </div>
-
-        {/* Capture tabs — only once the shift exists (a new shift has nothing to
-            capture against until it's saved). */}
-        {shift ? (
-          <>
-            <div className="shrink-0 border-b border-slate-200/70 px-5 sm:px-6">
-              <nav className="-mb-px flex gap-1 overflow-x-auto" aria-label="Shift capture">
-                {TABS.map((t) => (
-                  <button
-                    key={t.key}
-                    type="button"
-                    onClick={() => selectTab(t.key)}
-                    aria-current={tab === t.key ? "page" : undefined}
-                    className={
-                      "whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition " +
-                      (tab === t.key
-                        ? "border-primary-600 text-primary-700"
-                        : "border-transparent text-slate-500 hover:text-slate-700")
-                    }
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </nav>
-            </div>
-            <div ref={tabScrollRef} className="min-h-0 flex-1 overflow-y-auto px-5 pb-6 sm:px-6">
-              {/* The existing per-shift components already carry their own heading;
-                  the leading border/margin is trimmed by a negative top here. */}
-              <div className="-mt-1">{tabPanel}</div>
-            </div>
-          </>
-        ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
-            <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center text-sm text-slate-500">
-              Save this shift to start logging medications, skills, reflections and competency
-              evidence against it — right here, without leaving.
-            </p>
           </div>
         )}
+
+        {/* Tab bar — only once the shift exists (a new shift has nothing to capture
+            against until it's saved). */}
+        {shift && (
+          <div className="shrink-0 px-5 sm:px-6">
+            <Tabs items={tabItems} ariaLabel="Shift capture" />
+          </div>
+        )}
+
+        {/* Single full-height scroll region — the active tab (or the new-shift
+            form) gets the whole space. */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+          {shift ? (
+            <Routes>
+              <Route index element={shiftFormEl} />
+              <Route path="medications/*" element={<ShiftMedicationsTab shift={shift} />} />
+              <Route path="skills/*" element={<ShiftSkillsTab shift={shift} />} />
+              <Route path="reflection/*" element={<ShiftReflectionsTab shift={shift} />} />
+              <Route path="competencies" element={<ShiftEvidenceTab shift={shift} />} />
+              <Route path="*" element={<Navigate to={base} replace />} />
+            </Routes>
+          ) : (
+            shiftFormEl
+          )}
+        </div>
       </div>
     </div>,
     document.body,
