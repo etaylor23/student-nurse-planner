@@ -101,7 +101,7 @@ function ProfileForm({ user }: { user: User }) {
         aside={
           <div className="flex flex-col items-end gap-1.5">
             <span className="text-xs text-slate-500">
-              {isGuest ? "Guest — this device only" : (user.email ?? "Signed in")}
+              {isGuest ? "Demo — this device only" : (user.email ?? "Signed in")}
             </span>
             <button
               type="button"

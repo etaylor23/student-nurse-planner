@@ -41,13 +41,26 @@ export function LoginScreen({ onContinueAsGuest }: { onContinueAsGuest: () => vo
         <Logo size={34} className="mb-4" />
         <h1 className="text-2xl font-semibold tracking-tight text-ink">Sign in</h1>
 
+        {/* Private beta: sign-in is invite-only, so a wrong/unknown address silently gets
+            no email. Say so up front (without revealing whether any given address exists). */}
+        <p className="mt-2 text-sm text-slate-500">
+          PlaceMate is in a private beta — sign-in works for invited accounts.{" "}
+          <a
+            className="font-medium text-secondary-700 hover:underline"
+            href="mailto:hello@placemate.uk?subject=PlaceMate%20beta%20interest"
+          >
+            Want an invite? Email us
+          </a>
+          .
+        </p>
+
         {redeeming ? (
           <p className="mt-4 text-sm text-slate-600">Signing you in…</p>
         ) : requested ? (
           <div className="mt-4 space-y-4">
             <p className="text-sm text-slate-600">
-              If that address has an account, a link is on its way. Check your email and open the
-              link on this device.
+              If that address has an account, a link is on its way — use the same address your
+              invite was sent to. Check your email and open the link on this device.
             </p>
             <button type="button" className={btnGhost} onClick={() => setRequested(false)}>
               Use a different email
@@ -86,12 +99,37 @@ export function LoginScreen({ onContinueAsGuest }: { onContinueAsGuest: () => vo
 
         <div className="mt-6 border-t border-slate-100 pt-4">
           <button type="button" className={`${btnGhost} w-full`} onClick={onContinueAsGuest}>
-            Continue on this device only
+            Try the demo on this device
           </button>
           <p className="mt-2 text-center text-xs text-slate-400">
-            Guest mode keeps everything on this device. You can load demo data to explore.
+            A no-account demo — everything stays on this device, and demo data doesn't transfer into
+            a beta account.
           </p>
         </div>
+
+        <p className="mt-6 border-t border-slate-100 pt-4 text-center text-xs text-slate-400">
+          <a
+            className="hover:text-slate-600 hover:underline"
+            href="https://placemate.uk/privacy"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Privacy
+          </a>
+          <span className="px-1.5">·</span>
+          <a
+            className="hover:text-slate-600 hover:underline"
+            href="https://placemate.uk/terms"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Terms
+          </a>
+          <span className="px-1.5">·</span>
+          <a className="hover:text-slate-600 hover:underline" href="mailto:hello@placemate.uk">
+            hello@placemate.uk
+          </a>
+        </p>
       </div>
     </div>
   );
