@@ -48,6 +48,12 @@ export interface EnvConfig {
   /** Retain the DynamoDB table + Cognito pool on stack delete (true in prod). */
   retainData: boolean;
   customDomain?: CustomDomainConfig;
+  /**
+   * Where operational alarms + the cost budget email. Defaults to `hello@<domain>`, but
+   * that address is an iCloud-forwarded alias; a direct mailbox is more reliable for ops
+   * alerts (and AWS confirmation mail arrives without depending on a forward).
+   */
+  alarmEmail?: string;
 }
 
 const ACCOUNT = "641364901830";
@@ -79,6 +85,8 @@ const BASE: Record<EnvName, EnvConfig> = {
       hostedZoneId: "Z01422912TXS1SRHFVF2E",
       hostedZoneName: "placemate.uk",
     },
+    // A direct iCloud mailbox — ops alerts don't then depend on the hello@ forward.
+    alarmEmail: "ellis@placemate.uk",
   },
   prod: {
     name: "prod",
