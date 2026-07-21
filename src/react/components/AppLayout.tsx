@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import { NAV_SECTIONS, type NavItem } from "../nav";
 import { FeedbackButton } from "./FeedbackButton";
 import { Logo } from "./Logo";
+import { SyncBanner, SyncIndicator } from "./SyncIndicator";
 
 /** Minimal line icons keyed by nav path. Inherit color + size from the parent. */
 const ICONS: Record<string, ReactNode> = {
@@ -155,10 +156,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <Link to="/" className="flex items-center" aria-label="Placemate home">
           <Logo size={30} />
         </Link>
-        <div className="ml-auto flex items-center">
+        <div className="ml-auto flex items-center gap-2">
+          <SyncIndicator />
           <FeedbackButton />
         </div>
       </header>
+
+      {/* Prominent only when changes are genuinely stuck (failing / long-unsynced). */}
+      <SyncBanner />
 
       {/* ---------- Desktop fly-over (lg+) ---------- */}
       {/* A left-margin strip; the panel slides out of it on hover OR when a nav

@@ -6,6 +6,7 @@ import { simulateSelfCareReminder } from "../notifications";
 import { surfaceGaps } from "../../logic/proficiencies";
 import { useProficiencies } from "../hooks";
 import { useRepository } from "../RepositoryContext";
+import { SyncPanel } from "./SyncIndicator";
 import { PageHero, Panel, btnGhost, btnGhostSm, btnPrimary, inputCls } from "./ui";
 
 const PROGRAMME_TYPE_LABEL: Record<ProgrammeType, string> = {
@@ -219,6 +220,9 @@ function ProfileForm({ user }: { user: User }) {
         </Panel>
 
         <div className="space-y-6">
+          {/* Sync status — signed-in only (renders nothing for guests). */}
+          <SyncPanel />
+
           {/* Live impact (U10): answers "so what?" as you edit the part, before save. */}
           <Panel title="Due now" hint={`Part ${currentPart} of ${totalParts}`}>
             {dueNow == null ? (
@@ -256,7 +260,11 @@ function ProfileForm({ user }: { user: User }) {
             {user.onboardingTourDismissedAt ? (
               <>
                 <p className="text-sm text-slate-600">You've hidden the getting-started tour.</p>
-                <button type="button" onClick={() => void replayTour()} className={btnGhostSm + " mt-3"}>
+                <button
+                  type="button"
+                  onClick={() => void replayTour()}
+                  className={btnGhostSm + " mt-3"}
+                >
                   Replay the tour
                 </button>
               </>
