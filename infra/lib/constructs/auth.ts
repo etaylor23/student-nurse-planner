@@ -7,6 +7,7 @@ import {
   type UserPool,
   type UserPoolClient,
 } from "aws-cdk-lib/aws-cognito";
+import { OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
 import { Passwordless } from "amazon-cognito-passwordless-auth/cdk";
 import type { EnvConfig } from "../config";
 
@@ -61,6 +62,16 @@ export class Auth extends Construct {
       functionProps: {
         createAuthChallenge: {
           entry: path.join(__dirname, "..", "..", "lambda", "auth", "create-auth-challenge.ts"),
+          // Our entry imports the library's custom-auth index, which pulls in the FIDO2
+          // credentials module → `cbor`, whose dynamic require() breaks an ESM bundle
+          // ("Dynamic require of 'stream' is not supported"). The library ships this exact
+          // createRequire shim on its own FIDO2 fn; the default create-auth-challenge fn
+          // doesn't need it (smaller graph), but ours does. This whole bundling object
+          // REPLACES the construct's default, so it must re-declare `format: ESM`.
+          bundling: {
+            format: OutputFormat.ESM,
+            banner: "import{createRequire}from 'module';const require=createRequire(import.meta.url);",
+          },
         },
       },
       logLevel: "INFO",
