@@ -197,46 +197,50 @@ The remote backend lives in a separate CDK app under [`infra/`](./infra/README.m
 
 ### Build & deployment (CI/CD)
 
-**Push to `master` and the right things ship — automatically, by path.** Each of the
-three deployables auto-deploys _only when its own files change_; change several and
-several ship. Everything runs on **GitHub Actions** (`.github/workflows/`), which is
-**free** on this public repo, via the GitHub→AWS **OIDC role** `github-actions-deploy`
-in account `641364901830` — **no stored secrets, no build servers, no paid CI**.
+**Push to `master`, CI gates it, then the right things ship — by path.** One gated
+pipeline (`.github/workflows/pipeline.yml`) runs the CI checks on every push and PR, and
+deploys the path-matched deployables **only after every CI check passes** — a red commit
+can never reach the live app. Change several deployables at once and each that passed its
+filter ships. Everything runs on **GitHub Actions**, **free** on this public repo, via the
+GitHub→AWS **OIDC role** `github-actions-deploy` in account `641364901830` — **no stored
+secrets, no build servers, no paid CI**.
 
 There is **no GitHub Pages** — it was retired. The single live app is on CloudFront.
 
-| Deployable | Build | Auto-deploys on push to `master` when… | Lands on |
-|------------|-------|----------------------------------------|----------|
-| **App SPA** (`deploy-frontend.yml`) | `npm run build` | `src/**`, `index.html`, `package*.json`, `vite.config.ts`, `tsconfig*.json` change | S3 + CloudFront → **app.placemate.uk** |
-| **Backend / CDK** (`deploy-backend.yml`) | `cdk deploy` | `infra/**` changes | AWS (DynamoDB, Cognito, API GW, CloudFront) |
-| **Marketing site** (`deploy-marketing.yml`) | `cd site && npm run build` | `site/**` changes | S3 + CloudFront → **placemate.uk** |
+**CI (always, on every push + PR):** `ci-app` (typecheck, ESLint, `gen:zod` drift, tests)
+and `ci-infra` (`cdk synth`). Both must pass before any deploy job runs.
 
-Plus `ci.yml` on **every** push + PR: typecheck, `gen:zod` drift, tests, `cdk synth`
-(checks only, no deploy).
+| Deployable | Build | Deploys (after CI passes) when these change | Lands on |
+|------------|-------|---------------------------------------------|----------|
+| **App SPA** | `npm run build` | `src/**`, `index.html`, `package*.json`, `vite.config.ts`, `tsconfig*.json` | S3 + CloudFront → **app.placemate.uk** |
+| **Backend / CDK** | `cdk deploy` | `infra/**`, **`src/data/**`, `src/domain/**`** (the router Lambda imports these) | AWS (DynamoDB, Cognito, API GW, CloudFront) |
+| **Marketing site** | `cd site && npm run build` | `site/**` | S3 + CloudFront → **placemate.uk** |
 
-**Target environment.** Auto-deploys target the **`dev`** stack (`NursePlanner-dev`),
-which is **promoted-in-place to production** — it _is_ the live env behind
-app.placemate.uk (custom domain, verified SES, `retainData`; see
-[`infra/lib/config.ts`](./infra/lib/config.ts)). The `prod` config is an unused
-placeholder. Both deploy workflows also accept a manual run against a chosen env:
+The backend filter includes `src/data/**` and `src/domain/**` because the router Lambda
+bundles that code — a change there redeploys the Lambda too, so the SPA and its backend
+never drift out of sync. A push touching only `.github/workflows/**` runs CI and deploys
+nothing.
+
+**Target environment.** Deploys target the **`dev`** stack (`NursePlanner-dev`), which is
+**promoted-in-place to production** — it _is_ the live env behind app.placemate.uk (custom
+domain, verified SES, `retainData`; see [`infra/lib/config.ts`](./infra/lib/config.ts)).
+The `prod` config is an unused placeholder. Manual runs pick the env and what to deploy:
 
 ```bash
-gh workflow run "Deploy frontend (S3 + CloudFront)" -f environment=dev
-gh workflow run "Deploy backend (CDK)"             -f environment=dev
+gh workflow run "CI + Deploy" -f environment=dev -f target=frontend
+gh workflow run "CI + Deploy" -f environment=dev -f target=backend
+gh workflow run "CI + Deploy" -f environment=dev -f target=all
 ```
 
 **Why it's cheap & fast.** Path filters mean a change builds only what it touches (no
-whole-repo rebuilds). S3 syncs are incremental (`--delete` prunes stale keys); each
-deploy issues a single `/*` CloudFront invalidation (within the 1,000/month free tier).
-Per-env `concurrency` groups collapse redundant in-flight runs.
+whole-repo rebuilds). Each deploy issues a single `/*` CloudFront invalidation (within the
+1,000/month free tier). Per-env `concurrency` groups collapse redundant in-flight runs —
+the backend group never cancels an in-flight CloudFormation update.
 
 **Notes.**
 
 - The **first** CDK deploy of an env needs a one-time human `cdk bootstrap` (`dev` is
   already bootstrapped).
-- Backend auto-deploy depends on `cdk synth` succeeding — see the known
-  `Could not resolve "zod"` synth issue in the infra Lambda bundling; fix that before
-  relying on push-triggered backend deploys.
 
 ## 10. Spec index
 

@@ -1,0 +1,257 @@
+name: CI + Deploy
+
+# Single gated pipeline. CI (typecheck, lint, zod-drift, tests, cdk synth) runs on every
+# push and PR; the path-filtered deploy jobs run ONLY after ALL CI jobs pass — so a red
+# commit can never deploy to the live app. This replaces the former ci.yml +
+# deploy-frontend.yml + deploy-backend.yml + deploy-marketing.yml (which raced each other:
+# CI and the deploys triggered independently, so a failing test did not block a deploy).
+#
+# workflow_run can't carry path filters, so gating is done in ONE workflow via a
+# change-detection job (dorny/paths-filter) + `needs:` on the deploy jobs.
+#
+# Deploys use the GitHub→AWS OIDC role (no stored secrets) and target the live `dev` stack
+# (promoted-in-place to prod — see infra/lib/config.ts). A push touching only
+# .github/workflows/** runs CI but deploys nothing (no deploy filter matches it).
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        options: [dev, prod]
+        default: dev
+      target:
+        description: What to deploy (manual runs only)
+        type: choice
+        options: [all, frontend, backend, marketing]
+        default: all
+
+# Least privilege by default; deploy jobs opt into id-token for OIDC at the job level.
+permissions:
+  contents: read
+
+jobs:
+  # ---- Change detection (push/PR only; manual runs pick targets via the `target` input) ----
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+      marketing: ${{ steps.filter.outputs.marketing }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: github.event_name != 'workflow_dispatch'
+        with:
+          filters: |
+            frontend:
+              - 'src/**'
+              - 'index.html'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'vite.config.ts'
+              - 'tsconfig*.json'
+            backend:
+              - 'infra/**'
+              - 'src/data/**'
+              - 'src/domain/**'
+            marketing:
+              - 'site/**'
+
+  # ---- CI gates (always run) ----
+  ci-app:
+    name: App — typecheck, lint, zod drift, tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Zod schemas are up to date (ts-to-zod)
+        run: npm run gen:zod:check
+      - name: Tests
+        run: npm test
+
+  ci-infra:
+    name: Infra — cdk synth
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: infra/package-lock.json
+      - name: Install infra deps
+        working-directory: infra
+        run: npm ci
+      - name: cdk synth (both envs)
+        working-directory: infra
+        run: npx cdk synth
+
+  # ---- Deploys (only after CI passes AND the path filter matched / manual target chosen) ----
+  deploy-frontend:
+    name: Deploy SPA → NursePlanner-${{ inputs.environment || 'dev' }}
+    needs: [changes, ci-app, ci-infra]
+    if: >-
+      (github.event_name == 'push' && needs.changes.outputs.frontend == 'true') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.target == 'all' || inputs.target == 'frontend'))
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    # One deploy per env at a time; a newer push supersedes an in-flight one.
+    concurrency:
+      group: deploy-frontend-${{ inputs.environment || 'dev' }}
+      cancel-in-progress: true
+    env:
+      ENVIRONMENT: ${{ inputs.environment || 'dev' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Build SPA
+        run: npm run build
+        env:
+          VITE_BASE: / # CloudFront serves at the domain root.
+          # Public Cognito client config (repo Variables, not secrets).
+          VITE_COGNITO_REGION: ${{ vars.VITE_COGNITO_REGION || 'eu-west-2' }}
+          VITE_COGNITO_USER_POOL_ID: ${{ vars.VITE_COGNITO_USER_POOL_ID }}
+          VITE_COGNITO_CLIENT_ID: ${{ vars.VITE_COGNITO_CLIENT_ID }}
+          VITE_API_BASE: /api
+      - name: Assume AWS deploy role via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::641364901830:role/github-actions-deploy
+          aws-region: eu-west-2
+      - name: Resolve stack outputs
+        id: outputs
+        run: |
+          STACK="NursePlanner-$ENVIRONMENT"
+          get() { aws cloudformation describe-stacks --stack-name "$STACK" \
+            --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
+          echo "bucket=$(get SpaBucketName)" >> "$GITHUB_OUTPUT"
+          echo "distribution=$(get DistributionId)" >> "$GITHUB_OUTPUT"
+      - name: Sync to S3
+        run: aws s3 sync dist/ "s3://${{ steps.outputs.outputs.bucket }}" --delete
+      - name: Invalidate CloudFront
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ steps.outputs.outputs.distribution }}" \
+            --paths "/*"
+
+  deploy-backend:
+    name: cdk deploy NursePlanner-${{ inputs.environment || 'dev' }}
+    needs: [changes, ci-app, ci-infra]
+    if: >-
+      (github.event_name == 'push' && needs.changes.outputs.backend == 'true') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.target == 'all' || inputs.target == 'backend'))
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    # One CDK deploy per env at a time; never cancel an in-flight CloudFormation update.
+    concurrency:
+      group: deploy-backend-${{ inputs.environment || 'dev' }}
+      cancel-in-progress: false
+    env:
+      ENVIRONMENT: ${{ inputs.environment || 'dev' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: infra/package-lock.json
+      - name: Assume AWS deploy role via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::641364901830:role/github-actions-deploy
+          aws-region: eu-west-2
+      - name: Install infra deps
+        working-directory: infra
+        run: npm ci
+      - name: Deploy
+        working-directory: infra
+        # config.ts is the single source of truth for the SES sender. The legacy
+        # SES_FROM_ADDRESS repo variable was removed; this fallback stays inert unless
+        # someone re-adds it deliberately. No --profile in CI: creds come from OIDC.
+        run: |
+          EXTRA=""
+          if [ -n "${{ vars.SES_FROM_ADDRESS }}" ]; then
+            EXTRA="-c sesFromAddress=${{ vars.SES_FROM_ADDRESS }}"
+          fi
+          npx cdk deploy "NursePlanner-$ENVIRONMENT" \
+            --require-approval never --ci $EXTRA
+
+  deploy-marketing:
+    name: publish marketing site → NursePlanner-Marketing
+    needs: [changes, ci-app, ci-infra]
+    if: >-
+      (github.event_name == 'push' && needs.changes.outputs.marketing == 'true') ||
+      (github.event_name == 'workflow_dispatch' && (inputs.target == 'all' || inputs.target == 'marketing'))
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    concurrency:
+      group: deploy-marketing
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - name: Build site
+        working-directory: site
+        run: |
+          npm ci
+          npm run build
+      - name: Assume AWS deploy role via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::641364901830:role/github-actions-deploy
+          aws-region: eu-west-2
+      - name: Resolve stack outputs
+        id: outputs
+        run: |
+          STACK="NursePlanner-Marketing"
+          get() { aws cloudformation describe-stacks --stack-name "$STACK" \
+            --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
+          echo "bucket=$(get MarketingBucketName)" >> "$GITHUB_OUTPUT"
+          echo "distribution=$(get MarketingDistributionId)" >> "$GITHUB_OUTPUT"
+      - name: Sync to S3
+        env:
+          BUCKET: ${{ steps.outputs.outputs.bucket }}
+        run: |
+          # Hashed, content-addressed assets → cache forever, immutable.
+          aws s3 sync site/dist/ "s3://$BUCKET/" \
+            --cache-control "public,max-age=31536000,immutable" \
+            --exclude "*" --include "_astro/*"
+          # Everything else (HTML, sitemap, robots, llms.txt, images) → short cache;
+          # --delete prunes removed files (but leaves the excluded _astro/* in place).
+          aws s3 sync site/dist/ "s3://$BUCKET/" --delete \
+            --cache-control "public,max-age=300,must-revalidate" \
+            --exclude "_astro/*"
+      - name: Invalidate CloudFront
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ steps.outputs.outputs.distribution }}" \
+            --paths "/*"
