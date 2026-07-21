@@ -147,8 +147,21 @@ jobs:
             --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
           echo "bucket=$(get SpaBucketName)" >> "$GITHUB_OUTPUT"
           echo "distribution=$(get DistributionId)" >> "$GITHUB_OUTPUT"
-      - name: Sync to S3
-        run: aws s3 sync dist/ "s3://${{ steps.outputs.outputs.bucket }}" --delete
+      - name: Publish to S3 (hashed assets immutable, then index.html no-cache)
+        run: |
+          BUCKET="${{ steps.outputs.outputs.bucket }}"
+          # Content-hashed assets → cache forever, immutable. NO --delete: old chunks must
+          # survive a deploy so a tab open across it can still fetch the chunk it was about
+          # to lazy-load (the chunk-reload handler then refreshes it). Uploaded first, so
+          # index.html never references an asset that isn't there yet.
+          aws s3 sync dist/ "s3://$BUCKET/" \
+            --cache-control "public,max-age=31536000,immutable" \
+            --exclude "*" --include "assets/*"
+          # Everything else (index.html + root SVGs) → always revalidate, so a new deploy
+          # is picked up on the next load instead of a stale cached shell.
+          aws s3 sync dist/ "s3://$BUCKET/" \
+            --cache-control "no-cache" \
+            --exclude "assets/*"
       - name: Invalidate CloudFront
         run: |
           aws cloudfront create-invalidation \
