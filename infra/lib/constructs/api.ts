@@ -34,6 +34,8 @@ const LAMBDA_DIR = path.join(__dirname, "..", "..", "lambda");
 export class Api extends Construct {
   readonly httpApi: HttpApi;
   readonly apiDomain: string;
+  /** The RPC router Lambda — exposed so the Alarms construct can watch its Errors metric. */
+  readonly routerFn: NodejsFunction;
 
   constructor(scope: Construct, id: string, props: ApiProps) {
     super(scope, id);
@@ -76,6 +78,8 @@ export class Api extends Construct {
         resources: [policyStore.attrArn],
       }),
     );
+
+    this.routerFn = routerFn;
 
     const feedsFn = new NodejsFunction(this, "FeedsFn", {
       ...commonFnProps,

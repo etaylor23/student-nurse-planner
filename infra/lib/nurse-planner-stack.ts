@@ -9,6 +9,7 @@ import { Authz } from "./constructs/authz";
 import { Api } from "./constructs/api";
 import { Web } from "./constructs/web";
 import { Email } from "./constructs/email";
+import { Alarms } from "./constructs/alarms";
 
 export interface NursePlannerStackProps extends StackProps {
   config: EnvConfig;
@@ -67,6 +68,19 @@ export class NursePlannerStack extends Stack {
 
     if (config.customDomain && hostedZone) {
       new Email(this, "Email", { config, hostedZone });
+    }
+
+    // Operational alarms + cost budget — live env only (retainData + a custom domain, so
+    // there is a real mailbox to notify). The placeholder `prod` env has neither.
+    if (config.retainData && config.customDomain) {
+      new Alarms(this, "Alarms", {
+        config,
+        routerFn: api.routerFn,
+        httpApi: api.httpApi,
+        table: data.table,
+        notifyEmail: `hello@${config.customDomain.hostedZoneName}`,
+        monthlyBudgetUsd: 20,
+      });
     }
 
     // ---- Outputs the frontend build + human need (Cognito config, URLs, ids) ----
