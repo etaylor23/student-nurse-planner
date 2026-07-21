@@ -313,7 +313,44 @@ function ProfileForm({ user }: { user: User }) {
       {/* Demo data + local wipe are a guest-mode affordance (spec-auth §3): real accounts
           start empty apart from bundled reference data. */}
       {isGuest && <DemoDataPanel userId={user.id} />}
+
+      <AboutFooter />
     </div>
+  );
+}
+
+/** In-app legal + support links (the app itself linked neither before) + the build id. */
+function AboutFooter() {
+  const version = typeof __APP_RELEASE__ === "string" ? __APP_RELEASE__.slice(0, 7) : "dev";
+  return (
+    <footer className="border-t border-slate-100 pt-5 text-xs text-slate-400">
+      <p>
+        <a
+          className="hover:text-slate-600 hover:underline"
+          href="https://placemate.uk/privacy"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Privacy
+        </a>
+        <span className="px-1.5">·</span>
+        <a
+          className="hover:text-slate-600 hover:underline"
+          href="https://placemate.uk/terms"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Terms
+        </a>
+        <span className="px-1.5">·</span>
+        <a className="hover:text-slate-600 hover:underline" href="mailto:hello@placemate.uk">
+          hello@placemate.uk
+        </a>
+      </p>
+      <p className="mt-1.5">
+        PlaceMate — a personal study aid, not the official record. Version {version}.
+      </p>
+    </footer>
   );
 }
 

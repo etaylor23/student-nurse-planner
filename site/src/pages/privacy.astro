@@ -3,10 +3,10 @@ import Layout from "../layouts/Layout.astro";
 import { SITE } from "../consts";
 import { breadcrumb } from "../schema";
 
-const title = "Privacy Policy | Placemate";
+const title = "Privacy Policy | PlaceMate";
 const description =
-  "How Placemate handles data: privacy-first, cookieless analytics with no cookie banner, no patient-identifiable data, and how to contact us about your information.";
-const updated = "12 July 2026";
+  "How PlaceMate handles data: privacy-first, cookieless analytics with no cookie banner, no patient-identifiable data, error monitoring, and how to contact us about your information.";
+const updated = "21 July 2026";
 
 const jsonLd = [
   breadcrumb([
@@ -23,10 +23,19 @@ const jsonLd = [
 
     <div class="mt-8 space-y-8 text-slate-600">
       <section>
+        <h2 class="text-lg font-semibold text-ink">Who runs PlaceMate</h2>
+        <p class="mt-2 leading-relaxed">
+          PlaceMate is operated by Nicola Nightingale and Ellis Taylor. For any privacy question, or
+          to exercise your data rights, contact us at
+          <a href={`mailto:${SITE.email}`} class="text-emerald-700 hover:underline">{SITE.email}</a>.
+        </p>
+      </section>
+
+      <section>
         <h2 class="text-lg font-semibold text-ink">Who this covers</h2>
         <p class="mt-2 leading-relaxed">
-          This policy explains how the Placemate website at placemate.uk handles information. The
-          Placemate app at <a href={SITE.appUrl} rel="noopener" class="text-emerald-700 hover:underline"
+          This policy explains how the PlaceMate website at placemate.uk handles information. The
+          PlaceMate app at <a href={SITE.appUrl} rel="noopener" class="text-emerald-700 hover:underline"
             >app.placemate.uk</a
           > has its own handling for the data you choose to enter; see below.
         </p>
@@ -51,21 +60,36 @@ const jsonLd = [
       </section>
 
       <section>
-        <h2 class="text-lg font-semibold text-ink">The Placemate app</h2>
+        <h2 class="text-lg font-semibold text-ink">The PlaceMate app</h2>
         <p class="mt-2 leading-relaxed">
           In the app, data you enter (such as your hours, proficiencies and reflections) is stored
           to power the app. In demo mode it stays on your device; with an account it is stored
-          privately to you. Placemate is designed to hold no patient-identifiable information —
-          please keep patient details out of your notes and reflections.
+          privately to you (hosted on Amazon Web Services in the UK/EU). PlaceMate is designed to
+          hold no patient-identifiable information — please keep patient details out of your notes
+          and reflections.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="text-lg font-semibold text-ink">Error monitoring</h2>
+        <p class="mt-2 leading-relaxed">
+          So we can find and fix problems, the app uses Sentry — an error-monitoring service — in
+          its European (EU) region. When something goes wrong, Sentry receives a crash report that
+          includes your account email and display name when you&rsquo;re signed in (so we can follow
+          up). Only when an error occurs, it may also capture a short session replay with all text
+          and inputs masked, so the words in your notes are never readable. If you send feedback from
+          within the app, your message — and any screenshot you choose to attach — is sent to Sentry
+          too; please don&rsquo;t include patient-identifiable information in either.
         </p>
       </section>
 
       <section>
         <h2 class="text-lg font-semibold text-ink">Your rights &amp; contact</h2>
         <p class="mt-2 leading-relaxed">
-          Under UK GDPR you have rights over your personal data, including access and erasure. To
-          exercise them, or for any privacy question, email
-          <a href={`mailto:${SITE.email}`} class="text-emerald-700 hover:underline">{SITE.email}</a>.
+          Under UK GDPR you have rights over your personal data, including access and erasure. Email
+          <a href={`mailto:${SITE.email}`} class="text-emerald-700 hover:underline">{SITE.email}</a> and
+          we&rsquo;ll action an erasure request within 30 days. Backups kept for disaster recovery
+          roll off automatically within about 35 days, after which no copy of your data remains.
         </p>
       </section>
     </div>
