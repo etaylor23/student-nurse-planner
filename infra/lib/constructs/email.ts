@@ -29,8 +29,8 @@ const RECORD_TTL = Duration.minutes(30);
  *   - Easy DKIM              → 3× CNAME (from the identity's DKIM tokens)
  *   - custom MAIL FROM       → `mail.<domain>`: MX to the regional SES feedback host
  *                              (SPF alignment) + an SPF TXT
- *   - DMARC                  → `_dmarc.<domain>` TXT, `p=none` to start (tighten to
- *                              quarantine/reject after ~1–2 weeks of clean reports),
+ *   - DMARC                  → `_dmarc.<domain>` TXT, `p=quarantine` (tighten to
+ *                              `p=reject` after ~1–2 weeks of clean reports),
  *                              reports to `hello@<domain>`
  *
  * The identity is regional and MUST match the region the magic-link Lambda sends from
@@ -93,12 +93,14 @@ export class Email extends Construct {
       ttl: RECORD_TTL,
     });
 
-    // ---- DMARC. Start at p=none; reports land at hello@<domain> (forwarded to a real
-    // inbox). Tighten to p=quarantine then p=reject after reviewing clean reports. ----
+    // ---- DMARC at p=quarantine (moved up from p=none 2026-07-18 once both senders that
+    // use @<domain> — SES here + iCloud Custom Email Domain, which hosts the mailbox — were
+    // confirmed DKIM-aligned, so no legitimate mail fails). Aggregate reports land at
+    // hello@<domain>. Tighten to p=reject after reviewing clean rua reports. ----
     new TxtRecord(this, "Dmarc", {
       zone: hostedZone,
       recordName: `_dmarc.${domain}`,
-      values: [`v=DMARC1; p=none; rua=mailto:hello@${domain}; fo=1`],
+      values: [`v=DMARC1; p=quarantine; rua=mailto:hello@${domain}; fo=1; pct=100`],
       ttl: RECORD_TTL,
     });
   }
