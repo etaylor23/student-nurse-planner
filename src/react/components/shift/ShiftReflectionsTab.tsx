@@ -1,28 +1,47 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Route, Routes, useNavigate } from "react-router-dom";
 import type { Shift } from "../../../domain/types";
 import { useReflections } from "../../hooks";
 import { ReflectionEditor } from "../reflection/ReflectionEditor";
 import { LockBadge } from "../reflection/shared";
-import { addBtnCls, CaptureConfirmation, TabHeading, useCaptureFlash } from "./shared";
+import { addBtnCls, CaptureConfirmation, SeeFullLink, TabHeading, useCaptureFlash } from "./shared";
 
 /**
- * The Reflections capture tab: the reflections already written about this shift,
- * plus the full Gibbs `ReflectionEditor` inline (shift pre-linked). Saving reloads
- * the list and stays in the modal — you never leave the shift to reflect on it.
+ * The Reflections capture tab. URL-driven: /planner/:id/reflection lists this
+ * shift's reflections; /planner/:id/reflection/new writes one inline (the full
+ * Gibbs ReflectionEditor, shift pre-linked). Saving returns to the list — which
+ * refetches on mount — and flashes a confirmation, all in the modal.
  */
 export function ShiftReflectionsTab({ shift }: { shift: Shift }) {
-  const { reflections, reload } = useReflections();
-  const [writing, setWriting] = useState(false);
+  const base = `/planner/${shift.id}/reflection`;
+  const navigate = useNavigate();
   const { message, flash } = useCaptureFlash();
 
-  const rows = reflections.filter((r) => r.shiftId === shift.id);
+  return (
+    <div>
+      <CaptureConfirmation message={message} />
+      <Routes>
+        <Route index element={<ReflectionListView shift={shift} base={base} />} />
+        <Route
+          path="new"
+          element={
+            <ReflectionNewView
+              shift={shift}
+              onSaved={() => {
+                flash("Reflection saved to this shift");
+                navigate(base);
+              }}
+              onCancel={() => navigate(base)}
+            />
+          }
+        />
+      </Routes>
+    </div>
+  );
+}
 
-  const handleSaved = async () => {
-    await reload();
-    setWriting(false);
-    flash("Reflection saved to this shift");
-  };
+function ReflectionListView({ shift, base }: { shift: Shift; base: string }) {
+  const { reflections } = useReflections();
+  const rows = reflections.filter((r) => r.shiftId === shift.id);
 
   return (
     <div>
@@ -30,20 +49,16 @@ export function ShiftReflectionsTab({ shift }: { shift: Shift }) {
         label="Reflections"
         count={rows.length}
         action={
-          !writing && (
-            <button type="button" onClick={() => setWriting(true)} className={addBtnCls}>
+          <div className="flex items-center gap-3">
+            <Link to={`${base}/new`} className={addBtnCls}>
               + Write a reflection
-            </button>
-          )
+            </Link>
+            <SeeFullLink to="/reflection">See full reflections</SeeFullLink>
+          </div>
         }
       />
-
-      <CaptureConfirmation message={message} />
-
       {rows.length === 0 ? (
-        !writing && (
-          <p className="text-sm text-slate-400">None yet — reflect on something from this shift.</p>
-        )
+        <p className="text-sm text-slate-400">None yet — reflect on something from this shift.</p>
       ) : (
         <ul className="space-y-2">
           {rows.map((r) => (
@@ -59,16 +74,28 @@ export function ShiftReflectionsTab({ shift }: { shift: Shift }) {
           ))}
         </ul>
       )}
+    </div>
+  );
+}
 
-      {writing && (
-        <div className={rows.length > 0 ? "mt-4 border-t border-slate-100 pt-4" : ""}>
-          <ReflectionEditor
-            prefillShiftId={shift.id}
-            onSaved={() => void handleSaved()}
-            onCancel={() => setWriting(false)}
-          />
-        </div>
-      )}
+function ReflectionNewView({
+  shift,
+  onSaved,
+  onCancel,
+}: {
+  shift: Shift;
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+          Write a reflection
+        </p>
+        <SeeFullLink to="/reflection">See full reflections</SeeFullLink>
+      </div>
+      <ReflectionEditor prefillShiftId={shift.id} onSaved={onSaved} onCancel={onCancel} />
     </div>
   );
 }
