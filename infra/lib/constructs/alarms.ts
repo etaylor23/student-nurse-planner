@@ -10,7 +10,6 @@ import {
 import { SnsAction } from "aws-cdk-lib/aws-cloudwatch-actions";
 import { Topic } from "aws-cdk-lib/aws-sns";
 import { EmailSubscription } from "aws-cdk-lib/aws-sns-subscriptions";
-import { CfnBudget } from "aws-cdk-lib/aws-budgets";
 import { Operation, type Table } from "aws-cdk-lib/aws-dynamodb";
 import type { HttpApi } from "aws-cdk-lib/aws-apigatewayv2";
 import type { IFunction } from "aws-cdk-lib/aws-lambda";
@@ -24,10 +23,8 @@ export interface AlarmsProps {
   httpApi: HttpApi;
   /** The single-table store (throttle + system-error metrics). */
   table: Table;
-  /** Where alarm + budget notifications go (e.g. hello@placemate.uk). */
+  /** Where alarm notifications go (e.g. ellis@placemate.uk). */
   notifyEmail: string;
-  /** Monthly cost-budget ceiling in USD (forecast/actual notifications). */
-  monthlyBudgetUsd: number;
 }
 
 // The operations the app actually issues against the table; throttle/system-error metrics
@@ -45,20 +42,25 @@ const WATCHED_OPS = [
 ];
 
 /**
- * Operational alarms + a cost budget for the live environment.
+ * Operational alarms for the live environment.
  *
- * Before this, the account had ZERO CloudWatch alarms and no budget — a router Lambda
- * failing, the API 5xx-ing, the table throttling, or the SES bounce rate climbing toward
- * the account-suspension threshold would all have been invisible until a user complained
- * or the bill arrived. Every alarm and both budget thresholds notify a single SNS email
- * topic (subscription must be confirmed once from the target inbox).
+ * Before this, the account had ZERO CloudWatch alarms — a router Lambda failing, the API
+ * 5xx-ing, the table throttling, or the SES bounce rate climbing toward the
+ * account-suspension threshold would all have been invisible until a user complained. Every
+ * alarm notifies a single SNS email topic (subscription must be confirmed once from the
+ * target inbox).
+ *
+ * The cost budget lives OUTSIDE this stack (CLI-managed) — AWS::Budgets::Budget has flaky
+ * CloudFormation update support ("same name, different internalId") that repeatedly blocked
+ * deploys; a static $20 budget is set once via `aws budgets create-budget` instead. See the
+ * runbook / README ops notes.
  *
  * Instantiated only for the live env (see the stack) — no point paging on a placeholder.
  */
 export class Alarms extends Construct {
   constructor(scope: Construct, id: string, props: AlarmsProps) {
     super(scope, id);
-    const { config, routerFn, httpApi, table, notifyEmail, monthlyBudgetUsd } = props;
+    const { config, routerFn, httpApi, table, notifyEmail } = props;
 
     const topic = new Topic(this, "AlarmTopic", {
       topicName: `nurse-planner-alarms-${config.name}`,
@@ -139,36 +141,5 @@ export class Alarms extends Construct {
       0.001,
       "SES complaint rate ≥0.1% — risk of sending suspension",
     );
-
-    // Cost guardrail. Budget notifications email directly (no SNS confirmation needed).
-    // `threshold` is a percentage of the limit.
-    new CfnBudget(this, "MonthlyBudget", {
-      budget: {
-        budgetName: `nurse-planner-${config.name}-monthly`,
-        budgetType: "COST",
-        timeUnit: "MONTHLY",
-        budgetLimit: { amount: monthlyBudgetUsd, unit: "USD" },
-      },
-      notificationsWithSubscribers: [
-        {
-          notification: {
-            notificationType: "ACTUAL",
-            comparisonOperator: "GREATER_THAN",
-            threshold: 80,
-            thresholdType: "PERCENTAGE",
-          },
-          subscribers: [{ subscriptionType: "EMAIL", address: notifyEmail }],
-        },
-        {
-          notification: {
-            notificationType: "FORECASTED",
-            comparisonOperator: "GREATER_THAN",
-            threshold: 100,
-            thresholdType: "PERCENTAGE",
-          },
-          subscribers: [{ subscriptionType: "EMAIL", address: notifyEmail }],
-        },
-      ],
-    });
   }
 }
