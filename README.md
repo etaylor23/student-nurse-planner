@@ -242,6 +242,13 @@ the backend group never cancels an in-flight CloudFormation update.
 - The **first** CDK deploy of an env needs a one-time human `cdk bootstrap` (`dev` is
   already bootstrapped).
 
+### Runbooks
+
+- [`docs/runbooks/erasure.md`](./docs/runbooks/erasure.md) — action a UK GDPR erasure
+  request: `scripts/erase-user.ts` (dry-run by default) deletes the user's whole DynamoDB
+  partition (incl. tombstones) + cross-partition grants + the Cognito user, plus the manual
+  Sentry/inbox tail.
+
 ## 10. Spec index
 
 - [`spec-architecture.md`](./spec/spec-architecture.md) — data model (full Prisma
