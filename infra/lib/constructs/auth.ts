@@ -1,3 +1,4 @@
+import * as path from "path";
 import { Duration, RemovalPolicy } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import {
@@ -52,6 +53,15 @@ export class Auth extends Construct {
       magicLink: {
         sesFromAddress: config.sesFromAddress,
         sesRegion: config.region,
+      },
+      // Brand the magic-link email: a custom create-auth-challenge entry that overrides the
+      // library's bare-default email content + From display name (see the entry file). The
+      // construct spreads this AFTER its own `entry`, so ours wins; the environment (SES
+      // address, expiry, KMS key, secrets table, origins…) is still injected by the construct.
+      functionProps: {
+        createAuthChallenge: {
+          entry: path.join(__dirname, "..", "..", "lambda", "auth", "create-auth-challenge.ts"),
+        },
       },
       logLevel: "INFO",
     });
