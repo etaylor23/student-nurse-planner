@@ -1,8 +1,9 @@
-import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { overallPercentAchieved, surfaceGaps } from "../../logic/proficiencies";
 import { useProficiencies } from "../hooks";
 import { useRepository } from "../RepositoryContext";
 import { PageHero } from "./ui";
+import { Tabs } from "./Tabs";
 import { PlatformOverviewPage } from "./competencies/PlatformOverviewPage";
 import { PlatformDetailPage } from "./competencies/PlatformDetailPage";
 import { ProficiencyDetailPage } from "./competencies/ProficiencyDetailPage";
@@ -45,27 +46,25 @@ export function NmcCompetenciesPage() {
         }
       />
 
-      <nav className="flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1">
-        {TABS.map((t) => (
-          <Link
-            key={t.key}
-            to={t.to}
-            className={
-              "rounded-lg px-3.5 py-2 text-sm font-medium transition " +
-              (active === t.key
-                ? "bg-white text-emerald-700 shadow-sm"
-                : "text-slate-500 hover:text-slate-700")
-            }
-          >
-            {t.label}
-            {t.key === "gaps" && gapCount > 0 ? (
-              <span className="ml-1.5 rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700">
-                {gapCount}
-              </span>
-            ) : null}
-          </Link>
-        ))}
-      </nav>
+      <Tabs
+        variant="segmented"
+        ariaLabel="Competency sections"
+        items={TABS.map((t) => ({
+          to: t.to,
+          active: active === t.key,
+          label:
+            t.key === "gaps" && gapCount > 0 ? (
+              <>
+                {t.label}
+                <span className="ml-1.5 rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-700">
+                  {gapCount}
+                </span>
+              </>
+            ) : (
+              t.label
+            ),
+        }))}
+      />
 
       <Routes>
         <Route index element={<PlatformOverviewPage />} />

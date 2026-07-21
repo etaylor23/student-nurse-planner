@@ -1,9 +1,10 @@
 import { useMemo } from "react";
-import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import type { ReflectionSection } from "../../domain/types";
 import { gibbsCompleteness } from "../../logic/gibbs";
 import { useReflections } from "../hooks";
 import { PageHero } from "./ui";
+import { Tabs } from "./Tabs";
 import { NewReflectionPage } from "./reflection/NewReflectionPage";
 import { ReflectionDetailPage } from "./reflection/ReflectionDetailPage";
 import { ReflectionListPage } from "./reflection/ReflectionListPage";
@@ -55,22 +56,11 @@ export function ReflectionPage() {
         }
       />
 
-      <nav className="flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1">
-        {TABS.map((t) => (
-          <Link
-            key={t.key}
-            to={t.to}
-            className={
-              "rounded-lg px-3.5 py-2 text-sm font-medium transition " +
-              (active === t.key
-                ? "bg-white text-emerald-700 shadow-sm"
-                : "text-slate-500 hover:text-slate-700")
-            }
-          >
-            {t.label}
-          </Link>
-        ))}
-      </nav>
+      <Tabs
+        variant="segmented"
+        ariaLabel="Reflection sections"
+        items={TABS.map((t) => ({ to: t.to, label: t.label, active: active === t.key }))}
+      />
 
       <Routes>
         <Route index element={<ReflectionListPage />} />
