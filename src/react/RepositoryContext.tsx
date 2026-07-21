@@ -2,12 +2,18 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from "
 import * as Sentry from "@sentry/react";
 import type { Repository } from "../data/repository";
 import type { User } from "../domain/types";
-import { DexieRepository } from "../data/dexie/dexieRepository";
+import { DexieRepository, LOCAL_USER_ID } from "../data/dexie/dexieRepository";
 import { StorageBlockedScreen } from "./components/AppError";
 
 interface RepositoryContextValue {
   repo: Repository;
   user: User | null;
+  /**
+   * The current user's id, known SYNCHRONOUSLY (the Cognito sub, or the local id for a
+   * guest) — unlike `user`, which loads asynchronously. Use this to key per-user
+   * device-local state (e.g. form drafts) so it's stable from first render.
+   */
+  userId: string;
   loading: boolean;
   reloadUser: () => Promise<void>;
   /**
@@ -32,11 +38,14 @@ export function RepositoryProvider({
   repo,
   logout,
   isGuest = true,
+  userId = LOCAL_USER_ID,
 }: {
   children: React.ReactNode;
   repo?: Repository;
   logout?: (opts?: { wipeLocal?: boolean }) => Promise<void>;
   isGuest?: boolean;
+  /** Synchronous current-user id (sub, or the local id for guests). See the context type. */
+  userId?: string;
 }) {
   const repository = useMemo(() => repo ?? new DexieRepository(), [repo]);
   const [user, setUser] = useState<User | null>(null);
@@ -92,6 +101,7 @@ export function RepositoryProvider({
   const value: RepositoryContextValue = {
     repo: repository,
     user,
+    userId,
     loading,
     reloadUser,
     logout: logout ?? (async () => {}),

@@ -48,6 +48,7 @@ export function ShiftForm({
   initialPlacementId,
   locked = false,
   onDraftChange,
+  onDirtyChange,
   onSubmit,
   onCancel,
   onUnlock,
@@ -63,12 +64,15 @@ export function ShiftForm({
   locked?: boolean;
   /** Fires as date/start/end change so a live calendar draft can follow along. */
   onDraftChange?: (d: { date: string; startTime?: string; endTime?: string }) => void;
+  /** Reports unsaved-edit state so the host can guard close/tab-switch (true once edited). */
+  onDirtyChange?: (dirty: boolean) => void;
   onSubmit: (draft: ShiftDraft) => void | Promise<void>;
   onCancel?: () => void;
   /** Shown when `locked`: reactivate the shift so it can be edited again. */
   onUnlock?: () => void;
 }) {
   const { rules } = useBreakRules();
+  const [dirty, setDirty] = useState(false);
 
   const [date, setDate] = useState(initial?.date ?? initialDate ?? todayIso());
   const [placementId, setPlacementId] = useState(initial?.placementId ?? initialPlacementId ?? "");
@@ -101,6 +105,13 @@ export function ShiftForm({
   useEffect(() => {
     onDraftChange?.({ date, startTime: startTime || undefined, endTime: endTime || undefined });
   }, [date, startTime, endTime, onDraftChange]);
+
+  // Report dirtiness to the host (shift modal) so it can confirm before discarding on
+  // close or tab-switch. Reset to "clean" when this form leaves the tab / modal unmounts.
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
 
   const derivedMins = durationFromTimes(startTime, endTime);
   // Absolute UTC start/end timestamps for storage.
@@ -157,10 +168,11 @@ export function ShiftForm({
       notes: notes.trim() || undefined,
     };
     await onSubmit(draft);
+    setDirty(false); // saved — current values match what's stored
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} onChange={() => setDirty(true)} className="space-y-4">
       <fieldset
         disabled={locked}
         className={"m-0 min-w-0 space-y-4 border-0 p-0" + (locked ? " opacity-70" : "")}
@@ -211,7 +223,10 @@ export function ShiftForm({
                 <button
                   key={mode}
                   type="button"
-                  onClick={() => setEntryMode(mode)}
+                  onClick={() => {
+                    setEntryMode(mode);
+                    setDirty(true);
+                  }}
                   className={
                     "rounded-lg px-3 py-2 text-sm font-medium transition " +
                     (entryMode === mode

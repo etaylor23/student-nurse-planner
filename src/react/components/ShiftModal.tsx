@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import type { Placement, Shift, ShiftDraft } from "../../domain/types";
 import { ShiftForm } from "./ShiftForm";
 import { Tabs, type TabItem } from "./Tabs";
@@ -66,17 +66,29 @@ export function ShiftModal({
   onClose: () => void;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
   const [flash, setFlash] = useState(false);
   // The celebratory band shows once per mark-worked (the modal remounts on the
   // status change), then can be dismissed.
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  // The "Shift" tab's form reports unsaved edits here; only true while that tab is mounted.
+  const [formDirty, setFormDirty] = useState(false);
+
+  // Confirm before throwing away unsaved core-field edits. Returns true to proceed.
+  const confirmDiscard = useCallback(
+    () => !formDirty || window.confirm("Discard unsaved changes to this shift?"),
+    [formDirty],
+  );
+  const guardedClose = useCallback(() => {
+    if (confirmDiscard()) onClose();
+  }, [confirmDiscard, onClose]);
 
   // Esc closes; Tab is trapped inside the panel.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
-        onClose();
+        guardedClose();
         return;
       }
       if (e.key !== "Tab" || !panelRef.current) return;
@@ -97,7 +109,7 @@ export function ShiftModal({
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [guardedClose]);
 
   // Scroll-lock the page behind the modal, and restore focus to the trigger on close.
   useEffect(() => {
@@ -149,16 +161,32 @@ export function ShiftModal({
       locked={locked}
       onSubmit={onSubmit}
       onCancel={onCancel}
+      onDirtyChange={setFormDirty}
       onUnlock={mode === "edit" ? onUnlock : undefined}
     />
   );
+
+  // Guard tab switches: capture the click BEFORE the NavLink navigates, so unsaved
+  // core-field edits aren't silently unmounted. Skips clicks on the already-active tab.
+  const onTabsClickCapture = (e: React.MouseEvent) => {
+    if (!formDirty) return;
+    const anchor = (e.target as HTMLElement).closest("a");
+    if (!anchor) return;
+    if (new URL(anchor.href).pathname === location.pathname) return; // same tab — no-op
+    if (window.confirm("Discard unsaved changes to this shift?")) {
+      setFormDirty(false);
+    } else {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
 
   return createPortal(
     <div className="fixed inset-0 z-[60] flex sm:items-center sm:justify-center sm:p-6">
       <button
         type="button"
         aria-label="Close shift editor"
-        onClick={onClose}
+        onClick={guardedClose}
         className="pm-modal-backdrop absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
       />
       <div
@@ -222,7 +250,7 @@ export function ShiftModal({
             )}
             <button
               type="button"
-              onClick={onClose}
+              onClick={guardedClose}
               aria-label="Close"
               className="-mr-1 flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
             >
@@ -253,7 +281,7 @@ export function ShiftModal({
         {/* Tab bar — only once the shift exists (a new shift has nothing to capture
             against until it's saved). */}
         {shift && (
-          <div className="shrink-0 px-5 sm:px-6">
+          <div className="shrink-0 px-5 sm:px-6" onClickCapture={onTabsClickCapture}>
             <Tabs items={tabItems} ariaLabel="Shift capture" />
           </div>
         )}

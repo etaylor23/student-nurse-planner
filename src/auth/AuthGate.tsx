@@ -3,7 +3,7 @@ import Dexie from "dexie";
 import { usePasswordless } from "amazon-cognito-passwordless-auth/react";
 import { retrieveTokens } from "amazon-cognito-passwordless-auth/storage";
 import type { Repository } from "../data/repository";
-import { DexieRepository } from "../data/dexie/dexieRepository";
+import { DexieRepository, LOCAL_USER_ID } from "../data/dexie/dexieRepository";
 import { PlannerDb } from "../data/dexie/db";
 import { SyncRepository } from "../data/sync/syncRepository";
 import { RpcSyncTransport } from "../data/sync/rpcSyncTransport";
@@ -107,8 +107,12 @@ export function AuthGate({ children }: { children: ReactNode }) {
     return <LoginScreen onContinueAsGuest={enterGuest} />;
   }
 
+  // The current-user id, known synchronously (unlike the async-loaded user record): the
+  // Cognito sub when signed in, else the local guest id. Keys per-user device-local state.
+  const userId = signedIn && sub ? sub : LOCAL_USER_ID;
+
   return (
-    <RepositoryProvider repo={repo} logout={logout} isGuest={!signedIn}>
+    <RepositoryProvider repo={repo} logout={logout} isGuest={!signedIn} userId={userId}>
       {children}
     </RepositoryProvider>
   );

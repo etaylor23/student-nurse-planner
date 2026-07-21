@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Reflection, ReflectionSection, Shift, Tag } from "../../../domain/types";
 import { GIBBS_STAGES } from "../../../domain/types";
 import { formatHumanDate, hhmm, isoDate } from "../../../logic/calendar";
@@ -6,9 +6,35 @@ import { GIBBS_PROMPT_LIST } from "../../../logic/gibbs";
 import { findCurrentShift, recentShifts } from "../../../logic/shiftContext";
 import { usePlacements, useReflections, useShifts } from "../../hooks";
 import { useReflectionActions } from "../../useReflectionActions";
+import { useRepository } from "../../RepositoryContext";
+import { clearDraft, loadDraft, saveDraft } from "../../drafts";
 import { btnGhostSm, btnPrimary, inputCls } from "../ui";
 
 const todayIso = () => isoDate(new Date());
+
+/** The editable shape persisted as a device-local draft (crash/navigation insurance). */
+interface ReflectionDraftState {
+  title: string;
+  occurredOn: string;
+  content: Record<string, string>;
+  tagList: string[];
+  tagInput: string;
+  isLocked: boolean;
+  piiAck: boolean;
+  pickedShift: string | null;
+}
+
+/** True when a draft holds real user input worth restoring (not just empty defaults). */
+function draftHasContent(
+  d: Pick<ReflectionDraftState, "title" | "content" | "tagList" | "tagInput">,
+) {
+  return (
+    d.title.trim() !== "" ||
+    d.tagList.length > 0 ||
+    d.tagInput.trim() !== "" ||
+    Object.values(d.content).some((v) => v.trim() !== "")
+  );
+}
 
 function shiftLabel(s: Shift, placeName: Map<string, string>): string {
   const place = s.placementId ? (placeName.get(s.placementId) ?? "Placement") : "No placement";
@@ -43,28 +69,77 @@ export function ReflectionEditor({
   const { tags: allTags } = useReflections();
   const { shifts } = useShifts();
   const { placements } = usePlacements();
+  const { userId } = useRepository();
 
-  const [title, setTitle] = useState(initial?.reflection.title ?? prefillTitle ?? "");
-  const [occurredOn, setOccurredOn] = useState(initial?.reflection.occurredOn ?? todayIso());
-  const [content, setContent] = useState<Record<string, string>>(() => {
+  // --- device-local draft: restore any in-progress edit, autosave as they type ---
+  // Keyed per user (synchronous id — stable from first render, so a reload restores it) +
+  // context (new vs a specific reflection id), so drafts don't bleed across users/records.
+  const draftKey = `reflection:${userId}:${initial ? initial.reflection.id : "new"}`;
+  // Shift pin: `null` = auto-follow the current timed shift; a choice wins ("" = none).
+  const originalShift = initial ? (initial.reflection.shiftId ?? "") : (prefillShiftId ?? null);
+  const buildOriginalContent = () => {
     const map: Record<string, string> = {};
     for (const stage of GIBBS_STAGES) map[stage] = "";
     for (const s of initial?.sections ?? []) map[s.stage] = s.content;
     return map;
-  });
-  const [tagList, setTagList] = useState<string[]>(() =>
-    initial ? initial.tags.map((t) => t.label) : (prefillTags ?? []),
-  );
-  const [tagInput, setTagInput] = useState("");
-  const [isLocked, setIsLocked] = useState(initial?.reflection.isLocked ?? false);
-  const [piiAck, setPiiAck] = useState(initial?.reflection.piiAcknowledged ?? false);
+  };
+  const original: ReflectionDraftState = {
+    title: initial?.reflection.title ?? prefillTitle ?? "",
+    occurredOn: initial?.reflection.occurredOn ?? todayIso(),
+    content: buildOriginalContent(),
+    tagList: initial ? initial.tags.map((t) => t.label) : (prefillTags ?? []),
+    tagInput: "",
+    isLocked: initial?.reflection.isLocked ?? false,
+    piiAck: initial?.reflection.piiAcknowledged ?? false,
+    pickedShift: originalShift,
+  };
+  // Read the draft ONCE (localStorage is synchronous, so it can seed useState directly).
+  const savedDraft = useRef<ReflectionDraftState | null>(loadDraft<ReflectionDraftState>(draftKey));
+  const start = savedDraft.current ?? original;
+
+  const [title, setTitle] = useState(start.title);
+  const [occurredOn, setOccurredOn] = useState(start.occurredOn);
+  const [content, setContent] = useState<Record<string, string>>(start.content);
+  const [tagList, setTagList] = useState<string[]>(start.tagList);
+  const [tagInput, setTagInput] = useState(start.tagInput);
+  const [isLocked, setIsLocked] = useState(start.isLocked);
+  const [piiAck, setPiiAck] = useState(start.piiAck);
+  const [pickedShift, setPickedShift] = useState<string | null>(start.pickedShift);
+  const [restoredDraft, setRestoredDraft] = useState(savedDraft.current != null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Shift pin — same pattern as the med-log / skill sign-off pickers. `null` =
-  // auto-follow the current timed shift; once chosen, the choice wins ("" = none).
-  const initialShift = initial ? (initial.reflection.shiftId ?? "") : (prefillShiftId ?? null);
-  const [pickedShift, setPickedShift] = useState<string | null>(initialShift);
+  // Autosave the in-progress draft (debounced); clear it when nothing's worth keeping.
+  useEffect(() => {
+    const state: ReflectionDraftState = {
+      title,
+      occurredOn,
+      content,
+      tagList,
+      tagInput,
+      isLocked,
+      piiAck,
+      pickedShift,
+    };
+    const t = setTimeout(() => {
+      if (draftHasContent(state)) saveDraft(draftKey, state);
+      else clearDraft(draftKey);
+    }, 500);
+    return () => clearTimeout(t);
+  }, [title, occurredOn, content, tagList, tagInput, isLocked, piiAck, pickedShift, draftKey]);
+
+  const discardDraft = () => {
+    clearDraft(draftKey);
+    setTitle(original.title);
+    setOccurredOn(original.occurredOn);
+    setContent(buildOriginalContent());
+    setTagList(original.tagList);
+    setTagInput("");
+    setIsLocked(original.isLocked);
+    setPiiAck(original.piiAck);
+    setPickedShift(originalShift);
+    setRestoredDraft(false);
+  };
   const placeName = useMemo(() => new Map(placements.map((p) => [p.id, p.name])), [placements]);
   const shiftById = useMemo(() => new Map(shifts.map((s) => [s.id, s])), [shifts]);
   const currentShift = useMemo(() => findCurrentShift(shifts, Date.now()), [shifts]);
@@ -119,7 +194,10 @@ export function ReflectionEditor({
       const saved = initial
         ? await update(initial.reflection.id, draft, sections, tags)
         : await create(draft, sections, tags);
-      if (saved) onSaved(saved.id);
+      if (saved) {
+        clearDraft(draftKey); // committed — the draft has served its purpose
+        onSaved(saved.id);
+      }
     } finally {
       setSaving(false);
     }
@@ -127,6 +205,19 @@ export function ReflectionEditor({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      {restoredDraft && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-secondary-50 px-3.5 py-2.5 text-sm text-secondary-800 ring-1 ring-secondary-100">
+          <span>Draft restored — we kept what you&rsquo;d already typed.</span>
+          <button
+            type="button"
+            onClick={discardDraft}
+            className="font-semibold underline underline-offset-2 hover:no-underline"
+          >
+            Discard draft
+          </button>
+        </div>
+      )}
+
       {/* Standing PII warning — always visible while writing. */}
       <div className="flex items-start gap-2 rounded-xl bg-amber-50 px-3.5 py-3 text-sm text-amber-800 ring-1 ring-amber-100">
         <svg
@@ -306,7 +397,14 @@ export function ReflectionEditor({
           {initial ? "Save reflection" : "Save reflection"}
         </button>
         {onCancel && (
-          <button type="button" onClick={onCancel} className={btnGhostSm + " px-4 py-2.5"}>
+          <button
+            type="button"
+            onClick={() => {
+              clearDraft(draftKey); // an explicit cancel discards the in-progress draft
+              onCancel();
+            }}
+            className={btnGhostSm + " px-4 py-2.5"}
+          >
             Cancel
           </button>
         )}
