@@ -20,6 +20,14 @@ window.addEventListener("vite:preloadError", (event) => {
   }
 });
 
+// Ask the browser to make our IndexedDB persistent (not evictable under storage pressure).
+// For a guest, the local DB is the ONLY copy of their data, so eviction = total loss.
+// Fire-and-forget: unsupported browsers and a declined request both just fall back to
+// best-effort storage.
+if (navigator.storage?.persist) {
+  void navigator.storage.persist().catch(() => {});
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <PasswordlessContextProvider>

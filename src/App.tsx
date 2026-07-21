@@ -1,5 +1,7 @@
+import * as Sentry from "@sentry/react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthGate } from "./auth/AuthGate";
+import { AppErrorFallback } from "./react/components/AppError";
 import { ShiftsProvider } from "./react/ShiftsContext";
 import { AppLayout } from "./react/components/AppLayout";
 import { HomePage } from "./react/components/HomePage";
@@ -20,32 +22,38 @@ const basename = import.meta.env.BASE_URL.replace(/\/$/, "") || "/";
 
 export function App() {
   return (
-    <AuthGate>
-      <ShiftsProvider>
-        <BrowserRouter basename={basename}>
-          <AppLayout>
-            <Routes>
-              <Route path="/home" element={<HomePage />} />
-              <Route path="/placement-hours" element={<HoursLogPage />} />
-              <Route path="/planner" element={<PlannerPage />} />
-              <Route path="/planner/new" element={<PlannerPage />} />
-              {/* Splat: the shift modal hosts its capture tabs as nested routes
+    <Sentry.ErrorBoundary
+      fallback={({ error, eventId, resetError }) => (
+        <AppErrorFallback error={error} eventId={eventId} resetError={resetError} />
+      )}
+    >
+      <AuthGate>
+        <ShiftsProvider>
+          <BrowserRouter basename={basename}>
+            <AppLayout>
+              <Routes>
+                <Route path="/home" element={<HomePage />} />
+                <Route path="/placement-hours" element={<HoursLogPage />} />
+                <Route path="/planner" element={<PlannerPage />} />
+                <Route path="/planner/new" element={<PlannerPage />} />
+                {/* Splat: the shift modal hosts its capture tabs as nested routes
                   (/planner/:shiftId/medications, .../reflection/new, …). */}
-              <Route path="/planner/:shiftId/*" element={<PlannerPage />} />
-              <Route path="/placements/:id" element={<PlacementDetailPage />} />
-              <Route path="/medications/*" element={<MedicationNotesPage />} />
-              <Route path="/competencies/*" element={<NmcCompetenciesPage />} />
-              <Route path="/skills/*" element={<SkillsPage />} />
-              <Route path="/reflection/*" element={<ReflectionPage />} />
-              <Route path="/revision/*" element={<RevisionPage />} />
-              <Route path="/self-care" element={<SelfCarePage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              {/* `/` and any unknown path land on the first enabled feature. */}
-              <Route path="*" element={<Navigate to={DEFAULT_ROUTE} replace />} />
-            </Routes>
-          </AppLayout>
-        </BrowserRouter>
-      </ShiftsProvider>
-    </AuthGate>
+                <Route path="/planner/:shiftId/*" element={<PlannerPage />} />
+                <Route path="/placements/:id" element={<PlacementDetailPage />} />
+                <Route path="/medications/*" element={<MedicationNotesPage />} />
+                <Route path="/competencies/*" element={<NmcCompetenciesPage />} />
+                <Route path="/skills/*" element={<SkillsPage />} />
+                <Route path="/reflection/*" element={<ReflectionPage />} />
+                <Route path="/revision/*" element={<RevisionPage />} />
+                <Route path="/self-care" element={<SelfCarePage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                {/* `/` and any unknown path land on the first enabled feature. */}
+                <Route path="*" element={<Navigate to={DEFAULT_ROUTE} replace />} />
+              </Routes>
+            </AppLayout>
+          </BrowserRouter>
+        </ShiftsProvider>
+      </AuthGate>
+    </Sentry.ErrorBoundary>
   );
 }

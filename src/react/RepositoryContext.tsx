@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/react";
 import type { Repository } from "../data/repository";
 import type { User } from "../domain/types";
 import { DexieRepository } from "../data/dexie/dexieRepository";
+import { StorageBlockedScreen } from "./components/AppError";
 
 interface RepositoryContextValue {
   repo: Repository;
@@ -37,19 +38,36 @@ export function RepositoryProvider({
   const repository = useMemo(() => repo ?? new DexieRepository(), [repo]);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  // Fatal: the browser refused to open local storage (private mode / blocked profile).
+  // Without capturing it, a rejected initial load left `loading` true forever — an
+  // infinite spinner. Now it short-circuits to a clear, recoverable screen.
+  const [storageBlocked, setStorageBlocked] = useState(false);
 
   const reloadUser = async () => {
-    const u = await repository.getCurrentUser();
-    setUser(u);
+    try {
+      const u = await repository.getCurrentUser();
+      setUser(u);
+    } catch (err) {
+      // The app is already up; a transient reload failure shouldn't tear it down. Log it.
+      Sentry.captureException(err);
+    }
   };
 
   useEffect(() => {
     let active = true;
     (async () => {
-      const u = await repository.getCurrentUser();
-      if (active) {
-        setUser(u);
-        setLoading(false);
+      try {
+        const u = await repository.getCurrentUser();
+        if (active) {
+          setUser(u);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (active) {
+          Sentry.captureException(err);
+          setLoading(false);
+          setStorageBlocked(true);
+        }
       }
     })();
     return () => {
@@ -65,6 +83,8 @@ export function RepositoryProvider({
       Sentry.setUser(null);
     }
   }, [user]);
+
+  if (storageBlocked) return <StorageBlockedScreen />;
 
   const value: RepositoryContextValue = {
     repo: repository,
