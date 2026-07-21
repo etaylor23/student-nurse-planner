@@ -2,9 +2,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { type DynamoLocal, startDynamoLocal } from "./helpers/dynamoLocal";
 import { RelationshipStore } from "../src/data/dynamo/relationships";
-import { deriveCounterparts, eraseUserData } from "../scripts/erase-user";
+import { deriveCounterparts, eraseUserData } from "../scripts/lib/admin";
 
-// Proves the GDPR erasure core (scripts/erase-user.ts) deletes a user's WHOLE partition —
+// Proves the erasure core (scripts/lib/admin.ts, used by delete-user.ts) deletes a user's WHOLE partition —
 // including soft-delete tombstones — plus the share/mentorship counterparts that live in
 // other users' partitions, leaving nothing that references the erased user.
 

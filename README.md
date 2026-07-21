@@ -245,9 +245,10 @@ the backend group never cancels an in-flight CloudFormation update.
 ### Runbooks
 
 - [`docs/runbooks/erasure.md`](./docs/runbooks/erasure.md) — action a UK GDPR erasure
-  request: `scripts/erase-user.ts` (dry-run by default) deletes the user's whole DynamoDB
-  partition (incl. tombstones) + cross-partition grants + the Cognito user, plus the manual
-  Sentry/inbox tail.
+  request: `scripts/delete-user.ts <email>` (dry-run by default) deletes the user's whole
+  DynamoDB partition (incl. tombstones) + cross-partition grants + the Cognito user, plus
+  the manual Sentry/inbox tail. Companion beta-operator scripts: `scripts/invite-user.ts`
+  (provision + magic link) and `scripts/send-pre-welcome-email.ts`.
 
 ## 10. Spec index
 

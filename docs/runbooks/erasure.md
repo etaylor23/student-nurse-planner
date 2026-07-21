@@ -14,19 +14,18 @@ in with). If it came another way, reply asking them to send it from that address
 The script is **dry-run by default** — it deletes nothing until you add `--execute`.
 
 ```bash
-AWS_PROFILE=personal npx tsx scripts/erase-user.ts --email someone@example.com
+AWS_PROFILE=personal npx tsx scripts/delete-user.ts someone@example.com
 ```
 
 It resolves the live table + user pool from the `NursePlanner-dev` stack, finds the Cognito
 user, and prints every DynamoDB row it would delete: the user's whole partition
 (`USER#<sub>`) including soft-delete **tombstones**, plus the share/mentorship
-**counterpart** rows that live in other users' partitions. Read the list. If it can't find
-the user, or finds more than one, resolve by `--sub <cognito-sub>` instead.
+**counterpart** rows that live in other users' partitions. Read the list.
 
 ## 3. Execute
 
 ```bash
-AWS_PROFILE=personal npx tsx scripts/erase-user.ts --email someone@example.com --execute
+AWS_PROFILE=personal npx tsx scripts/delete-user.ts someone@example.com --execute
 ```
 
 This deletes the DynamoDB rows above **and** the Cognito user (so the email/account is
