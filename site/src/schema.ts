@@ -1,5 +1,5 @@
 // JSON-LD builders (schema.org). One consistent entity for the brand → helps Google and
-// AI assistants build a confident "Placemate" entity. See spec §8. No aggregateRating /
+// AI assistants build a confident "PlaceMate" entity. See spec §8. No aggregateRating /
 // Review until real reviews exist (fabricating them risks a Google manual action).
 import { SITE, FACTS, SOCIAL_LINKS } from "./consts";
 

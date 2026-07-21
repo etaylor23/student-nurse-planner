@@ -6,7 +6,7 @@
 // they must be true. See spec/spec-corporate-website.md §7 (AEO) and the handover §3.
 
 export const SITE = {
-  name: "Placemate",
+  name: "PlaceMate",
   url: "https://placemate.uk",
   appUrl: "https://app.placemate.uk",
   email: "hello@placemate.uk",
@@ -14,7 +14,7 @@ export const SITE = {
   tagline: "The all-in-one planner for UK student nurses",
   // ~150–160 char default meta description (per-page ones override this).
   description:
-    "Placemate is the free all-in-one planner for UK student nurses. Track your 2,300 practice placement hours, log NMC proficiencies, plan shifts, revise and practise drug calculations.",
+    "PlaceMate is the free all-in-one planner for UK student nurses. Track your 2,300 practice placement hours, log NMC proficiencies, plan shifts, revise and practise drug calculations.",
 } as const;
 
 // Primary "Sign up free" + secondary "Try the demo" both open the app; the app's start

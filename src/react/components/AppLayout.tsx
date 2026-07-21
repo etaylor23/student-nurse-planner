@@ -153,7 +153,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <path d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <Link to="/" className="flex items-center" aria-label="Placemate home">
+        <Link to="/" className="flex items-center" aria-label="PlaceMate home">
           <Logo size={30} />
         </Link>
         <div className="ml-auto flex items-center gap-2">

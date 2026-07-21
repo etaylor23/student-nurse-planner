@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Placemate marketing site — matches the app's clean palette + off-black text
+/* PlaceMate marketing site — matches the app's clean palette + off-black text
    (src/index.css). System font stack (no web fonts) = zero font requests = best Core
    Web Vitals, and it mirrors the app, which ships no custom web font either. */
 @theme {
