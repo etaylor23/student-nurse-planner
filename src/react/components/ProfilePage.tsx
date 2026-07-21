@@ -231,6 +231,27 @@ function ProfileForm({ user }: { user: User }) {
           {/* Sync status — signed-in only (renders nothing for guests). */}
           <SyncPanel />
 
+          {/* Data rights — signed-in only. There's deliberately no in-app account wipe (a
+              mislabelled one used to risk destroying the whole account); correction, export
+              and erasure go through a person during the beta. Guests get the local
+              "Clear all data" affordance in the demo panel below instead. */}
+          {!isGuest && (
+            <Panel title="Your data" hint="Correction, a copy, or erasure">
+              <p className="text-sm leading-relaxed text-slate-600">
+                Want your data corrected, a copy of everything you&rsquo;ve saved, or your account
+                and its data erased? Email{" "}
+                <a
+                  href="mailto:hello@placemate.uk?subject=My%20PlaceMate%20data"
+                  className="font-medium text-secondary-700 hover:underline"
+                >
+                  hello@placemate.uk
+                </a>{" "}
+                and we&rsquo;ll take care of it — handled by hand during the beta, usually within a
+                few days.
+              </p>
+            </Panel>
+          )}
+
           {/* Live impact (U10): answers "so what?" as you edit the part, before save. */}
           <Panel title="Due now" hint={`Part ${currentPart} of ${totalParts}`}>
             {dueNow == null ? (
