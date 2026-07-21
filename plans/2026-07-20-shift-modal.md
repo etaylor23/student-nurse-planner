@@ -9,6 +9,27 @@ inline (`ShiftDebrief` retired); Hours-log editing centralised in the modal (per
 components `ShiftMedications/Skills/Reflections/History` deleted); mobile full-screen with a
 collapsible core.
 
+## Rework — nested-route tabs + one shared `<Tabs>` (2026-07-21, master `9671ab9`…)
+
+After review the modal was re-architected (grilled again 2026-07-21):
+
+- **Shift is now the first tab** (`/planner/:id`, index) rather than an always-on sticky
+  core, so every tab (including the shift fields) gets the full modal height. One
+  full-height scroll region; the mobile core-collapse is gone.
+- The modal is a **URL-driven nested-route host**: `/planner/:shiftId/*` (App splat) →
+  tabs `Shift` · `/medications` (Log + `/medications/catalog` sub-tabs) · `/skills`
+  (`/skills/:skillId` inline sign-off) · `/reflection` (`/reflection/new` inline) ·
+  `/competencies`. Tabs are deep-linkable and the back button walks them.
+- **One shared `<Tabs>` component** (`components/Tabs.tsx`, underline + segmented looks,
+  route-mode via NavLink or controlled `active`). The five feature shells (medication
+  notes / skills / reflection / revision / competencies) were migrated to it. Small
+  toggles/filters (entry-mode, log-type, stage) are intentionally not tabs.
+- **Each tab body reuses an existing component**: `ShiftForm` (Shift), `MedicationCatalog`
+  (extracted from `MedicationListPage`) + `ShiftMedLogForm` (Medications), `SkillSignOffForm`
+  (extracted from `SkillDetailPage`, shift-pinnable) (Skills), `ReflectionEditor`
+  (Reflections), `ShiftEvidence` (Competency). Header actions + celebration band stay put
+  across tabs; each tab has a "See full … section" link out.
+
 ## Goal
 
 Replace the squashed side-panel shift editor with a **near-full-width modal**: the core
