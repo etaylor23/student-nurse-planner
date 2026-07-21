@@ -1,4 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import Dexie from "dexie";
 import { usePasswordless } from "amazon-cognito-passwordless-auth/react";
 import { retrieveTokens } from "amazon-cognito-passwordless-auth/storage";
 import type { Repository } from "../data/repository";
@@ -7,9 +8,28 @@ import { PlannerDb } from "../data/dexie/db";
 import { SyncRepository } from "../data/sync/syncRepository";
 import { RpcSyncTransport } from "../data/sync/rpcSyncTransport";
 import { RepositoryProvider } from "../react/RepositoryContext";
+import { clearReflectionPin } from "../react/reflectionLock";
 import { API_BASE } from "./passwordlessConfig";
 import { isGuest as readGuest, setGuestMode } from "./guestMode";
 import { LoginScreen } from "./LoginScreen";
+
+/**
+ * Local self-destruct for a shared machine: delete this user's Dexie database and every
+ * device-local key, so nothing readable (reflections, PIN, in-progress drafts) is left in
+ * the browser profile after sign-out. Anything already synced re-appears on next sign-in;
+ * only unsynced local-only state is lost (the caller warns first if the outbox is non-empty).
+ */
+async function wipeLocalUserData(sub: string): Promise<void> {
+  await Dexie.delete(`nurse-planner-${sub}`);
+  clearReflectionPin();
+  try {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith("pm:draft:")) localStorage.removeItem(key);
+    }
+  } catch {
+    /* storage unavailable — nothing to clear */
+  }
+}
 
 /**
  * The auth guard (spec-auth §2). The app tree only mounts with a valid session or an
@@ -54,15 +74,24 @@ export function AuthGate({ children }: { children: ReactNode }) {
     };
   }, [repo]);
 
-  const logout = useCallback(async () => {
-    try {
-      await signOut().signedOut;
-    } catch {
-      /* ignore — clearing local state below is what matters */
-    }
-    setGuestMode(false);
-    setGuest(false);
-  }, [signOut]);
+  const logout = useCallback(
+    async (opts?: { wipeLocal?: boolean }) => {
+      // Local self-destruct BEFORE clearing tokens: we need the sub to name the DB, and a
+      // half-signed-out state must not strand it. Only for a signed-in user on their own sub.
+      if (opts?.wipeLocal && signedIn && sub) {
+        if (repo instanceof SyncRepository) repo.dispose();
+        await wipeLocalUserData(sub);
+      }
+      try {
+        await signOut().signedOut;
+      } catch {
+        /* ignore — clearing local state below is what matters */
+      }
+      setGuestMode(false);
+      setGuest(false);
+    },
+    [signOut, signedIn, sub, repo],
+  );
 
   const enterGuest = useCallback(() => {
     setGuestMode(true);

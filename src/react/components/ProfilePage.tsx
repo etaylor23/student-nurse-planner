@@ -6,8 +6,9 @@ import { simulateSelfCareReminder } from "../notifications";
 import { surfaceGaps } from "../../logic/proficiencies";
 import { useProficiencies } from "../hooks";
 import { useRepository } from "../RepositoryContext";
+import { useSyncStatus } from "../useSyncStatus";
 import { SyncPanel } from "./SyncIndicator";
-import { PageHero, Panel, btnGhost, btnGhostSm, btnPrimary, inputCls } from "./ui";
+import { PageHero, Panel, btnGhost, btnGhostSm, btnPrimary, card, inputCls } from "./ui";
 
 const PROGRAMME_TYPE_LABEL: Record<ProgrammeType, string> = {
   BSC_3YR: "BSc (3 years)",
@@ -44,6 +45,7 @@ function ProfileForm({ user }: { user: User }) {
     user.targetRegistrationDate ?? "",
   );
   const [saved, setSaved] = useState(false);
+  const [signOutOpen, setSignOutOpen] = useState(false);
 
   const total = Number(totalParts);
   const current = Number(currentPart);
@@ -101,12 +103,18 @@ function ProfileForm({ user }: { user: User }) {
             <span className="text-xs text-slate-500">
               {isGuest ? "Guest — this device only" : (user.email ?? "Signed in")}
             </span>
-            <button type="button" className={btnGhostSm} onClick={() => void logout()}>
+            <button
+              type="button"
+              className={btnGhostSm}
+              onClick={isGuest ? () => void logout() : () => setSignOutOpen(true)}
+            >
               {isGuest ? "Sign in" : "Sign out"}
             </button>
           </div>
         }
       />
+
+      {signOutOpen && <SignOutDialog onClose={() => setSignOutOpen(false)} />}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <Panel
@@ -284,6 +292,92 @@ function ProfileForm({ user }: { user: User }) {
       {/* Demo data + local wipe are a guest-mode affordance (spec-auth §3): real accounts
           start empty apart from bundled reference data. */}
       {isGuest && <DemoDataPanel userId={user.id} />}
+    </div>
+  );
+}
+
+/**
+ * Sign-out choice for a signed-in user (spec: shared-machine safety). "Keep" leaves the
+ * local copy for a faster next sign-in; "Remove" self-destructs this device's data — the
+ * right choice on a shared/ward computer. If unsynced changes exist, it warns first: those
+ * are the only thing a Remove can lose (everything synced returns on next sign-in).
+ */
+function SignOutDialog({ onClose }: { onClose: () => void }) {
+  const { logout } = useRepository();
+  const { status, syncNow } = useSyncStatus();
+  const [busy, setBusy] = useState<null | "keep" | "remove">(null);
+  const pending = status?.pendingCount ?? 0;
+
+  const run = async (wipeLocal: boolean) => {
+    setBusy(wipeLocal ? "remove" : "keep");
+    // logout tears this tree down (repo → null → LoginScreen); no need to close first.
+    await logout({ wipeLocal });
+  };
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="signout-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div className={`${card} w-full max-w-md`} onClick={(e) => e.stopPropagation()}>
+        <h2 id="signout-title" className="text-lg font-semibold text-ink">
+          Sign out
+        </h2>
+
+        {pending > 0 && (
+          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            {pending} change{pending === 1 ? "" : "s"} {pending === 1 ? "hasn't" : "haven't"} synced
+            yet — removing this device&rsquo;s data now would lose {pending === 1 ? "it" : "them"}.
+            <button
+              type="button"
+              onClick={() => void syncNow()}
+              className="mt-2 block font-semibold underline underline-offset-2"
+            >
+              Sync now
+            </button>
+          </div>
+        )}
+
+        <p className="mt-3 text-sm text-slate-600">
+          Keep your data on this device for a faster sign-in next time, or remove it — choose Remove
+          on a shared or public computer so nothing readable is left behind.
+        </p>
+
+        <div className="mt-5 flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => void run(false)}
+            disabled={busy !== null}
+            className={btnPrimary}
+          >
+            {busy === "keep" ? "Signing out…" : "Keep data on this device"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void run(true)}
+            disabled={busy !== null}
+            className={btnGhost}
+          >
+            {busy === "remove" ? "Removing…" : "Remove data from this device"}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={busy !== null}
+            className="mt-1 text-sm text-slate-500 hover:text-slate-700"
+          >
+            Cancel
+          </button>
+        </div>
+
+        <p className="mt-3 text-xs text-slate-400">
+          Removing deletes this browser&rsquo;s copy only. Anything already synced comes back when
+          you sign in again.
+        </p>
+      </div>
     </div>
   );
 }

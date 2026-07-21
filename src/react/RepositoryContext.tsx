@@ -10,8 +10,11 @@ interface RepositoryContextValue {
   user: User | null;
   loading: boolean;
   reloadUser: () => Promise<void>;
-  /** Sign out (or leave guest mode) and return to the login screen. */
-  logout: () => Promise<void>;
+  /**
+   * Sign out (or leave guest mode) and return to the login screen. `wipeLocal` deletes this
+   * device's local copy (Dexie DB + device-local keys) first — for shared machines.
+   */
+  logout: (opts?: { wipeLocal?: boolean }) => Promise<void>;
   /** True in guest ("this device only") mode — used to gate account-only affordances. */
   isGuest: boolean;
 }
@@ -32,7 +35,7 @@ export function RepositoryProvider({
 }: {
   children: React.ReactNode;
   repo?: Repository;
-  logout?: () => Promise<void>;
+  logout?: (opts?: { wipeLocal?: boolean }) => Promise<void>;
   isGuest?: boolean;
 }) {
   const repository = useMemo(() => repo ?? new DexieRepository(), [repo]);
