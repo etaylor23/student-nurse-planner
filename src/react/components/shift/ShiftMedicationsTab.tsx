@@ -1,17 +1,46 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Route, Routes } from "react-router-dom";
 import { MED_LOG_TYPE_LABEL, type MedicationLog, type Shift } from "../../../domain/types";
+import { EMPTY_FILTERS, type MedFilters } from "../../../logic/medicationFilters";
 import { useMedications } from "../../hooks";
 import { useRepository } from "../../RepositoryContext";
+import { MedicationCatalog } from "../medications/MedicationCatalog";
 import { ShiftMedLogForm } from "../medications/ShiftMedLogForm";
-import { CaptureConfirmation, TabHeading, useCaptureFlash } from "./shared";
+import { Tabs } from "../Tabs";
+import { CaptureConfirmation, SeeFullLink, TabHeading, useCaptureFlash } from "./shared";
 
 /**
- * The Medications capture tab: the meds already logged on this shift, plus the
- * embeddable `ShiftMedLogForm` inline (shift pinned, no picker). Logging refreshes
- * the list and stays in the modal — quick to log several against one shift.
+ * The Medications capture tab — two sub-tabs (shared <Tabs>): "Log" (this shift's
+ * logged meds + the pinned log form) and "Medications" (the global reference
+ * catalog). URL-driven: /planner/:id/medications (Log, index) and .../catalog.
  */
 export function ShiftMedicationsTab({ shift }: { shift: Shift }) {
+  const base = `/planner/${shift.id}/medications`;
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <Tabs
+          items={[
+            { to: base, label: "Log", end: true },
+            { to: `${base}/catalog`, label: "Medications" },
+          ]}
+          variant="segmented"
+          ariaLabel="Medications sections"
+        />
+        <SeeFullLink to="/medications">See full medication notes</SeeFullLink>
+      </div>
+
+      <Routes>
+        <Route index element={<MedLogView shift={shift} />} />
+        <Route path="catalog" element={<CatalogView />} />
+      </Routes>
+    </div>
+  );
+}
+
+/** Sub-tab 1: this shift's logged meds + the shift-pinned log form. */
+function MedLogView({ shift }: { shift: Shift }) {
   const { repo } = useRepository();
   const { medications } = useMedications();
   const [logs, setLogs] = useState<MedicationLog[]>([]);
@@ -30,7 +59,6 @@ export function ShiftMedicationsTab({ shift }: { shift: Shift }) {
   return (
     <div>
       <TabHeading label="Medications logged" count={logs.length} />
-
       <CaptureConfirmation message={message} />
 
       {logs.length === 0 ? (
@@ -78,5 +106,17 @@ export function ShiftMedicationsTab({ shift }: { shift: Shift }) {
         />
       </div>
     </div>
+  );
+}
+
+/** Sub-tab 2: the global medication catalog (local filter state; details open out). */
+function CatalogView() {
+  const [filters, setFilters] = useState<MedFilters>(EMPTY_FILTERS);
+  return (
+    <MedicationCatalog
+      filters={filters}
+      onFilterChange={(patch) => setFilters((f) => ({ ...f, ...patch }))}
+      onClear={() => setFilters(EMPTY_FILTERS)}
+    />
   );
 }
