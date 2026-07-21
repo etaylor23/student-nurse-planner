@@ -14,3 +14,6 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+/** Build-time release marker (deploying commit SHA in CI, "dev" locally). See vite.config.ts. */
+declare const __APP_RELEASE__: string;

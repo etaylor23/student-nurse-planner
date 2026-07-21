@@ -134,6 +134,11 @@ jobs:
           VITE_COGNITO_USER_POOL_ID: ${{ vars.VITE_COGNITO_USER_POOL_ID }}
           VITE_COGNITO_CLIENT_ID: ${{ vars.VITE_COGNITO_CLIENT_ID }}
           VITE_API_BASE: /api
+          # Sentry source-map upload — runs only if SENTRY_AUTH_TOKEN is set (see
+          # vite.config.ts). GITHUB_SHA is the release tag. Org/project are repo Variables.
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
       - name: Assume AWS deploy role via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:

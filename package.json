@@ -42,6 +42,7 @@
   "devDependencies": {
     "@cedar-policy/cedar-wasm": "^4.11.2",
     "@eslint/js": "^10.0.1",
+    "@sentry/vite-plugin": "^5.4.0",
     "@tailwindcss/vite": "^4.3.1",
     "@types/node": "^22.19.21",
     "@types/react": "^18.3.31",
