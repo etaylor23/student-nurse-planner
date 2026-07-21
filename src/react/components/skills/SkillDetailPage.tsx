@@ -1,78 +1,36 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   SKILL_SOURCE_LABEL,
   SKILL_STAGE_LABEL,
   SKILL_STAGES,
   type Proficiency,
-  type Shift,
   type SkillStage,
 } from "../../../domain/types";
 import { annexeCodeOf, annexeProficiencyIdOf } from "../../../data/seed/skills";
-import { formatHumanDate, hhmm, isoDate } from "../../../logic/calendar";
-import { findCurrentShift, recentShifts } from "../../../logic/shiftContext";
-import { usePlacements, useProficiencies, useShifts, useSkill } from "../../hooks";
+import { formatHumanDate } from "../../../logic/calendar";
+import { useProficiencies, useSkill } from "../../hooks";
 import { useRepository } from "../../RepositoryContext";
 import { useSkillActions } from "../../useSkillActions";
 import { ProficiencyPicker } from "../competencies/ProficiencyPicker";
 import { AttachEvidenceNudge } from "../AttachEvidenceNudge";
-import { Panel, btnGhostSm, btnPrimary, inputCls } from "../ui";
+import { Panel, btnGhostSm } from "../ui";
 import { SignedOffBadge, SkillStageBadge } from "./shared";
-
-const todayIso = () => isoDate(new Date());
-
-/** "18 Jun 2026 · Ward 7 09:00–17:00" — the shift picker's option label. */
-function shiftLabel(s: Shift, placeName: Map<string, string>): string {
-  const place = s.placementId ? (placeName.get(s.placementId) ?? "Placement") : "No placement";
-  const times =
-    s.startAt && s.endAt ? ` ${hhmm(new Date(s.startAt))}–${hhmm(new Date(s.endAt))}` : "";
-  return `${formatHumanDate(s.date)} · ${place}${times}`;
-}
+import { SkillSignOffForm } from "./SkillSignOffForm";
 
 export function SkillDetailPage() {
   const { id } = useParams();
   const { skill, progress, reload } = useSkill(id);
   const { repo, user } = useRepository();
-  const { setStage, signOff, linkSkillToProficiency, deleteCustomSkill } = useSkillActions();
+  const { setStage, linkSkillToProficiency, deleteCustomSkill } = useSkillActions();
   // The user's proficiencies + all evidence links — used to show which proficiencies
   // this skill already evidences and to resolve their codes.
   const { proficiencies, evidenceLinks, reload: reloadProfs } = useProficiencies();
-  const { shifts } = useShifts();
-  const { placements } = usePlacements();
   const navigate = useNavigate();
-  // A shift editor's "Sign off a skill" CTA rides a prefillShiftId through the list.
-  const prefillShiftId = (useLocation().state as { prefillShiftId?: string } | null)
-    ?.prefillShiftId;
 
-  const [byName, setByName] = useState("");
-  const [location, setLocation] = useState("");
-  const [date, setDate] = useState(todayIso());
-  const [evidenceNote, setEvidenceNote] = useState("");
-  const [alsoLink, setAlsoLink] = useState(true);
   const [alreadyLinked, setAlreadyLinked] = useState(false);
-  // Optional shift the sign-off happened in (U8). `null` = auto-follow the current
-  // timed shift (derived live); once the user picks, their choice wins ("" = none).
-  const [pickedShift, setPickedShift] = useState<string | null>(prefillShiftId ?? null);
-
-  const placeName = useMemo(() => new Map(placements.map((p) => [p.id, p.name])), [placements]);
-  const shiftById = useMemo(() => new Map(shifts.map((s) => [s.id, s])), [shifts]);
-  const currentShift = useMemo(() => findCurrentShift(shifts, Date.now()), [shifts]);
-  const recent = useMemo(() => recentShifts(shifts, todayIso()), [shifts]);
-  const signOffShiftId = pickedShift === null ? (currentShift?.id ?? "") : pickedShift;
-  const selectedShift = signOffShiftId ? shiftById.get(signOffShiftId) : undefined;
-  // Recent shifts, plus the selected one if it's older than the 7-day window (e.g.
-  // pinned from a shift editor) so it still shows as chosen.
-  const shiftOptions = useMemo(() => {
-    if (selectedShift && !recent.some((s) => s.id === selectedShift.id)) {
-      return [selectedShift, ...recent];
-    }
-    return recent;
-  }, [recent, selectedShift]);
-  // The "Link to a proficiency" picker on the detail (any skill), and the proficiency
-  // a custom skill's sign-off form will also attach.
+  // The "Link to a proficiency" picker on the detail (any skill).
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [signOffProf, setSignOffProf] = useState<Proficiency | null>(null);
-  const [signOffPickerOpen, setSignOffPickerOpen] = useState(false);
   const [advancedTo, setAdvancedTo] = useState<SkillStage | null>(null); // transient stage confirmation (U9)
 
   const profId = skill ? annexeProficiencyIdOf(skill) : null;
@@ -139,35 +97,6 @@ export function SkillDetailPage() {
   const handleLink = async (p: Proficiency) => {
     await linkSkillToProficiency(skill, { id: p.id, code: p.code });
     setPickerOpen(false);
-    await reloadProfs();
-  };
-
-  const handleSignOff = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // Custom skills attach the proficiency the student picked in the form; Annexe B
-    // skills auto-attach their 1:1 proficiency unless it's already linked / opted out.
-    const linkProficiency =
-      skill.source === "CUSTOM"
-        ? signOffProf
-          ? { id: signOffProf.id, code: signOffProf.code }
-          : undefined
-        : profId && profCode && alsoLink && !alreadyLinked
-          ? { id: profId, code: profCode }
-          : undefined;
-    await signOff(
-      skill,
-      {
-        signOffByName: byName.trim() || undefined,
-        signOffLocation: location.trim() || undefined,
-        signOffDate: date || undefined,
-        evidenceNote: evidenceNote.trim() || undefined,
-        shiftId: signOffShiftId || undefined,
-      },
-      linkProficiency,
-    );
-    setSignOffProf(null);
-    setSignOffPickerOpen(false);
-    await reload();
     await reloadProfs();
   };
 
@@ -357,143 +286,13 @@ export function SkillDetailPage() {
             </Panel>
           ) : (
             <Panel step="2" title="Sign off" hint="Capture who, where, when and the evidence">
-              <form onSubmit={handleSignOff} className="space-y-4">
-                <label className="block">
-                  <span className="mb-1.5 block text-sm font-medium text-slate-700">Shift</span>
-                  <select
-                    value={signOffShiftId}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setPickedShift(v);
-                      const s = v ? shiftById.get(v) : undefined;
-                      const place = s?.placementId ? placeName.get(s.placementId) : undefined;
-                      if (place && !location.trim()) setLocation(place);
-                    }}
-                    className={inputCls}
-                  >
-                    <option value="">No shift</option>
-                    {shiftOptions.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {shiftLabel(s, placeName)}
-                        {s.id === currentShift?.id ? " — now" : ""}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="mt-1 block text-xs text-slate-400">
-                    {currentShift ? (
-                      <span className="text-emerald-700">
-                        You're in a shift now — linked automatically. Change it here if you meant a
-                        recent one.
-                      </span>
-                    ) : recent.length > 0 ? (
-                      "Optionally link the shift this was signed off in (last 7 days)."
-                    ) : (
-                      "No recent shifts to link — sign-off can have no shift."
-                    )}
-                  </span>
-                </label>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <label className="block">
-                    <span className="mb-1.5 block text-sm font-medium text-slate-700">
-                      Signed off by
-                    </span>
-                    <input
-                      value={byName}
-                      onChange={(e) => setByName(e.target.value)}
-                      className={inputCls}
-                      placeholder="Practice supervisor / assessor"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="mb-1.5 block text-sm font-medium text-slate-700">
-                      Location
-                    </span>
-                    <input
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      className={inputCls}
-                      placeholder="Ward / placement"
-                    />
-                  </label>
-                </div>
-                <label className="block sm:max-w-[12rem]">
-                  <span className="mb-1.5 block text-sm font-medium text-slate-700">Date</span>
-                  <input
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className={inputCls}
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-1.5 block text-sm font-medium text-slate-700">Evidence</span>
-                  <textarea
-                    value={evidenceNote}
-                    onChange={(e) => setEvidenceNote(e.target.value)}
-                    rows={2}
-                    className={inputCls}
-                    placeholder="What demonstrated this skill? No patient-identifiable information."
-                  />
-                </label>
-                {profId && profCode && !alreadyLinked && (
-                  <label className="flex items-start gap-2 rounded-xl bg-sky-50 p-3 text-sm text-sky-800 ring-1 ring-sky-100">
-                    <input
-                      type="checkbox"
-                      checked={alsoLink}
-                      onChange={(e) => setAlsoLink(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                    />
-                    <span>
-                      Also attach this as evidence for proficiency <strong>{profCode}</strong> in
-                      your competency tracker.
-                    </span>
-                  </label>
-                )}
-                {profId && profCode && alreadyLinked && (
-                  <p className="text-xs text-slate-400">
-                    Already attached as evidence for {profCode}.
-                  </p>
-                )}
-                {skill.source === "CUSTOM" &&
-                  (signOffProf ? (
-                    <div className="flex flex-wrap items-center gap-2 rounded-xl bg-sky-50 p-3 text-sm text-sky-800 ring-1 ring-sky-100">
-                      <span>
-                        Will also attach as evidence for <strong>{signOffProf.code}</strong> when
-                        you sign off.
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setSignOffProf(null)}
-                        className="font-medium text-sky-700 underline"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ) : signOffPickerOpen ? (
-                    <ProficiencyPicker
-                      excludeIds={linkedProfIds}
-                      onPick={(p) => {
-                        setSignOffProf(p);
-                        setSignOffPickerOpen(false);
-                      }}
-                      onClose={() => setSignOffPickerOpen(false)}
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setSignOffPickerOpen(true)}
-                      className="text-sm font-medium text-emerald-700"
-                    >
-                      + Also attach as evidence for a proficiency…
-                    </button>
-                  ))}
-                <p className="text-xs text-slate-400">
-                  Sign-off is permanent — once signed off, a skill stays signed off.
-                </p>
-                <button type="submit" className={btnPrimary}>
-                  Sign off skill
-                </button>
-              </form>
+              <SkillSignOffForm
+                skill={skill}
+                onSignedOff={async () => {
+                  await reload();
+                  await reloadProfs();
+                }}
+              />
             </Panel>
           )}
         </div>
