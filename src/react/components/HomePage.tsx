@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import type { Shift } from "../../domain/types";
 import { formatHumanDate, hhmm } from "../../logic/calendar";
 import { findCurrentShift, nextShift } from "../../logic/shiftContext";
@@ -12,7 +12,7 @@ import { MindmapBand } from "./home/MindmapBand";
 import { NudgeList } from "./Nudge";
 import { TopGaps } from "./competencies/TopGaps";
 import { SignedOffBadge, SkillStageBadge } from "./skills/shared";
-import { PageHero, Panel, btnGhost, btnGhostSm, btnPrimary, link } from "./ui";
+import { Panel, btnGhostSm, btnPrimary, card } from "./ui";
 
 /**
  * Home / Today (U2) — the hub landing page. New data of its own; it just mounts the
@@ -25,7 +25,6 @@ export function HomePage() {
   const { shifts, summary, projection } = useShifts();
   const { placements } = usePlacements();
   const { skills, progress: skillProgress } = useSkills();
-  const navigate = useNavigate();
   const nudges = useNudges();
 
   const placeName = new Map(placements.map((p) => [p.id, p.name]));
@@ -54,112 +53,100 @@ export function HomePage() {
 
   return (
     <div className="space-y-6">
-      <PageHero
-        eyebrow="Today"
-        title={`Hi, ${firstName}`}
-        subtitle="Your day at a glance — pick up where you left off, and capture as you go."
-        aside={
-          <>
-            <div className="text-2xl font-semibold tabular-nums tracking-tight text-ink">
-              {summary.practiceHours}
-              <span className="text-base font-normal text-slate-400">
-                {" "}
-                / {summary.targetHours.toLocaleString()} h
-              </span>
+      {/* Top bar — the greeting, hours pace and next shift merged into one above-
+          the-fold band (hours pace + next shift used to be separate left-column
+          panels; the hero's hours metric was a duplicate of hours pace). */}
+      <section className={card} aria-label="Today">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-stretch xl:justify-between">
+          <div className="min-w-0 xl:max-w-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-primary-600">
+              Today
+            </p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">Hi, {firstName}</h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Your day at a glance — pick up where you left off, and capture as you go.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 xl:shrink-0">
+            {/* Hours pace */}
+            <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/60 sm:min-w-[15rem]">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-slate-500">Hours pace</span>
+                <Link to="/placement-hours" className={btnGhostSm}>
+                  Hours log
+                </Link>
+              </div>
+              <div className="mt-2 text-2xl font-semibold tabular-nums text-ink">
+                {summary.practiceHours}
+                <span className="text-base font-normal text-slate-400">
+                  {" "}
+                  / {summary.targetHours.toLocaleString()} h
+                </span>
+              </div>
+              <div className="text-sm font-medium text-emerald-600">{pct}% complete</div>
+              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
+              </div>
+              {projection.shiftsToGo != null && (
+                <p className="mt-2 text-xs text-slate-400">
+                  ≈ {projection.shiftsToGo.toLocaleString()} shifts to go
+                </p>
+              )}
             </div>
-            <div className="text-xs font-medium text-emerald-600">{pct}% counted</div>
-          </>
-        }
-      >
-        <AiRecallTeaser />
-      </PageHero>
+
+            {/* Next shift / on shift now */}
+            <div className="flex flex-col rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/60 sm:min-w-[15rem]">
+              {current ? (
+                <>
+                  <span className="text-xs font-medium text-slate-500">On shift now</span>
+                  <p className="mt-1 text-sm font-medium text-ink">{label(current)}</p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Capture what you see while it's fresh.
+                  </p>
+                  <Link to={`/planner/${current.id}`} className={`${btnPrimary} mt-3`}>
+                    Open in planner
+                  </Link>
+                </>
+              ) : upcoming ? (
+                <>
+                  <span className="text-xs font-medium text-slate-500">Next shift</span>
+                  <p className="mt-1 text-sm font-medium text-ink">
+                    {formatHumanDate(upcoming.date)}
+                  </p>
+                  <p className="text-xs text-slate-400">{label(upcoming)}</p>
+                  <Link to={`/planner/${upcoming.id}`} className={`${btnPrimary} mt-3`}>
+                    Open in planner
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <span className="text-xs font-medium text-slate-500">Next shift</span>
+                  <p className="mt-1 text-sm text-slate-500">No upcoming shifts.</p>
+                  <Link to="/planner" className={`${btnPrimary} mt-3`}>
+                    Plan a shift
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-5">
+          <AiRecallTeaser />
+        </div>
+      </section>
 
       {/* Uniform next-step nudges — the canonical prompt surface (logic/nudges.ts). */}
       <NudgeList nudges={nudges} />
 
-      {/* Two-column dashboard: left = stacked hours / shifts / skills; right =
-          the getting-started tour, or recent activity once the tour is hidden. */}
+      {/* Two-column dashboard: left = the connected-record mindmap + skills; right =
+          the getting-started tour, or recent activity once the tour is hidden.
+          (Hours pace + next shift now live in the top bar.) */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
-        {/* Left — the live "connected record" mindmap (always on), then hours pace,
-            upcoming shifts, skills in progress, stacked. */}
+        {/* Left — the live "connected record" mindmap (always on), then skills. */}
         <div className="space-y-6">
           <MindmapBand />
-          <Panel
-            title="Hours pace"
-            hint="Counting toward your practice hours"
-            action={
-              <Link to="/placement-hours" className={btnGhostSm}>
-                Hours log
-              </Link>
-            }
-          >
-            <div className="text-2xl font-semibold tabular-nums text-ink">
-              {summary.practiceHours}
-              <span className="text-base font-normal text-slate-400">
-                {" "}
-                / {summary.targetHours.toLocaleString()} h
-              </span>
-            </div>
-            <div className="text-sm font-medium text-emerald-600">{pct}% complete</div>
-            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-              <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
-            </div>
-            {projection.shiftsToGo != null && (
-              <p className="mt-2 text-xs text-slate-400">
-                ≈ {projection.shiftsToGo.toLocaleString()} shifts to go
-              </p>
-            )}
-          </Panel>
-
-          {current ? (
-            <Panel title="On shift now" hint={label(current)}>
-              <p className="mb-3 text-sm text-slate-500">
-                You're in a shift — capture what you see while it's fresh.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate("/medications/log", { state: { prefillShiftId: current.id } })
-                  }
-                  className={btnPrimary}
-                >
-                  Log a medication
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigate("/skills", { state: { prefillShiftId: current.id } })}
-                  className={btnGhost}
-                >
-                  Update a skill
-                </button>
-                <Link to={`/planner/${current.id}`} className={btnGhost}>
-                  Open in planner
-                </Link>
-              </div>
-            </Panel>
-          ) : upcoming ? (
-            <Panel
-              title="Next shift"
-              hint={`${formatHumanDate(upcoming.date)} · ${label(upcoming)}`}
-            >
-              <div className="flex flex-wrap gap-2">
-                <Link to={`/planner/${upcoming.id}`} className={btnPrimary}>
-                  Open in planner
-                </Link>
-              </div>
-            </Panel>
-          ) : (
-            <Panel title="No upcoming shifts">
-              <p className="text-sm text-slate-500">
-                Plan your next shift on the{" "}
-                <Link to="/planner" className={link}>
-                  weekly planner
-                </Link>
-                .
-              </p>
-            </Panel>
-          )}
 
           <Panel
             title="Skills in progress"
