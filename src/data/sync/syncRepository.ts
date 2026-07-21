@@ -1,9 +1,25 @@
 import type { Table } from "dexie";
+import * as Sentry from "@sentry/react";
 import { DexieRepository } from "../dexie/dexieRepository";
 import { PlannerDb } from "../dexie/db";
 import { STORE_INDEXES } from "../schema";
 import { nowIso } from "../../domain/ids";
 import type { SyncRow, SyncTransport } from "./protocol";
+
+/** Observable sync state for the UI (header indicator + Profile panel). */
+export interface SyncStatus {
+  /** idle = last sync ok; syncing = in flight; error = last sync failed; offline = no network. */
+  phase: "idle" | "syncing" | "error" | "offline";
+  /** Local edits captured but not yet confirmed by the server. */
+  pendingCount: number;
+  /** ISO timestamp of the last SUCCESSFUL sync (persisted), or null if never. */
+  lastSyncAt: string | null;
+  /** Human-readable last error, or null. Local data is always safe regardless. */
+  lastError: string | null;
+}
+
+/** Push the outbox in slices so a large backlog can't exceed the API/Lambda payload limit. */
+export const PUSH_CHUNK = 50;
 
 /**
  * Local-first sync (spec-backend-dynamodb.md §5). `SyncRepository` IS a `DexieRepository`
@@ -55,7 +71,33 @@ function isSyncable(entityType: string, item: Record<string, unknown> | undefine
  * reconciler applies pulled rows, so remote applies don't loop back into the outbox.
  */
 class OutboxTracker {
-  suspended = false;
+  // Counter, not a boolean: seeding and the reconciler's applyRemote can both suspend
+  // capture across `await`s, and their windows can overlap. A boolean would let the inner
+  // `resume` re-enable capture while the outer region is still running; a depth counter
+  // only resumes when the OUTERMOST region exits.
+  private suspendCount = 0;
+
+  get suspended(): boolean {
+    return this.suspendCount > 0;
+  }
+
+  suspend(): void {
+    this.suspendCount++;
+  }
+
+  resume(): void {
+    this.suspendCount = Math.max(0, this.suspendCount - 1);
+  }
+
+  /** Run `fn` with capture off, restoring the previous depth even if it throws. */
+  async runSuspended<T>(fn: () => Promise<T>): Promise<T> {
+    this.suspend();
+    try {
+      return await fn();
+    } finally {
+      this.resume();
+    }
+  }
 
   constructor(
     db: PlannerDb,
@@ -139,7 +181,17 @@ export class SyncRepository extends DexieRepository {
   private debounceTimer?: ReturnType<typeof setTimeout>;
   private pollTimer?: ReturnType<typeof setInterval>;
   private onlineHandler?: () => void;
+  private offlineHandler?: () => void;
   private disposed = false;
+
+  // ---- observable sync status ----
+  private statusSnapshot: SyncStatus = {
+    phase: "idle",
+    pendingCount: 0,
+    lastSyncAt: null,
+    lastError: null,
+  };
+  private readonly statusListeners = new Set<() => void>();
 
   constructor(opts: SyncRepositoryOptions) {
     super(opts.db, opts.userId);
@@ -149,7 +201,45 @@ export class SyncRepository extends DexieRepository {
     this.pollMs = opts.pollMs ?? 60_000;
     // Capture every domain write into the outbox (spec §5 state-based write path).
     this.tracker = new OutboxTracker(this.db, (c) => this.recordChange(c));
+    void this.initStatus();
     this.wireTriggers();
+  }
+
+  /** A stable snapshot for `useSyncExternalStore` (identity changes only on a real change). */
+  getSyncStatus = (): SyncStatus => this.statusSnapshot;
+
+  subscribeSyncStatus = (listener: () => void): (() => void) => {
+    this.statusListeners.add(listener);
+    return () => this.statusListeners.delete(listener);
+  };
+
+  private setStatus(patch: Partial<SyncStatus>): void {
+    this.statusSnapshot = { ...this.statusSnapshot, ...patch };
+    for (const l of this.statusListeners) l();
+  }
+
+  private async initStatus(): Promise<void> {
+    const [pendingCount, meta] = await Promise.all([
+      this.db.outbox.count(),
+      this.db.syncMeta.get("lastSyncAt"),
+    ]);
+    this.setStatus({
+      pendingCount,
+      lastSyncAt: meta?.value ?? null,
+      phase: this.isOffline() ? "offline" : this.statusSnapshot.phase,
+    });
+  }
+
+  /**
+   * Seed with capture OFF. `ensureSeed` puts a DEFAULT user ("Me", part 1) when the local DB
+   * has none — on a fresh signed-in device that ran through the outbox and, stamped with a
+   * fresh clock, LWW-clobbered the user's REAL server profile on the first sync (resetting
+   * displayName/programme everywhere). Suspending capture means the seeded default never
+   * enters the outbox or the record clock, so the first pull applies the real profile
+   * unopposed. A genuinely new account's profile reaches the server on the user's first edit.
+   */
+  override async ensureSeed(): Promise<void> {
+    await this.tracker.runSuspended(() => super.ensureSeed());
   }
 
   /** The instrumented `db.<store>` property (NOT `db.table(name)`, a different instance). */
@@ -195,6 +285,7 @@ export class SyncRepository extends DexieRepository {
       updatedAt,
       deleted: change.deleted,
     });
+    this.setStatus({ pendingCount: await this.db.outbox.count() });
     this.scheduleSync();
   }
 
@@ -207,9 +298,33 @@ export class SyncRepository extends DexieRepository {
   async sync(): Promise<void> {
     if (this.disposed) return;
     if (this.inflight) return this.inflight;
+    if (this.isOffline()) {
+      // No network — don't claim a sync. Local data is intact; try again when back online.
+      this.setStatus({ phase: "offline" });
+      return;
+    }
+    this.setStatus({ phase: "syncing" });
     this.inflight = this.reconcile()
-      .catch(() => {
-        /* offline / transient — keep durable state for the next trigger */
+      .then(async () => {
+        const at = nowIso();
+        await this.db.syncMeta.put({ key: "lastSyncAt", value: at });
+        this.setStatus({
+          phase: "idle",
+          lastSyncAt: at,
+          lastError: null,
+          pendingCount: await this.db.outbox.count(),
+        });
+      })
+      .catch(async (err) => {
+        // Previously swallowed silently — the user believed they were backed up while the
+        // server copy quietly froze. Now the failure is visible + reported; the durable
+        // outbox + watermark are untouched, so the next trigger retries losslessly.
+        this.setStatus({ phase: "error", lastError: errorMessage(err) });
+        try {
+          Sentry.captureException(err);
+        } catch {
+          /* never let telemetry break sync */
+        }
       })
       .finally(() => {
         this.inflight = null;
@@ -222,31 +337,39 @@ export class SyncRepository extends DexieRepository {
   }
 
   private async reconcile(): Promise<void> {
-    if (this.isOffline()) return;
-    await this.flushOutbox();
+    // Pull BEFORE flushing: see the server's state first so freshly-seeded / not-yet-synced
+    // local rows can't push over newer remote data before we've reconciled against it. LWW
+    // makes the two phases order-independent for steady-state edits.
     await this.pull();
+    await this.flushOutbox();
   }
 
   private async flushOutbox(): Promise<void> {
     const pending = await this.db.outbox.toArray();
     if (pending.length === 0) return;
-    const rows: SyncRow[] = pending.map((p) => ({
-      entityType: p.entityType,
-      id: p.id,
-      updatedAt: p.updatedAt,
-      deleted: p.deleted,
-      item: p.item,
-    }));
-    // Push first; if this throws we keep the outbox untouched (retry later). The server
-    // upsert is idempotent by id + LWW, so a double flush never duplicates.
-    const resolved = await this.transport.push(rows);
-    // Clear only entries we pushed that a concurrent local write hasn't superseded (its
-    // updatedAt would have changed during the push await) — no write is ever lost.
-    for (const p of pending) {
-      const cur = await this.db.outbox.get(p.key);
-      if (cur && cur.updatedAt === p.updatedAt) await this.db.outbox.delete(p.key);
+    // Chunk the push: one giant POST (e.g. a demo-data load, or a long offline backlog) can
+    // exceed the API Gateway/Lambda payload limit and then fail on EVERY retry. Each chunk
+    // clears independently; a mid-batch failure leaves later chunks queued for next time.
+    for (let i = 0; i < pending.length; i += PUSH_CHUNK) {
+      const slice = pending.slice(i, i + PUSH_CHUNK);
+      const rows: SyncRow[] = slice.map((p) => ({
+        entityType: p.entityType,
+        id: p.id,
+        updatedAt: p.updatedAt,
+        deleted: p.deleted,
+        item: p.item,
+      }));
+      // Push first; if this throws we keep the (remaining) outbox untouched (retry later).
+      // The server upsert is idempotent by id + LWW, so a double flush never duplicates.
+      const resolved = await this.transport.push(rows);
+      // Clear only entries we pushed that a concurrent local write hasn't superseded (its
+      // updatedAt would have changed during the push await) — no write is ever lost.
+      for (const p of slice) {
+        const cur = await this.db.outbox.get(p.key);
+        if (cur && cur.updatedAt === p.updatedAt) await this.db.outbox.delete(p.key);
+      }
+      await this.applyRemote(resolved);
     }
-    await this.applyRemote(resolved);
   }
 
   private async pull(): Promise<void> {
@@ -274,8 +397,7 @@ export class SyncRepository extends DexieRepository {
    * outbox entry. Runs with capture suspended so applies don't re-enter the outbox.
    */
   private async applyRemote(rows: SyncRow[]): Promise<void> {
-    this.tracker.suspended = true;
-    try {
+    await this.tracker.runSuspended(async () => {
       for (const row of rows) {
         const key = `${row.entityType}#${row.id}`;
         const localMeta = await this.db.recordMeta.get(key);
@@ -296,9 +418,7 @@ export class SyncRepository extends DexieRepository {
         const ob = await this.db.outbox.get(key);
         if (ob && ob.updatedAt <= row.updatedAt) await this.db.outbox.delete(key);
       }
-    } finally {
-      this.tracker.suspended = false;
-    }
+    });
   }
 
   // ---- triggers (spec §5: app load, `online`, debounced post-mutation, light poll) ----
@@ -314,7 +434,9 @@ export class SyncRepository extends DexieRepository {
   private wireTriggers(): void {
     if (!this.autoSync || typeof window === "undefined") return;
     this.onlineHandler = () => void this.sync();
+    this.offlineHandler = () => this.setStatus({ phase: "offline" });
     window.addEventListener("online", this.onlineHandler);
+    window.addEventListener("offline", this.offlineHandler);
     this.pollTimer = setInterval(() => {
       if (!this.isOffline()) void this.sync();
     }, this.pollMs);
@@ -326,8 +448,17 @@ export class SyncRepository extends DexieRepository {
     this.disposed = true;
     if (this.debounceTimer !== undefined) clearTimeout(this.debounceTimer);
     if (this.pollTimer !== undefined) clearInterval(this.pollTimer);
-    if (this.onlineHandler && typeof window !== "undefined") {
-      window.removeEventListener("online", this.onlineHandler);
+    if (typeof window !== "undefined") {
+      if (this.onlineHandler) window.removeEventListener("online", this.onlineHandler);
+      if (this.offlineHandler) window.removeEventListener("offline", this.offlineHandler);
     }
+    this.statusListeners.clear();
   }
+}
+
+/** Best-effort human-readable error text for the sync status. */
+function errorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return err;
+  return "Sync failed";
 }

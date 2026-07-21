@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type DynamoLocal, startDynamoLocal } from "./helpers/dynamoLocal";
 import { DirectSyncTransport } from "./helpers/directSyncTransport";
 import { DynamoRepository } from "../src/data/dynamo/dynamoRepository";
-import { SyncRepository } from "../src/data/sync/syncRepository";
+import { PUSH_CHUNK, SyncRepository } from "../src/data/sync/syncRepository";
 import { PlannerDb } from "../src/data/dexie/db";
 import type { Shift } from "../src/domain/types";
 
@@ -204,6 +204,68 @@ describe("sync — offline → reconnect convergence", () => {
     // The write survived and reached the server — nothing lost.
     expect((await srv.listShifts(u.id)).map((s) => s.id)).toContain(shift.id);
     dev2.dispose();
+  });
+
+  it("a fresh signed-in device adopts the server profile instead of clobbering it", async () => {
+    const sub = `sub-profile-${n}`;
+    const a = device(sub);
+    // Device A customises the profile and pushes it to the server.
+    await a.repo.getCurrentUser();
+    await a.repo.updateUser({ displayName: "Priya", currentPart: 2 });
+    await a.repo.sync();
+
+    // Device B is brand new: on first read it seeds a DEFAULT user ("Me", part 1) locally.
+    const b = device(sub);
+    const seeded = await b.repo.getCurrentUser();
+    expect(seeded.displayName).toBe("Me");
+
+    // The first sync must ADOPT the server profile, not push the seeded default over it.
+    await b.repo.sync();
+    const afterB = await b.repo.getCurrentUser();
+    expect(afterB.displayName).toBe("Priya");
+    expect(afterB.currentPart).toBe(2);
+
+    // And the server profile is unchanged — B never clobbered it.
+    await a.repo.sync();
+    const afterA = await a.repo.getCurrentUser();
+    expect(afterA.displayName).toBe("Priya");
+    expect(afterA.currentPart).toBe(2);
+  });
+
+  it("pushes a backlog larger than one chunk in full, exactly once", async () => {
+    const { repo: a, srv } = device(`sub-chunk-${n}`);
+    const u = await a.getCurrentUser();
+    const count = PUSH_CHUNK + 10; // spans two push chunks
+    for (let i = 0; i < count; i++) {
+      const date = new Date(Date.UTC(2026, 4, 1 + i)).toISOString().slice(0, 10);
+      await a.createShift({ ...baseShift(u.id), date });
+    }
+    await a.sync();
+    const ids = (await srv.listShifts(u.id)).map((s) => s.id);
+    expect(ids).toHaveLength(count); // every row reached the server
+    expect(new Set(ids).size).toBe(count); // and none duplicated
+  });
+
+  it("surfaces a sync failure and keeps the outbox intact for retry", async () => {
+    const { repo: a, transport, srv, db } = device(`sub-fail-${n}`);
+    const u = await a.getCurrentUser();
+    const shift = await a.createShift(baseShift(u.id));
+
+    transport.online = false; // every pull/push rejects
+    await a.sync();
+
+    const status = a.getSyncStatus();
+    expect(status.phase).toBe("error");
+    expect(status.lastError).toBeTruthy();
+    // Nothing reached the server, and the write is still queued for a later retry.
+    expect(await srv.listShifts(u.id)).toHaveLength(0);
+    expect(await db.outbox.get(`shifts#${shift.id}`)).toBeDefined();
+
+    // Recovery: back online, the same durable outbox flushes cleanly.
+    transport.online = true;
+    await a.sync();
+    expect((await srv.listShifts(u.id)).map((s) => s.id)).toEqual([shift.id]);
+    expect(a.getSyncStatus().phase).toBe("idle");
   });
 
   it("two devices creating independently both converge to the union", async () => {
