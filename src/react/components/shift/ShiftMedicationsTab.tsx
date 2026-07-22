@@ -33,6 +33,11 @@ export function ShiftMedicationsTab({ shift }: { shift: Shift }) {
         <SeeFullLink to="/medications">See full medication notes</SeeFullLink>
       </div>
 
+      <p className="mb-4 text-xs text-amber-700">
+        Your notes, not guidance — verify against your local policy, the BNF and the actual chart,
+        and keep this free of patient-identifiable information.
+      </p>
+
       <Routes>
         <Route index element={<MedLogView shift={shift} />} />
         <Route path="catalog" element={<CatalogView base={base} />} />
