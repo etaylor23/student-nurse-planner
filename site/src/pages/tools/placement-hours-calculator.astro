@@ -1,0 +1,221 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Button from "../../components/Button.astro";
+import { tool, breadcrumb, faqPage } from "../../schema";
+import { CTA, FACTS } from "../../consts";
+
+const title = "Placement hours calculator for student nurses | PlaceMate";
+const description =
+  "Free placement-hours calculator for UK student nurses: enter your hours to see how many of the 2,300 NMC practice hours you have left, with the 600-hour simulation cap tracked automatically.";
+
+const path = "/tools/placement-hours-calculator";
+
+const faqs = [
+  {
+    q: "How many placement hours do UK student nurses need?",
+    a: "At least 2,300 hours of supervised practice learning, within a minimum 4,600-hour programme (2,300 practice plus 2,300 theory) set by the NMC. Up to 600 of the practice hours may be simulated.",
+  },
+  {
+    q: "Do simulated hours count in the calculator?",
+    a: "Yes, up to the 600-hour cap. Enter your simulated hours separately and the calculator counts them toward your 2,300 target up to 600, then flags any beyond the cap as not counting.",
+  },
+  {
+    q: "Is my data saved anywhere?",
+    a: "No. The calculator runs entirely in your browser, stores nothing, and sends nothing anywhere. Refreshing the page clears it.",
+  },
+];
+
+const jsonLd = [
+  tool({
+    name: "Placement hours calculator",
+    description,
+    path,
+    category: "EducationalApplication",
+  }),
+  breadcrumb([
+    { name: "Home", path: "/" },
+    { name: "Tools", path: "/tools" },
+    { name: "Placement hours calculator", path },
+  ]),
+  faqPage(faqs),
+];
+---
+
+<Layout title={title} description={description} jsonLd={jsonLd}>
+  <section class="mx-auto max-w-3xl px-4 pt-16 sm:px-6">
+    <nav aria-label="Breadcrumb" class="text-sm text-slate-500">
+      <a href="/" class="hover:text-emerald-700">Home</a>
+      <span aria-hidden="true"> / </span>
+      <a href="/tools" class="hover:text-emerald-700">Tools</a>
+    </nav>
+    <h1 class="mt-4 text-4xl font-bold tracking-tight text-ink sm:text-5xl">
+      Placement hours calculator
+    </h1>
+    <p class="mt-4 text-lg leading-relaxed text-slate-600">
+      UK student nurses need at least <strong>{FACTS.practiceHours.toLocaleString("en-GB")} hours</strong>
+      of supervised practice learning to register. Enter your hours below to see how many you
+      have left — the {FACTS.simCap}-hour simulated-learning cap is handled for you. Nothing is
+      saved; it all runs in your browser.
+    </p>
+  </section>
+
+  <section class="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+    <div class="grid gap-8 md:grid-cols-2">
+      <!-- Inputs -->
+      <form class="space-y-5" aria-label="Placement hours">
+        <div>
+          <label for="target" class="block text-sm font-semibold text-ink">
+            Practice hours required
+          </label>
+          <p class="text-xs text-slate-500">Default is the NMC minimum. Change it if your programme differs.</p>
+          <input
+            id="target"
+            type="number"
+            inputmode="numeric"
+            min="0"
+            value={FACTS.practiceHours}
+            class="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-ink focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+          />
+        </div>
+        <div>
+          <label for="placement" class="block text-sm font-semibold text-ink">
+            Placement (real) hours completed
+          </label>
+          <input
+            id="placement"
+            type="number"
+            inputmode="numeric"
+            min="0"
+            value="0"
+            class="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-ink focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+          />
+        </div>
+        <div>
+          <label for="simulated" class="block text-sm font-semibold text-ink">
+            Simulated hours completed
+          </label>
+          <p class="text-xs text-slate-500">Skills-lab / simulation hours. Counts toward the total up to {FACTS.simCap}.</p>
+          <input
+            id="simulated"
+            type="number"
+            inputmode="numeric"
+            min="0"
+            value="0"
+            class="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-ink focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+          />
+        </div>
+      </form>
+
+      <!-- Results -->
+      <div class="rounded-2xl border border-slate-200 bg-slate-50 p-6" aria-live="polite">
+        <p class="text-sm font-semibold uppercase tracking-wider text-emerald-600">Your progress</p>
+        <p class="mt-3 text-4xl font-bold tracking-tight text-ink">
+          <span id="remaining">2,300</span>
+          <span class="text-lg font-medium text-slate-500">hours to go</span>
+        </p>
+        <p id="counted-line" class="mt-1 text-sm text-slate-600">
+          0 of 2,300 counted (0%)
+        </p>
+
+        <div class="mt-4 h-3 w-full overflow-hidden rounded-full bg-slate-200">
+          <div id="bar" class="h-3 rounded-full bg-emerald-500 transition-all" style="width:0%"></div>
+        </div>
+
+        <p id="done-note" class="mt-4 hidden rounded-lg bg-emerald-100 px-3 py-2 text-sm font-medium text-emerald-800">
+          🎉 You've met the practice-hour requirement.
+        </p>
+        <p id="sim-note" class="mt-4 hidden rounded-lg bg-amber-100 px-3 py-2 text-sm font-medium text-amber-800"></p>
+
+        <p class="mt-4 text-xs leading-relaxed text-slate-500">
+          Simulated hours count toward your total only up to the {FACTS.simCap}-hour cap; the
+          rest of your practice hours must come from real placements.
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-10 flex flex-col gap-3 sm:flex-row">
+      <Button href={CTA.demo.href} external>Track this automatically in PlaceMate</Button>
+      <Button href="/guides/student-nurse-placement-hours-explained" variant="secondary">
+        Placement hours, explained
+      </Button>
+    </div>
+  </section>
+
+  <!-- Supporting content (SEO) -->
+  <section class="mx-auto max-w-3xl px-4 pb-8 sm:px-6">
+    <h2 class="text-2xl font-bold tracking-tight text-ink">How the calculation works</h2>
+    <p class="mt-3 leading-relaxed text-slate-600">
+      Your counted total is your real placement hours plus your simulated hours up to the
+      {FACTS.simCap}-hour cap. Hours remaining is simply your required total minus what's
+      counted. Because at least {(FACTS.practiceHours - FACTS.simCap).toLocaleString("en-GB")}
+      of the {FACTS.practiceHours.toLocaleString("en-GB")} hours must come from real
+      placements, simulated hours beyond {FACTS.simCap} don't reduce your target — the
+      calculator flags them so there are no surprises later.
+    </p>
+    <p class="mt-3 leading-relaxed text-slate-600">
+      Always treat your university's Practice Assessment Document as the source of truth for
+      what counts — this tool is a quick estimate, not an official record.
+    </p>
+
+    <h2 class="mt-10 text-2xl font-bold tracking-tight text-ink">Frequently asked questions</h2>
+    <dl class="mt-4 space-y-6">
+      {
+        faqs.map((f) => (
+          <div>
+            <dt class="font-semibold text-ink">{f.q}</dt>
+            <dd class="mt-1 leading-relaxed text-slate-600">{f.a}</dd>
+          </div>
+        ))
+      }
+    </dl>
+  </section>
+</Layout>
+
+<script>
+  const $ = (id: string) => document.getElementById(id) as HTMLElement | null;
+  const target = $("target") as HTMLInputElement | null;
+  const placement = $("placement") as HTMLInputElement | null;
+  const simulated = $("simulated") as HTMLInputElement | null;
+  const remaining = $("remaining");
+  const countedLine = $("counted-line");
+  const bar = $("bar");
+  const doneNote = $("done-note");
+  const simNote = $("sim-note");
+
+  const SIM_CAP = 600;
+  const num = (el: HTMLInputElement | null) => {
+    const n = Number(el?.value);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  };
+  const fmt = (n: number) => Math.round(n).toLocaleString("en-GB");
+
+  function update() {
+    if (!remaining || !countedLine || !bar) return;
+    const goal = num(target) || 0;
+    const real = num(placement);
+    const sim = num(simulated);
+    const simCounted = Math.min(sim, SIM_CAP);
+    const simExcess = Math.max(0, sim - SIM_CAP);
+    const counted = real + simCounted;
+    const left = Math.max(0, goal - counted);
+    const pct = goal > 0 ? Math.min(100, (counted / goal) * 100) : 0;
+
+    remaining.textContent = fmt(left);
+    countedLine.textContent = `${fmt(counted)} of ${fmt(goal)} counted (${Math.round(pct)}%)`;
+    bar.style.width = `${pct}%`;
+
+    doneNote?.classList.toggle("hidden", left > 0);
+
+    if (simNote) {
+      if (simExcess > 0) {
+        simNote.textContent = `${fmt(simExcess)} simulated hour${simExcess === 1 ? "" : "s"} are above the ${SIM_CAP}-hour cap and don't count toward your target.`;
+        simNote.classList.remove("hidden");
+      } else {
+        simNote.classList.add("hidden");
+      }
+    }
+  }
+
+  [target, placement, simulated].forEach((el) => el?.addEventListener("input", update));
+  update();
+</script>

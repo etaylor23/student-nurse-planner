@@ -69,6 +69,31 @@ export function webApplication(): Node {
   };
 }
 
+// A standalone free tool page (calculator, practice quiz) modelled as a WebApplication.
+// Free (offers price 0), part of the site, published by the Organization. See §5.
+export function tool(t: {
+  name: string;
+  description: string;
+  path: string; // site-relative, e.g. "/tools/placement-hours-calculator"
+  category?: string; // schema.org applicationCategory
+}): Node {
+  const url = new URL(t.path, SITE.url).href.replace(/\/$/, "");
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: t.name,
+    url,
+    applicationCategory: t.category ?? "EducationalApplication",
+    operatingSystem: "Web",
+    browserRequirements: "Requires a modern web browser with JavaScript.",
+    description: t.description,
+    inLanguage: "en-GB",
+    isPartOf: { "@id": SITE_ID },
+    publisher: { "@id": ORG_ID },
+    offers: { "@type": "Offer", price: "0", priceCurrency: "GBP" },
+  };
+}
+
 export function breadcrumb(items: { name: string; path: string }[]): Node {
   return {
     "@context": "https://schema.org",

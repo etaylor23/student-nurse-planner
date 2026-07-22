@@ -1,0 +1,75 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import CtaSection from "../../components/CtaSection.astro";
+import { breadcrumb } from "../../schema";
+import { SITE } from "../../consts";
+
+const title = "Free tools for student nurses | PlaceMate";
+const description =
+  "Free, no-login tools for UK student nurses — a placement-hours calculator and drug-calculation practice — that run entirely in your browser.";
+
+// Tools live here as they ship; the hub renders whatever's listed.
+const TOOLS = [
+  {
+    href: "/tools/placement-hours-calculator",
+    name: "Placement hours calculator",
+    blurb:
+      "See how many of your 2,300 NMC practice hours you have left, with the 600-hour simulation cap handled for you.",
+  },
+];
+
+const jsonLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: "PlaceMate free tools for student nurses",
+    url: `${SITE.url}/tools`,
+    inLanguage: "en-GB",
+    hasPart: TOOLS.map((t) => ({
+      "@type": "WebApplication",
+      name: t.name,
+      url: `${SITE.url}${t.href}`,
+    })),
+  },
+  breadcrumb([
+    { name: "Home", path: "/" },
+    { name: "Tools", path: "/tools" },
+  ]),
+];
+---
+
+<Layout title={title} description={description} jsonLd={jsonLd}>
+  <section class="mx-auto max-w-6xl px-4 pb-4 pt-16 sm:px-6">
+    <p class="text-sm font-semibold uppercase tracking-wider text-emerald-600">Tools</p>
+    <h1 class="mt-3 max-w-3xl text-4xl font-bold tracking-tight text-ink sm:text-5xl">
+      Free tools for student nurses
+    </h1>
+    <p class="mt-5 max-w-2xl text-lg text-slate-600">
+      Quick, no-login tools that run entirely in your browser — nothing to install, nothing
+      saved, nothing sent anywhere.
+    </p>
+  </section>
+
+  <section class="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+    <div class="grid gap-6 sm:grid-cols-2">
+      {
+        TOOLS.map((t) => (
+          <a
+            href={t.href}
+            class="group rounded-2xl border border-slate-200 p-6 transition hover:border-emerald-300 hover:shadow-sm"
+          >
+            <h2 class="text-lg font-bold tracking-tight text-ink group-hover:text-emerald-700">
+              {t.name}
+            </h2>
+            <p class="mt-2 text-sm leading-relaxed text-slate-600">{t.blurb}</p>
+            <span class="mt-4 inline-flex text-sm font-semibold text-emerald-700">
+              Open the tool →
+            </span>
+          </a>
+        ))
+      }
+    </div>
+  </section>
+
+  <CtaSection />
+</Layout>

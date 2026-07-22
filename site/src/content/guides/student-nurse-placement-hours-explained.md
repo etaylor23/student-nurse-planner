@@ -54,7 +54,7 @@ When in doubt, ask your practice assessor or placement team and follow your prog
 
 Most three-year programmes spread practice learning fairly evenly, so students typically complete somewhere in the region of **700–800 practice hours a year**. Your own pattern may front-load theory in first year and lean harder into practice by third year — the only totals that matter in the end are the programme minimums.
 
-A useful habit: rather than thinking "I need 2,300 hours" (which feels enormous), track **hours per placement**. Each placement has an expected hours target; hit each one and the big number takes care of itself.
+A useful habit: rather than thinking "I need 2,300 hours" (which feels enormous), track **hours per placement**. Each placement has an expected hours target; hit each one and the big number takes care of itself. (Want to see where you stand right now? Our free [placement hours calculator](/tools/placement-hours-calculator) does the sum — including the 600-hour cap — in a few seconds.)
 
 ## How to track your placement hours (and why as-you-go beats catch-up)
 
