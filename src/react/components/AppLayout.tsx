@@ -29,7 +29,16 @@ const ICONS: Record<string, ReactNode> = {
   "/profile": <path d="M20 21a8 8 0 1 0-16 0M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />,
 };
 
-function NavItemLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => void }) {
+function NavItemLink({
+  item,
+  onNavigate,
+  muted = false,
+}: {
+  item: NavItem;
+  onNavigate?: () => void;
+  /** Support-tier item — one notch quieter than the spine, but still fully usable. */
+  muted?: boolean;
+}) {
   if (!item.enabled) {
     return (
       <span
@@ -49,13 +58,16 @@ function NavItemLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => v
       to={item.path}
       onClick={onNavigate}
       className={({ isActive }) =>
-        "group/link flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 " +
+        "group/link flex items-center gap-3 rounded-lg px-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 " +
+        (muted ? "py-2 text-[13px] " : "py-2.5 text-sm ") +
         (isActive
           ? "bg-primary-50 font-medium text-primary-700"
-          : "text-slate-600 hover:bg-slate-100 hover:text-ink")
+          : muted
+            ? "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+            : "text-slate-600 hover:bg-slate-100 hover:text-ink")
       }
     >
-      <NavIcon item={item} />
+      <NavIcon item={item} muted={muted} />
       <span className="truncate">{item.label}</span>
     </NavLink>
   );
@@ -64,26 +76,37 @@ function NavItemLink({ item, onNavigate }: { item: NavItem; onNavigate?: () => v
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav aria-label="Primary" className="flex flex-col gap-1">
-      {NAV_SECTIONS.map((section, i) => (
-        <div
-          key={section.heading ?? `section-${i}`}
-          className={i > 0 ? "mt-4 flex flex-col gap-1" : "flex flex-col gap-1"}
-        >
-          {section.heading && (
-            <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-              {section.heading}
-            </p>
-          )}
-          {section.items.map((item) => (
-            <NavItemLink key={item.path} item={item} onNavigate={onNavigate} />
-          ))}
-        </div>
-      ))}
+      {NAV_SECTIONS.map((section, i) => {
+        const isSupport = section.tier === "support";
+        return (
+          <div
+            key={section.heading ?? `section-${i}`}
+            className={
+              // The support tier is set off with a top divider + extra breathing room,
+              // marking the step down from the spine.
+              (isSupport ? "mt-5 border-t border-slate-200/70 pt-4 " : i > 0 ? "mt-4 " : "") +
+              "flex flex-col gap-1"
+            }
+          >
+            {section.heading && (
+              <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                {section.heading}
+              </p>
+            )}
+            {section.note && (
+              <p className="px-3 pb-1.5 text-xs leading-snug text-slate-400">{section.note}</p>
+            )}
+            {section.items.map((item) => (
+              <NavItemLink key={item.path} item={item} onNavigate={onNavigate} muted={isSupport} />
+            ))}
+          </div>
+        );
+      })}
     </nav>
   );
 }
 
-function NavIcon({ item }: { item: NavItem }) {
+function NavIcon({ item, muted = false }: { item: NavItem; muted?: boolean }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -92,7 +115,7 @@ function NavIcon({ item }: { item: NavItem }) {
       strokeWidth={1.5}
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="h-5 w-5 shrink-0"
+      className={(muted ? "h-4.5 w-4.5" : "h-5 w-5") + " shrink-0"}
       aria-hidden="true"
     >
       {ICONS[item.path]}
