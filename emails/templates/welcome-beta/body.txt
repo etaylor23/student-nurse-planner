@@ -1,9 +1,9 @@
 Hey {{first_name}},
 
-We're so excited you've decided to join the PlaceMate beta programme.
-You're one of a small group who'll help shape it into the perfect
-nurturing ground for student nurses -- and that's genuinely a big deal
-to us.
+I'm Nicola from PlaceMate, and we're so excited you've decided to join
+the beta programme. You're one of a small group who'll help shape it into
+the perfect nurturing ground for student nurses -- and that's genuinely a
+big deal to us.
 
 We'd love PlaceMate to be your one-stop shop for the whole placement
 journey: building your own clinical-skills record, tracking your
@@ -23,7 +23,7 @@ So, to get us started -- what's the hardest part of the programme for
 you? Not the clinical learning, but everything around it: juggling
 placement, uni and a life, and the pressure that comes with it. That's
 exactly the weight we're building PlaceMate to take off your shoulders.
-Just hit reply -- a real person reads every one.
+Just hit reply -- it comes straight to me, and I read every one.
 
 Beyond that, there's a Feedback button built into the app -- tap it
 any time, and a screenshot helps us enormously. Every message,
@@ -46,7 +46,8 @@ lost. It genuinely helps us grow.
 
 Thanks for being here from the start.
 
-The PlaceMate Team
+Nicola
+PlaceMate
 
 --
 You're receiving this because you joined the PlaceMate beta programme.

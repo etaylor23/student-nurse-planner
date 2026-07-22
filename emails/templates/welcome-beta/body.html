@@ -27,10 +27,20 @@
         <!-- Card -->
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px; background-color:#ffffff; border-radius:16px; overflow:hidden; border:1px solid #e4eae8;">
 
-          <!-- Header band -->
+          <!-- Header band: logo mark (hosted PNG) + wordmark. Falls back to the white
+               wordmark text if the recipient blocks images. -->
           <tr>
-            <td style="background-color:#059669; padding:28px 32px;">
-              <span style="font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:26px; font-weight:700; letter-spacing:-0.4px; color:#ffffff;">placemate</span>
+            <td style="background-color:#059669; padding:24px 32px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="vertical-align:middle;">
+                    <img src="https://placemate.uk/email-logo-mark.png" width="30" height="30" alt="" style="display:block; border:0;" />
+                  </td>
+                  <td style="vertical-align:middle; padding-left:9px;">
+                    <span style="font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:26px; font-weight:700; letter-spacing:-0.4px; color:#ffffff;">placemate</span>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
@@ -40,7 +50,7 @@
 
               <p style="margin:0 0 20px 0; font-size:18px;">Hey {{first_name}},</p>
 
-              <p style="margin:0 0 20px 0;">We're so excited you've decided to join the PlaceMate beta programme. You're one of a small group who'll help shape it into the perfect nurturing ground for student nurses &mdash; and that's genuinely a big deal to us.</p>
+              <p style="margin:0 0 20px 0;">I'm Nicola from PlaceMate, and we're so excited you've decided to join the beta programme. You're one of a small group who'll help shape it into the perfect nurturing ground for student nurses &mdash; and that's genuinely a big deal to us.</p>
 
               <p style="margin:0 0 20px 0;">We'd love PlaceMate to be your one-stop shop for the whole placement journey: <strong>building your own clinical-skills record</strong>, <strong>tracking your progress</strong> against the NMC proficiencies, <strong>logging your hours</strong>, and <strong>planning your shifts</strong> around uni and life &mdash; plus plenty more inside.</p>
 
@@ -48,7 +58,7 @@
 
               <p style="margin:0 0 20px 0;">But here's where the real magic happens: <strong>telling us where PlaceMate doesn't do what you need it to.</strong> Every &ldquo;this is annoying&rdquo; or &ldquo;I wish it could&hellip;&rdquo; shapes what we build next.</p>
 
-              <p style="margin:0 0 20px 0;">So, to get us started &mdash; <strong>what's the hardest part of the programme for you?</strong> Not the clinical learning, but everything around it: juggling placement, uni and a life, and the pressure that comes with it. That's exactly the weight we're building PlaceMate to take off your shoulders. Just hit reply &mdash; a real person reads every one.</p>
+              <p style="margin:0 0 20px 0;">So, to get us started &mdash; <strong>what's the hardest part of the programme for you?</strong> Not the clinical learning, but everything around it: juggling placement, uni and a life, and the pressure that comes with it. That's exactly the weight we're building PlaceMate to take off your shoulders. Just hit reply &mdash; it comes straight to me, and I read every one.</p>
 
               <p style="margin:0 0 20px 0;">Beyond that, there's a <strong>Feedback</strong> button built into the app &mdash; tap it any time, and a screenshot helps us enormously. Every message, however it reaches us, gets read and answered personally &mdash; we come back to every single one.</p>
 
@@ -74,8 +84,9 @@
                 </tr>
               </table>
 
-              <p style="margin:0 0 4px 0;">Thanks for being here from the start.</p>
-              <p style="margin:0 0 32px 0; font-weight:600;">The PlaceMate Team 🌱</p>
+              <p style="margin:0 0 12px 0;">Thanks for being here from the start.</p>
+              <p style="margin:0 0 2px 0; font-weight:600;">Nicola</p>
+              <p style="margin:0 0 32px 0; color:#8a97a3; font-size:14px;">PlaceMate 🌱</p>
 
             </td>
           </tr>
