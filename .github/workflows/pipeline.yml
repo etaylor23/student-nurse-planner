@@ -172,12 +172,6 @@ jobs:
           aws cloudfront create-invalidation \
             --distribution-id "${{ steps.outputs.outputs.distribution }}" \
             --paths "/*"
-      - name: Notify IndexNow (Bing/Yandex) — non-fatal
-        working-directory: site
-        continue-on-error: true
-        # Instant-indexing ping so new/changed pages are discovered in minutes. Reads
-        # dist/sitemap-0.xml; never fails the deploy (see scripts/indexnow-submit.mjs).
-        run: node scripts/indexnow-submit.mjs
 
   deploy-backend:
     name: cdk deploy NursePlanner-${{ inputs.environment || 'dev' }}
@@ -279,3 +273,10 @@ jobs:
           aws cloudfront create-invalidation \
             --distribution-id "${{ steps.outputs.outputs.distribution }}" \
             --paths "/*"
+      - name: Notify IndexNow (Bing/Yandex) — non-fatal
+        working-directory: site
+        continue-on-error: true
+        # Instant-indexing ping so new/changed pages are discovered in minutes. Reads
+        # the just-built dist/sitemap-0.xml; never fails the deploy
+        # (see site/scripts/indexnow-submit.mjs).
+        run: node scripts/indexnow-submit.mjs
