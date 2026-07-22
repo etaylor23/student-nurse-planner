@@ -242,7 +242,8 @@ Facebook nursing-student groups) for episodic traffic/backlink spikes.
   ✅ `llms-full.txt`; ✅ IndexNow (wired into deploy-marketing; wave-1 ping HTTP 202);
   ✅ `/guides` content collection + hub + author/byline plumbing + disclaimers;
   ✅ Nicola author entity (About `#nicola-nightingale` + Person schema).
-  ⬜ IG/TikTok accounts → wire `sameAs` ([ELLIS]); ⬜ `/tools` routes (built with Phase 1).
+  ✅ IG/TikTok live (@placemateapp on both) + `sameAs` wired (2026-07-22).
+  ⬜ `/tools` routes (built with Phase 1).
 - **Phase 1 — tools (weeks 1–2): NOT STARTED.** Ship **both** free tools (placement-hours
   calculator + drug-calc quiz [PHARM]-reviewed).
 - **Phase 2 — guides in waves (weeks 2–6): WAVE 1 LIVE (2026-07-22).**
