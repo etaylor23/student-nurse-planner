@@ -44,8 +44,8 @@ export function TopGaps({ limit = 3 }: { limit?: number }) {
               <span className="flex shrink-0 flex-col items-end gap-1">
                 <StatusPill status={g.status} />
                 {g.escalating && (
-                  <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700 ring-1 ring-rose-100">
-                    Due now
+                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 ring-1 ring-amber-100">
+                    Ready to evidence
                   </span>
                 )}
               </span>

@@ -60,8 +60,8 @@ export function deriveNudges(i: NudgeInputs): Nudge[] {
     out.push({
       id: "gaps",
       tone: "accent",
-      message: `${i.gapsDue} NMC ${plural(i.gapsDue, "proficiency is", "proficiencies are")} due — add evidence.`,
-      cta: "See your gaps",
+      message: `${i.gapsDue} NMC ${plural(i.gapsDue, "proficiency is", "proficiencies are")} ready for you to evidence.`,
+      cta: "See them",
       href: "/competencies/gaps",
     });
   }
@@ -70,7 +70,7 @@ export function deriveNudges(i: NudgeInputs): Nudge[] {
     out.push({
       id: "skill-evidence",
       tone: "info",
-      message: `${i.skillsUnlinked} clinical ${plural(i.skillsUnlinked, "skill isn't", "skills aren't")} linked to a proficiency yet.`,
+      message: `${i.skillsUnlinked} clinical ${plural(i.skillsUnlinked, "skill", "skills")} could count toward your PAD.`,
       cta: "Link to your PAD",
       href: "/skills",
     });
@@ -80,7 +80,7 @@ export function deriveNudges(i: NudgeInputs): Nudge[] {
     out.push({
       id: "reflection-evidence",
       tone: "info",
-      message: `${i.reflectionsUnlinked} ${plural(i.reflectionsUnlinked, "reflection could", "reflections could")} evidence a proficiency.`,
+      message: `${i.reflectionsUnlinked} ${plural(i.reflectionsUnlinked, "reflection could", "reflections could")} count as evidence.`,
       cta: "Link them",
       href: "/reflection",
     });
