@@ -4,6 +4,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import type { Placement, Shift, ShiftDraft } from "../../domain/types";
 import { ShiftForm } from "./ShiftForm";
 import { Tabs, type TabItem } from "./Tabs";
+import { ShiftContributionSummary } from "./shift/ShiftContributionSummary";
 import { ShiftMedicationsTab } from "./shift/ShiftMedicationsTab";
 import { ShiftSkillsTab } from "./shift/ShiftSkillsTab";
 import { ShiftReflectionsTab } from "./shift/ShiftReflectionsTab";
@@ -291,7 +292,15 @@ export function ShiftModal({
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
           {shift ? (
             <Routes>
-              <Route index element={shiftFormEl} />
+              <Route
+                index
+                element={
+                  <>
+                    <ShiftContributionSummary shift={shift} />
+                    {shiftFormEl}
+                  </>
+                }
+              />
               <Route path="medications/*" element={<ShiftMedicationsTab shift={shift} />} />
               <Route path="skills/*" element={<ShiftSkillsTab shift={shift} />} />
               <Route path="reflection/*" element={<ShiftReflectionsTab shift={shift} />} />
