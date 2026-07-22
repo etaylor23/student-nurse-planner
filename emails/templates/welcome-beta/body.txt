@@ -1,9 +1,9 @@
 Hey {{first_name}},
 
-I'm Nicola from PlaceMate, and we're so excited you've decided to join
-the beta programme. You're one of a small group who'll help shape it into
-the perfect nurturing ground for student nurses -- and that's genuinely a
-big deal to us.
+It's Nicola, and we're so excited you've decided to join the PlaceMate
+beta programme. You're one of a small group who'll help shape it into the
+perfect nurturing ground for student nurses -- and that's genuinely a big
+deal to us.
 
 We'd love PlaceMate to be your one-stop shop for the whole placement
 journey: building your own clinical-skills record, tracking your
