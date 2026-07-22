@@ -10,16 +10,17 @@
  *   AWS_PROFILE=personal npx tsx scripts/send-pre-welcome-email.ts someone@example.com --name Sam
  *   AWS_PROFILE=personal npx tsx scripts/send-pre-welcome-email.ts someone@example.com --name Sam --execute
  *
- * Nicola is BCC'd on every send by default (so she keeps a copy). Override with
- * --bcc <addr[,addr]>, or turn it off with --no-bcc.
+ * Nicola + Ellis are BCC'd on every send by default (so they keep a copy). Override the
+ * whole list with --bcc <addr[,addr]> (comma-separated), or turn it off with --no-bcc.
  */
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseUserArgs } from "./lib/admin";
 
-/** Nicola keeps a blind copy of every pre-welcome that goes out. */
-const DEFAULT_BCC = "nicolanightingale97@hotmail.co.uk";
+/** Nicola + Ellis keep a blind copy of every pre-welcome. Comma-separated; --bcc overrides
+ *  the whole list, --no-bcc drops it. */
+const DEFAULT_BCC = "nicolanightingale97@hotmail.co.uk,ellis@placemate.uk";
 
 function main() {
   const argv = process.argv.slice(2);
