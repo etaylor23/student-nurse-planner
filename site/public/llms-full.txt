@@ -140,3 +140,7 @@ endorsed by the NMC. It is built around the NMC's published standards.
 - Placement hours calculator — https://placemate.uk/tools/placement-hours-calculator
   (enter placement + simulated hours to see hours remaining toward the 2,300-hour practice
   requirement; counts simulated hours up to the 600-hour cap and flags any beyond it)
+- Drug calculation practice — https://placemate.uk/tools/drug-calculation-practice
+  (unlimited randomly generated dose/oral-liquid/infusion-rate/unit-conversion questions
+  with instant feedback, worked answers and a running score; practice only, not for real
+  dosing)

@@ -1,0 +1,291 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Button from "../../components/Button.astro";
+import Disclaimer from "../../components/Disclaimer.astro";
+import { tool, breadcrumb, faqPage } from "../../schema";
+import { CTA } from "../../consts";
+
+const title = "Drug calculation practice questions for nurses | PlaceMate";
+const description =
+  "Free nursing drug-calculation practice: randomly generated dose, oral-liquid, infusion-rate and unit-conversion questions with instant feedback, worked answers and a running score. Practice only.";
+
+const path = "/tools/drug-calculation-practice";
+
+const faqs = [
+  {
+    q: "How do I practise nursing drug calculations?",
+    a: "Little and often, under time pressure, checking your working each time. This tool generates unlimited dose, oral-liquid, infusion-rate and unit-conversion questions with instant feedback and a worked answer, so you can practise the method until it's fluent.",
+  },
+  {
+    q: "What formulas does it use?",
+    a: "The dose formula (what you want ÷ what you've got × what it's in) for tablets and liquids, volume ÷ time for infusion rates, and ×1,000 conversions between grams, milligrams and micrograms.",
+  },
+  {
+    q: "Can I rely on this for real medicines?",
+    a: "No. It is for practice and study only. Real doses are always calculated from the prescription in front of you, checked to local policy, and verified with a registered professional.",
+  },
+];
+
+const jsonLd = [
+  tool({
+    name: "Drug calculation practice",
+    description,
+    path,
+    category: "EducationalApplication",
+  }),
+  breadcrumb([
+    { name: "Home", path: "/" },
+    { name: "Tools", path: "/tools" },
+    { name: "Drug calculation practice", path },
+  ]),
+  faqPage(faqs),
+];
+---
+
+<Layout title={title} description={description} jsonLd={jsonLd}>
+  <section class="mx-auto max-w-3xl px-4 pt-16 sm:px-6">
+    <nav aria-label="Breadcrumb" class="text-sm text-slate-500">
+      <a href="/" class="hover:text-emerald-700">Home</a>
+      <span aria-hidden="true"> / </span>
+      <a href="/tools" class="hover:text-emerald-700">Tools</a>
+    </nav>
+    <h1 class="mt-4 text-4xl font-bold tracking-tight text-ink sm:text-5xl">
+      Drug calculation practice
+    </h1>
+    <p class="mt-4 text-lg leading-relaxed text-slate-600">
+      Unlimited, randomly generated nursing calculation questions — doses, oral liquids,
+      infusion rates and unit conversions — with instant feedback and a worked answer for
+      every one. Keep going until the method is second nature.
+    </p>
+    <p class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+      Practice only. These are made-up numbers for study — never a substitute for calculating
+      a real dose from the prescription, checking local policy, and verifying with a
+      registered professional.
+    </p>
+  </section>
+
+  <section class="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+    <div class="rounded-2xl border border-slate-200 p-6 sm:p-8">
+      <div class="flex items-center justify-between">
+        <p class="text-sm font-semibold uppercase tracking-wider text-emerald-600">Question</p>
+        <p id="q-score" class="text-sm font-medium text-slate-500">Score: 0 / 0</p>
+      </div>
+
+      <p id="q-text" class="mt-3 min-h-[3.5rem] text-lg leading-relaxed text-ink"></p>
+
+      <form id="q-form" class="mt-4 flex flex-wrap items-center gap-3">
+        <label for="q-input" class="sr-only">Your answer</label>
+        <input
+          id="q-input"
+          type="number"
+          step="any"
+          inputmode="decimal"
+          autocomplete="off"
+          class="w-32 rounded-lg border border-slate-300 px-3 py-2 text-ink focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+        />
+        <span id="q-unit" class="text-slate-600"></span>
+        <button
+          id="q-check"
+          type="submit"
+          class="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60"
+        >
+          Check answer
+        </button>
+      </form>
+
+      <div id="q-result" class="mt-5 hidden">
+        <p id="q-verdict" class="text-base font-semibold"></p>
+        <p id="q-working" class="mt-2 leading-relaxed text-slate-600"></p>
+        <button
+          id="q-next"
+          type="button"
+          class="mt-4 inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+        >
+          Next question →
+        </button>
+      </div>
+
+      <div class="mt-6 border-t border-slate-100 pt-4">
+        <button id="q-restart" type="button" class="text-sm text-slate-500 hover:text-emerald-700">
+          Reset score
+        </button>
+      </div>
+    </div>
+
+    <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+      <Button href="/guides/nursing-drug-calculations" variant="secondary">
+        Formulas &amp; worked examples
+      </Button>
+      <Button href={CTA.demo.href} external>More practice in PlaceMate</Button>
+    </div>
+  </section>
+
+  <section class="mx-auto max-w-3xl px-4 pb-8 sm:px-6">
+    <h2 class="text-2xl font-bold tracking-tight text-ink">Frequently asked questions</h2>
+    <dl class="mt-4 space-y-6">
+      {
+        faqs.map((f) => (
+          <div>
+            <dt class="font-semibold text-ink">{f.q}</dt>
+            <dd class="mt-1 leading-relaxed text-slate-600">{f.a}</dd>
+          </div>
+        ))
+      }
+    </dl>
+
+    <Disclaimer />
+  </section>
+</Layout>
+
+<script>
+  // Client-side practice-question generator. All questions produce clean, exact answers;
+  // the "working" string states the method. Practice only — see the on-page disclaimer.
+  const rand = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+  const randInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+  interface Q {
+    text: string;
+    answer: number;
+    unit: string;
+    working: string;
+  }
+
+  function tablets(): Q {
+    const strength = rand([25, 50, 100, 125, 250, 500]);
+    const n = randInt(1, 4);
+    const dose = strength * n;
+    return {
+      text: `A patient is prescribed ${dose} mg of a medicine. The stock tablets are ${strength} mg each. How many tablets should you give?`,
+      answer: n,
+      unit: "tablet(s)",
+      working: `Dose ÷ stock strength = ${dose} ÷ ${strength} = ${n} tablet(s).`,
+    };
+  }
+
+  function liquid(): Q {
+    const conc = rand([
+      { mg: 250, ml: 5 },
+      { mg: 125, ml: 5 },
+      { mg: 100, ml: 5 },
+      { mg: 50, ml: 1 },
+      { mg: 250, ml: 10 },
+    ]);
+    const m = randInt(1, 4);
+    const dose = conc.mg * m;
+    const vol = conc.ml * m;
+    return {
+      text: `A patient is prescribed ${dose} mg of an oral liquid. It is available as ${conc.mg} mg in ${conc.ml} mL. What volume should you give?`,
+      answer: vol,
+      unit: "mL",
+      working: `(What you want ÷ what you've got) × what it's in = (${dose} ÷ ${conc.mg}) × ${conc.ml} mL = ${vol} mL.`,
+    };
+  }
+
+  function rate(): Q {
+    const [v, t, r] = rand([
+      [1000, 8, 125],
+      [1000, 4, 250],
+      [500, 4, 125],
+      [1000, 10, 100],
+      [1000, 5, 200],
+      [500, 2, 250],
+      [1000, 2, 500],
+      [500, 5, 100],
+      [500, 10, 50],
+    ]);
+    return {
+      text: `An infusion of ${v} mL is prescribed over ${t} hours. What is the rate in mL per hour?`,
+      answer: r,
+      unit: "mL/hour",
+      working: `Volume ÷ time = ${v} ÷ ${t} = ${r} mL/hour.`,
+    };
+  }
+
+  function convert(): Q {
+    if (Math.random() < 0.5) {
+      const v = rand([0.125, 0.25, 0.5, 1, 1.5, 2]);
+      return {
+        text: `Convert ${v} g to milligrams (mg).`,
+        answer: v * 1000,
+        unit: "mg",
+        working: `Multiply by 1,000: ${v} g × 1,000 = ${v * 1000} mg.`,
+      };
+    }
+    const v = rand([0.125, 0.25, 0.5, 1]);
+    return {
+      text: `Convert ${v} mg to micrograms.`,
+      answer: v * 1000,
+      unit: "micrograms",
+      working: `Multiply by 1,000: ${v} mg × 1,000 = ${v * 1000} micrograms.`,
+    };
+  }
+
+  const generators = [tablets, liquid, rate, convert];
+
+  const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+  const qText = el<HTMLParagraphElement>("q-text");
+  const qUnit = el<HTMLSpanElement>("q-unit");
+  const qInput = el<HTMLInputElement>("q-input");
+  const qForm = el<HTMLFormElement>("q-form");
+  const qCheck = el<HTMLButtonElement>("q-check");
+  const qResult = el<HTMLDivElement>("q-result");
+  const qVerdict = el<HTMLParagraphElement>("q-verdict");
+  const qWorking = el<HTMLParagraphElement>("q-working");
+  const qNext = el<HTMLButtonElement>("q-next");
+  const qScore = el<HTMLParagraphElement>("q-score");
+  const qRestart = el<HTMLButtonElement>("q-restart");
+
+  let current: Q;
+  let correct = 0;
+  let attempted = 0;
+
+  function newQuestion() {
+    current = rand(generators)();
+    qText.textContent = current.text;
+    qUnit.textContent = current.unit;
+    qInput.value = "";
+    qInput.disabled = false;
+    qCheck.disabled = false;
+    qResult.classList.add("hidden");
+    qInput.focus();
+  }
+
+  function renderScore() {
+    const pct = attempted ? Math.round((correct / attempted) * 100) : 0;
+    qScore.textContent = `Score: ${correct} / ${attempted}${attempted ? ` (${pct}%)` : ""}`;
+  }
+
+  function check(e: Event) {
+    e.preventDefault();
+    if (qInput.disabled) return; // already answered
+    const val = Number(qInput.value);
+    if (qInput.value.trim() === "" || !Number.isFinite(val)) {
+      qInput.focus();
+      return;
+    }
+    const isRight = Math.abs(val - current.answer) < 0.001;
+    attempted++;
+    if (isRight) correct++;
+    renderScore();
+
+    qVerdict.textContent = isRight ? "✓ Correct" : `✗ Not quite — the answer is ${current.answer} ${current.unit}`;
+    qVerdict.className = `text-base font-semibold ${isRight ? "text-emerald-700" : "text-rose-600"}`;
+    qWorking.textContent = current.working;
+    qResult.classList.remove("hidden");
+    qInput.disabled = true;
+    qCheck.disabled = true;
+    qNext.focus();
+  }
+
+  qForm.addEventListener("submit", check);
+  qNext.addEventListener("click", newQuestion);
+  qRestart.addEventListener("click", () => {
+    correct = 0;
+    attempted = 0;
+    renderScore();
+    newQuestion();
+  });
+
+  renderScore();
+  newQuestion();
+</script>

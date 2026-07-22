@@ -92,7 +92,7 @@ Universities commonly require high pass marks on calculation assessments — oft
 4. **Always estimate before you calculate.** "It should be about two tablets" catches a misplaced decimal instantly.
 5. **Show your working, always.** In exams it earns method credit; in practice it's what lets a second checker verify you quickly.
 
-PlaceMate includes a [drug-calculation practice tool](/features) that generates questions like the ones above, checks your working, and tracks your accuracy over time — so your practice sessions build a visible record of competence alongside your [placement hours](/guides/student-nurse-placement-hours-explained) and proficiencies.
+Try our free [drug-calculation practice tool](/tools/drug-calculation-practice) — it generates unlimited questions like the ones above, checks your answer and shows the working, right in your browser. PlaceMate's app version goes further, tracking your accuracy over time so your practice builds a visible record of competence alongside your [placement hours](/guides/student-nurse-placement-hours-explained) and proficiencies.
 
 ## Frequently asked questions
 
@@ -109,7 +109,7 @@ Because in practice a calculation error can harm someone. The high bar reflects 
 Drops per minute = (volume in mL × drop factor in drops/mL) ÷ time in minutes, rounded to the nearest whole drop. It applies to gravity giving sets; pumps are programmed in mL/h instead.
 
 **Where can I practise drug calculations for free?**
-[PlaceMate](https://app.placemate.uk) is free for student nurses and includes a practice tool with instant checking. However you practise, keep it timed, regular and honest about your errors.
+Right here — our free [drug-calculation practice tool](/tools/drug-calculation-practice) generates unlimited questions with instant checking, no login. [PlaceMate](https://app.placemate.uk) is also free for student nurses and tracks your accuracy over time. However you practise, keep it timed, regular and honest about your errors.
 
 ---
 

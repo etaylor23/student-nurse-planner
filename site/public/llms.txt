@@ -38,3 +38,4 @@ Free, no-login tools that run entirely in the browser (nothing saved or sent):
 
 - [Tools hub](https://placemate.uk/tools): all free tools.
 - [Placement hours calculator](https://placemate.uk/tools/placement-hours-calculator): work out how many of the 2,300 NMC practice hours remain, with the 600-hour simulation cap handled automatically.
+- [Drug calculation practice](https://placemate.uk/tools/drug-calculation-practice): unlimited randomly generated dose, oral-liquid, infusion-rate and unit-conversion questions with instant feedback and worked answers (practice only).
