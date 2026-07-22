@@ -106,12 +106,26 @@
     opacity: 1;
   }
 }
+/* "This counts" payoff toast — rises in from the bottom. */
+@keyframes pm-payoff-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 @media (prefers-reduced-motion: no-preference) {
   .pm-modal-panel {
     animation: pm-modal-in 0.18s ease-out;
   }
   .pm-modal-backdrop {
     animation: pm-fade-in 0.18s ease-out;
+  }
+  .pm-payoff-in {
+    animation: pm-payoff-in 0.22s ease-out;
   }
 }
 

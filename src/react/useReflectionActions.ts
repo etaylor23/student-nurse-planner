@@ -4,6 +4,7 @@ import type {
   ReflectionDraft,
   ReflectionSectionInput,
 } from "../domain/types";
+import { evidenceItem, useCapturePayoff } from "./components/CapturePayoff";
 import { useRepository } from "./RepositoryContext";
 
 /** A short, stable noun for a reflection in the activity feed: its title, truncated. */
@@ -19,6 +20,7 @@ function reflectionNoun(title: string): string {
  */
 export function useReflectionActions() {
   const { repo, user } = useRepository();
+  const { showPayoff } = useCapturePayoff();
 
   const log = async (id: string, action: string, summary: string, label: string) => {
     if (!user) return;
@@ -46,6 +48,14 @@ export function useReflectionActions() {
       `Wrote a reflection — “${reflectionNoun(reflection.title)}”`,
       reflectionNoun(reflection.title),
     );
+    showPayoff("Reflection saved", [
+      {
+        key: `refl-${reflection.id}`,
+        kind: "reflection",
+        text: `“${reflectionNoun(reflection.title)}” — in your practice record. Link it to a proficiency to make it evidence.`,
+        href: `/reflection/${reflection.id}`,
+      },
+    ]);
     return reflection;
   };
 
@@ -99,6 +109,7 @@ export function useReflectionActions() {
       action: "EVIDENCE_LINKED",
       summary: `Linked a reflection as evidence for ${proficiency.code}`,
     });
+    showPayoff("That's evidence", [evidenceItem(proficiency)]);
   };
 
   const unlinkProficiency = async (linkId: string, proficiency: Proficiency) => {

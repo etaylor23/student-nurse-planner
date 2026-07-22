@@ -12,7 +12,7 @@ import { useSkill, useSkills } from "../../hooks";
 import { useSkillActions } from "../../useSkillActions";
 import { SkillSignOffForm } from "../skills/SkillSignOffForm";
 import { SignedOffBadge, SkillStageBadge } from "../skills/shared";
-import { CaptureConfirmation, SeeFullLink, TabHeading, useCaptureFlash } from "./shared";
+import { SeeFullLink, TabHeading } from "./shared";
 import { inputCls } from "../ui";
 
 const MAX_RESULTS = 40;
@@ -26,24 +26,15 @@ const MAX_RESULTS = 40;
 export function ShiftSkillsTab({ shift }: { shift: Shift }) {
   const base = `/planner/${shift.id}/skills`;
   const navigate = useNavigate();
-  const { message, flash } = useCaptureFlash();
 
   return (
     <div>
-      <CaptureConfirmation message={message} />
       <Routes>
         <Route index element={<SkillsIndexView shift={shift} base={base} />} />
         <Route
           path=":skillId"
           element={
-            <SkillSignOffView
-              shift={shift}
-              base={base}
-              onSignedOff={(name) => {
-                flash(`Signed off ${name} on this shift`);
-                navigate(base);
-              }}
-            />
+            <SkillSignOffView shift={shift} base={base} onSignedOff={() => navigate(base)} />
           }
         />
       </Routes>

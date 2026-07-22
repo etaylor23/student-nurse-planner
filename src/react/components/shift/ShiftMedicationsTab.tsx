@@ -9,7 +9,7 @@ import { MedicationFormPage } from "../medications/MedicationFormPage";
 import { ShiftMedLogForm } from "../medications/ShiftMedLogForm";
 import { Tabs } from "../Tabs";
 import { btnGhostSm } from "../ui";
-import { CaptureConfirmation, SeeFullLink, TabHeading, useCaptureFlash } from "./shared";
+import { SeeFullLink, TabHeading } from "./shared";
 
 /**
  * The Medications capture tab — two sub-tabs (shared <Tabs>): "Log" (this shift's
@@ -47,7 +47,6 @@ function MedLogView({ shift }: { shift: Shift }) {
   const { repo } = useRepository();
   const { medications } = useMedications();
   const [logs, setLogs] = useState<MedicationLog[]>([]);
-  const { message, flash } = useCaptureFlash();
 
   const refetch = useCallback(async () => {
     setLogs(await repo.listMedicationLogsForShift(shift.id));
@@ -62,7 +61,6 @@ function MedLogView({ shift }: { shift: Shift }) {
   return (
     <div>
       <TabHeading label="Medications logged" count={logs.length} />
-      <CaptureConfirmation message={message} />
 
       {logs.length === 0 ? (
         <p className="text-sm text-slate-400">None yet — log one against this shift below.</p>
@@ -100,13 +98,7 @@ function MedLogView({ shift }: { shift: Shift }) {
         <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
           Log a medication
         </p>
-        <ShiftMedLogForm
-          shiftId={shift.id}
-          onLogged={() => {
-            void refetch();
-            flash("Medication logged to this shift");
-          }}
-        />
+        <ShiftMedLogForm shiftId={shift.id} onLogged={() => void refetch()} />
       </div>
     </div>
   );

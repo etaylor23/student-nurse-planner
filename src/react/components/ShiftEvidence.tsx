@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { EvidenceLink, Proficiency, Shift } from "../../domain/types";
 import { useRepository } from "../RepositoryContext";
+import { evidenceItem, useCapturePayoff } from "./CapturePayoff";
 import { ProficiencyPicker } from "./competencies/ProficiencyPicker";
 
 interface Row {
@@ -27,6 +28,7 @@ export function ShiftEvidence({
   onChange?: () => void;
 }) {
   const { repo, user } = useRepository();
+  const { showPayoff } = useCapturePayoff();
   const [rows, setRows] = useState<Row[]>([]);
   const [picking, setPicking] = useState(false);
 
@@ -70,6 +72,7 @@ export function ShiftEvidence({
     setPicking(false);
     await reload();
     onChange?.();
+    showPayoff("That's evidence", [evidenceItem(p)]);
   };
 
   const unlink = async (row: Row) => {

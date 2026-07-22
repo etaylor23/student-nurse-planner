@@ -4,6 +4,7 @@ import { ADMIN_ROUTES } from "../../../data/bnf";
 import { formatHumanDate, hhmm, isoDate } from "../../../logic/calendar";
 import { useMedications, usePlacements, useShifts } from "../../hooks";
 import { useRepository } from "../../RepositoryContext";
+import { useCapturePayoff } from "../CapturePayoff";
 import { btnPrimary, inputCls } from "../ui";
 
 const todayIso = () => isoDate(new Date());
@@ -38,6 +39,7 @@ export function ShiftMedLogForm({
   const { medications } = useMedications();
   const { shifts } = useShifts();
   const { placements } = usePlacements();
+  const { showPayoff } = useCapturePayoff();
 
   const [medicationId, setMedicationId] = useState(prefillMedicationId ?? "");
   const [type, setType] = useState<MedLogType>("OBSERVED");
@@ -71,6 +73,14 @@ export function ShiftMedLogForm({
       action: "MED_LOGGED",
       summary: `${MED_LOG_TYPE_LABEL[type]} ${loggedMed}${linked ? ` in ${shiftLabel(linked, placeName)}` : ""}`,
     });
+    showPayoff("Medication logged", [
+      {
+        key: `med-${created.id}`,
+        kind: "med",
+        text: `${MED_LOG_TYPE_LABEL[type]} ${loggedMed} — in your medication record`,
+        href: medicationId ? `/medications/${medicationId}` : "/medications/log",
+      },
+    ]);
     setMedicationId("");
     setRoute("");
     setNotes("");

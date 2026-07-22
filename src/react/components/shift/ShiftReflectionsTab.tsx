@@ -3,22 +3,20 @@ import type { Shift } from "../../../domain/types";
 import { useReflections } from "../../hooks";
 import { ReflectionEditor } from "../reflection/ReflectionEditor";
 import { LockBadge } from "../reflection/shared";
-import { addBtnCls, CaptureConfirmation, SeeFullLink, TabHeading, useCaptureFlash } from "./shared";
+import { addBtnCls, SeeFullLink, TabHeading } from "./shared";
 
 /**
  * The Reflections capture tab. URL-driven: /planner/:id/reflection lists this
  * shift's reflections; /planner/:id/reflection/new writes one inline (the full
  * Gibbs ReflectionEditor, shift pre-linked). Saving returns to the list — which
- * refetches on mount — and flashes a confirmation, all in the modal.
+ * refetches on mount — and the global "this counts" payoff confirms it.
  */
 export function ShiftReflectionsTab({ shift }: { shift: Shift }) {
   const base = `/planner/${shift.id}/reflection`;
   const navigate = useNavigate();
-  const { message, flash } = useCaptureFlash();
 
   return (
     <div>
-      <CaptureConfirmation message={message} />
       <Routes>
         <Route index element={<ReflectionListView shift={shift} base={base} />} />
         <Route
@@ -26,10 +24,7 @@ export function ShiftReflectionsTab({ shift }: { shift: Shift }) {
           element={
             <ReflectionNewView
               shift={shift}
-              onSaved={() => {
-                flash("Reflection saved to this shift");
-                navigate(base);
-              }}
+              onSaved={() => navigate(base)}
               onCancel={() => navigate(base)}
             />
           }

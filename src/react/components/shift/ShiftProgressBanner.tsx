@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import type { Shift } from "../../../domain/types";
 import { isHardShift } from "../../../logic/selfCare";
 import { useShifts } from "../../hooks";
@@ -6,15 +6,16 @@ import { useShifts } from "../../hooks";
 /**
  * The celebratory progress moment shown in the modal core the instant a shift is
  * marked worked — the heart of the old post-shift debrief, now inline so you never
- * leave the shift. A live progress line + bar, and (after a long/heavy shift) a
- * gentle self-care nudge. The debrief's evidence suggestions now live in the
- * Competency evidence tab.
+ * leave the shift. It names the hours this shift banked, the live running total,
+ * and points straight at turning the shift into competency evidence. After a
+ * long/heavy shift it adds a gentle self-care nudge.
  */
 export function ShiftProgressBanner({ shift, onDismiss }: { shift: Shift; onDismiss: () => void }) {
   const { summary, projection } = useShifts();
   const navigate = useNavigate();
   const pct = Math.round(summary.progressFraction * 100);
   const toGo = projection.shiftsToGo;
+  const delta = shift.netHours > 0 ? `+${shift.netHours} h — ` : "";
 
   return (
     <div className="mb-5 rounded-xl bg-emerald-50 p-4 ring-1 ring-emerald-100">
@@ -22,7 +23,7 @@ export function ShiftProgressBanner({ shift, onDismiss }: { shift: Shift; onDism
         <div className="min-w-0">
           <p className="text-sm font-semibold text-emerald-800">Shift logged ✓</p>
           <p className="mt-0.5 text-sm text-emerald-700">
-            That's <strong className="tabular-nums">{summary.practiceHours} h</strong> of{" "}
+            {delta}that's <strong className="tabular-nums">{summary.practiceHours} h</strong> of{" "}
             {summary.targetHours.toLocaleString()} ({pct}%)
             {toGo != null ? ` — about ${toGo} more shift${toGo === 1 ? "" : "s"} to go` : ""}.
           </p>
@@ -51,8 +52,14 @@ export function ShiftProgressBanner({ shift, onDismiss }: { shift: Shift; onDism
         <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
       </div>
       <p className="mt-2 text-xs text-emerald-700/80">
-        Capture it while it's fresh — log a medication, skill, reflection or evidence in the tabs
-        below.
+        While it's fresh, turn it into progress toward your PAD —{" "}
+        <Link
+          to={`/planner/${shift.id}/competencies`}
+          className="font-medium text-emerald-800 underline-offset-2 hover:underline"
+        >
+          link the gaps it can evidence
+        </Link>
+        , or log a medication, skill or reflection in the tabs below.
       </p>
 
       {isHardShift(shift) && (

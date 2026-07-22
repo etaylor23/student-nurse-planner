@@ -27,6 +27,7 @@ import {
   useSkills,
 } from "../../hooks";
 import { useRepository } from "../../RepositoryContext";
+import { useCapturePayoff } from "../CapturePayoff";
 import { Panel, btnGhostSm, btnPrimary, inputCls } from "../ui";
 import { NumeracyPanel } from "./NumeracyPanel";
 import { SourceCredit, StatusPill } from "./shared";
@@ -47,6 +48,7 @@ export function ProficiencyDetailPage() {
   // The whole list too, for the post-save "overall %" + "next gap" golden moment (U9).
   const { proficiencies: allProfs, progress: allProgress, reload: reloadAll } = useProficiencies();
   const { repo, user } = useRepository();
+  const { showPayoff } = useCapturePayoff();
   const { shifts } = useShifts();
   const { logs } = useMedicationLogs();
   const { medications } = useMedications();
@@ -148,6 +150,25 @@ export function ProficiencyDetailPage() {
       action: "EVIDENCE_LINKED",
       summary: `Linked a ${EVIDENCE_TYPE_LABEL[type].toLowerCase()} as evidence for ${proficiency.code}`,
     });
+    // We're on the proficiency already, so the payoff links back to the source just
+    // attached (a shift/skill/reflection); a count keeps the momentum concrete.
+    const count = links.length + 1;
+    const sourceHref =
+      type === "SHIFT"
+        ? `/planner/${evidenceId}`
+        : type === "SKILL"
+          ? `/skills/${evidenceId}`
+          : type === "REFLECTION"
+            ? `/reflection/${evidenceId}`
+            : undefined;
+    showPayoff(`That's evidence for ${proficiency.code}`, [
+      {
+        key: `evi-add-${evidenceId}`,
+        kind: "evidence",
+        text: `${EVIDENCE_TYPE_LABEL[type]} attached — ${count} piece${count === 1 ? "" : "s"} of evidence now on ${proficiency.code}`,
+        href: sourceHref,
+      },
+    ]);
     await reload();
   };
 

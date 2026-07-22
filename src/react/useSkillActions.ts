@@ -1,5 +1,6 @@
 import { SKILL_STAGE_LABEL, type Skill, type SkillSignOff, type SkillStage } from "../domain/types";
 import { annexeCodeOf } from "../data/seed/skills";
+import { evidenceItem, useCapturePayoff, type PayoffItem } from "./components/CapturePayoff";
 import { useRepository } from "./RepositoryContext";
 
 /** A short, stable noun for a skill in the activity feed: its code, else its name. */
@@ -9,6 +10,11 @@ function skillNoun(skill: Skill): string {
   return skill.name.length > 48 ? skill.name.slice(0, 47).trimEnd() + "…" : skill.name;
 }
 
+/** A readable, length-bounded skill name for a payoff line (some names are long). */
+function skillLabel(skill: Skill): string {
+  return skill.name.length > 52 ? skill.name.slice(0, 51).trimEnd() + "…" : skill.name;
+}
+
 /**
  * The single mutation point for clinical skills — every change goes through here and
  * appends the matching `LogItem` audit entry (the house rule: log at the action
@@ -16,6 +22,15 @@ function skillNoun(skill: Skill): string {
  */
 export function useSkillActions() {
   const { repo, user } = useRepository();
+  const { showPayoff } = useCapturePayoff();
+
+  /** The "in your skills record" line for a skill, deep-linking to its page. */
+  const skillRecordItem = (skill: Skill, text: string): PayoffItem => ({
+    key: `skill-${skill.id}`,
+    kind: "skill",
+    text,
+    href: `/skills/${skill.id}`,
+  });
 
   const log = async (entityId: string, action: string, summary: string, entityLabel: string) => {
     if (!user) return;
@@ -38,6 +53,12 @@ export function useSkillActions() {
       `${skillNoun(skill)} marked ${SKILL_STAGE_LABEL[stage]}`,
       skillNoun(skill),
     );
+    showPayoff("Progress saved", [
+      skillRecordItem(
+        skill,
+        `${skillLabel(skill)} — ${SKILL_STAGE_LABEL[stage]}, in your skills record`,
+      ),
+    ]);
     return progress;
   };
 
@@ -50,6 +71,8 @@ export function useSkillActions() {
   const linkSkillToProficiency = async (
     skill: Skill,
     proficiency: { id: string; code: string },
+    // `signOff` links then fires one combined payoff, so it suppresses this one.
+    { silent = false }: { silent?: boolean } = {},
   ) => {
     if (!user) return;
     await repo.createEvidenceLink({
@@ -66,6 +89,7 @@ export function useSkillActions() {
       action: "EVIDENCE_LINKED",
       summary: `Linked a clinical skill as evidence for ${proficiency.code}`,
     });
+    if (!silent) showPayoff("That's evidence", [evidenceItem(proficiency)]);
   };
 
   /**
@@ -87,7 +111,13 @@ export function useSkillActions() {
       `${skillNoun(skill)} signed off${by}`,
       skillNoun(skill),
     );
-    if (linkProficiency) await linkSkillToProficiency(skill, linkProficiency);
+    // One combined payoff: the permanent skill record, plus the proficiency it now
+    // evidences (linked silently above so this is the only toast).
+    if (linkProficiency) await linkSkillToProficiency(skill, linkProficiency, { silent: true });
+    showPayoff("Signed off", [
+      skillRecordItem(skill, `${skillLabel(skill)} — a permanent record in your skills tracker`),
+      ...(linkProficiency ? [evidenceItem(linkProficiency)] : []),
+    ]);
     return progress;
   };
 

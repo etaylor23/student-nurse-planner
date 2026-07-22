@@ -3,8 +3,9 @@ import type { Proficiency, Shift } from "../../../domain/types";
 import { suggestProficienciesForShift } from "../../../logic/evidenceSuggestions";
 import { useMedicationLogs, useProficiencies } from "../../hooks";
 import { useRepository } from "../../RepositoryContext";
+import { evidenceItem, useCapturePayoff } from "../CapturePayoff";
 import { ShiftEvidence } from "../ShiftEvidence";
-import { CaptureConfirmation, SeeFullLink, useCaptureFlash } from "./shared";
+import { SeeFullLink } from "./shared";
 
 /**
  * The Competency evidence capture tab: the gaps this shift could plausibly
@@ -16,7 +17,7 @@ export function ShiftEvidenceTab({ shift }: { shift: Shift }) {
   const { repo, user } = useRepository();
   const { proficiencies, progress, evidenceLinks, reload: reloadProfs } = useProficiencies();
   const { logs } = useMedicationLogs();
-  const { message, flash } = useCaptureFlash();
+  const { showPayoff } = useCapturePayoff();
   // Bumped to remount ShiftEvidence after a suggested attach (it fetches its own
   // list keyed on shift.updatedAt, which a link doesn't bump).
   const [evidenceKey, setEvidenceKey] = useState(0);
@@ -50,7 +51,7 @@ export function ShiftEvidenceTab({ shift }: { shift: Shift }) {
     });
     await reloadProfs();
     setEvidenceKey((k) => k + 1);
-    flash(`Linked this shift to ${p.code}`);
+    showPayoff("That's evidence", [evidenceItem(p)]);
   };
 
   return (
@@ -58,8 +59,6 @@ export function ShiftEvidenceTab({ shift }: { shift: Shift }) {
       <div className="mb-3 flex items-center justify-end">
         <SeeFullLink to="/competencies">See full competency tracker</SeeFullLink>
       </div>
-
-      <CaptureConfirmation message={message} />
 
       {suggested.length > 0 && (
         <div className="mb-4 rounded-xl bg-emerald-50/70 p-3 ring-1 ring-emerald-100">
