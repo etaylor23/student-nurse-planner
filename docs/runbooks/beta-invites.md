@@ -18,6 +18,8 @@ AWS_PROFILE=personal npx tsx scripts/send-pre-welcome-email.ts sam@example.com -
 AWS_PROFILE=personal npx tsx scripts/send-pre-welcome-email.ts sam@example.com --name Sam --execute # send
 ```
 `--name` fills the "Hey <name>," greeting (defaults to "there"). One recipient per run.
+Nicola (`nicolanightingale97@hotmail.co.uk`) is **BCC'd by default** so she keeps a copy;
+override with `--bcc <addr>` or drop it with `--no-bcc`.
 
 ## 2. Invite (grant access + magic link)
 

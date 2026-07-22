@@ -5,8 +5,8 @@
 # substitution and sends it via Amazon SES v2 (aws sesv2 send-email).
 #
 # Usage:
-#   ./send.sh <template> --to <email> [--name <first name>] [--var KEY=VALUE ...] \
-#             [--from "<name> <addr>"] [--dry-run]
+#   ./send.sh <template> --to <email> [--name <first name>] [--bcc <email[,email]>] \
+#             [--var KEY=VALUE ...] [--from "<name> <addr>"] [--dry-run]
 #
 # Examples:
 #   # Preview only — writes rendered HTML to emails/.preview-<template>.html, sends nothing:
@@ -53,12 +53,14 @@ shift
 
 DRY_RUN=0
 TO=""
+BCC=""
 FIRST_NAME=""
 VAR_PAIRS=()   # each entry "key=value"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --to)       TO="${2:?--to needs a value}"; shift 2 ;;
+    --bcc)      BCC="${2:?--bcc needs a value}"; shift 2 ;;
     --name)     FIRST_NAME="${2:?--name needs a value}"; shift 2 ;;
     --var)      VAR_PAIRS+=("${2:?--var needs key=value}"); shift 2 ;;
     --from)     FROM="${2:?--from needs a value}"; shift 2 ;;
@@ -115,6 +117,11 @@ CONTENT="$(jq -n \
          else {Headers:[{Name:"List-Unsubscribe", Value:$listunsub}]} end)
    )}')"
 
+# Destination: To + optional Bcc (comma-separated). Built as JSON to avoid the CLI
+# shorthand's list/struct ambiguity when both To and Bcc are present.
+DEST="$(jq -n --arg to "$TO" --arg bcc "$BCC" \
+  '{ToAddresses:[$to]} + (if $bcc == "" then {} else {BccAddresses:($bcc | split(","))} end)')"
+
 if [[ "$DRY_RUN" == 1 ]]; then
   PREVIEW="$HERE/.preview-$TEMPLATE.html"
   printf '%s' "$HTML_BODY" > "$PREVIEW"
@@ -122,6 +129,7 @@ if [[ "$DRY_RUN" == 1 ]]; then
   echo "  Template : $TEMPLATE"
   echo "  From     : $FROM"
   echo "  To       : $TO"
+  echo "  Bcc      : ${BCC:-(none)}"
   echo "  Reply-To : $REPLY_TO"
   echo "  List-Unsub: ${LIST_UNSUB:-(none)}"
   echo "  Subject  : $SUBJECT"
@@ -134,7 +142,7 @@ aws sesv2 send-email \
   --profile "$PROFILE" \
   --region "$REGION" \
   --from-email-address "$FROM" \
-  --destination "ToAddresses=$TO" \
+  --destination "$DEST" \
   --reply-to-addresses "$REPLY_TO" \
   --content "$CONTENT"
 

@@ -9,25 +9,43 @@
  *
  *   AWS_PROFILE=personal npx tsx scripts/send-pre-welcome-email.ts someone@example.com --name Sam
  *   AWS_PROFILE=personal npx tsx scripts/send-pre-welcome-email.ts someone@example.com --name Sam --execute
+ *
+ * Nicola is BCC'd on every send by default (so she keeps a copy). Override with
+ * --bcc <addr[,addr]>, or turn it off with --no-bcc.
  */
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseUserArgs } from "./lib/admin";
 
+/** Nicola keeps a blind copy of every pre-welcome that goes out. */
+const DEFAULT_BCC = "nicolanightingale97@hotmail.co.uk";
+
 function main() {
-  const args = parseUserArgs(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  const args = parseUserArgs(argv);
   if (!args.email) {
-    console.error("Usage: send-pre-welcome-email.ts <email> [--name <first name>] [--execute]");
+    console.error(
+      "Usage: send-pre-welcome-email.ts <email> [--name <first name>] [--bcc <addr>] [--no-bcc] [--execute]",
+    );
     process.exit(1);
   }
+  // BCC defaults to Nicola; --bcc overrides the address, --no-bcc drops it.
+  const bccIdx = argv.indexOf("--bcc");
+  const bcc = argv.includes("--no-bcc")
+    ? undefined
+    : bccIdx !== -1 && argv[bccIdx + 1]
+      ? argv[bccIdx + 1]
+      : DEFAULT_BCC;
+
   const sendSh = join(dirname(fileURLToPath(import.meta.url)), "..", "emails", "send.sh");
   const cliArgs = ["welcome-beta", "--to", args.email];
   if (args.name) cliArgs.push("--name", args.name);
+  if (bcc) cliArgs.push("--bcc", bcc);
   if (!args.execute) cliArgs.push("--dry-run"); // preview unless --execute
 
   console.log(
-    `\n${args.execute ? "SENDING" : "DRY-RUN"} pre-welcome → ${args.email}${args.name ? ` (${args.name})` : ""}\n`,
+    `\n${args.execute ? "SENDING" : "DRY-RUN"} pre-welcome → ${args.email}${args.name ? ` (${args.name})` : ""}${bcc ? ` (bcc ${bcc})` : ""}\n`,
   );
   // send.sh honours AWS_PROFILE via PLACEMATE_AWS_PROFILE (defaults to `personal`).
   const res = spawnSync("bash", [sendSh, ...cliArgs], { stdio: "inherit" });
