@@ -244,8 +244,13 @@ Facebook nursing-student groups) for episodic traffic/backlink spikes.
   ✅ Nicola author entity (About `#nicola-nightingale` + Person schema).
   ✅ IG/TikTok live (@placemateapp on both) + `sameAs` wired (2026-07-22).
   ⬜ `/tools` routes (built with Phase 1).
-- **Phase 1 — tools (weeks 1–2): NOT STARTED.** Ship **both** free tools (placement-hours
-  calculator + drug-calc quiz [PHARM]-reviewed).
+- **Phase 1 — tools (weeks 1–2): DONE (2026-07-22).**
+  ✅ Placement-hours calculator (`/tools/placement-hours-calculator`, master `bcae6ed`) +
+  ✅ drug-calc practice quiz (`/tools/drug-calculation-practice`, master `54ccfa8`) +
+  ✅ `/tools` hub, "Tools" in nav/footer, cross-linked to/from the pillar guides, llms
+  entries. Both dependency-free vanilla JS, store nothing; WebApplication + FAQPage schema.
+  ⬜ **Drug-calc quiz still needs [PHARM] review** before hard promotion (arithmetic
+  verified in-browser: 40/40 generated Qs correct; framed "practice only" + disclaimer).
 - **Phase 2 — guides in waves (weeks 2–6): WAVE 1 LIVE (2026-07-22).**
   ✅ 4 pillar guides published (master `15dc666`) under the "PlaceMate team" byline —
   ⬜ **flip each to Nicola's clinical-review byline after her review** (drug-calc first);
