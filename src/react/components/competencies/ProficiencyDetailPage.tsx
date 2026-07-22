@@ -72,6 +72,10 @@ export function ProficiencyDetailPage() {
   const [note, setNote] = useState("");
   const [evTab, setEvTab] = useState<EvidenceType>("SHIFT");
   const [saved, setSaved] = useState(false); // transient post-save confirmation (U9)
+  // Official PAD sign-off form (optional by/where/when).
+  const [padBy, setPadBy] = useState("");
+  const [padWhere, setPadWhere] = useState("");
+  const [padDate, setPadDate] = useState(todayIso());
 
   if (!proficiency || !user) {
     return (
@@ -130,6 +134,48 @@ export function ProficiencyDetailPage() {
   const setTargetPart = async (value: number | undefined) => {
     await repo.setProficiencyTargetPart(user.id, proficiency.id, value);
     await reload();
+  };
+
+  const padSignedOff = progress?.padSignedOff === true;
+
+  const savePadSignOff = async () => {
+    await repo.setProficiencyPadSignOff(user.id, proficiency.id, {
+      padSignOffByName: padBy.trim() || undefined,
+      padSignOffLocation: padWhere.trim() || undefined,
+      padSignOffDate: padDate || undefined,
+    });
+    await repo.createLogItem({
+      userId: user.id,
+      entityType: "PROFICIENCY",
+      entityId: proficiency.id,
+      entityLabel: proficiency.code,
+      action: "PROFICIENCY_SIGNED_OFF",
+      summary: `${proficiency.code} signed off in the PAD`,
+    });
+    await reload();
+    await reloadAll();
+    showPayoff("Signed off in your PAD", [
+      {
+        key: `pad-${proficiency.id}`,
+        kind: "evidence",
+        text: `${proficiency.code} — an official step toward registration, ready for your assessor`,
+        href: "/competencies/ready",
+      },
+    ]);
+  };
+
+  const clearPadSignOff = async () => {
+    await repo.setProficiencyPadSignOff(user.id, proficiency.id, null);
+    await repo.createLogItem({
+      userId: user.id,
+      entityType: "PROFICIENCY",
+      entityId: proficiency.id,
+      entityLabel: proficiency.code,
+      action: "PROFICIENCY_SIGN_OFF_REMOVED",
+      summary: `${proficiency.code} PAD sign-off removed`,
+    });
+    await reload();
+    await reloadAll();
   };
 
   const linkedFor = (type: EvidenceType) =>
@@ -237,6 +283,23 @@ export function ProficiencyDetailPage() {
         <p className="text-sm leading-relaxed text-slate-700">{proficiency.statement}</p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <StatusPill status={currentStatus} />
+          {padSignedOff && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.4}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-3 w-3"
+                aria-hidden="true"
+              >
+                <path d="m5 13 4 4L19 7" />
+              </svg>
+              Signed off in PAD
+            </span>
+          )}
           <span className="text-xs text-slate-400">
             Target part:{" "}
             <select
@@ -336,6 +399,81 @@ export function ProficiencyDetailPage() {
                 </div>
               )}
             </form>
+          </Panel>
+
+          <Panel
+            step="2"
+            title="Official PAD sign-off"
+            hint="Your real PAD is the record — mark it here once your assessor has signed"
+          >
+            {padSignedOff ? (
+              <div className="rounded-xl bg-emerald-50 p-3.5 ring-1 ring-emerald-100">
+                <p className="text-sm font-semibold text-emerald-800">Signed off in your PAD ✓</p>
+                {(progress?.padSignOffByName ||
+                  progress?.padSignOffLocation ||
+                  progress?.padSignOffDate) && (
+                  <p className="mt-0.5 text-sm text-emerald-700">
+                    {[
+                      progress?.padSignOffByName,
+                      progress?.padSignOffLocation,
+                      progress?.padSignOffDate ? formatHumanDate(progress.padSignOffDate) : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => void clearPadSignOff()}
+                  className="mt-2 text-xs font-medium text-slate-500 hover:text-slate-700"
+                >
+                  Not signed off yet? Undo
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-slate-500">
+                  Recorded a real sign-off in your PAD? Mark it here so your progress reflects
+                  what's actually achieved — evidence gathered is separate from being signed off.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block">
+                    <span className="mb-1.5 block text-sm font-medium text-slate-700">
+                      Signed off by
+                    </span>
+                    <input
+                      value={padBy}
+                      onChange={(e) => setPadBy(e.target.value)}
+                      className={inputCls}
+                      placeholder="Assessor (optional)"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1.5 block text-sm font-medium text-slate-700">Date</span>
+                    <input
+                      type="date"
+                      value={padDate}
+                      onChange={(e) => setPadDate(e.target.value)}
+                      className={inputCls}
+                    />
+                  </label>
+                </div>
+                <label className="block">
+                  <span className="mb-1.5 block text-sm font-medium text-slate-700">
+                    Location (optional)
+                  </span>
+                  <input
+                    value={padWhere}
+                    onChange={(e) => setPadWhere(e.target.value)}
+                    className={inputCls}
+                    placeholder="Ward / placement"
+                  />
+                </label>
+                <button type="button" onClick={() => void savePadSignOff()} className={btnPrimary}>
+                  Mark signed off in PAD
+                </button>
+              </div>
+            )}
           </Panel>
 
           <Panel title="History" hint="Preserved across programme parts">

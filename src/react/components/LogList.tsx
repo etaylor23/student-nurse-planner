@@ -14,6 +14,8 @@ const DOT: Record<string, string> = {
   MED_LOGGED: "bg-sky-400",
   MEDICATION_DELETED: "bg-rose-400",
   PROFICIENCY_STATUS_CHANGED: "bg-emerald-400",
+  PROFICIENCY_SIGNED_OFF: "bg-emerald-500",
+  PROFICIENCY_SIGN_OFF_REMOVED: "bg-slate-300",
   EVIDENCE_LINKED: "bg-sky-400",
   EVIDENCE_UNLINKED: "bg-rose-400",
   PROFILE_UPDATED: "bg-slate-300",

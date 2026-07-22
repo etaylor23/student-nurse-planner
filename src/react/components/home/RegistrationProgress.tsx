@@ -66,12 +66,18 @@ export function RegistrationProgress() {
   // Hours.
   const hoursPct = Math.round(summary.progressFraction * 100);
 
-  // Competencies: self-assessed achievement + evidence gathered so far.
+  // Competencies: self-assessed achievement, evidence gathered, and real PAD sign-offs.
   const byProf = progressByProficiency(profProgress);
   const profTotal = proficiencies.length;
   const profAchieved = proficiencies.filter((p) => statusOf(p.id, byProf) === "ACHIEVED").length;
-  const profEvidenced = new Set(evidenceLinks.map((l) => l.proficiencyId)).size;
+  const evidencedIds = new Set(evidenceLinks.map((l) => l.proficiencyId));
+  const profEvidenced = evidencedIds.size;
+  const profSignedOff = profProgress.filter((p) => p.padSignedOff).length;
   const profPct = profTotal === 0 ? 0 : Math.round((profAchieved / profTotal) * 100);
+  // "Ready to take to your assessor": evidence gathered, but not yet signed off in the PAD.
+  const readyToSignOff = proficiencies.filter(
+    (p) => evidencedIds.has(p.id) && !byProf.get(p.id)?.padSignedOff,
+  ).length;
 
   // Skills (these carry a real, permanent sign-off).
   const skillsSummary = summariseSkills(skills, skillProgress);
@@ -122,7 +128,11 @@ export function RegistrationProgress() {
         <Meter
           label="NMC competencies"
           value={`${profAchieved} / ${profTotal} achieved`}
-          caption={`${profEvidenced} with evidence gathered`}
+          caption={
+            profSignedOff > 0
+              ? `${profSignedOff} signed off in PAD · ${profEvidenced} evidenced`
+              : `${profEvidenced} with evidence gathered`
+          }
           pct={profPct}
           to="/competencies"
         />
@@ -145,6 +155,17 @@ export function RegistrationProgress() {
             At your recent pace, that's around{" "}
             <span className="font-medium text-ink">{formatHumanDate(projection.finishDate)}</span>.
           </p>
+        )}
+        {readyToSignOff > 0 && (
+          <Link
+            to="/competencies/ready"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 ring-1 ring-emerald-100 transition hover:bg-emerald-100/70"
+          >
+            {readyToSignOff === 1
+              ? "1 competency ready to take to your assessor"
+              : `${readyToSignOff} competencies ready to take to your assessor`}
+            <span aria-hidden="true">→</span>
+          </Link>
         )}
         {topGap && (
           <Link
