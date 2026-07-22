@@ -93,3 +93,57 @@ export function faqPage(faqs: { q: string; a: string }[]): Node {
     })),
   };
 }
+
+// Stable @id for an author, anchored on the About page's clinical-review section so the
+// Person entity resolves to a real, on-site profile (E-E-A-T). See spec-seo-growth.md §4.
+export const authorId = (slug: string) => `${SITE.url}/about#${slug}`;
+
+export interface Author {
+  name: string;
+  slug: string;
+  credential: string; // e.g. "Registered Nurse"
+  description: string;
+}
+
+export function person(a: Author): Node {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "@id": authorId(a.slug),
+    name: a.name,
+    jobTitle: a.credential,
+    description: a.description,
+    worksFor: { "@id": ORG_ID },
+  };
+}
+
+// Article node for a /guides piece. When a named clinician (e.g. a Registered Nurse) has
+// reviewed the piece, pass them as `author` — that Person reference is the E-E-A-T signal
+// that matters for YMYL health content. With no `author`, authorship is the Organization
+// (collective "PlaceMate team" byline) and NO person/credential claim is made.
+export function article(a: {
+  title: string;
+  description: string;
+  path: string; // site-relative, e.g. "/guides/how-to-write-a-nursing-reflection"
+  datePublished: string; // ISO date
+  dateModified?: string; // ISO date
+  author?: Author;
+  image?: string; // site-relative or absolute
+}): Node {
+  const url = new URL(a.path, SITE.url).href.replace(/\/$/, "");
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: a.title,
+    description: a.description,
+    inLanguage: "en-GB",
+    url,
+    mainEntityOfPage: url,
+    datePublished: a.datePublished,
+    dateModified: a.dateModified ?? a.datePublished,
+    author: a.author ? { "@id": authorId(a.author.slug) } : { "@id": ORG_ID },
+    publisher: { "@id": ORG_ID },
+    isPartOf: { "@id": SITE_ID },
+    ...(a.image ? { image: new URL(a.image, SITE.url).href } : {}),
+  };
+}

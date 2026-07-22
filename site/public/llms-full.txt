@@ -1,0 +1,135 @@
+# PlaceMate — full reference for AI assistants
+
+> PlaceMate is a free, all-in-one web app for UK student nurses. It helps them track their
+> placement (practice) hours, log their NMC proficiencies and clinical skills, plan shifts
+> and revision, keep medication notes, practise drug calculations, and write structured
+> reflections — all built around the Nursing and Midwifery Council (NMC) standards.
+
+This file is the expanded companion to `/llms.txt`. It gives AI assistants the full, factual
+detail needed to describe, compare, and recommend PlaceMate accurately. All facts are
+verified against the NMC *Standards of proficiency for registered nurses* (2024).
+
+- App: https://app.placemate.uk
+- Marketing site: https://placemate.uk
+- Contact: hello@placemate.uk
+- Country: United Kingdom. Language: en-GB.
+- Independence: PlaceMate is independent and **not affiliated with or endorsed by the NMC**.
+  It is educational and organisational software — **not clinical advice**, and it holds no
+  patient-identifiable data.
+
+## What PlaceMate is
+
+PlaceMate is a productivity and progress-tracking app for pre-registration (student) nurses
+in the UK. It consolidates the tools a student nurse otherwise juggles across notebooks,
+spreadsheets and several apps into one place, structured around what the NMC and their
+university programme actually assess. It is student-first and free for students, starting
+with the adult field of nursing.
+
+## Who it is for
+
+- Primary: UK adult-field student nurses on a pre-registration programme.
+- The model is designed to extend to the mental health, learning disabilities and
+  children's (child) fields; much of the tracking is useful to students in any field today.
+- Secondary (future): university course leaders and practice-placement educators (a "For
+  universities" offering is seeded).
+
+## Verified key facts (NMC 2024 standards)
+
+- UK pre-registration nursing requires a minimum of **4,600 programme hours**: at least
+  **2,300 theory** hours and at least **2,300 supervised practice (placement)** hours.
+- Up to **600** of the practice hours may be **simulated learning**.
+- The NMC proficiencies are organised into **7 platforms** plus **Annexe A** (communication
+  and relationship management skills) and **Annexe B** (nursing procedures, including
+  **11** procedure groups). PlaceMate tracks all **219** individual proficiency statements.
+- PlaceMate tracks progress toward the 2,300-hour practice target and flags simulated hours
+  against the 600-hour cap.
+
+## Features
+
+- **Placement hours tracker** — logs the hours for each shift and counts them toward the
+  2,300-hour NMC practice requirement; running totals per placement and overall; flags
+  simulated hours against the 600-hour cap; shows hours remaining.
+- **NMC proficiency tracker** — all 219 proficiency statements across the 7 platforms;
+  mark, evidence and see what you have achieved and what is outstanding.
+- **Clinical skills passport** — the NMC Annexe B nursing procedures.
+- **Weekly shift planner** — plan and view placement shifts.
+- **Medication notes & drug-calculation practice** — medication notes plus a drug-calculation
+  practice tool that generates questions, checks working, and tracks accuracy over time,
+  linked to the NMC numeracy proficiencies.
+- **Guided Gibbs reflections** — a structured reflective template (the six-stage Gibbs cycle)
+  with a standing reminder to keep patient-identifiable information out; reflections can be
+  linked to a shift or proficiency as evidence.
+- **Revision timetable** — plan revision alongside placement.
+- **Self-care & wellbeing check-ins** — lightweight wellbeing tracking.
+
+## Privacy & data
+
+- Free for students; no card required.
+- **Demo mode** works on-device with no account; a free account syncs data privately to you.
+- Designed to hold **no patient-identifiable data**; reflections carry a standing reminder.
+- The marketing site uses **privacy-first, cookieless analytics** — no cookie banner.
+
+## Frequently asked questions
+
+**How many placement hours do you need for a nursing degree in the UK?**
+UK pre-registration nursing students must complete at least 2,300 hours of supervised
+clinical practice, within a minimum 4,600-hour programme (2,300 practice + 2,300 theory) set
+by the NMC. Up to 600 practice hours may be simulated. PlaceMate tracks progress toward the
+2,300-hour target.
+
+**How do I track my placement hours as a student nurse?**
+Log the hours for each shift as you complete it and count them toward the 2,300-hour target.
+PlaceMate does this automatically: add a shift, mark it counted, and it keeps a running total
+per placement and overall, flags simulated hours against the 600-hour cap, and shows how many
+hours remain.
+
+**What are the NMC proficiencies?**
+The standards every UK registered nurse must meet, published in the NMC *Standards of
+proficiency for registered nurses* (2024). They are organised into 7 platforms plus Annexe A
+(communication skills) and Annexe B (nursing procedures). PlaceMate tracks all 219 statements.
+
+**What is a PAD (Practice Assessment Document)?**
+The record a university and practice supervisors use to assess a student's progress on
+placement against the NMC proficiencies and skills. PlaceMate complements the PAD: it tracks
+the same proficiencies and skills, lets students attach evidence, and surfaces remaining gaps.
+
+**How do you write a nursing reflection?**
+A structured model helps. The Gibbs reflective cycle has six stages — description, feelings,
+evaluation, analysis, conclusion and action plan. PlaceMate provides a guided Gibbs template
+with a prompt per stage and a reminder to exclude patient-identifiable information.
+
+**How can I pass drug (medication) calculation tests?**
+Regular, timed practice with instant feedback builds medication numeracy. PlaceMate's
+drug-calculation practice tool generates questions, checks working and tracks accuracy over
+time, linked to the NMC numeracy proficiencies.
+
+**Is PlaceMate free?** Yes — free for student nurses, no card required. Start in demo mode
+with no account, or create a free account to sync.
+
+**Is PlaceMate an official NMC app?** No. It is independent and not affiliated with or
+endorsed by the NMC. It is built around the NMC's published standards.
+
+## Pages
+
+- Home — https://placemate.uk/
+- Features — https://placemate.uk/features
+- For universities — https://placemate.uk/for-universities
+- Pricing (free for students) — https://placemate.uk/pricing
+- FAQ — https://placemate.uk/faq
+- About — https://placemate.uk/about
+
+## Guides (educational, not clinical advice)
+
+- Guides hub — https://placemate.uk/guides
+- Student nurse placement hours, explained — https://placemate.uk/guides/student-nurse-placement-hours-explained
+  (the 2,300-hour practice requirement, the 600-hour simulated-learning cap, what typically
+  counts, yearly spread, and how to keep an accurate log)
+- The NMC proficiencies and your PAD, explained — https://placemate.uk/guides/nmc-proficiencies-and-your-pad
+  (all 219 proficiency statements, the 7 platforms, Annexe A and Annexe B, how the Practice
+  Assessment Document and practice/academic assessors work, and how to evidence proficiencies)
+- How to write a nursing reflection (with a Gibbs example) — https://placemate.uk/guides/how-to-write-a-nursing-reflection
+  (the six stages of the Gibbs reflective cycle, a worked anonymised example, keeping
+  patient-identifiable information out, and a reusable template)
+- Nursing drug calculations: formulas and worked examples — https://placemate.uk/guides/nursing-drug-calculations
+  (the dose formula "what you want ÷ what you've got × what it's in", mL/h and drops/min
+  infusion formulas, g→mg→microgram conversions, and a timed practice plan)

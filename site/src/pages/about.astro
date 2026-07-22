@@ -2,14 +2,18 @@
 import Layout from "../layouts/Layout.astro";
 import Button from "../components/Button.astro";
 import { SITE, CTA, FACTS, SHOW_SIGNUP_CTA } from "../consts";
-import { organization, breadcrumb } from "../schema";
+import { organization, breadcrumb, person } from "../schema";
+import { AUTHORS } from "../authors";
 
 const title = "About PlaceMate — the planner for UK student nurses";
 const description =
   "PlaceMate is an independent app built in the UK to help student nurses stay organised across placement — tracking hours, NMC proficiencies, skills and reflections in one place. Not affiliated with the NMC.";
 
+const nicola = AUTHORS["nicola-nightingale"];
+
 const jsonLd = [
   organization(),
+  person(nicola),
   breadcrumb([
     { name: "Home", path: "/" },
     { name: "About", path: "/about" },
@@ -44,6 +48,23 @@ const jsonLd = [
         alongside the students and educators who use it.
       </p>
     </div>
+
+    <section id="nicola-nightingale" class="mt-12 scroll-mt-24 rounded-2xl border border-slate-200 p-6">
+      <h2 class="text-base font-semibold uppercase tracking-wider text-emerald-600">
+        Clinical accuracy
+      </h2>
+      <p class="mt-3 text-xl font-bold tracking-tight text-ink">
+        {nicola.name}, {nicola.credential}
+      </p>
+      <p class="text-sm font-medium text-slate-500">{nicola.role}</p>
+      <p class="mt-3 text-base leading-relaxed text-slate-600">
+        {nicola.name} is a Registered Nurse and PlaceMate co-founder, and leads clinical
+        review of PlaceMate's guides. Our guides are written around the published
+        {FACTS.nmcStandard} ({FACTS.nmcYear}), and any guide carrying a clinical-review
+        byline has been checked by a Registered Nurse — so what you read lines up with what
+        your programme expects.
+      </p>
+    </section>
 
     <div class="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-6">
       <h2 class="text-base font-semibold text-ink">A note on independence</h2>

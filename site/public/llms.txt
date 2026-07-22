@@ -21,3 +21,13 @@ The app lives at https://app.placemate.uk. The marketing site is https://placema
 - [For universities](https://placemate.uk/for-universities): how PlaceMate supports nursing programmes and practice-placement teams.
 - [About](https://placemate.uk/about): what PlaceMate is and its independence from the NMC.
 - [Contact](https://placemate.uk/contact): hello@placemate.uk.
+
+## Guides
+
+Practical, sourced guides for UK student nurses (educational, not clinical advice):
+
+- [Guides hub](https://placemate.uk/guides): all guides, grouped by topic.
+- [Student nurse placement hours, explained](https://placemate.uk/guides/student-nurse-placement-hours-explained): the 2,300-hour practice requirement, the 600-hour simulation cap, what counts, and how to track it.
+- [The NMC proficiencies and your PAD, explained](https://placemate.uk/guides/nmc-proficiencies-and-your-pad): the 7 platforms, Annexe A and B, how the Practice Assessment Document works, and how to evidence proficiencies.
+- [How to write a nursing reflection (with a Gibbs example)](https://placemate.uk/guides/how-to-write-a-nursing-reflection): the six Gibbs stages, a worked example, and a reusable template.
+- [Nursing drug calculations: formulas and worked examples](https://placemate.uk/guides/nursing-drug-calculations): the dose formula, infusion rates, unit conversions, and a practice plan.

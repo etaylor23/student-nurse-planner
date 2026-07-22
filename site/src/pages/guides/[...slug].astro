@@ -1,0 +1,177 @@
+---
+import { getCollection, render } from "astro:content";
+import Layout from "../../layouts/Layout.astro";
+import Button from "../../components/Button.astro";
+import ReviewedBy from "../../components/ReviewedBy.astro";
+import Disclaimer from "../../components/Disclaimer.astro";
+import { article, person, breadcrumb } from "../../schema";
+import { AUTHORS, DEFAULT_AUTHOR, type AuthorSlug } from "../../authors";
+import { CTA } from "../../consts";
+
+// Only non-draft guides get a page. Unreviewed drafts never build (YMYL guardrail, §4).
+export async function getStaticPaths() {
+  const guides = await getCollection("guides", ({ data }) => !data.draft);
+  return guides.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const d = entry.data;
+const author = AUTHORS[(d.author in AUTHORS ? d.author : DEFAULT_AUTHOR) as AuthorSlug];
+// Team byline = collective authorship: Organization is the schema author, no Person node,
+// and the visible line makes no clinical-review claim. A named byline (Nicola, RN) is
+// flipped on per guide only after she has actually reviewed it.
+const isTeam = author.isTeam;
+const path = `/guides/${entry.id}`;
+const iso = (dt?: Date) => (dt ? dt.toISOString().slice(0, 10) : undefined);
+const fmt = (dt: Date) =>
+  dt.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+const shownDate = d.dateModified ?? d.datePublished;
+
+const jsonLd = [
+  ...(isTeam ? [] : [person(author)]),
+  article({
+    title: d.title,
+    description: d.description,
+    path,
+    datePublished: iso(d.datePublished)!,
+    dateModified: iso(d.dateModified),
+    author: isTeam ? undefined : author,
+    image: d.ogImage,
+  }),
+  breadcrumb([
+    { name: "Home", path: "/" },
+    { name: "Guides", path: "/guides" },
+    { name: d.title, path },
+  ]),
+];
+---
+
+<Layout
+  title={`${d.title} | PlaceMate`}
+  description={d.description}
+  image={d.ogImage}
+  jsonLd={jsonLd}
+  ogType="article"
+>
+  <article class="mx-auto max-w-3xl px-4 py-16 sm:px-6">
+    <nav aria-label="Breadcrumb" class="text-sm text-slate-500">
+      <a href="/" class="hover:text-emerald-700">Home</a>
+      <span aria-hidden="true"> / </span>
+      <a href="/guides" class="hover:text-emerald-700">Guides</a>
+    </nav>
+
+    <h1 class="mt-4 text-4xl font-bold tracking-tight text-ink sm:text-5xl">{d.title}</h1>
+    <p class="mt-4 text-lg leading-relaxed text-slate-600">{d.description}</p>
+    <div class="mt-4">
+      {
+        isTeam ? (
+          <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
+            <span>
+              By{" "}
+              <a href="/about" class="font-medium text-slate-700 hover:text-emerald-700">
+                the PlaceMate team
+              </a>
+            </span>
+            <span aria-hidden="true">·</span>
+            <span>
+              {d.dateModified ? "Updated" : "Published"}{" "}
+              <time datetime={iso(shownDate)}>{fmt(shownDate)}</time>
+            </span>
+          </div>
+        ) : (
+          <ReviewedBy
+            name={author.name}
+            credential={author.credential}
+            slug={author.slug}
+            datePublished={d.datePublished}
+            dateModified={d.dateModified}
+          />
+        )
+      }
+    </div>
+
+    <div class="guide-body mt-10 text-slate-700">
+      <Content />
+    </div>
+
+    <Disclaimer />
+
+    <div class="mt-10 flex flex-col gap-3 sm:flex-row">
+      <Button href={CTA.demo.href} external>{CTA.demo.label}</Button>
+      <Button href="/guides" variant="secondary">All guides</Button>
+    </div>
+  </article>
+</Layout>
+
+<style>
+  /* Dependency-free typographic styling for the rendered Markdown body. */
+  .guide-body :global(h2) {
+    margin-top: 2.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--color-ink, #0f172a);
+  }
+  .guide-body :global(h3) {
+    margin-top: 1.75rem;
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--color-ink, #0f172a);
+  }
+  .guide-body :global(p) {
+    margin-top: 1rem;
+    line-height: 1.75;
+  }
+  .guide-body :global(ul),
+  .guide-body :global(ol) {
+    margin-top: 1rem;
+    padding-left: 1.5rem;
+    line-height: 1.75;
+  }
+  .guide-body :global(ul) {
+    list-style: disc;
+  }
+  .guide-body :global(ol) {
+    list-style: decimal;
+  }
+  .guide-body :global(li) {
+    margin-top: 0.375rem;
+  }
+  .guide-body :global(a) {
+    color: #047857;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .guide-body :global(strong) {
+    font-weight: 600;
+    color: #1e293b;
+  }
+  .guide-body :global(table) {
+    margin-top: 1rem;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+  }
+  .guide-body :global(th),
+  .guide-body :global(td) {
+    border: 1px solid #e2e8f0;
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  .guide-body :global(th) {
+    background: #f8fafc;
+    font-weight: 600;
+    color: #1e293b;
+  }
+  .guide-body :global(blockquote) {
+    margin-top: 1rem;
+    border-left: 3px solid #10b981;
+    padding-left: 1rem;
+    color: #475569;
+    font-style: italic;
+  }
+</style>

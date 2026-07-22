@@ -45,6 +45,7 @@ export const FACTS = {
 
 export const NAV = [
   { href: "/features", label: "Features" },
+  { href: "/guides", label: "Guides" },
   { href: "/for-universities", label: "For universities" },
   { href: "/pricing", label: "Pricing" },
   { href: "/faq", label: "FAQ" },

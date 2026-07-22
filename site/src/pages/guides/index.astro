@@ -1,0 +1,99 @@
+---
+import { getCollection } from "astro:content";
+import Layout from "../../layouts/Layout.astro";
+import CtaSection from "../../components/CtaSection.astro";
+import { breadcrumb } from "../../schema";
+import { SITE } from "../../consts";
+
+const title = "Guides for UK student nurses | PlaceMate";
+const description =
+  "Practical guides for UK student nurses: placement hours, the NMC proficiencies and your PAD, writing reflections with Gibbs, and drug calculations — clear, sourced and free.";
+
+// Published guides only, grouped by pillar in a deliberate reading order.
+const guides = await getCollection("guides", ({ data }) => !data.draft);
+
+const PILLAR_ORDER = [
+  { key: "placement-hours", label: "Placement hours" },
+  { key: "proficiencies-pad", label: "NMC proficiencies & your PAD" },
+  { key: "reflections", label: "Reflective practice" },
+  { key: "drug-calculations", label: "Drug calculations" },
+] as const;
+
+const grouped = PILLAR_ORDER.map((p) => ({
+  ...p,
+  items: guides
+    .filter((g) => g.data.pillar === p.key)
+    // Pillar cornerstone first, then clusters alphabetically.
+    .sort((a, b) =>
+      a.data.isPillar === b.data.isPillar
+        ? a.data.title.localeCompare(b.data.title)
+        : a.data.isPillar
+          ? -1
+          : 1,
+    ),
+})).filter((p) => p.items.length > 0);
+
+const jsonLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: "PlaceMate guides for UK student nurses",
+    url: `${SITE.url}/guides`,
+    inLanguage: "en-GB",
+    hasPart: guides.map((g) => ({
+      "@type": "Article",
+      headline: g.data.title,
+      url: `${SITE.url}/guides/${g.id}`,
+    })),
+  },
+  breadcrumb([
+    { name: "Home", path: "/" },
+    { name: "Guides", path: "/guides" },
+  ]),
+];
+---
+
+<Layout title={title} description={description} jsonLd={jsonLd}>
+  <section class="mx-auto max-w-6xl px-4 pb-4 pt-16 sm:px-6">
+    <p class="text-sm font-semibold uppercase tracking-wider text-emerald-600">Guides</p>
+    <h1 class="mt-3 max-w-3xl text-4xl font-bold tracking-tight text-ink sm:text-5xl">
+      Guides for UK student nurses
+    </h1>
+    <p class="mt-5 max-w-2xl text-lg text-slate-600">
+      Clear, practical answers to the questions every student nurse hits — placement hours,
+      proficiencies, reflections and calculations — written around the published NMC standards.
+    </p>
+  </section>
+
+  <section class="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+    <div class="space-y-12">
+      {
+        grouped.map((pillar) => (
+          <div>
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              {pillar.label}
+            </h2>
+            <div class="mt-4 grid gap-6 sm:grid-cols-2">
+              {pillar.items.map((g) => (
+                <a
+                  href={`/guides/${g.id}`}
+                  class="group rounded-2xl border border-slate-200 p-6 transition hover:border-emerald-300 hover:shadow-sm"
+                >
+                  <h3 class="text-lg font-bold tracking-tight text-ink group-hover:text-emerald-700">
+                    {g.data.title}
+                  </h3>
+                  <p class="mt-2 text-sm leading-relaxed text-slate-600">{g.data.description}</p>
+                  <span class="mt-4 inline-flex text-sm font-semibold text-emerald-700">
+                    Read the guide →
+                  </span>
+                </a>
+              ))}
+            </div>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  <CtaSection />
+</Layout>

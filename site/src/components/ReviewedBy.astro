@@ -1,0 +1,29 @@
+---
+// Visible clinical-review byline for /guides pieces. The named RN is the E-E-A-T signal
+// human quality-raters (and readers) actually look for. Links to the author's on-site
+// profile anchor (About page clinical-review section).
+interface Props {
+  name: string;
+  credential: string;
+  slug: string;
+  datePublished: Date;
+  dateModified?: Date;
+}
+const { name, credential, slug, datePublished, dateModified } = Astro.props;
+const shown = dateModified ?? datePublished;
+const label = dateModified ? "Updated" : "Published";
+const fmt = (d: Date) =>
+  d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+const iso = (d: Date) => d.toISOString().slice(0, 10);
+---
+
+<div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
+  <span>
+    Clinically reviewed by
+    <a href={`/about#${slug}`} class="font-medium text-slate-700 hover:text-emerald-700">
+      {name}, {credential}
+    </a>
+  </span>
+  <span aria-hidden="true">·</span>
+  <span>{label} <time datetime={iso(shown)}>{fmt(shown)}</time></span>
+</div>

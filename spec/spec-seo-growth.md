@@ -287,3 +287,10 @@ Facebook nursing-student groups) for episodic traffic/backlink spikes.
   Revisit nested-by-pillar only if the corpus grows large.
 - **Second-wave off-site levers** (LinkedIn, Product Hunt + community seeding): **trigger at
   public-signup launch.**
+- **Wave-1 byline (2026-07-22):** the 4 pillar guides are published under a collective
+  **"The PlaceMate team"** byline — schema author = the Organization, **no named person and
+  no clinical-review claim** — because Nicola had not yet reviewed them at publish time.
+  §4's rule stands for *named* bylines: a guide is flipped to the "Clinically reviewed by
+  Nicola Nightingale, Registered Nurse" byline (frontmatter `author: "nicola-nightingale"`)
+  only after she has actually reviewed that guide. Flipping wave 1 to reviewed bylines is
+  the standing next E-E-A-T action.
