@@ -52,6 +52,9 @@ export const NAV = [
   { href: "/about", label: "About" },
 ] as const;
 
-// Organization.sameAs — populated once the Instagram/TikTok profiles exist ([YOU] step in
-// the handover §5). Empty until then; the Organization schema omits sameAs when empty.
-export const SOCIAL_LINKS: string[] = [];
+// Organization.sameAs — the brand's official profiles (entity signal for Google + AI).
+// Handles confirmed 2026-07-22. See spec/spec-seo-growth.md §7.
+export const SOCIAL_LINKS: string[] = [
+  "https://www.instagram.com/placemateapp/",
+  "https://www.tiktok.com/@placemateapp",
+];
