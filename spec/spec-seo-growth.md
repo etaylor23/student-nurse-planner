@@ -233,19 +233,24 @@ Facebook nursing-student groups) for episodic traffic/backlink spikes.
 
 ---
 
-## 9. Phasing & sequencing
+## 9. Phasing & sequencing (status as of 2026-07-22)
 
 "Full speed" — but sequenced to front-load long-lead items and avoid burst-publishing.
 
-- **Phase 0 — foundations (week 1):** GSC + Bing verify + submit sitemap; `llms-full.txt`;
-  IndexNow; scaffold `/guides` (content collection) + `/tools`; create IG/TikTok → wire
-  `sameAs`; build Nicola's author entity + site-wide disclaimers.
-- **Phase 1 — tools (weeks 1–2):** ship **both** free tools (calculator + quiz). Fast,
-  high-leverage indexable assets that also anchor the outreach.
-- **Phase 2 — guides in waves (weeks 2–6):** Wave 1 = the 4 pillars; Waves 2–3 = clusters.
-  Med-numeracy cluster gated on [PHARM] review.
-- **Phase 3 — ongoing:** 2–4 guides/month; university outreach; social cadence; the monthly
-  scoreboard review (§2).
+- **Phase 0 — foundations (week 1): MOSTLY DONE.**
+  ✅ GSC verified (Route 53 TXT) + sitemap submitted; ✅ Bing Webmaster + sitemap submitted;
+  ✅ `llms-full.txt`; ✅ IndexNow (wired into deploy-marketing; wave-1 ping HTTP 202);
+  ✅ `/guides` content collection + hub + author/byline plumbing + disclaimers;
+  ✅ Nicola author entity (About `#nicola-nightingale` + Person schema).
+  ⬜ IG/TikTok accounts → wire `sameAs` ([ELLIS]); ⬜ `/tools` routes (built with Phase 1).
+- **Phase 1 — tools (weeks 1–2): NOT STARTED.** Ship **both** free tools (placement-hours
+  calculator + drug-calc quiz [PHARM]-reviewed).
+- **Phase 2 — guides in waves (weeks 2–6): WAVE 1 LIVE (2026-07-22).**
+  ✅ 4 pillar guides published (master `15dc666`) under the "PlaceMate team" byline —
+  ⬜ **flip each to Nicola's clinical-review byline after her review** (drug-calc first);
+  ⬜ Waves 2–3 clusters (med-numeracy cluster gated on [PHARM] review).
+- **Phase 3 — ongoing: NOT STARTED.** 2–4 guides/month; university outreach; social
+  cadence; monthly scoreboard review (§2 — first review due ~22 Aug 2026).
 
 ---
 
