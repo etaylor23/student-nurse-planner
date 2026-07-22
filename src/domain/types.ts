@@ -153,6 +153,16 @@ export interface ProficiencyProgress extends Entity, UserOwned, Updated {
   proficiencyId: string; // FK → Proficiency
   status: ProficiencyStatus;
   targetPart?: number; // optional: sharpens gap warnings
+  /**
+   * Officially signed off in the real PAD (self-reported) — distinct from the
+   * self-assessed `status` and from evidence gathered. Optional so it's additive
+   * and backwards-compatible: absent on pre-existing rows, treated as not-signed-off.
+   * Reversible (unlike a skill sign-off) so a mis-mark can be corrected.
+   */
+  padSignedOff?: boolean;
+  padSignOffByName?: string; // who signed it off in the PAD
+  padSignOffLocation?: string; // where
+  padSignOffDate?: string; // ISO date
 }
 
 /** A dated status change — the history that preserves reassessment across parts. */
@@ -174,6 +184,12 @@ export interface EvidenceLink extends Entity, UserOwned, Created {
 
 /** An evidence link to create — the store stamps id + createdAt. */
 export type EvidenceLinkDraft = Omit<EvidenceLink, "id" | "userId" | "createdAt">;
+
+/** The optional PAD sign-off details captured on the proficiency detail screen. */
+export type ProficiencyPadSignOff = Pick<
+  ProficiencyProgress,
+  "padSignOffByName" | "padSignOffLocation" | "padSignOffDate"
+>;
 
 /** The fields captured when recording a status change (drives the history event). */
 export interface ProficiencyStatusChange {

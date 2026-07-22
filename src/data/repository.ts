@@ -15,6 +15,7 @@ import type {
   MedicationLogDraft,
   Placement,
   Proficiency,
+  ProficiencyPadSignOff,
   ProficiencyProgress,
   ProficiencyStatusChange,
   ProficiencyStatusEvent,
@@ -158,6 +159,16 @@ export interface Repository {
     userId: string,
     proficiencyId: string,
     targetPart: number | undefined,
+  ): Promise<ProficiencyProgress>;
+  /**
+   * Mark a proficiency officially signed off in the PAD (self-reported), with optional
+   * by/where/when. Pass `null` to clear the sign-off (correct a mis-mark). Upserts the
+   * progress row, preserving status + target part.
+   */
+  setProficiencyPadSignOff(
+    userId: string,
+    proficiencyId: string,
+    signOff: ProficiencyPadSignOff | null,
   ): Promise<ProficiencyProgress>;
   /** A proficiency's status history, newest first. */
   listProficiencyStatusEvents(progressId: string): Promise<ProficiencyStatusEvent[]>;

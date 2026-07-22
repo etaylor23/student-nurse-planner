@@ -94,7 +94,11 @@ export const proficiencySchema = entitySchema.extend({
 export const proficiencyProgressSchema = entitySchema.extend(userOwnedSchema.shape).extend(updatedSchema.shape).extend({
     proficiencyId: z.string(),
     status: proficiencyStatusSchema,
-    targetPart: z.number().optional()
+    targetPart: z.number().optional(),
+    padSignedOff: z.boolean().optional(),
+    padSignOffByName: z.string().optional(),
+    padSignOffLocation: z.string().optional(),
+    padSignOffDate: z.string().optional()
 });
 
 export const proficiencyStatusEventSchema = entitySchema.extend(createdSchema.shape).extend({
@@ -113,6 +117,8 @@ export const evidenceLinkSchema = entitySchema.extend(userOwnedSchema.shape).ext
 });
 
 export const evidenceLinkDraftSchema = evidenceLinkSchema.omit({ "id": true, "userId": true, "createdAt": true });
+
+export const proficiencyPadSignOffSchema = proficiencyProgressSchema.pick({ "padSignOffByName": true, "padSignOffLocation": true, "padSignOffDate": true });
 
 export const proficiencyStatusChangeSchema = z.object({
     status: proficiencyStatusSchema,

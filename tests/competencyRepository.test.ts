@@ -74,6 +74,48 @@ describe("DexieRepository — competency tracker", () => {
     expect(cleared.status).toBe("DEVELOPING"); // status preserved
   });
 
+  it("marks a PAD sign-off, preserves it across edits, and clears it", async () => {
+    const user = await repo.getCurrentUser();
+    const pid = "prof_1.2";
+
+    // Give it a status + target first, then officially sign it off in the PAD.
+    await repo.setProficiencyStatus(user.id, pid, {
+      status: "ACHIEVED",
+      partIndex: 2,
+      occurredAt: "2026-06-01",
+    });
+    await repo.setProficiencyTargetPart(user.id, pid, 2);
+    const signed = await repo.setProficiencyPadSignOff(user.id, pid, {
+      padSignOffByName: "  A. Assessor  ",
+      padSignOffLocation: "Ward 9",
+      padSignOffDate: "2026-06-02",
+    });
+    expect(signed.padSignedOff).toBe(true);
+    expect(signed.padSignOffByName).toBe("A. Assessor"); // trimmed
+    expect(signed.status).toBe("ACHIEVED"); // status preserved
+    expect(signed.targetPart).toBe(2); // target preserved
+
+    // A later status change must NOT drop the PAD sign-off.
+    const afterStatus = await repo.setProficiencyStatus(user.id, pid, {
+      status: "DEVELOPING",
+      partIndex: 3,
+      occurredAt: "2026-07-01",
+    });
+    expect(afterStatus.padSignedOff).toBe(true);
+    expect(afterStatus.padSignOffLocation).toBe("Ward 9");
+
+    // A target-part edit must NOT drop it either.
+    const afterTarget = await repo.setProficiencyTargetPart(user.id, pid, 3);
+    expect(afterTarget.padSignedOff).toBe(true);
+
+    // Clearing (null) removes the sign-off + its meta, keeping status/target.
+    const cleared = await repo.setProficiencyPadSignOff(user.id, pid, null);
+    expect(cleared.padSignedOff).toBe(false);
+    expect(cleared.padSignOffByName).toBeUndefined();
+    expect(cleared.status).toBe("DEVELOPING");
+    expect(cleared.targetPart).toBe(3);
+  });
+
   it("creates, lists and deletes evidence links", async () => {
     const user = await repo.getCurrentUser();
     const link = await repo.createEvidenceLink({

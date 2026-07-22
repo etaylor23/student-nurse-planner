@@ -20,6 +20,7 @@ import type {
   MedicationLogDraft,
   Placement,
   Proficiency,
+  ProficiencyPadSignOff,
   ProficiencyProgress,
   ProficiencyStatusChange,
   ProficiencyStatusEvent,
@@ -259,6 +260,17 @@ export class ApiRepository implements Repository {
       userId,
       proficiencyId,
       targetPart,
+    ]);
+  }
+  setProficiencyPadSignOff(
+    userId: string,
+    proficiencyId: string,
+    signOff: ProficiencyPadSignOff | null,
+  ) {
+    return this.rpc<ProficiencyProgress>("setProficiencyPadSignOff", [
+      userId,
+      proficiencyId,
+      signOff,
     ]);
   }
   listProficiencyStatusEvents(progressId: string) {

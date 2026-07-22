@@ -16,6 +16,7 @@ import type {
   MedicationLogDraft,
   Placement,
   Proficiency,
+  ProficiencyPadSignOff,
   ProficiencyProgress,
   ProficiencyStatusChange,
   ProficiencyStatusEvent,
@@ -424,6 +425,11 @@ export class DexieRepository implements Repository {
       proficiencyId,
       status: change.status,
       targetPart: existing?.targetPart,
+      // Preserve any PAD sign-off — a status change never un-signs it.
+      padSignedOff: existing?.padSignedOff,
+      padSignOffByName: existing?.padSignOffByName,
+      padSignOffLocation: existing?.padSignOffLocation,
+      padSignOffDate: existing?.padSignOffDate,
       updatedAt: nowIso(),
     };
     await this.db.proficiencyProgress.put(progress);
@@ -453,6 +459,34 @@ export class DexieRepository implements Repository {
       proficiencyId,
       status: existing?.status ?? "NOT_YET_ACHIEVED",
       targetPart,
+      // Preserve any PAD sign-off across a target-part edit.
+      padSignedOff: existing?.padSignedOff,
+      padSignOffByName: existing?.padSignOffByName,
+      padSignOffLocation: existing?.padSignOffLocation,
+      padSignOffDate: existing?.padSignOffDate,
+      updatedAt: nowIso(),
+    };
+    await this.db.proficiencyProgress.put(progress);
+    return progress;
+  }
+
+  async setProficiencyPadSignOff(
+    userId: string,
+    proficiencyId: string,
+    signOff: ProficiencyPadSignOff | null,
+  ): Promise<ProficiencyProgress> {
+    const existing = await this.findProgress(userId, proficiencyId);
+    const progress: ProficiencyProgress = {
+      id: existing?.id ?? newId(),
+      userId,
+      proficiencyId,
+      status: existing?.status ?? "NOT_YET_ACHIEVED",
+      targetPart: existing?.targetPart,
+      // null clears the sign-off (mis-mark correction); otherwise mark + trim the meta.
+      padSignedOff: signOff !== null,
+      padSignOffByName: signOff?.padSignOffByName?.trim() || undefined,
+      padSignOffLocation: signOff?.padSignOffLocation?.trim() || undefined,
+      padSignOffDate: signOff?.padSignOffDate || undefined,
       updatedAt: nowIso(),
     };
     await this.db.proficiencyProgress.put(progress);
