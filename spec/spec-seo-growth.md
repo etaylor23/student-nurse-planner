@@ -251,10 +251,18 @@ Facebook nursing-student groups) for episodic traffic/backlink spikes.
   entries. Both dependency-free vanilla JS, store nothing; WebApplication + FAQPage schema.
   ⬜ **Drug-calc quiz still needs [PHARM] review** before hard promotion (arithmetic
   verified in-browser: 40/40 generated Qs correct; framed "practice only" + disclaimer).
-- **Phase 2 — guides in waves (weeks 2–6): WAVE 1 LIVE (2026-07-22).**
-  ✅ 4 pillar guides published (master `15dc666`) under the "PlaceMate team" byline —
-  ⬜ **flip each to Nicola's clinical-review byline after her review** (drug-calc first);
-  ⬜ Waves 2–3 clusters (med-numeracy cluster gated on [PHARM] review).
+- **Phase 2 — guides in waves (weeks 2–6): WAVES 1–2 LIVE, WAVE 3 STAGED (2026-07-23).**
+  ✅ Wave 1: 4 pillar guides published (master `15dc666`) under the "PlaceMate team" byline.
+  ✅ Wave 2 (2026-07-23): 6 cluster articles live — how-to-track-placement-hours,
+  what-counts-as-placement-hours, nmc-platforms-explained, how-to-evidence-nmc-proficiencies,
+  gibbs-reflective-cycle-example, driscolls-model-of-reflection. **10 guides live total.**
+  ⏳ Wave 3: 4 clusters WRITTEN + staged as `draft:true` (anti-burst cadence §3):
+  nmc-annexe-a-and-annexe-b-explained, common-reflective-writing-mistakes, and the two
+  [PHARM]-gated med-numeracy pieces (drug-calculation-common-mistakes,
+  nursing-unit-conversions). **Flip ~1–2 weeks after wave 2** (set `draft:false`, update
+  `datePublished`, add to llms.txt/llms-full.txt — instructions in each file's comment);
+  the two med pieces flip only after [PHARM] review.
+  ⬜ **Flip each guide to Nicola's clinical-review byline after her review** (drug-calc first).
 - **Phase 3 — ongoing: NOT STARTED.** 2–4 guides/month; university outreach; social
   cadence; monthly scoreboard review (§2 — first review due ~22 Aug 2026).
 

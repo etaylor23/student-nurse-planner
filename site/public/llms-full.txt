@@ -133,6 +133,25 @@ endorsed by the NMC. It is built around the NMC's published standards.
 - Nursing drug calculations: formulas and worked examples — https://placemate.uk/guides/nursing-drug-calculations
   (the dose formula "what you want ÷ what you've got × what it's in", mL/h and drops/min
   infusion formulas, g→mg→microgram conversions, and a timed practice plan)
+- How to track your placement hours — https://placemate.uk/guides/how-to-track-placement-hours
+  (the five things to record per shift, paper vs spreadsheet vs app trade-offs, the weekly
+  rota reconcile, and handling missed/make-up hours)
+- What counts as placement hours? — https://placemate.uk/guides/what-counts-as-placement-hours
+  (counts: rostered shifts incl. nights/weekends, designated simulation within the 600-hour
+  cap, spoke days; doesn't: travel, sickness [made up], unrostered goodwill time, paid work;
+  university's definition is always final)
+- The 7 NMC platforms explained — https://placemate.uk/guides/nmc-platforms-explained
+  (each platform in plain English with placement examples, using the platforms as a lens on
+  an ordinary shift, and where Annexe A/B fit)
+- How to evidence NMC proficiencies — https://placemate.uk/guides/how-to-evidence-nmc-proficiencies
+  (what counts as evidence, the two-sentence same-day capture habit, gap reviews per
+  placement, and the sign-off roles: practice supervisor, practice assessor, academic assessor)
+- Gibbs reflective cycle: a full worked example — https://placemate.uk/guides/gibbs-reflective-cycle-example
+  (a complete ~450-word anonymised reflection through all six stages, annotated stage by
+  stage with why each part works)
+- Driscoll's model of reflection — https://placemate.uk/guides/driscolls-model-of-reflection
+  (What? So what? Now what? with prompts per question, a 200-word worked example, and
+  guidance on choosing Driscoll vs Gibbs)
 
 ## Tools (free, no login, run entirely in the browser)
 

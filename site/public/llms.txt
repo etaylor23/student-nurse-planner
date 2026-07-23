@@ -31,6 +31,12 @@ Practical, sourced guides for UK student nurses (educational, not clinical advic
 - [The NMC proficiencies and your PAD, explained](https://placemate.uk/guides/nmc-proficiencies-and-your-pad): the 7 platforms, Annexe A and B, how the Practice Assessment Document works, and how to evidence proficiencies.
 - [How to write a nursing reflection (with a Gibbs example)](https://placemate.uk/guides/how-to-write-a-nursing-reflection): the six Gibbs stages, a worked example, and a reusable template.
 - [Nursing drug calculations: formulas and worked examples](https://placemate.uk/guides/nursing-drug-calculations): the dose formula, infusion rates, unit conversions, and a practice plan.
+- [How to track your placement hours](https://placemate.uk/guides/how-to-track-placement-hours): what to record per shift, paper vs spreadsheet vs app, and the weekly reconcile habit.
+- [What counts as placement hours?](https://placemate.uk/guides/what-counts-as-placement-hours): what counts (nights, sim, spoke days) and what doesn't (travel, sickness, paid work).
+- [The 7 NMC platforms explained](https://placemate.uk/guides/nmc-platforms-explained): each platform in plain English and what it looks like on placement.
+- [How to evidence NMC proficiencies](https://placemate.uk/guides/how-to-evidence-nmc-proficiencies): what counts as evidence, the capture habit, and how to make sign-offs easy.
+- [Gibbs reflective cycle: a full worked example](https://placemate.uk/guides/gibbs-reflective-cycle-example): a complete annotated six-stage reflection from a student placement.
+- [Driscoll's model of reflection](https://placemate.uk/guides/driscolls-model-of-reflection): What? So what? Now what? — prompts, a worked example, and when to choose it over Gibbs.
 
 ## Tools
 
