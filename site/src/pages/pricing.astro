@@ -20,12 +20,18 @@ const included = [
 ];
 
 const jsonLd = [
+  // A free web app is a SoftwareApplication, NOT a Product. Google only applies its
+  // merchant-listing requirements (image, hasMerchantReturnPolicy, shippingDetails) to
+  // Product+Offer markup — modelling PlaceMate as SoftwareApplication removes those
+  // (nonsensical for a free digital app) demands at the root. Mirrors the homepage's
+  // WebApplication entity. See schema.ts / GSC "Merchant listings" report.
   {
     "@context": "https://schema.org",
-    "@type": "Product",
+    "@type": "SoftwareApplication",
     name: SITE.name,
     description,
-    brand: { "@type": "Brand", name: SITE.name },
+    applicationCategory: "EducationalApplication",
+    operatingSystem: "Web",
     offers: {
       "@type": "Offer",
       price: "0",
