@@ -1,56 +1,8 @@
 @import "tailwindcss";
-
-/* =====================================================================
-   BRAND TOKENS — single source of truth for colour.
-   Mirrored (for humans) in /colour-palette.html at the repo root.
-
-   Tailwind v4 turns each `--color-<name>-<shade>` into utilities
-   (`bg-primary-600`, `text-secondary-600`, `text-ink`, …) AND exposes it
-   as a CSS variable on :root, so plain CSS below can use var(--color-…).
-
-     primary   = Emerald  — the inspiring lead (CTAs, active, progress, success)
-     secondary = NHS Blue — the trust anchor  (links, info, headers, 2nd buttons)
-     accent    = Coral    — warmth, used sparingly (self-care, gentle nudges)
-     ink       = off-black text (never pure #000); slate stays for neutrals
-   ===================================================================== */
-@theme {
-  /* Primary — Emerald */
-  --color-primary-50: #ecfdf5;
-  --color-primary-100: #d1fae5;
-  --color-primary-200: #a7f3d0;
-  --color-primary-300: #6ee7b7;
-  --color-primary-400: #34d399;
-  --color-primary-500: #10b981;
-  --color-primary-600: #059669;
-  --color-primary-700: #047857;
-  --color-primary-800: #065f46;
-  --color-primary-900: #064e3b;
-
-  /* Secondary — NHS Blue (built on the official NHS blues) */
-  --color-secondary-50: #e8f1fb;
-  --color-secondary-100: #cfe4f7;
-  --color-secondary-200: #a3caee;
-  --color-secondary-300: #6badde;
-  --color-secondary-400: #2f8fd6;
-  --color-secondary-500: #0072ce;
-  --color-secondary-600: #005eb8; /* NHS Blue — the core secondary */
-  --color-secondary-700: #004b95;
-  --color-secondary-800: #003087;
-  --color-secondary-900: #00265f;
-
-  /* Accent — Coral */
-  --color-accent-50: #fff1ee;
-  --color-accent-100: #ffe4e6;
-  --color-accent-200: #fecdd3;
-  --color-accent-300: #fda4af;
-  --color-accent-400: #fb7185; /* core accent */
-  --color-accent-500: #f43f5e;
-  --color-accent-600: #e11d48;
-  --color-accent-700: #be123c;
-
-  /* Ink — softened off-black for headings & primary text */
-  --color-ink: #16212f;
-}
+/* Brand colour tokens live in the repo-root brand-palette.css — the SINGLE SOURCE OF
+   TRUTH shared with the marketing site (site/src/styles/global.css). Edit colours there
+   and both the app and the site update together. Human guide: /colour-palette.html. */
+@import "../brand-palette.css";
 
 @layer base {
   html {

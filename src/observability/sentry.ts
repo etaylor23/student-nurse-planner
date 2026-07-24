@@ -43,7 +43,7 @@ if (import.meta.env.PROD) {
         showBranding: false,
         colorScheme: "light",
         themeLight: {
-          accentBackground: "#059669", // emerald — brand primary
+          accentBackground: "#047857", // emerald brand primary (mirror of --color-primary-600; the Sentry widget renders in a shadow DOM so it can't read the CSS var)
           accentForeground: "#ffffff",
         },
         formTitle: "Send feedback",

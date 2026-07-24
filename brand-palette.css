@@ -1,0 +1,74 @@
+/* =====================================================================
+   PlaceMate brand palette — SINGLE SOURCE OF TRUTH for colour.
+
+   Imported by BOTH the app (src/index.css) and the marketing site
+   (site/src/styles/global.css). Edit a colour HERE and both update together.
+   Human-readable guide: /colour-palette.html.
+
+   Tailwind v4 turns each `--color-<name>-<shade>` into utilities
+   (`bg-primary-600`, `text-secondary-600`, `text-ink`, …) AND exposes it as a
+   CSS variable on :root, so plain CSS can use var(--color-…) too.
+
+     primary   = Emerald  — the inspiring lead (CTAs, active, progress, success)
+     secondary = NHS Blue — the trust anchor  (links, info, headers, 2nd buttons)
+     accent    = Coral    — warmth, used sparingly (self-care, gentle nudges)
+     ink       = off-black text (never pure #000); slate stays for neutrals
+
+   ACCESSIBILITY: the shades used for text / controls on a white background meet
+   WCAG 2.1 AA (≥4.5:1). Emerald 600→900 were deepened one step for that (see the
+   inline ratios). Both codebases also use Tailwind's built-in `emerald-*`/`slate-*`
+   directly, so those shades are pinned to the same values here — no class renames
+   needed, and the emerald and primary ramps stay identical.
+   ===================================================================== */
+@theme {
+  /* Primary — Emerald (brand). 600/700/800/900 deepened one step for AA text/button
+     contrast on white; 50–500 unchanged (light tints for fills/backgrounds). */
+  --color-primary-50: #ecfdf5;
+  --color-primary-100: #d1fae5;
+  --color-primary-200: #a7f3d0;
+  --color-primary-300: #6ee7b7;
+  --color-primary-400: #34d399;
+  --color-primary-500: #10b981;
+  --color-primary-600: #047857; /* text/CTA on white: 5.48:1 (was #059669 = 3.77) */
+  --color-primary-700: #065f46; /* 7.68:1 (was #047857) */
+  --color-primary-800: #064e3b; /* 9.72:1 */
+  --color-primary-900: #052e16;
+
+  /* Secondary — NHS Blue (official NHS blues). secondary-600 on white = 5.9:1 (AA). */
+  --color-secondary-50: #e8f1fb;
+  --color-secondary-100: #cfe4f7;
+  --color-secondary-200: #a3caee;
+  --color-secondary-300: #6badde;
+  --color-secondary-400: #2f8fd6;
+  --color-secondary-500: #0072ce;
+  --color-secondary-600: #005eb8; /* NHS Blue — the core secondary */
+  --color-secondary-700: #004b95;
+  --color-secondary-800: #003087;
+  --color-secondary-900: #00265f;
+
+  /* Accent — Coral. Used sparingly and NOT as body text (as text on white it is < AA);
+     reserve for large/graphical accents, or pair 600/700 with white for controls. */
+  --color-accent-50: #fff1ee;
+  --color-accent-100: #ffe4e6;
+  --color-accent-200: #fecdd3;
+  --color-accent-300: #fda4af;
+  --color-accent-400: #fb7185;
+  --color-accent-500: #f43f5e;
+  --color-accent-600: #e11d48;
+  --color-accent-700: #be123c;
+
+  /* Ink — softened off-black for headings & primary text (14.6:1 on white). */
+  --color-ink: #16212f;
+
+  /* Tailwind built-in emerald: pinned to the primary ramp so `emerald-*` (used widely in
+     both codebases) === `primary-*`. 50–500 already match Tailwind's defaults. */
+  --color-emerald-600: #047857;
+  --color-emerald-700: #065f46;
+  --color-emerald-800: #064e3b;
+  --color-emerald-900: #052e16;
+
+  /* Tailwind built-in slate: slate-400 as muted text on white was ~2.9:1 (fails AA);
+     deepen to slate-500's value so muted labels/captions clear 4.5:1 (4.76:1). Other
+     slate shades already pass where used as text. */
+  --color-slate-400: #64748b;
+}

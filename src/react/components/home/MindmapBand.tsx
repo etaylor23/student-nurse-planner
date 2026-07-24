@@ -44,7 +44,7 @@ export function MindmapBand() {
         sub: `${skillProgress.length} tracked`,
         desc: "Your growing clinical-skills record.",
         href: "/skills",
-        dot: "#059669",
+        dot: "var(--color-primary-600)",
         cy: 54,
       },
       {
@@ -53,7 +53,7 @@ export function MindmapBand() {
         sub: `${evidenced} evidenced`,
         desc: "Evidence building toward the NMC proficiencies.",
         href: "/competencies",
-        dot: "#005eb8",
+        dot: "var(--color-secondary-600)",
         cy: 122,
       },
       {
@@ -62,7 +62,7 @@ export function MindmapBand() {
         sub: `${summary.practiceHours} / ${summary.targetHours.toLocaleString()} h`,
         desc: "Hours counting toward your 2,300.",
         href: "/placement-hours",
-        dot: "#10b981",
+        dot: "var(--color-primary-500)",
         cy: 190,
       },
       {
@@ -71,7 +71,7 @@ export function MindmapBand() {
         sub: `${reflections.length} written`,
         desc: "Turning shifts into learning.",
         href: "/reflection",
-        dot: "#fb7185",
+        dot: "var(--color-accent-400)",
         cy: 258,
       },
     ];
@@ -202,8 +202,7 @@ export function MindmapBand() {
               width={120}
               height={52}
               rx={26}
-              fill="#059669"
-              className="transition-colors group-hover:fill-primary-700"
+              className="fill-primary-600 transition-colors group-hover:fill-primary-700"
             />
             <text
               x={HUB.cx}
@@ -234,8 +233,7 @@ export function MindmapBand() {
               width={136}
               height={56}
               rx={16}
-              fill="#005eb8"
-              className="transition-colors group-hover:fill-secondary-700"
+              className="fill-secondary-600 transition-colors group-hover:fill-secondary-700"
             />
             <text
               x={REG.cx}

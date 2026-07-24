@@ -1,54 +1,21 @@
 @import "tailwindcss";
 
-/* PlaceMate marketing site — matches the app's clean palette + off-black text
-   (src/index.css). System font stack (no web fonts) = zero font requests = best Core
-   Web Vitals, and it mirrors the app, which ships no custom web font either. */
+/* Brand colour tokens come from the repo-root brand-palette.css — the SINGLE SOURCE OF
+   TRUTH shared with the app (src/index.css). Edit colours there and both update together.
+   Human guide: /colour-palette.html. */
+@import "../../../brand-palette.css";
+
+/* Site-only: system font stack (no web fonts) = zero font requests = best Core Web
+   Vitals; mirrors the app, which also ships no custom web font. */
 @theme {
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
-
-  /* Brand tokens — mirror the app's src/index.css @theme (single source of truth is
-     documented in /colour-palette.html). primary = Emerald, secondary = NHS Blue,
-     accent = Coral, ink = off-black default text. */
-  --color-primary-50: #ecfdf5;
-  --color-primary-100: #d1fae5;
-  --color-primary-200: #a7f3d0;
-  --color-primary-300: #6ee7b7;
-  --color-primary-400: #34d399;
-  --color-primary-500: #10b981;
-  --color-primary-600: #059669;
-  --color-primary-700: #047857;
-  --color-primary-800: #065f46;
-  --color-primary-900: #064e3b;
-
-  --color-secondary-50: #e8f1fb;
-  --color-secondary-100: #cfe4f7;
-  --color-secondary-200: #a3caee;
-  --color-secondary-300: #6badde;
-  --color-secondary-400: #2f8fd6;
-  --color-secondary-500: #0072ce;
-  --color-secondary-600: #005eb8;
-  --color-secondary-700: #004b95;
-  --color-secondary-800: #003087;
-  --color-secondary-900: #00265f;
-
-  --color-accent-50: #fff1ee;
-  --color-accent-100: #ffe4e6;
-  --color-accent-200: #fecdd3;
-  --color-accent-300: #fda4af;
-  --color-accent-400: #fb7185;
-  --color-accent-500: #f43f5e;
-  --color-accent-600: #e11d48;
-  --color-accent-700: #be123c;
-
-  --color-ink: #16212f;
 }
 
 @layer base {
   :root {
-    /* Keyboard focus indicator colour. 7.68:1 on white — visible for everyone, not just
-       high-contrast mode. Overridden in the high-contrast theme below. */
+    /* Keyboard focus indicator colour — 7.68:1 on white, visible for everyone. */
     --pm-focus: #065f46;
   }
   html {
@@ -100,62 +67,4 @@
       scroll-behavior: auto !important;
     }
   }
-}
-
-/* ============================================================================
-   High-contrast theme (opt-in) — WCAG 1.4.6 Contrast (Enhanced), the AAA 7:1 bar.
-   Toggled from the header; the choice is persisted in localStorage and the theme
-   auto-enables when the OS reports `prefers-contrast: more` (see the inline script in
-   Layout.astro). Only the colour USAGES that fall short are remapped — text and
-   controls go darker while page backgrounds stay light — so layout and brand shape
-   are unchanged. Every value below was checked with the WCAG contrast formula:
-   text/icons ≥7:1, control borders/graphics ≥3:1. Emerald is remapped via its theme
-   variables so text, solid buttons, the CTA gradient and borders all shift together;
-   slate is remapped surgically (text/border classes only) so `bg-slate-*` surfaces
-   stay light. These rules are deliberately left UNLAYERED so they win over Tailwind's
-   utility layer regardless of source order.
-   ============================================================================ */
-html[data-contrast="more"] {
-  /* Brand green → darker across every usage (text, bg, gradient stops, borders). */
-  --color-emerald-500: #047857; /* graphics/progress fill — ≥3:1 vs light track */
-  --color-emerald-600: #065f46; /* white-on-this = 7.68:1; on white = 7.68:1 */
-  --color-emerald-700: #064e3b; /* 9.72:1 — hover + active */
-  /* Muted text → dark slate (text-only tokens; no bg/border uses these). */
-  --color-slate-400: #334155; /* 10.35:1 */
-  --color-slate-500: #334155; /* 10.35:1 */
-  --color-slate-300: #64748b; /* form-control borders → 4.76:1 (1.4.11) */
-  /* Status text used on white. */
-  --color-sky-600: #0c4a6e; /* 9.46:1 */
-  --color-rose-600: #9f1239; /* 8.02:1 */
-  /* Stronger focus ring to match. */
-  --pm-focus: #064e3b;
-}
-
-/* Polysemous slate tokens: darken only the BORDER usage (keep bg-slate-* light). */
-html[data-contrast="more"] .border-slate-200,
-html[data-contrast="more"] .border-slate-100 {
-  border-color: #94a3b8;
-}
-/* Decorative accent borders that carry meaning (selected plan, card hover, warnings). */
-html[data-contrast="more"] .border-emerald-300 {
-  border-color: #065f46;
-}
-html[data-contrast="more"] .border-amber-200 {
-  border-color: #d97706;
-}
-/* Solidify the translucent sticky header so nav text over it stays ≥7:1. */
-html[data-contrast="more"] .bg-white\/85,
-html[data-contrast="more"] .bg-white\/70 {
-  background-color: #ffffff;
-}
-/* Rendered Markdown guide body uses hard-coded colours in a component-scoped style. */
-html[data-contrast="more"] .guide-body a {
-  color: #065f46;
-}
-html[data-contrast="more"] .guide-body th,
-html[data-contrast="more"] .guide-body td {
-  border-color: #94a3b8;
-}
-html[data-contrast="more"] .guide-body blockquote {
-  border-left-color: #065f46;
 }
