@@ -17,7 +17,11 @@ of work.
    data, dismiss + replay synced to the profile.
 4. **[Home AI recall explainer](2026-07-20-ai-recall-explainer.md)** — animated
    "coming soon" scripted demo of the upcoming AI recall feature, illustrative source
-   chips, lightweight synced "notify me".
+   chips, lightweight synced "notify me". **Now being delivered by
+   [2026-07-24-ai-recall-v1.md](2026-07-24-ai-recall-v1.md)** (round-1 decisions) —
+   full build spec at [`spec/spec-ai-recall.md`](../spec/spec-ai-recall.md): Bedrock
+   Sonnet 5 (credits-only), context-stuffed corpus + prompt caching, streaming
+   Function URL, persistent multi-thread chat, teaser-becomes-real + global ask bar.
 
 5. **[NHS/hospital WiFi access](2026-07-20-nhs-wifi-access.md)** — placemate.uk shows
    "network connection was lost" on UCLH WiFi. Investigate site + app (remote-only) and
