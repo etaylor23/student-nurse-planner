@@ -234,6 +234,18 @@ the notify-me list honoured.
 
 ## Appendix — filled in during Phase 0
 
-- Sonnet 5 serving path in eu-west-2: _(model ID / inference-profile ARN — TBD)_
-- Budgets alert recipient: _(TBD)_
-- Cost baseline from Phase 0 §5: _(TBD)_
+- **Sonnet 5 serving path in eu-west-2 (verified 2026-07-24):** the base model
+  `anthropic.claude-sonnet-5` is listed directly in eu-west-2 (ACTIVE, streaming
+  supported). Invoke via the **EU cross-region inference profile
+  `eu.anthropic.claude-sonnet-5`** (ACTIVE) — in-EU routing with capacity resilience.
+  A `global.anthropic.claude-sonnet-5` profile also exists — **do not use** (leaves EU).
+  IAM note: `InvokeModelWithResponseStream` needs the inference-profile ARN **and** the
+  underlying foundation-model ARNs in the resource list.
+- **Kill switch:** SSM `String` param `/nurse-planner/ai/enabled` = `"true"` created
+  (eu-west-2). Flip to `"false"` to disable the ask endpoint without redeploy.
+- **Model access:** NOT yet granted as of 2026-07-24 (`Error 002` on converse) —
+  blocked on the [YOU] console step (Bedrock → Model access → enable Anthropic;
+  involves accepting the EULA/use-case form). Smoke test (Phase 0 §3) and token
+  baseline (§5) pending that grant.
+- Budgets alert recipient: _(TBD — confirm address)_
+- Cost baseline from Phase 0 §5: _(TBD — after model access)_
