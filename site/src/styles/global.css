@@ -101,3 +101,61 @@
     }
   }
 }
+
+/* ============================================================================
+   High-contrast theme (opt-in) — WCAG 1.4.6 Contrast (Enhanced), the AAA 7:1 bar.
+   Toggled from the header; the choice is persisted in localStorage and the theme
+   auto-enables when the OS reports `prefers-contrast: more` (see the inline script in
+   Layout.astro). Only the colour USAGES that fall short are remapped — text and
+   controls go darker while page backgrounds stay light — so layout and brand shape
+   are unchanged. Every value below was checked with the WCAG contrast formula:
+   text/icons ≥7:1, control borders/graphics ≥3:1. Emerald is remapped via its theme
+   variables so text, solid buttons, the CTA gradient and borders all shift together;
+   slate is remapped surgically (text/border classes only) so `bg-slate-*` surfaces
+   stay light. These rules are deliberately left UNLAYERED so they win over Tailwind's
+   utility layer regardless of source order.
+   ============================================================================ */
+html[data-contrast="more"] {
+  /* Brand green → darker across every usage (text, bg, gradient stops, borders). */
+  --color-emerald-500: #047857; /* graphics/progress fill — ≥3:1 vs light track */
+  --color-emerald-600: #065f46; /* white-on-this = 7.68:1; on white = 7.68:1 */
+  --color-emerald-700: #064e3b; /* 9.72:1 — hover + active */
+  /* Muted text → dark slate (text-only tokens; no bg/border uses these). */
+  --color-slate-400: #334155; /* 10.35:1 */
+  --color-slate-500: #334155; /* 10.35:1 */
+  --color-slate-300: #64748b; /* form-control borders → 4.76:1 (1.4.11) */
+  /* Status text used on white. */
+  --color-sky-600: #0c4a6e; /* 9.46:1 */
+  --color-rose-600: #9f1239; /* 8.02:1 */
+  /* Stronger focus ring to match. */
+  --pm-focus: #064e3b;
+}
+
+/* Polysemous slate tokens: darken only the BORDER usage (keep bg-slate-* light). */
+html[data-contrast="more"] .border-slate-200,
+html[data-contrast="more"] .border-slate-100 {
+  border-color: #94a3b8;
+}
+/* Decorative accent borders that carry meaning (selected plan, card hover, warnings). */
+html[data-contrast="more"] .border-emerald-300 {
+  border-color: #065f46;
+}
+html[data-contrast="more"] .border-amber-200 {
+  border-color: #d97706;
+}
+/* Solidify the translucent sticky header so nav text over it stays ≥7:1. */
+html[data-contrast="more"] .bg-white\/85,
+html[data-contrast="more"] .bg-white\/70 {
+  background-color: #ffffff;
+}
+/* Rendered Markdown guide body uses hard-coded colours in a component-scoped style. */
+html[data-contrast="more"] .guide-body a {
+  color: #065f46;
+}
+html[data-contrast="more"] .guide-body th,
+html[data-contrast="more"] .guide-body td {
+  border-color: #94a3b8;
+}
+html[data-contrast="more"] .guide-body blockquote {
+  border-left-color: #065f46;
+}

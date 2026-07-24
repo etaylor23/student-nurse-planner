@@ -37,6 +37,21 @@ const isProd = import.meta.env.PROD;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- High-contrast theme: apply before first paint (no flash). A saved manual choice
+         wins; otherwise follow the OS `prefers-contrast: more` signal. -->
+    <script is:inline>
+      (function () {
+        try {
+          var choice = localStorage.getItem("pm-contrast");
+          var on =
+            choice === "more" ||
+            (choice === null && window.matchMedia("(prefers-contrast: more)").matches);
+          if (on) document.documentElement.setAttribute("data-contrast", "more");
+        } catch (e) {}
+      })();
+    </script>
+
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
@@ -86,5 +101,34 @@ const isProd = import.meta.env.PROD;
     <Header />
     <main id="main"><slot /></main>
     <Footer />
+
+    <!-- High-contrast toggle wiring: flip html[data-contrast], persist the choice, and
+         keep every toggle button's aria-pressed state in sync. -->
+    <script is:inline>
+      (function () {
+        var root = document.documentElement;
+        var btns = document.querySelectorAll(".js-contrast-toggle");
+        function isOn() {
+          return root.getAttribute("data-contrast") === "more";
+        }
+        function sync() {
+          btns.forEach(function (b) {
+            b.setAttribute("aria-pressed", isOn() ? "true" : "false");
+          });
+        }
+        sync();
+        btns.forEach(function (b) {
+          b.addEventListener("click", function () {
+            var next = !isOn();
+            if (next) root.setAttribute("data-contrast", "more");
+            else root.removeAttribute("data-contrast");
+            try {
+              localStorage.setItem("pm-contrast", next ? "more" : "off");
+            } catch (e) {}
+            sync();
+          });
+        });
+      })();
+    </script>
   </body>
 </html>
