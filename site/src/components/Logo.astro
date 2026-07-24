@@ -7,6 +7,10 @@ interface Props {
   markOnly?: boolean;
 }
 const { class: className = "", markOnly = false } = Astro.props;
+
+// Unique gradient id per instance — the Logo renders more than once per page (header +
+// footer), and a shared SVG id would be a duplicate-id violation (WCAG 4.1.1).
+const gradId = `pmGrad-${crypto.randomUUID().slice(0, 8)}`;
 ---
 
 <span class={`inline-flex items-center gap-2.5 ${className}`}>
@@ -19,14 +23,14 @@ const { class: className = "", markOnly = false } = Astro.props;
     class="shrink-0"
   >
     <defs>
-      <linearGradient id="pmGrad" x1="0" y1="0" x2="1" y2="1">
+      <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#10b981"></stop>
         <stop offset="1" stop-color="#005eb8"></stop>
       </linearGradient>
     </defs>
     <path
       d="M32 7 C 21 7 12 16 12 27 C 12 38 25 52 31 57.5 C 31.6 58.1 32.4 58.1 33 57.5 C 39 52 52 38 52 27 C 52 16 43 7 32 7 Z"
-      fill="url(#pmGrad)"></path>
+      fill={`url(#${gradId})`}></path>
     <path
       d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
       fill="#fff"

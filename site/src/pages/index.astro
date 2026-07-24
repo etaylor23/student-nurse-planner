@@ -35,9 +35,9 @@ const jsonLd = [organization(), website(), webApplication(), faqPage(homeFaqs)];
     </div>
     <div class="mx-auto grid max-w-6xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:py-24">
       <div class="max-w-xl">
-        <p class="text-sm font-semibold uppercase tracking-wider text-emerald-600">
+        <span class="block text-sm font-semibold uppercase tracking-wider text-emerald-600">
           For UK student nurses
-        </p>
+        </span>
         <h1 class="mt-3 text-4xl font-bold tracking-tight text-ink sm:text-5xl">
           The student nurse planner built around the NMC standards
         </h1>
@@ -87,7 +87,7 @@ const jsonLd = [organization(), website(), webApplication(), faqPage(homeFaqs)];
                   <span
                     class:list={[
                       "text-[11px] font-semibold",
-                      row.s === "Achieved" ? "text-emerald-600" : "text-sky-600",
+                      row.s === "Achieved" ? "text-emerald-600" : "text-sky-700",
                     ]}
                   >
                     {row.s}
