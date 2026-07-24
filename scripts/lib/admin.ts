@@ -170,6 +170,10 @@ export async function sendMagicLink(
         signInMethod: "MAGIC_LINK",
         redirectUri: APP_ORIGIN,
         alreadyHaveMagicLink: "no",
+        // Marks this as a first-touch beta invite so create-auth-challenge renders the warm
+        // welcome/invite copy. Only this admin path sets it; the app's own sign-in requests
+        // don't, so routine sign-ins get the plain "Your sign-in link" email.
+        invite: "true",
       },
     }),
   );
