@@ -54,6 +54,10 @@ export class Auth extends Construct {
       magicLink: {
         sesFromAddress: config.sesFromAddress,
         sesRegion: config.region,
+        // Beta invites are cold — an admin-sent link can sit unopened in an inbox for days —
+        // so widen the click window from the library's 15-minute default to 7 days. The link
+        // is still SINGLE-USE, and the single-use tracking record's TTL scales with this value.
+        secondsUntilExpiry: Duration.days(7),
       },
       // Brand the magic-link email: a custom create-auth-challenge entry that overrides the
       // library's bare-default email content + From display name (see the entry file). The

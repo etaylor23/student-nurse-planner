@@ -11,7 +11,21 @@
  */
 import { createAuthChallengeHandler, magicLink } from "amazon-cognito-passwordless-auth/custom-auth";
 
-const EXPIRY_MIN = Math.max(1, Math.floor(Number(process.env.SECONDS_UNTIL_EXPIRY || 900) / 60));
+const EXPIRY_SECONDS = Math.max(60, Number(process.env.SECONDS_UNTIL_EXPIRY || 900));
+
+/** Human-friendly expiry for the email copy (e.g. "7 days", "2 hours", "15 minutes"). The link
+ *  window is configurable (magicLink.secondsUntilExpiry in constructs/auth.ts), so we render the
+ *  right unit rather than hard-coding "minutes" (which reads as "10080 minutes" at 7 days). */
+function expiryLabel(seconds: number): string {
+  const DAY = 86400,
+    HOUR = 3600,
+    MIN = 60;
+  const unit = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  if (seconds >= DAY) return unit(Math.round(seconds / DAY), "day");
+  if (seconds >= HOUR) return unit(Math.round(seconds / HOUR), "hour");
+  return unit(Math.max(1, Math.round(seconds / MIN)), "minute");
+}
+const EXPIRY_LABEL = expiryLabel(EXPIRY_SECONDS);
 
 // Keep the verified address from config.ts (SES_FROM_ADDRESS) as the envelope sender; add a
 // display name so inboxes show "PlaceMate", not a bare address. Domain (DKIM/DMARC) unchanged.
@@ -33,7 +47,7 @@ function html(secretLoginLink: string): string {
 </td></tr>
 <tr><td style="padding:8px 32px 4px;">
 <h1 style="margin:0;font-size:20px;font-weight:600;color:${ink};">Your sign-in link</h1>
-<p style="margin:12px 0 0;font-size:15px;line-height:1.5;color:${muted};">Tap the button below to sign in to PlaceMate. It works once and expires in ${EXPIRY_MIN} minutes, and must be opened on the device that requested it.</p>
+<p style="margin:12px 0 0;font-size:15px;line-height:1.5;color:${muted};">Tap the button below to sign in to PlaceMate. It works once and expires in ${EXPIRY_LABEL}, and must be opened on the device that requested it.</p>
 </td></tr>
 <tr><td style="padding:24px 32px;">
 <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="border-radius:12px;background:${brandColor};">
@@ -51,7 +65,7 @@ function text(secretLoginLink: string): string {
   return [
     "Your PlaceMate sign-in link",
     "",
-    "Open this link to sign in. It works once and expires in " + EXPIRY_MIN + " minutes,",
+    "Open this link to sign in. It works once and expires in " + EXPIRY_LABEL + ",",
     "and must be opened on the device that requested it:",
     "",
     secretLoginLink,
