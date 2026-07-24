@@ -51,6 +51,8 @@ PITR backups roll off within ~35 days.
 
 ## Notes
 
+- **Log every send in [`beta-recipients.md`](./beta-recipients.md)** — SES keeps no
+  per-recipient record, so that file is the only durable list of who's been contacted.
 - Shared logic lives in [`scripts/lib/admin.ts`](../../scripts/lib/admin.ts); the deletion
   core is tested in [`tests/eraseUser.test.ts`](../../tests/eraseUser.test.ts) (dynalite).
 - Override the target env with `--stack <name>` or `STACK_NAME=...` (default `NursePlanner-dev`).
