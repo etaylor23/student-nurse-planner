@@ -121,15 +121,19 @@ const jsonLd = [
     font-weight: 600;
     color: var(--color-ink, #0f172a);
   }
+  /* Cap the text measure at ~70 characters (WCAG 1.4.8 Visual Presentation asks for
+     ≤80). Headings/tables keep the full max-w-3xl width; only running text is narrowed. */
   .guide-body :global(p) {
     margin-top: 1rem;
     line-height: 1.75;
+    max-width: 70ch;
   }
   .guide-body :global(ul),
   .guide-body :global(ol) {
     margin-top: 1rem;
     padding-left: 1.5rem;
     line-height: 1.75;
+    max-width: 70ch;
   }
   .guide-body :global(ul) {
     list-style: disc;

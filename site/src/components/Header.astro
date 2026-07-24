@@ -10,19 +10,20 @@ const isActive = (href: string) => path === href;
 <header
   class="sticky top-0 z-40 border-b border-slate-200/70 bg-white/85 backdrop-blur supports-[backdrop-filter]:bg-white/70"
 >
-  <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-    <a href="/" class="flex items-center" aria-label="PlaceMate home">
+  <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2 sm:px-6">
+    <a href="/" class="inline-flex min-h-11 items-center" aria-label="PlaceMate home">
       <Logo />
     </a>
 
-    <nav aria-label="Primary" class="hidden items-center gap-6 md:flex">
+    <nav aria-label="Primary" class="hidden items-center gap-5 md:flex">
       {
         NAV.map((item) => (
           <a
             href={item.href}
             aria-current={isActive(item.href) ? "page" : undefined}
             class:list={[
-              "text-sm font-medium transition hover:text-emerald-700",
+              // min-h-11 + px-1 gives a ≥44px pointer target (WCAG 2.5.5 AAA).
+              "inline-flex min-h-11 items-center px-1 text-sm font-medium transition hover:text-emerald-700",
               isActive(item.href) ? "text-emerald-700" : "text-slate-600",
             ]}
           >
@@ -42,7 +43,7 @@ const isActive = (href: string) => path === href;
     <!-- Mobile menu: JS-free <details> disclosure. -->
     <details class="group relative md:hidden">
       <summary
-        class="flex cursor-pointer list-none items-center rounded-lg border border-slate-300 p-2 text-slate-700 [&::-webkit-details-marker]:hidden"
+        class="flex min-h-11 min-w-11 cursor-pointer list-none items-center justify-center rounded-lg border border-slate-300 text-slate-700 [&::-webkit-details-marker]:hidden"
         aria-label="Open menu"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -61,7 +62,7 @@ const isActive = (href: string) => path === href;
             NAV.map((item) => (
               <a
                 href={item.href}
-                class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                class="flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
               >
                 {item.label}
               </a>

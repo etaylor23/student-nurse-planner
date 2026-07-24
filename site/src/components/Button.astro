@@ -9,8 +9,10 @@ interface Props {
 }
 const { href, variant = "primary", class: className = "", external = false } = Astro.props;
 
+// min-h-11 = 44px pointer target (WCAG 2.5.5 Target Size AAA). Focus indicator comes
+// from the global :focus-visible outline (see global.css) for one consistent look.
 const base =
-  "inline-flex items-center justify-center rounded-lg px-5 py-2.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60";
+  "inline-flex min-h-11 items-center justify-center rounded-lg px-5 py-2.5 text-sm font-semibold transition";
 const styles = {
   primary: "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700",
   secondary: "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
