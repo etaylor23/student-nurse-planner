@@ -7,6 +7,7 @@ import { DataStore } from "./constructs/data";
 import { Auth } from "./constructs/auth";
 import { Authz } from "./constructs/authz";
 import { Api } from "./constructs/api";
+import { Ai } from "./constructs/ai";
 import { Web } from "./constructs/web";
 import { Email } from "./constructs/email";
 import { Alarms } from "./constructs/alarms";
@@ -42,6 +43,16 @@ export class NursePlannerStack extends Stack {
       userPoolClientId: auth.userPoolClientId,
     });
     const api = new Api(this, "Api", {
+      config,
+      table: data.table,
+      userPool: auth.userPool,
+      userPoolClient: auth.userPoolClient,
+      policyStore: authz.policyStore,
+    });
+
+    // AI recall streaming endpoint (spec-ai-recall.md) — a Function URL beside the HTTP
+    // API because API GW v2 can't stream; same Cognito+AVP auth, enforced in-Lambda.
+    new Ai(this, "Ai", {
       config,
       table: data.table,
       userPool: auth.userPool,

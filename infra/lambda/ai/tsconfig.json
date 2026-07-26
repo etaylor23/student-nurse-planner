@@ -1,0 +1,19 @@
+{
+  // Typecheck project for the AI lambda (spec-ai-recall-implementation.md Phase 1 §6):
+  // infra/tsconfig.json excludes lambda/**, so this package gets its own noEmit project,
+  // run by `npm run typecheck:lambda:ai` in infra (wired into the pipeline's infra job).
+  // tsc follows the ../../../src imports, so the bundled app code is checked too.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true
+  },
+  "include": ["./**/*.ts"]
+}

@@ -54,6 +54,16 @@ export interface EnvConfig {
    * alerts (and AWS confirmation mail arrives without depending on a forward).
    */
   alarmEmail?: string;
+  /**
+   * AI recall model routing (spec-ai-recall.md D6/D6a). `openai-compat` + an open-weight
+   * interim model while the account's Anthropic Bedrock agreement is blocked; flip to
+   * `anthropic` + `anthropic.claude-sonnet-5` (prompt caching turns on with it) once the
+   * AWS support case resolves — a config-only swap, then rerun the eval harness.
+   */
+  ai: {
+    provider: "openai-compat" | "anthropic";
+    modelId: string;
+  };
 }
 
 const ACCOUNT = "641364901830";
@@ -87,6 +97,9 @@ const BASE: Record<EnvName, EnvConfig> = {
     },
     // A direct iCloud mailbox — ops alerts don't then depend on the hello@ forward.
     alarmEmail: "ellis@placemate.uk",
+    // D6a interim: open-weight via mantle until the Anthropic agreement unblocks; the
+    // default model is provisional until the eval harness picks (Phase 5).
+    ai: { provider: "openai-compat", modelId: "deepseek.v3.2" },
   },
   prod: {
     name: "prod",
@@ -95,6 +108,7 @@ const BASE: Record<EnvName, EnvConfig> = {
     sesFromAddress: "no-reply@studentnurseplanner.invalid",
     allowedOrigins: [],
     retainData: true,
+    ai: { provider: "openai-compat", modelId: "deepseek.v3.2" },
   },
 };
 
