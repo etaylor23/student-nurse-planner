@@ -2,6 +2,10 @@ node_modules
 *.js
 !jest.config.js
 *.d.ts
+# ...but the AI lambda's hand-written ambient types are SOURCE, not tsc output: they
+# declare the `awslambda` response-streaming global. Without this negation the blanket
+# rule above silently drops it, and CI's fresh clone fails typecheck while local passes.
+!lambda/ai/runtime.d.ts
 dist
 cdk.out
 .cdk.staging
