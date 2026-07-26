@@ -243,9 +243,19 @@ the notify-me list honoured.
   underlying foundation-model ARNs in the resource list.
 - **Kill switch:** SSM `String` param `/nurse-planner/ai/enabled` = `"true"` created
   (eu-west-2). Flip to `"false"` to disable the ask endpoint without redeploy.
-- **Model access:** NOT yet granted as of 2026-07-24 (`Error 002` on converse) —
-  blocked on the [YOU] console step (Bedrock → Model access → enable Anthropic;
-  involves accepting the EULA/use-case form). Smoke test (Phase 0 §3) and token
-  baseline (§5) pending that grant.
-- Budgets alert recipient: _(TBD — confirm address)_
+- **Model access:** Anthropic use-case form submitted 2026-07-24. Still blocked as of
+  **2026-07-26** — `Error 002: Access to Bedrock models is not allowed for this
+  account` on **every region and every model** (verified eu-west-2 + us-east-1,
+  Sonnet 5 + Claude 3 Haiku), i.e. an **account-level Bedrock block**, not the model
+  grant. Fix is [YOU]-side: (a) Billing console → if a "Free plan" badge/upgrade
+  banner exists, **upgrade to the Paid plan** (free-plan accounts cannot invoke
+  Bedrock; upgrading costs nothing and keeps the credits), else (b) open an AWS
+  Support case (Account and billing) quoting Error 002 and asking for Bedrock
+  invocation to be enabled on 641364901830. Smoke test (Phase 0 §3) and token
+  baseline (§5) remain pending.
+- **Budgets:** `ai-bedrock-credit-burn` created — $400/mo, Service=Amazon Bedrock,
+  **`IncludeCredit: false`** (tracks gross usage = credit burn; the pre-existing
+  `nurse-planner-dev-monthly` $20 budget includes credits so nets ~$0 and won't
+  false-alarm). Absolute-value ACTUAL alerts at $50/$150/$400 → **ellis@placemate.uk**.
+  No enforcement actions on the account (verified — nothing will hard-stop the app).
 - Cost baseline from Phase 0 §5: _(TBD — after model access)_
