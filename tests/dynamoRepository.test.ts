@@ -932,3 +932,28 @@ describe("DynamoRepository — Phase 2 JWT scoping", () => {
     expect(await alice.listReflections("whatever")).toHaveLength(1);
   });
 });
+
+describe("DynamoRepository — storage discriminator vs domain fields", () => {
+  it("stores a LogItem as entityType 'logItems', not its own entityType field", async () => {
+    // Regression: `LogItem.entityType` (what the entry is ABOUT, e.g. "SHIFT"/"AI") used
+    // to clobber the storage discriminator because the domain spread came last. The
+    // corrupted row then reached the client via syncPull, where `db["AI"]` is undefined
+    // and sync died on `.put` of undefined. Live breakage on 2026-07-26.
+    const repo = repoFor();
+    await repo.createLogItem({
+      userId: "ignored-server-owns-this",
+      entityType: "AI",
+      entityId: "thread-1",
+      action: "AI_ASKED",
+      summary: "Asked your notes",
+    });
+
+    const rows = await repo.syncPull();
+    const logRows = rows.filter((r) => r.id !== undefined && r.entityType === "logItems");
+    expect(logRows).toHaveLength(1);
+    // Nothing may sync under an entityType the client has no Dexie store for.
+    expect(rows.some((r) => r.entityType === "AI")).toBe(false);
+    // The domain field itself must survive intact inside the item.
+    expect((logRows[0].item as { entityType?: string }).entityType).toBe("AI");
+  });
+});

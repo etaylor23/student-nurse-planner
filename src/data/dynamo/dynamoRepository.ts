@@ -194,8 +194,15 @@ export class DynamoRepository implements Repository {
       PK: this.pk(),
       SK: sk,
       owner: this.sub,
-      entityType,
       ...domain,
+      // The storage discriminator lives in its OWN attribute, written after the domain
+      // spread. `LogItem` has a domain field also called `entityType` (what the entry is
+      // *about*, e.g. "SHIFT"/"AI"); when both shared one attribute the domain value won
+      // and rows synced as entityType "AI", where the client's `db["AI"]` is undefined
+      // and sync died on `.put` of undefined (live breakage 2026-07-26). Legacy rows
+      // written before this change carry the discriminator in `entityType` — `toSyncRow`
+      // falls back to it, so no migration is needed for entities without the collision.
+      sType: entityType,
       updatedAt: (domain as { updatedAt?: string }).updatedAt ?? nowIso(),
       version,
       deleted: false,
@@ -1214,11 +1221,14 @@ export class DynamoRepository implements Repository {
   private static toSyncRow(raw: RawItem): SyncRow {
     const item = { ...raw };
     // Strip key + infra attributes; the domain fields (incl. `id`/`updatedAt`) remain.
-    for (const k of ["PK", "SK", "owner", "version", "ttl", "entityType", "deleted"]) {
-      delete (item as Record<string, unknown>)[k];
-    }
+    const infra = ["PK", "SK", "owner", "version", "ttl", "sType", "deleted"];
+    // On LEGACY rows (no `sType`) the discriminator still lives in `entityType`, so it is
+    // infra there and must be stripped. On current rows `entityType` is only ever a
+    // domain field (LogItem's) and must survive.
+    if (raw.sType === undefined) infra.push("entityType");
+    for (const k of infra) delete (item as Record<string, unknown>)[k];
     return {
-      entityType: String(raw.entityType),
+      entityType: String(raw.sType ?? raw.entityType),
       id: String(raw.id),
       updatedAt: String(raw.updatedAt),
       deleted: raw.deleted === true,
@@ -1265,7 +1275,7 @@ export class DynamoRepository implements Repository {
       PK: this.pk(),
       SK: sk,
       owner: this.sub,
-      entityType: row.entityType,
+      sType: row.entityType,
       updatedAt: row.updatedAt,
       version: (existing?.version ?? 0) + 1,
       deleted: row.deleted,

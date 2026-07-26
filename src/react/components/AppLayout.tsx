@@ -180,7 +180,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <Link to="/" className="flex items-center" aria-label="PlaceMate home">
           <Logo size={30} />
         </Link>
-        <div className="ml-auto flex items-center gap-2">
+        {/* The ask field takes the flexible middle of the header; status + feedback stay
+            pinned right. `justify-end` keeps the old look when the field isn't rendered
+            (guests / unconfigured build), since the field itself supplies the width. */}
+        <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-2">
           <AskNotesButton />
           <SyncIndicator />
           <FeedbackButton />

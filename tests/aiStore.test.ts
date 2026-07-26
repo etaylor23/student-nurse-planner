@@ -153,6 +153,35 @@ describe("AI chat is invisible to the sync engine (D16)", () => {
     expect(rows.some((r) => r.entityType.toLowerCase().includes("ai"))).toBe(false);
   });
 
+  it("purgeAll queries the whole partition without an empty begins_with", async () => {
+    // Regression: purgeAll passed prefix "" straight into `begins_with(SK, :sk)`.
+    // dynalite accepts an empty value; real DynamoDB rejects it with a
+    // ValidationException, so "Clear all data" blew up the first time it ran on AWS.
+    const ai = storeFor();
+    const sent: unknown[] = [];
+    const realSend = ddb.doc.send.bind(ddb.doc);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (ddb.doc as any).send = (cmd: any) => {
+      if (cmd?.input?.KeyConditionExpression) sent.push(cmd.input);
+      return realSend(cmd);
+    };
+    try {
+      await ai.purgeAll();
+    } finally {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (ddb.doc as any).send = realSend;
+    }
+    const queries = sent as Array<{
+      KeyConditionExpression: string;
+      ExpressionAttributeValues: Record<string, unknown>;
+    }>;
+    expect(queries.length).toBeGreaterThan(0);
+    for (const q of queries) {
+      expect(q.KeyConditionExpression).toBe("PK = :pk");
+      expect(q.ExpressionAttributeValues[":sk"]).toBeUndefined();
+    }
+  });
+
   it("'Clear all data' purges AI chat as well as notes", async () => {
     const sub = newSub();
     const ai = new AiStore({ doc: ddb.doc, tableName: ddb.tableName, sub });

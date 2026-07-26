@@ -68,6 +68,12 @@ export class AiStore {
     daily: (isoDate: string) => `DAILY#${isoDate}`,
   };
 
+  /**
+   * Query this user's AI partition. An empty `prefix` means the WHOLE partition and must
+   * omit `begins_with` entirely: real DynamoDB rejects an empty key-condition value with
+   * a ValidationException (dynalite happily accepts it, so the unit tests did not catch
+   * this — it surfaced the first time `resetDatabase` ran against AWS).
+   */
   private async query(prefix: string): Promise<Record<string, unknown>[]> {
     const items: Record<string, unknown>[] = [];
     let ExclusiveStartKey: Record<string, unknown> | undefined;
@@ -75,8 +81,10 @@ export class AiStore {
       const res = await this.doc.send(
         new QueryCommand({
           TableName: this.tableName,
-          KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
-          ExpressionAttributeValues: { ":pk": this.pk(), ":sk": prefix },
+          KeyConditionExpression: prefix ? "PK = :pk AND begins_with(SK, :sk)" : "PK = :pk",
+          ExpressionAttributeValues: prefix
+            ? { ":pk": this.pk(), ":sk": prefix }
+            : { ":pk": this.pk() },
           ExclusiveStartKey,
         }),
       );
