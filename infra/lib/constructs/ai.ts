@@ -62,6 +62,9 @@ export class Ai extends Construct {
         // sha256 bundle from infra/node_modules. zod matches the router's approach.
         externalModules: ["@aws-sdk/*"],
         nodeModules: ["zod"],
+        // The inlined CJS deps call require("buffer") etc.; ESM output has no require —
+        // shim it (standard esbuild ESM-on-Lambda fix).
+        banner: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);",
       },
       environment: {
         TABLE_NAME: table.tableName,
