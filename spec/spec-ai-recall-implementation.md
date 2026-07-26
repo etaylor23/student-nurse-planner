@@ -67,16 +67,22 @@ Files: `infra/lambda/ai/index.ts` (new), `infra/lambda/ai/{auth,corpus,prompt,st
 `infra/lib/constructs/ai.ts` (new construct wired into `nurse-planner-stack.ts`).
 
 1. **[AGENT]** CDK: Node Lambda (streaming response mode, 60s timeout, 512MB) + Function
-   URL (CORS: app.placemate.uk + localhost); IAM scoped to
-   `bedrock:InvokeModelWithResponseStream` on the recorded ARN(s) + table read.
+   URL (CORS: app.placemate.uk + localhost); IAM scoped to Bedrock invoke on the
+   recorded ARN(s) + table read. **D6a:** the model call goes through a small
+   **provider adapter** targeting `bedrock-mantle.eu-west-2.api.aws` with SigV4
+   (verified): `openai-compat` route (interim open-weight model, streaming chat
+   completions) and `anthropic` route (Sonnet 5 Messages API + cache_control, enabled
+   post-support-case). `AI_MODEL_ID` + `AI_PROVIDER` are Lambda env config.
 2. **[AGENT]** Auth: `aws-jwt-verify` against the existing user pool (same access token
    the SPA holds) → Cedar `Action::"aiAsk"` via the existing `authorize()` machinery
    (add the action to the policy store IaC) → audit-log entry (existing pattern).
 3. **[AGENT]** Corpus assembly: reuse `DynamoRepository` owner-partition reads; format
    entity blocks per spec §Prompt design; **exclude `SelfCareCheckin` at assembly level
    with a unit test asserting it** (D4). Chronological; >150k-token truncation guard.
-4. **[AGENT]** Prompt: frozen system prompt v1 (full contract per spec) with
-   `cache_control` breakpoints after system and corpus; question last.
+4. **[AGENT]** Prompt: frozen system prompt v1 (full contract per spec); question
+   last. `cache_control` breakpoints after system and corpus apply on the `anthropic`
+   provider only (no caching on the interim path — D6a); tighten the confidence-gate
+   wording while on the interim model.
 5. **[AGENT]** SSE protocol exactly per spec (`meta`/`delta`/`done`/`error`); map
    Bedrock throttles/errors to `THROTTLED`/`UPSTREAM`; kill switch check → `KILLED`.
 6. **[AGENT]** Typecheck: the new lambda joins a tsconfig that actually runs in CI —
@@ -195,6 +201,11 @@ Goal: quality proven repeatably; words approved (D18/D19).
 4. **[YOU]** **Copy sign-off** — the D19 gate. Also skim 5–10 transcripts.
 
 **[GATE 5]** Harness green + transcripts approved + copy signed off.
+**D6a decisions at this gate:** (a) the harness is also run across 2–3 interim-model
+candidates (DeepSeek v3.2 / Kimi K2.5 / GLM-4.7 / MiniMax M2.5) to pick the interim
+model; (b) **[YOU]** decide from the transcripts whether beta students launch on the
+interim model or Phase 6 waits for the Sonnet swap (support case + agreement + eval
+rerun).
 
 ---
 
@@ -269,8 +280,14 @@ the notify-me list honoured.
   `openai.gpt-oss-20b` → HTTP 200, billed) but lists **no Anthropic models** (38
   open-weight only) — Claude everywhere hinges on the marketplace agreement the
   account is blocked from creating. Inference/billing proven healthy → the support
-  case is narrowly about lifting the agreement-creation block. None of the mantle
-  open-weight models meets D6 (frontier/near-frontier), so no interim model swap.
+  case is narrowly about lifting the agreement-creation block.
+  **Interim plan adopted (D6a, 2026-07-26):** mantle accepts **plain IAM SigV4**
+  (service name `bedrock`, verified with gpt-oss-120b → 200), so the Lambda needs no
+  API keys. Build proceeds on an open-weight interim model via mantle's OpenAI-compat
+  route behind a provider adapter; Sonnet 5 via the Anthropic route once the
+  agreement unblocks. Gate 0 is considered PASSED for build purposes (streamed
+  inference proven on the account); the Sonnet-specific smoke test + token baseline
+  re-run at swap time.
 - **Budgets:** `ai-bedrock-credit-burn` created — $400/mo, Service=Amazon Bedrock,
   **`IncludeCredit: false`** (tracks gross usage = credit burn; the pre-existing
   `nurse-planner-dev-monthly` $20 budget includes credits so nets ~$0 and won't
