@@ -195,7 +195,10 @@ Files: `src/react/components/ai/` (new: `AskNotesPanel.tsx`, `AskThread.tsx`,
 7. **[AGENT]** Tests: parser unit suite; component tests for state machine; a
    Playwright-or-manual scripted pass on dev (per repo norm).
 
-*Status 2026-07-26: BUILT + pushed (CI deploying). Components:
+*Status 2026-07-26: BUILT + DEPLOYED LIVE to app.placemate.uk (manual `target=frontend`
+dispatch — see the CI note below). Ask URL confirmed present in the served bundle; guest
+path re-verified in production (Ask button hidden, sign-in copy, badge + demo intact, no
+console errors). Components:
 `sentinelParser.ts` (+13 tests), `aiClient.ts`, `useAskNotes.ts`, `NoteCard.tsx`,
 `AskNotesPanel.tsx`, `AskNotesButton.tsx`, teaser rewired, `VITE_AI_ASK_URL` wired through CI.
 Verified in-browser on the **guest** path: no Ask button, "Sign in to use the full
@@ -203,7 +206,13 @@ version" copy, coming-soon badge + scripted demo retained, no console errors. 31
 lint + typecheck clean. **Signed-in path needs a live session, so it is Ellis's Gate 3
 click-through** (below). One CI-only bug caught and fixed: `infra/.gitignore`'s blanket
 `*.d.ts` silently excluded the lambda's hand-written ambient types, so local typecheck
-passed while a fresh clone failed — negation added.*
+passed while a fresh clone failed — negation added.
+
+**CI note (bit us this phase):** the deploy jobs are path-filtered on the *triggering
+push*. The Phase 3 code push failed CI (the gitignore bug) so it never deployed, and the
+follow-up docs-only push passed CI but matched no deploy filter — leaving the code
+merged, green, and **not deployed**. `gh workflow run "CI + Deploy" -f target=frontend`
+bypasses the filters. Worth remembering: green CI on `master` does not imply deployed.*
 
 **[GATE 3]** **[YOU]** click through on dev: ask → note card pops mid-stream → link
 opens the reflection; history persists across refresh; guest view; cap/kill states
