@@ -8,6 +8,7 @@ import { makeDocClient } from "../../../src/data/dynamo/dynamoClient";
 import { DynamoRepository } from "../../../src/data/dynamo/dynamoRepository";
 import { makeAuthorize, type Tier, type Verb } from "../../../src/data/dynamo/authorize";
 import { RelationshipStore } from "../../../src/data/dynamo/relationships";
+import { AiStore } from "../../../src/data/dynamo/aiStore";
 import {
   type Caller,
   CrossUserAccess,
@@ -203,6 +204,52 @@ function json(statusCode: number, body: unknown): APIGatewayProxyResultV2 {
  *  - Cross-user READS (getSharedRecord / listMenteeRecords) run the load-then-authorize gate
  *    (§4.4) + audit inside CrossUserAccess.
  */
+/**
+ * AI recall chat reads (spec-ai-recall.md D15/D16). Not `Repository` methods — the AI
+ * store is server-side only — so they dispatch separately, through the same owner-scoped
+ * AVP gate. Chat contains the student's questions about their own notes, so the tier is
+ * SensitiveRecord (never mentor- or share-readable, unlike EvidenceRecord).
+ */
+const AI_METHODS = new Set(["ai/listThreads", "ai/getThread", "ai/deleteThread", "ai/feedback"]);
+
+async function dispatchAi(method: string, args: unknown[], caller: Caller): Promise<unknown> {
+  const s = (v: unknown): string => (typeof v === "string" ? v : "");
+  const verb: Verb = method === "ai/deleteThread" ? "Delete" : method === "ai/feedback" ? "Update" : "List";
+  const ok = await authorize({
+    identityToken: caller.identityToken,
+    action: verb,
+    tier: "SensitiveRecord",
+    resourceId: s(args[0]) || "scope:ai",
+    ownerId: `${USER_POOL_ID}|${caller.sub}`,
+  });
+  if (!ok) throw new CrossUserError("forbidden");
+
+  const ai = new AiStore({ doc, tableName: TABLE, sub: caller.sub });
+  switch (method) {
+    case "ai/listThreads":
+      return ai.listThreads();
+    case "ai/getThread": {
+      const threadId = s(args[0]);
+      const thread = await ai.getThread(threadId);
+      if (!thread) throw new CrossUserError("not_found");
+      return { thread, messages: await ai.listMessages(threadId) };
+    }
+    case "ai/deleteThread":
+      await ai.deleteThread(s(args[0]));
+      return { ok: true };
+    case "ai/feedback": {
+      const feedback = s(args[2]);
+      if (feedback !== "UP" && feedback !== "DOWN") throw new CrossUserError("bad_request");
+      const comment = typeof args[3] === "string" ? args[3].slice(0, 500) : undefined;
+      const found = await ai.setFeedback(s(args[0]), s(args[1]), feedback, comment);
+      if (!found) throw new CrossUserError("not_found");
+      return { ok: true };
+    }
+    default:
+      throw new CrossUserError("bad_request");
+  }
+}
+
 const CROSS_USER = new Set([
   "shareRecord",
   "revokeShare",
@@ -301,6 +348,19 @@ export const handler = async (
 
     // Phase 4: cross-user + relationship methods route through their own path (they are not
     // plain Repository methods). Each does its own owner-scoped authorize / load-then-authorize.
+    if (AI_METHODS.has(method)) {
+      try {
+        const result = await dispatchAi(method, args, { sub, identityToken });
+        return json(200, { result });
+      } catch (err) {
+        if (err instanceof CrossUserError) {
+          const code = err.code === "forbidden" ? 403 : err.code === "not_found" ? 404 : 400;
+          return json(code, { error: err.code, method });
+        }
+        return json(500, { error: "internal", detail: err instanceof Error ? err.message : String(err) });
+      }
+    }
+
     if (CROSS_USER.has(method)) {
       try {
         const result = await dispatchCrossUser(method, args, { sub, identityToken });

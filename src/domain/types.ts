@@ -62,6 +62,8 @@ export interface User extends Entity, Created, Updated {
   onboardingTourDismissedAt?: string;
   /** When the user registered interest in the (coming-soon) AI note-recall feature (ISO). */
   aiRecallInterestAt?: string;
+  /** First time the user asked their notes (ISO). Absent = show the one-off beta notice. */
+  aiFirstUsedAt?: string;
 }
 
 export interface Placement extends Entity, UserOwned, Created {
@@ -510,4 +512,42 @@ export interface BreakRule extends Entity {
   maxShiftMins: number;
   breakMins: number;
   orderIndex: number;
+}
+
+// ---------- AI recall ("ask your notes") — SERVER-SIDE ONLY ----------
+
+/**
+ * A persistent ask-your-notes conversation (spec-ai-recall.md D15/D16).
+ *
+ * These rows are **server-side only**: they live in a dedicated `AI#<sub>` DynamoDB
+ * partition, are read through the `ai/*` RPC routes, and are deliberately absent from
+ * the Dexie/sync registry — the feature is online-only, streamed answers would churn
+ * the sync outbox per token, and the client keeps just a session read-cache. They are
+ * declared here (not in the lambda) so the zod codegen validates them on read like
+ * every other entity.
+ */
+export interface AiThread extends Entity, UserOwned, Created, Updated {
+  title: string; // first question, truncated (never regenerated)
+  messageCount: number;
+  lastMessageAt: string; // ISO — sorts the history list
+}
+
+export type AiMessageRole = "user" | "assistant";
+export type AiFeedback = "UP" | "DOWN";
+
+/** One turn in a thread. Assistant content keeps its sentinel tags verbatim (D17). */
+export interface AiMessage extends Entity, UserOwned, Created {
+  threadId: string; // FK → AiThread (owns it)
+  role: AiMessageRole;
+  content: string;
+  /** Comma-separated `TYPE:id` refs parsed out of the answer's `<note/>` tags. */
+  noteRefs?: string;
+  feedback?: AiFeedback;
+  feedbackComment?: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheReadTokens?: number;
+  latencyMs?: number;
+  /** `end_turn` | `aborted` | `error` — partial answers are kept, flagged here. */
+  stopReason?: string;
 }

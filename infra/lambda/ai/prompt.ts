@@ -38,3 +38,45 @@ export interface ChatTurn {
 export function buildUserContext(corpusText: string, question: string): string {
   return `Your notes (labelled blocks, oldest first):\n\n${corpusText || "(no notes logged yet)"}\n\n---\n\nQuestion: ${question}`;
 }
+
+/** ~4 chars per token — good enough for budgeting; exactness buys nothing here. */
+const CHARS_PER_TOKEN = 4;
+/** Spec §Prompt design: history is capped so a long thread can't crowd out the corpus. */
+export const HISTORY_TOKEN_BUDGET = 8_000;
+
+/**
+ * Assemble the turn list for one ask.
+ *
+ * The corpus is its own opening turn (followed by a synthetic acknowledgement so
+ * user/assistant alternation holds) rather than being glued to the newest question.
+ * That keeps a byte-identical prefix across every turn of a thread, which is what the
+ * `anthropic` route's `cache_control` breakpoint needs to actually hit; the volatile
+ * question stays last. History is trimmed oldest-first to the token budget, always
+ * dropping whole user+assistant pairs so the transcript never starts mid-exchange.
+ */
+export function buildTurns(corpusText: string, history: ChatTurn[], question: string): ChatTurn[] {
+  const budget = HISTORY_TOKEN_BUDGET * CHARS_PER_TOKEN;
+  let kept = history;
+  let size = kept.reduce((n, t) => n + t.content.length, 0);
+  while (size > budget && kept.length > 0) {
+    const drop = kept.length >= 2 && kept[0].role === "user" && kept[1].role === "assistant" ? 2 : 1;
+    size -= kept.slice(0, drop).reduce((n, t) => n + t.content.length, 0);
+    kept = kept.slice(drop);
+  }
+  return [
+    {
+      role: "user",
+      content: `Your notes (labelled blocks, oldest first):\n\n${corpusText || "(no notes logged yet)"}`,
+    },
+    { role: "assistant", content: "I've read your notes. What would you like to recall?" },
+    ...kept,
+    { role: "user", content: question },
+  ];
+}
+
+/** `TYPE:id` refs the answer pointed at — stored on the message for later analysis. */
+export function extractNoteRefs(answer: string): string[] {
+  const refs = new Set<string>();
+  for (const m of answer.matchAll(/<note\s+ref="([A-Z_]+:[^"]+)"\s*\/?>/g)) refs.add(m[1]);
+  return [...refs];
+}

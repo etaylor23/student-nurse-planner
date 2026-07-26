@@ -70,7 +70,9 @@ export const defaultAudit: AuditFn = (record) => {
 };
 
 export class CrossUserError extends Error {
-  constructor(public readonly code: "forbidden" | "unsupported_entity") {
+  constructor(
+    public readonly code: "forbidden" | "unsupported_entity" | "not_found" | "bad_request",
+  ) {
     super(code);
     this.name = "CrossUserError";
   }

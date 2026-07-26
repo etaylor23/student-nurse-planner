@@ -11,7 +11,13 @@ export function sseFrame(event: string, data: unknown): string {
 
 export function writeMeta(
   stream: ResponseStream,
-  meta: { threadId: string; messageId: string },
+  meta: {
+    threadId: string;
+    messageId: string;
+    /** Questions left today — the UI shows a countdown from ~5 (D11). */
+    remaining?: number;
+    resetsAt?: string;
+  },
 ): void {
   stream.write(sseFrame("meta", meta));
 }

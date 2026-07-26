@@ -5,6 +5,7 @@ import {
   QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
 import type { Repository } from "../repository";
+import { AiStore } from "./aiStore";
 import type { SyncRow } from "../sync/protocol";
 import { newId, nowIso } from "../../domain/ids";
 import {
@@ -278,6 +279,10 @@ export class DynamoRepository implements Repository {
   async resetDatabase(): Promise<void> {
     const all = await this.queryAll();
     for (const it of all) await this.delete(it.SK as string);
+    // AI recall chat lives in a sibling `AI#<sub>` partition (see aiStore.ts), which this
+    // partition scan can't reach — but "Clear all data" must mean ALL of it: those rows
+    // hold the student's questions about these very notes.
+    await new AiStore({ doc: this.doc, tableName: this.tableName, sub: this.sub }).purgeAll();
   }
 
   /** Whole-partition scan, looping `LastEvaluatedKey` (correct past 1 MB — spec §2.3). */

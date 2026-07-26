@@ -37,7 +37,8 @@ export const userSchema = entitySchema.extend(createdSchema.shape).extend(update
     startDate: z.string().optional(),
     targetRegistrationDate: z.string().optional(),
     onboardingTourDismissedAt: z.string().optional(),
-    aiRecallInterestAt: z.string().optional()
+    aiRecallInterestAt: z.string().optional(),
+    aiFirstUsedAt: z.string().optional()
 });
 
 export const placementSchema = entitySchema.extend(userOwnedSchema.shape).extend(createdSchema.shape).extend({
@@ -302,4 +303,28 @@ export const breakRuleSchema = entitySchema.extend({
     maxShiftMins: z.number(),
     breakMins: z.number(),
     orderIndex: z.number()
+});
+
+export const aiThreadSchema = entitySchema.extend(userOwnedSchema.shape).extend(createdSchema.shape).extend(updatedSchema.shape).extend({
+    title: z.string(),
+    messageCount: z.number(),
+    lastMessageAt: z.string()
+});
+
+export const aiMessageRoleSchema = z.union([z.literal("user"), z.literal("assistant")]);
+
+export const aiFeedbackSchema = z.union([z.literal("UP"), z.literal("DOWN")]);
+
+export const aiMessageSchema = entitySchema.extend(userOwnedSchema.shape).extend(createdSchema.shape).extend({
+    threadId: z.string(),
+    role: aiMessageRoleSchema,
+    content: z.string(),
+    noteRefs: z.string().optional(),
+    feedback: aiFeedbackSchema.optional(),
+    feedbackComment: z.string().optional(),
+    inputTokens: z.number().optional(),
+    outputTokens: z.number().optional(),
+    cacheReadTokens: z.number().optional(),
+    latencyMs: z.number().optional(),
+    stopReason: z.string().optional()
 });
