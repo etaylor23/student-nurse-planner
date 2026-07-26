@@ -253,6 +253,14 @@ the notify-me list honoured.
   Support case (Account and billing) quoting Error 002 and asking for Bedrock
   invocation to be enabled on 641364901830. Smoke test (Phase 0 §3) and token
   baseline (§5) remain pending.
+  **Update 2026-07-26:** free-plan theory ruled out (no banner; freetier
+  GetAccountPlanState has no record). Per-gate diagnosis via
+  GetFoundationModelAvailability: authorizationStatus=AUTHORIZED (use-case form
+  recorded), entitlement+region AVAILABLE, **agreementAvailability=NOT_AVAILABLE** —
+  and CreateFoundationModelAgreement (offer-2ykemehpsyf7g, user-approved) is itself
+  rejected with Error 002. Conclusion: AWS account-standing gate above the agreement
+  layer. Next: try the console playground once; else the support case (template in the
+  session notes / commit message).
 - **Budgets:** `ai-bedrock-credit-burn` created — $400/mo, Service=Amazon Bedrock,
   **`IncludeCredit: false`** (tracks gross usage = credit burn; the pre-existing
   `nurse-planner-dev-monthly` $20 budget includes credits so nets ~$0 and won't
