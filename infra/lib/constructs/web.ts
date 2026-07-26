@@ -39,6 +39,13 @@ export interface WebProps {
   certificate?: ICertificate;
   /** The delegated zone. Required when `config.customDomain` is set. */
   hostedZone?: IHostedZone;
+  /**
+   * Origin of the AI recall ask endpoint (the Lambda Function URL). It is a DIFFERENT
+   * origin to the SPA, so the strict CSP must allow it in `connect-src` or the browser
+   * blocks the fetch before it leaves — which surfaces as a generic network error, not
+   * as a CORS message. Omit to leave the CSP unchanged.
+   */
+  aiAskOrigin?: string;
 }
 
 /**
@@ -90,7 +97,9 @@ export class Web extends Construct {
       "font-src 'self'",
       "style-src 'self' 'unsafe-inline'",
       "script-src 'self'",
-      `connect-src 'self' https://cognito-idp.${config.region}.amazonaws.com`,
+      `connect-src 'self' https://cognito-idp.${config.region}.amazonaws.com${
+        props.aiAskOrigin ? ` ${props.aiAskOrigin}` : ""
+      }`,
       "form-action 'self'",
     ].join("; ");
 

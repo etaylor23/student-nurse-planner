@@ -52,7 +52,7 @@ export class NursePlannerStack extends Stack {
 
     // AI recall streaming endpoint (spec-ai-recall.md) — a Function URL beside the HTTP
     // API because API GW v2 can't stream; same Cognito+AVP auth, enforced in-Lambda.
-    new Ai(this, "Ai", {
+    const ai = new Ai(this, "Ai", {
       config,
       table: data.table,
       userPool: auth.userPool,
@@ -75,6 +75,8 @@ export class NursePlannerStack extends Stack {
       httpApi: api.httpApi,
       certificate: props.certificate,
       hostedZone,
+      // The ask endpoint is a separate origin; without this the CSP blocks it.
+      aiAskOrigin: ai.askOrigin,
     });
 
     if (config.customDomain && hostedZone) {

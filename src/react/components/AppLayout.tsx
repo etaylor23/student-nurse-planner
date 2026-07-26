@@ -180,11 +180,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <Link to="/" className="flex items-center" aria-label="PlaceMate home">
           <Logo size={30} />
         </Link>
-        {/* The ask field takes the flexible middle of the header; status + feedback stay
-            pinned right. `justify-end` keeps the old look when the field isn't rendered
-            (guests / unconfigured build), since the field itself supplies the width. */}
-        <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-2">
+        {/* Three-part header: logo left, ask field CENTRED, status + feedback right. The
+            field sits in the flexible middle rather than pinned right, so it reads as the
+            app's primary search affordance. When it isn't rendered (guests / unconfigured
+            build) the middle collapses and the right cluster sits where it always did. */}
+        <div className="flex min-w-0 flex-1 items-center justify-center px-2">
           <AskNotesButton />
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
           <SyncIndicator />
           <FeedbackButton />
         </div>

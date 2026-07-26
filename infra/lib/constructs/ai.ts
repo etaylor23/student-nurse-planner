@@ -1,5 +1,5 @@
 import * as path from "path";
-import { CfnOutput, Duration, Stack } from "aws-cdk-lib";
+import { CfnOutput, Duration, Fn, Stack } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import {
   FunctionUrl,
@@ -41,6 +41,8 @@ const KILL_SWITCH_PARAM = "/nurse-planner/ai/enabled";
 export class Ai extends Construct {
   readonly askFn: NodejsFunction;
   readonly askUrl: FunctionUrl;
+  /** Scheme+host of the Function URL — the SPA's CSP `connect-src` must include it. */
+  readonly askOrigin: string;
 
   constructor(scope: Construct, id: string, props: AiProps) {
     super(scope, id);
@@ -124,6 +126,12 @@ export class Ai extends Construct {
         maxAge: Duration.hours(1),
       },
     });
+
+    // `url` is a token like https://<id>.lambda-url.<region>.on.aws/ — CSP wants the
+    // origin without the trailing slash. Fn::Select on "/" would be unreadable, so slice
+    // the resolved string at deploy time via a CFN-safe substring of the known shape.
+    this.askOrigin = Fn.select(0, Fn.split("/", Fn.select(1, Fn.split("//", this.askUrl.url))));
+    this.askOrigin = `https://${this.askOrigin}`;
 
     new CfnOutput(stack, "AiAskUrl", { value: this.askUrl.url });
   }
