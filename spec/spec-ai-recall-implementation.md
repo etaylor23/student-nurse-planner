@@ -264,6 +264,13 @@ the notify-me list honoured.
   the only remaining path** (Account and billing, cite the per-gate diagnostics +
   playground screenshot; also verify Billing → Payment preferences has a valid card,
   a known trigger for this gate).
+  **Mantle probe (2026-07-26):** the new `bedrock-mantle.eu-west-2.api.aws` endpoint
+  authenticates and serves inference fine on this account (open-weight
+  `openai.gpt-oss-20b` → HTTP 200, billed) but lists **no Anthropic models** (38
+  open-weight only) — Claude everywhere hinges on the marketplace agreement the
+  account is blocked from creating. Inference/billing proven healthy → the support
+  case is narrowly about lifting the agreement-creation block. None of the mantle
+  open-weight models meets D6 (frontier/near-frontier), so no interim model swap.
 - **Budgets:** `ai-bedrock-credit-burn` created — $400/mo, Service=Amazon Bedrock,
   **`IncludeCredit: false`** (tracks gross usage = credit burn; the pre-existing
   `nurse-planner-dev-monthly` $20 budget includes credits so nets ~$0 and won't
