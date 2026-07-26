@@ -1,4 +1,5 @@
 import type { Repository } from "../../../src/data/repository";
+import { seedProficiencies } from "../../../src/data/seed/proficiencies";
 
 /**
  * Context-stuffed corpus assembly (spec-ai-recall.md D3/D4): every note-bearing entity
@@ -40,7 +41,6 @@ export async function assembleCorpus(repo: Repository, userId: string): Promise<
     medLogs,
     medications,
     profProgress,
-    proficiencies,
   ] = await Promise.all([
     repo.listShifts(userId),
     repo.listReflections(userId),
@@ -50,8 +50,10 @@ export async function assembleCorpus(repo: Repository, userId: string): Promise<
     repo.listMedicationLogs(userId),
     repo.listMedications(userId),
     repo.listProficiencyProgress(userId),
-    repo.listProficiencies(),
   ]);
+  // The proficiency master list is global seed data (DynamoRepository.listProficiencies
+  // is a Phase-2 stub) — imported statically, same rows every client seeds.
+  const proficiencies = seedProficiencies;
 
   const blocks: Block[] = [];
 

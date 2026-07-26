@@ -104,6 +104,15 @@ export class Ai extends Construct {
         ],
       }),
     );
+    // The mantle endpoint authorizes under its own namespace (observed live:
+    // "not authorized to perform: bedrock-mantle:CreateInference on
+    // arn:aws:bedrock-mantle:<region>:<acct>:project/default").
+    this.askFn.addToRolePolicy(
+      new PolicyStatement({
+        actions: ["bedrock-mantle:CreateInference"],
+        resources: [`arn:aws:bedrock-mantle:${stack.region}:${stack.account}:project/*`],
+      }),
+    );
 
     this.askUrl = this.askFn.addFunctionUrl({
       authType: FunctionUrlAuthType.NONE, // auth = in-Lambda JWT verify + AVP (D7)

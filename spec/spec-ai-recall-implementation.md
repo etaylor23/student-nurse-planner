@@ -94,7 +94,15 @@ Files: `infra/lambda/ai/index.ts` (new), `infra/lambda/ai/{auth,corpus,prompt,st
    identical-corpus call, (e) kill switch flips to `KILLED` without redeploy.
 
 **[GATE 1]** You watch one live `curl` session end-to-end and sign off the answer
-quality is plausible. **Deployment note:** the CI backend path-filter currently misses
+quality is plausible. *Status 2026-07-26: slice BUILT + DEPLOYED + verified live —
+streamed SSE answer in ~2s on `deepseek.v3.2` via mantle; valid `<note ref="SHIFT:…"/>`
+resolving to a real record (verbatim-by-ID contract held); no-note path gave the
+capture nudge; 401/405/CORS negatives pass; kill switch flips to `KILLED` and back
+without redeploy. Two live fixes folded in: ESM `createRequire` banner; mantle IAM is
+`bedrock-mantle:CreateInference` on `project/*` (not `bedrock:InvokeModel*`).
+`listProficiencies` comes from the static seed (Dynamo stub until Phase 2). Cache-read
+assertion deferred to the Sonnet swap (no caching on the interim route). Awaiting
+Ellis's quality sign-off.* **Deployment note:** the CI backend path-filter currently misses
 `src/**` for lambda bundles — the AI lambda imports `src/data/**`; **[AGENT]** update
 `.github/workflows` path filters in this phase so pushes deploy it correctly.
 
