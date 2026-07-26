@@ -195,6 +195,16 @@ Files: `src/react/components/ai/` (new: `AskNotesPanel.tsx`, `AskThread.tsx`,
 7. **[AGENT]** Tests: parser unit suite; component tests for state machine; a
    Playwright-or-manual scripted pass on dev (per repo norm).
 
+*Status 2026-07-26: BUILT + pushed (CI deploying). Components:
+`sentinelParser.ts` (+13 tests), `aiClient.ts`, `useAskNotes.ts`, `NoteCard.tsx`,
+`AskNotesPanel.tsx`, `AskNotesButton.tsx`, teaser rewired, `VITE_AI_ASK_URL` wired through CI.
+Verified in-browser on the **guest** path: no Ask button, "Sign in to use the full
+version" copy, coming-soon badge + scripted demo retained, no console errors. 319 tests,
+lint + typecheck clean. **Signed-in path needs a live session, so it is Ellis's Gate 3
+click-through** (below). One CI-only bug caught and fixed: `infra/.gitignore`'s blanket
+`*.d.ts` silently excluded the lambda's hand-written ambient types, so local typecheck
+passed while a fresh clone failed — negation added.*
+
 **[GATE 3]** **[YOU]** click through on dev: ask → note card pops mid-stream → link
 opens the reflection; history persists across refresh; guest view; cap/kill states
 (forced via SSM flip). Sign off look/feel against the teaser's promise.
