@@ -136,15 +136,24 @@ Files: `src/domain/types.ts` (+`gen:zod`), `infra/lambda/ai/*`,
 first-turn context; rows visible in the table; cap manually driven to exhaustion and
 reset verified; delete removes everything.
 
-*Status 2026-07-26: BUILT + DEPLOYED. Automated coverage green — 16 new tests against
+*Status 2026-07-26: **GATE 2 PASSED** — built, deployed and verified live end-to-end.
+Two-turn conversation on one thread: turn 1 opened thread `9845f401…` with
+`remaining: 29`; turn 2 answered "what was that feedback you just mentioned?" correctly
+(input tokens 744 → 866, i.e. history really was replayed) — a question unanswerable
+without persistence. `ai/getThread` returned all 4 turns in order with `noteRefs`,
+`stopReason` and token counts stored per message; `ai/listThreads` showed
+`messageCount: 4` and the auto-title; `ai/feedback` stored `UP` on the right message;
+error paths returned `not_found` (unknown + foreign thread id) and `bad_request` (bad
+feedback value). Daily cap verified live by setting the counter row to 30 → `CAP` error
+with the friendly copy, then restoring the true count. `ai/deleteThread` left only the
+`DAILY#` counter in the partition and `listThreads` returned empty. Automated coverage —
+16 new tests against
 in-process DynamoDB (306 total passing) covering thread round-trip, chronological
 message order, cross-user partition isolation, cap countdown/refusal/per-user scoping,
 counter TTL, feedback hit+miss, history trimming in whole exchanges, note-ref
 extraction, and two guardrail tests: `syncPull` never carries AI rows, and
 `resetDatabase` purges AI chat. Live negatives pass (401 no/bad token, 405 GET, 401 on
-`ai/*` RPC without a token). **Outstanding: the positive two-turn live run** — needs a
-fresh Cognito ID token from a signed-in session (the pool is magic-link only, no
-password flow to mint one non-interactively).*
+`ai/*` RPC without a token).*
 
 **Design note — storage partition.** D16 says "the user's partition"; the build uses a
 sibling `AI#<sub>` partition instead. `syncPull` scans `USER#<sub>` wholesale and ships
