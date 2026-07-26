@@ -134,6 +134,10 @@ jobs:
           VITE_COGNITO_USER_POOL_ID: ${{ vars.VITE_COGNITO_USER_POOL_ID }}
           VITE_COGNITO_CLIENT_ID: ${{ vars.VITE_COGNITO_CLIENT_ID }}
           VITE_API_BASE: /api
+          # AI recall ask endpoint — a Lambda Function URL (API Gateway can't stream), so
+          # it needs an absolute URL in the bundle. Set the repo Variable to the stack's
+          # `AiAskUrl` output; unset => the AI feature stays coming-soon for this build.
+          VITE_AI_ASK_URL: ${{ vars.VITE_AI_ASK_URL }}
           # Sentry source-map upload — runs only if SENTRY_AUTH_TOKEN is set (see
           # vite.config.ts). GITHUB_SHA is the release tag. Org/project are repo Variables.
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}

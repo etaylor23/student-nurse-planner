@@ -4,6 +4,7 @@ import { NAV_SECTIONS, type NavItem } from "../nav";
 import { FeedbackButton } from "./FeedbackButton";
 import { Logo } from "./Logo";
 import { SyncBanner, SyncIndicator } from "./SyncIndicator";
+import { AskNotesButton } from "./ai/AskNotesButton";
 
 /** Minimal line icons keyed by nav path. Inherit color + size from the parent. */
 const ICONS: Record<string, ReactNode> = {
@@ -180,6 +181,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <Logo size={30} />
         </Link>
         <div className="ml-auto flex items-center gap-2">
+          <AskNotesButton />
           <SyncIndicator />
           <FeedbackButton />
         </div>

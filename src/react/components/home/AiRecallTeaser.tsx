@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { useRepository } from "../../RepositoryContext";
 import { btnPrimary } from "../ui";
+import { AskNotesPanel } from "../ai/AskNotesPanel";
+import { aiAvailable } from "../ai/config";
 
 /**
- * Coming-soon teaser for AI note-recall: ask in plain English → your own logged note
- * surfaces verbatim → cross-checked against trusted sources. JUST the explainer — the
- * input is a non-functional mock (badged), with an auto-playing scripted demo that
- * rotates through three prompts. A lightweight "notify me" records interest on the
- * synced profile. Source chips are illustrative, not claimed integrations.
+ * The Home slot for AI note-recall (spec-ai-recall.md D8/D14). Two modes:
+ *
+ *  - **Signed in, feature deployed** → the REAL thing: `AskNotesPanel`, badged "New".
+ *    Same component as the global ask overlay, so behaviour can't drift.
+ *  - **Guest (or unconfigured build)** → the original scripted teaser, with copy that
+ *    points at signing in, plus the "notify me" interest capture. Guests have no token,
+ *    so they physically can't reach the endpoint — the teaser is the honest surface.
  *
  * Rendered INSIDE the Home hero banner (as PageHero children): no card of its own, a
  * hairline divider, and a 1/3 (pitch) · 2/3 (demo) split on desktop.
@@ -63,7 +67,7 @@ const PROMPTS: Prompt[] = [
 ];
 
 export function AiRecallTeaser() {
-  const { repo, user, reloadUser } = useRepository();
+  const { repo, user, reloadUser, isGuest } = useRepository();
   const reduceMotion =
     typeof window !== "undefined" &&
     !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -125,6 +129,34 @@ export function AiRecallTeaser() {
   const question = PROMPTS[promptIndex].question;
   const answer = PROMPTS[answerIndex];
 
+  // ---- Live mode: the teaser's promise, delivered. ----
+  if (!isGuest && aiAvailable()) {
+    return (
+      <section
+        className="mt-5 rounded-2xl border border-primary-200 bg-primary-50/40 p-4 lg:p-5"
+        aria-label="Ask your notes"
+      >
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center rounded-full bg-primary-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary-700 ring-1 ring-primary-200">
+            New
+          </span>
+          <span className="text-[11px] font-medium text-slate-400">Beta</span>
+        </div>
+        <h2 className="mt-2.5 text-base font-semibold tracking-tight text-ink">
+          Ask your own notes anything
+        </h2>
+        <p className="mb-4 mt-1 text-sm text-slate-500">
+          Half-remember something you logged? Ask in plain English and your{" "}
+          <strong className="font-medium text-slate-700">
+            original note surfaces, word for word
+          </strong>
+          .
+        </p>
+        <AskNotesPanel />
+      </section>
+    );
+  }
+
   return (
     <section
       className="mt-5 rounded-2xl border-2 border-dashed border-primary-300 bg-primary-50/40 p-4 lg:p-5"
@@ -146,7 +178,10 @@ export function AiRecallTeaser() {
           <p className="mt-1 text-sm text-slate-500">
             Half-remember something you logged? Ask in plain English and PlaceMate will surface your{" "}
             <strong className="font-medium text-slate-700">original note, word for word</strong> —
-            then cross-check it against trusted clinical sources.
+            then sanity-check it for you.
+          </p>
+          <p className="mt-2 text-sm font-medium text-primary-700">
+            Sign in to use the full version.
           </p>
 
           <div className="mt-4 flex flex-wrap items-center gap-3">

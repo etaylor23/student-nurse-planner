@@ -9,6 +9,12 @@ interface ImportMetaEnv {
   readonly VITE_COGNITO_CLIENT_ID: string;
   /** RPC API base; defaults to "/api" (same-origin). */
   readonly VITE_API_BASE?: string;
+  /**
+   * Absolute URL of the AI recall ask endpoint (a Lambda Function URL — API Gateway
+   * can't stream). Supplied by CI from the stack's `AiAskUrl` output. Absent/empty =>
+   * the AI feature stays in its coming-soon state for this build.
+   */
+  readonly VITE_AI_ASK_URL?: string;
 }
 
 interface ImportMeta {
