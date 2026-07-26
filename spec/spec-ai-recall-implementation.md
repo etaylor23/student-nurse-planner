@@ -259,8 +259,11 @@ the notify-me list honoured.
   recorded), entitlement+region AVAILABLE, **agreementAvailability=NOT_AVAILABLE** —
   and CreateFoundationModelAgreement (offer-2ykemehpsyf7g, user-approved) is itself
   rejected with Error 002. Conclusion: AWS account-standing gate above the agreement
-  layer. Next: try the console playground once; else the support case (template in the
-  session notes / commit message).
+  layer. Console playground also blocked
+  (same Error 002 on Sonnet 5 chat, verified by screenshot) — **AWS Support case is
+  the only remaining path** (Account and billing, cite the per-gate diagnostics +
+  playground screenshot; also verify Billing → Payment preferences has a valid card,
+  a known trigger for this gate).
 - **Budgets:** `ai-bedrock-credit-burn` created — $400/mo, Service=Amazon Bedrock,
   **`IncludeCredit: false`** (tracks gross usage = credit burn; the pre-existing
   `nurse-planner-dev-monthly` $20 budget includes credits so nets ~$0 and won't
