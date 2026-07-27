@@ -253,6 +253,17 @@ Goal: the failure modes are boring before real students touch it.
 
 **[GATE 4]** Alarms visible in CloudWatch and one test alarm fired to email; component
 tests green in CI.
+*Status 2026-07-26: mostly PASSED. Three alarms live —
+`AiAskErrors`, `AiAnswerErrors` (≥3 error frames/5min: in-stream failures return HTTP
+200, so Lambda Errors never sees them), `AiCacheReadsZero`. The SNS→email path is proven
+end-to-end: `AiCacheReadsZero` was forced to ALARM and the `ellis@placemate.uk`
+subscription is confirmed (a pending subscription silently drops alarms, so this is worth
+checking, not assuming). 12 component tests + 333 total green. Unauthenticated error
+paths re-verified live (401/401/405; a malformed body also returns 401 because auth runs
+first — correct, no parse detail leaks to unauthenticated callers). **Outstanding: EMF
+metrics have not yet been observed landing** — they only emit on an authenticated ask,
+and none has run since the deploy. First real question in the app will populate
+`PlaceMate/AI`; confirm with `aws cloudwatch list-metrics --namespace PlaceMate/AI`.*
 
 ---
 
