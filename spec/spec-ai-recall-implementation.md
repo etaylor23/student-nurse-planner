@@ -352,19 +352,48 @@ rerun).
 2. **[AGENT]** Live smoke test on app.placemate.uk with your own account: ask → note
    card → link; second question cache-hit; cap counter visible; kill switch flip +
    restore.
-3. **[YOU]** Approve the email send. **[AGENT]** Send the launch email to the
-   `aiRecallInterestAt` list via the existing tooling (dry-run first); record
-   recipients in `docs/runbooks/beta-recipients.md`. *Phase 5 is skipped, so this is
-   now the ONLY copy gate left — the launch email is the last unwritten copy, and the
-   D19 sign-off for it lands here rather than earlier.*
+3. **The launch email — DEFERRED, deliberately.** ⏳ *Decided 2026-07-26: the three
+   beta students only just received their invite/sign-up emails, so a second mail this
+   soon would read as bombardment. The feature ships live without an announcement; the
+   email follows once there has been a decent gap (and ideally once there's a little
+   usage to reference). Nothing about the deferral blocks steps 1, 2, 4 or 5.*
+
+   Because Phase 5 is skipped, **this is the only copy gate left** (D19), so the
+   drafting matters more than usual. Build it exactly like the existing beta mail —
+   the pattern is proven and already deliverability-tested:
+
+   a. **[AGENT]** New template directory `emails/templates/ai-recall-launch/` beside
+      `welcome-beta/`, with the same three files: `subject.txt`, `body.html`,
+      `body.txt`. Match `welcome-beta`'s **tone** (warm, plain, second-person, no
+      marketing gloss, no exclamation-mark energy) and its **HTML conventions** —
+      table-based layout, inline styles, `{{first_name}}` substitution defaulting to
+      "there", and the `List-Unsubscribe` footer. Read `welcome-beta/body.html` first
+      and mirror it rather than inventing a new house style.
+   b. **[AGENT]** Content to cover, briefly: ask your notes in plain English; your own
+      note comes back word-for-word; it's beta so answers get checked against your
+      notes not the internet; the honest limits (study support, not clinical guidance);
+      and where to find it (the Ask field in the header, or Home).
+   c. **[AGENT]** `scripts/send-ai-launch-email.ts` — a thin wrapper over
+      `emails/send.sh`, modelled on `scripts/send-pre-welcome-email.ts`: **dry-run by
+      default** (renders a preview, sends nothing), `--execute` to send, `--name` for
+      `{{first_name}}`, default BCC to Ellis + Nicola. Unlike the pre-welcome script it
+      should be able to **resolve recipients from the `aiRecallInterestAt` flag**
+      (query the table for users with the flag set) rather than taking one address, so
+      the promise made by the teaser's "notify me" is honoured precisely — with a
+      printed recipient list to confirm before `--execute`.
+   d. **[YOU]** Read the rendered preview, approve the copy (the D19 gate), then
+      approve the send.
+   e. **[AGENT]** Send, then record who received it in
+      `docs/runbooks/beta-recipients.md` (SES keeps no per-recipient record).
 4. **[AGENT]** Ops notes: new runbook `docs/runbooks/ai-recall.md` (kill switch, cap
    tuning, budget alerts, how to read Q&A for quality review responsibly); update
    spec status lines (`spec-ai-recall.md` → BUILT, plans README, memory).
 5. **[AGENT]** Post-launch watch: first 48h — check alarms, spend, cache-hit rate,
    thumbs; summarise findings.
 
-**[GATE 6 / Done]** Three beta students can use it; spend visible and sane; promise to
-the notify-me list honoured. *With Phase 5 skipped, the launch rests on hands-on use
+**[GATE 6 / Done]** Three beta students can use it; spend visible and sane. *The
+notify-me promise is honoured LATER, when the deferred launch email goes out — so this
+gate closes with that one item explicitly outstanding rather than pretending it's done.* *With Phase 5 skipped, the launch rests on hands-on use
 rather than an eval — so the post-launch watch (step 5) and the 👎 feedback signal carry
 more weight than they otherwise would.*
 
