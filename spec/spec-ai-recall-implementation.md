@@ -295,9 +295,34 @@ Anthropic agreement becomes creatable, whatever phase is in flight.
 
 ---
 
-## Phase 5 — Eval harness, prompt iteration, copy sign-off
+## Phase 5 — Eval harness, prompt iteration, copy sign-off  ⏭️ **SKIPPED**
 
-Goal: quality proven repeatably; words approved (D18/D19).
+> **SKIPPED by Ellis on 2026-07-26**, after hands-on Gate 3 use ("works pretty well").
+> Not built, not deferred-with-a-date — consciously dropped for the beta. Recorded here
+> rather than deleted so the trade is legible later.
+>
+> **What we therefore do NOT have:**
+> - No repeatable eval. Prompt changes are unverified beyond eyeballing; there is no
+>   regression net, so a future system-prompt edit could quietly degrade recall.
+> - **No systematic safety probing.** The dosing and prompt-injection cases were the
+>   part of this phase with real teeth. The guardrails themselves ARE built (system
+>   prompt rules, note-content-is-data instruction, search-URL-only links, notes read
+>   from the DB by id) and the parser's injection-shaped-text case is unit-tested — but
+>   nobody has adversarially tried to make the model give a dose. With 3 known beta
+>   students that is a considered risk; it should be revisited before any wider release.
+> - **No interim-model comparison.** DeepSeek v3.2 stays by default; Kimi K2.5 / GLM-4.7
+>   / MiniMax M2.5 were never tried, so "best available interim model" is unevidenced.
+> - **No copy sign-off gate (D19).** The shipped copy — system prompt, first-use notice,
+>   caption, guest teaser line — went live on the author's judgement alone. The launch
+>   email is the one piece still unwritten, so it picks up its sign-off in Phase 6.
+> - **The Gate 5 launch-model decision disappears**, which resolves it by default:
+>   beta students will meet the feature on the interim model unless Phase S lands first.
+>
+> **Cheapest partial reinstatement if appetite returns:** just the ~8 safety cases
+> (dosing, injection, no-note honesty) as a script, skipping the recall-quality cases —
+> roughly an hour, and it covers the part that carries actual risk.
+
+Goal (unbuilt): quality proven repeatably; words approved (D18/D19).
 
 1. **[AGENT]** `scripts/eval-ai-recall.ts` (dry-run-safe, like the beta scripts):
    seeds/uses a dedicated **test user** corpus (~25 notes, all entity types, one locked
@@ -329,7 +354,9 @@ rerun).
    restore.
 3. **[YOU]** Approve the email send. **[AGENT]** Send the launch email to the
    `aiRecallInterestAt` list via the existing tooling (dry-run first); record
-   recipients in `docs/runbooks/beta-recipients.md`.
+   recipients in `docs/runbooks/beta-recipients.md`. *Phase 5 is skipped, so this is
+   now the ONLY copy gate left — the launch email is the last unwritten copy, and the
+   D19 sign-off for it lands here rather than earlier.*
 4. **[AGENT]** Ops notes: new runbook `docs/runbooks/ai-recall.md` (kill switch, cap
    tuning, budget alerts, how to read Q&A for quality review responsibly); update
    spec status lines (`spec-ai-recall.md` → BUILT, plans README, memory).
@@ -337,7 +364,9 @@ rerun).
    thumbs; summarise findings.
 
 **[GATE 6 / Done]** Three beta students can use it; spend visible and sane; promise to
-the notify-me list honoured.
+the notify-me list honoured. *With Phase 5 skipped, the launch rests on hands-on use
+rather than an eval — so the post-launch watch (step 5) and the 👎 feedback signal carry
+more weight than they otherwise would.*
 
 ---
 
