@@ -23,6 +23,8 @@ export interface AlarmsProps {
   httpApi: HttpApi;
   /** The single-table store (throttle + system-error metrics). */
   table: Table;
+  /** The AI ask Lambda (Errors metric). Optional so envs without AI still synth. */
+  aiAskFn?: IFunction;
   /** Where alarm notifications go (e.g. ellis@placemate.uk). */
   notifyEmail: string;
 }
@@ -135,6 +137,54 @@ export class Alarms extends Construct {
       0.05,
       "SES bounce rate ≥5% — risk of sending suspension",
     );
+    // ---- AI recall (spec-ai-recall.md Phase 4) ----
+    if (props.aiAskFn) {
+      makeAlarm(
+        "AiAskErrors",
+        props.aiAskFn.metricErrors({ period: FIVE_MIN, statistic: "Sum" }),
+        1,
+        "AI ask Lambda threw ≥1 unhandled error in 5 minutes",
+      );
+
+      const aiMetric = (metricName: string, statistic: string, period: Duration) =>
+        new Metric({
+          namespace: "PlaceMate/AI",
+          metricName,
+          statistic,
+          period,
+          // Must match the EMF dimension set in infra/lambda/ai/metrics.ts.
+          dimensionsMap: { Provider: config.ai.provider, Model: config.ai.modelId },
+        });
+
+      // Answers that fail *inside* the stream return HTTP 200 with an `error` frame, so
+      // Lambda Errors never sees them — this is the only signal for THROTTLED/UPSTREAM.
+      makeAlarm(
+        "AiAnswerErrors",
+        aiMetric("Errors", "Sum", FIVE_MIN),
+        3,
+        "AI recall returned ≥3 error frames in 5 minutes (throttling or upstream trouble)",
+      );
+
+      // THE COST ALARM. Prompt caching is what makes a frontier model affordable here
+      // (~$0.005/question warm vs ~$0.032 cold on a ~10k-token corpus), and it breaks
+      // SILENTLY: one stray byte in the cached prefix and every question quietly pays
+      // full price. Alarm when a whole day of traffic produced no cache reads at all.
+      // `treatMissingData: NOT_BREACHING` (from makeAlarm) means a quiet day with zero
+      // questions does not page — only a day with questions but no cache hits.
+      const dailyCacheReads = aiMetric("CacheReadTokens", "Sum", Duration.hours(24));
+      const cacheAlarm = new Alarm(this, "AiCacheReadsZero", {
+        alarmName: `nurse-planner-${config.name}-AiCacheReadsZero`,
+        alarmDescription:
+          "No prompt-cache reads in 24h despite AI usage — caching has silently broken and every question is paying full price",
+        metric: dailyCacheReads,
+        threshold: 1,
+        evaluationPeriods: 1,
+        comparisonOperator: ComparisonOperator.LESS_THAN_THRESHOLD,
+        treatMissingData: TreatMissingData.NOT_BREACHING,
+      });
+      cacheAlarm.addAlarmAction(action);
+    }
+
     makeAlarm(
       "SesComplaintRate",
       sesMetric("Reputation.ComplaintRate"),

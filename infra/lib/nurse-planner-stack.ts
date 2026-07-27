@@ -91,6 +91,7 @@ export class NursePlannerStack extends Stack {
         routerFn: api.routerFn,
         httpApi: api.httpApi,
         table: data.table,
+        aiAskFn: ai.askFn,
         notifyEmail: config.alarmEmail ?? `hello@${config.customDomain.hostedZoneName}`,
       });
     }

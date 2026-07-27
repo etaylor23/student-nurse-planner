@@ -57,7 +57,12 @@ export default defineConfig({
     },
   },
   test: {
+    // Node by default — the existing suites are pure logic + an in-process DynamoDB and
+    // must not pay for a DOM. Component tests opt in per-file via `*.test.tsx`, which
+    // keeps the fast path fast and makes the environment obvious from the filename.
     environment: "node",
-    include: ["tests/**/*.test.ts"],
+    include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
+    environmentMatchGlobs: [["tests/**/*.test.tsx", "jsdom"]],
+    setupFiles: ["tests/helpers/setupDom.ts"],
   },
 });

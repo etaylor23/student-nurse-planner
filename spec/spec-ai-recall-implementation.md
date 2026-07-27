@@ -217,6 +217,14 @@ bypasses the filters. Worth remembering: green CI on `master` does not imply dep
 **[GATE 3]** **[YOU]** click through on dev: ask → note card pops mid-stream → link
 opens the reflection; history persists across refresh; guest view; cap/kill states
 (forced via SSM flip). Sign off look/feel against the teaser's promise.
+*Status 2026-07-26: **PASSED** — Ellis signed off ("works pretty well") against the
+seeded third-year account. Three fixes came out of his first real use: the SPA's CSP
+blocked the Function URL origin (CORS was right, CSP was not — the request never left
+the browser); the overlay was clipped to the header because a `backdrop-filter` ancestor
+becomes the containing block for `position: fixed`, so it is now portalled to
+`document.body`; and the header affordance became a centred ~40% field rather than a
+sparkle icon. **Lesson for later phases: the signed-in path cannot be agent-verified —
+there is no session — so every UI phase needs a human gate.***
 
 ---
 
@@ -230,10 +238,49 @@ Goal: the failure modes are boring before real students touch it.
 2. **[AGENT]** Load/abuse sanity: parallel-request behaviour (cap race — accept
    last-writer-wins overshoot of ±1–2), oversized question guard (~2k chars), rate of
    thread creation.
-3. **[AGENT]** Re-verify the full error-state matrix live on dev (each `error` code
+3. **[AGENT]** **Component tests for `AskNotesPanel`** (added 2026-07-26). Phase 3
+   shipped with the parser unit-tested but the panel's state machine untested, because
+   the repo has no React test setup (vitest runs `environment: "node"` over
+   `tests/**/*.test.ts`). Add jsdom + `@testing-library/react`, scoped so the existing
+   node-environment suites are untouched, and cover: streaming render (deltas append,
+   cursor shows), a `<note/>` segment rendering a card, each error state
+   (`CAP`/`KILLED`/`THROTTLED`), the first-use notice auto-dismissing on first ask,
+   stop/abort keeping the partial answer, and feedback thumbs. This is the layer the
+   CSP bug slipped through — not because a test would have caught CSP itself, but
+   because there was no way to exercise the panel at all without a live session.
+4. **[AGENT]** Re-verify the full error-state matrix live on dev (each `error` code
    driven for real at least once).
 
-**[GATE 4]** Alarms visible in CloudWatch and one test alarm fired to email.
+**[GATE 4]** Alarms visible in CloudWatch and one test alarm fired to email; component
+tests green in CI.
+
+---
+
+## Phase S — Sonnet swap (out of band: whenever the support case clears)
+
+Not sequenced with the numbered phases — it unblocks on AWS, so run it the day the
+Anthropic agreement becomes creatable, whatever phase is in flight.
+
+1. **[AGENT]** Accept the Anthropic model agreement (Ellis pre-approved this on
+   2026-07-26) and re-run the Phase 0 smoke test + token baseline against
+   `eu.anthropic.claude-sonnet-5`.
+2. **[AGENT]** Flip `config.ai` to `{ provider: "anthropic", modelId: "anthropic.claude-sonnet-5" }`
+   and deploy. The provider adapter already carries the Anthropic route with
+   `cache_control` breakpoints — no code change is expected, and any that IS needed is a
+   signal the adapter seam leaked.
+3. **[AGENT]** Assert prompt caching actually engages: a second question in the same
+   thread must report non-zero `cacheReadTokens` (the D6 assumption that makes Sonnet
+   cost roughly the same per question as the interim model — ~$0.005 warm vs ~$0.032
+   cold on a ~10k-token corpus). If it does not, the zero-cache-reads alarm from Phase 4
+   will fire, but catch it here first.
+4. **[AGENT]** Re-run the Phase 5 eval harness on Sonnet and diff the transcripts against
+   the interim model's — this is the evidence for the Gate 5 launch-model decision.
+5. **[AGENT]** Re-tune the system prompt if needed: the confidence gate was tightened for
+   the weaker interim model (D6a) and may be over-cautious on Sonnet.
+6. **[YOU]** Downgrade AWS Business Support back to Basic once the case is closed (it
+   bills ~$100/month minimum and was taken out for this one conversation).
+
+**[GATE S]** Sonnet answering live, cache reads non-zero, eval transcripts compared.
 
 ---
 

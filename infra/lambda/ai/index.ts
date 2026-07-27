@@ -11,6 +11,7 @@ import { assembleCorpus } from "./corpus";
 import { SYSTEM_PROMPT, buildTurns, extractNoteRefs } from "./prompt";
 import { streamChat, UpstreamError } from "./provider";
 import { writeMeta, writeDelta, writeDone, writeError } from "./sse";
+import { emitAskMetrics } from "./metrics";
 
 /**
  * `POST /ask` — the AI recall streaming endpoint (spec-ai-recall.md).
@@ -120,15 +121,25 @@ export const handler = awslambda.streamifyResponse(async (event, responseStream)
   let thread: Awaited<ReturnType<AiStore["createThread"]>> | undefined;
   let answer = "";
   let usage: Record<string, number> = {};
+  // Metric state gathered as the request progresses, emitted exactly once in `finally`
+  // so every outcome — success, cap, kill switch, throttle, crash — is counted.
+  let corpusBlocks = 0;
+  let corpusTruncated = false;
+  let historyTurns = 0;
+  let remaining: number | undefined;
+  let errorCode: string | undefined;
 
   try {
     if (!(await aiEnabled())) {
+      errorCode = "KILLED";
       writeError(stream, "KILLED", "Ask-your-notes is taking a short break.");
       return;
     }
 
     const cap = await ai.countQuestion(DAILY_QUESTION_CAP);
+    remaining = cap.remaining;
     if (!cap.allowed) {
+      errorCode = "CAP";
       writeError(
         stream,
         "CAP",
@@ -143,6 +154,7 @@ export const handler = awslambda.streamifyResponse(async (event, responseStream)
     const existing = requestedThreadId ? await ai.getThread(requestedThreadId) : undefined;
     if (existing) {
       if (existing.messageCount >= MAX_THREAD_MESSAGES) {
+        errorCode = "THREAD_FULL";
         writeError(stream, "THREAD_FULL", "This chat is getting long — start a new one?");
         return;
       }
@@ -151,6 +163,7 @@ export const handler = awslambda.streamifyResponse(async (event, responseStream)
         role: m.role,
         content: m.content,
       }));
+      historyTurns = history.length;
     } else {
       thread = await ai.createThread(question);
     }
@@ -162,6 +175,8 @@ export const handler = awslambda.streamifyResponse(async (event, responseStream)
     });
 
     const corpus = await assembleCorpus(repo, caller.sub);
+    corpusBlocks = corpus.blocks;
+    corpusTruncated = corpus.truncated;
     writeMeta(stream, {
       threadId: thread.id,
       messageId: userMessage.id,
@@ -181,16 +196,6 @@ export const handler = awslambda.streamifyResponse(async (event, responseStream)
     usage = result.usage();
 
     writeDone(stream, { stopReason: "end_turn", usage });
-    console.log(
-      JSON.stringify({
-        metric: "ai_ask",
-        blocks: corpus.blocks,
-        truncated: corpus.truncated,
-        historyTurns: history.length,
-        latencyMs: Date.now() - started,
-        ...usage,
-      }),
-    );
     await persistAnswer(ai, thread.id, answer, usage, started, "end_turn");
 
     // First-use notice (D13) is driven off the profile flag — stamped once, silently.
@@ -212,12 +217,25 @@ export const handler = awslambda.streamifyResponse(async (event, responseStream)
       await persistAnswer(ai, thread.id, answer, usage, started, "aborted").catch(() => {});
     }
     if (err instanceof UpstreamError && err.throttled) {
+      errorCode = "THROTTLED";
       writeError(stream, "THROTTLED", "The model is busy — try again in a moment.");
     } else {
+      errorCode = "UPSTREAM";
       console.error("ask failed", err);
       writeError(stream, "UPSTREAM", "That didn't work — try again.");
     }
   } finally {
+    emitAskMetrics({
+      latencyMs: Date.now() - started,
+      corpusBlocks,
+      corpusTruncated,
+      historyTurns,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      cacheReadTokens: usage.cacheReadTokens,
+      remaining,
+      errorCode,
+    });
     stream.end();
   }
 });
