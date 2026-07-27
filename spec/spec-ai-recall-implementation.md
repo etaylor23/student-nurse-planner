@@ -388,6 +388,11 @@ rerun).
 4. **[AGENT]** Ops notes: new runbook `docs/runbooks/ai-recall.md` (kill switch, cap
    tuning, budget alerts, how to read Q&A for quality review responsibly); update
    spec status lines (`spec-ai-recall.md` → BUILT, plans README, memory).
+   *Status 2026-07-27: **runbook DONE** — every command in it was executed before
+   committing, so none of it is aspirational. Grounded in real production numbers
+   (147-block corpus, 12.8–13k input tokens, 5.2–5.9s latency, ≈$0.0064/question on the
+   interim model) and carries the six failure modes this build actually hit. Remaining
+   Phase 6 items: the deferred launch email (step 3) and the 48h watch (step 5).*
 5. **[AGENT]** Post-launch watch: first 48h — check alarms, spend, cache-hit rate,
    thumbs; summarise findings.
 
