@@ -1,4 +1,4 @@
-# Spec — Note Capture: photos of handwritten notes  (Status: SPECCED, not built)
+# Spec — Note Capture: photos of handwritten notes  (Status: SPECCED, not built — handwriting gate PASSED 2026-07-28)
 
 The second AI layer in PlaceMate. A student photographs a page of their own scribbled
 placement notes; a vision model finds the **distinct blocks** on the page — however they
@@ -33,7 +33,9 @@ namespace, no second auth path. Grilled 2026-07-27.
 | P13 | **Photos are kept for the life of the account.** No lifecycle expiry. A three-year degree means year-1 photos must still back year-3 PAD evidence. Deleted only by GDPR erasure. **See Accepted risks.** |
 | P14 | **Unallocated blocks feed the AI recall corpus; allocated ones do not.** Photo content becomes askable immediately, and once allocated the materialised row already covers it — so the same words never appear twice and input-token count stays honest. Adds a `NOTE_BLOCK` sentinel type to `NoteCard.tsx`. |
 | P15 | **Global capture entry point.** One affordance available anywhere; the app infers the shift (P8/P9). No shift-bound entry in v1. |
-| P16 | **Low-confidence blocks are shown, flagged, and never pre-selected.** Nothing the model saw is hidden from the student, and nothing uncertain is filed by default. No confidence threshold, no silent drops. |
+| P16 | ~~Low-confidence blocks are shown, flagged, never pre-selected.~~ **SUPERSEDED by P22 (2026-07-28) — self-reported confidence is measurably worthless.** Measured against ground truth on a real page: `gemma` wrote `Acyclovir` for `Aciclovir` at `confidence: 1.00`; `qwen` corrupted the longest drug name on the page while reporting `1.00` on every block; `ministral`'s *highest*-confidence block held its *worst* error while its 0.90 block held a harmless expansion — confidence ran **inversely** to severity. The original P16 would have caught none of these and pre-selected all of them. |
+| P22 | **Review gating is by two-model disagreement, not confidence.** Both models transcribe; the app diffs their **whole-page text** and flags the individual words they disagree on, mapped back to the block containing them. A block with no disagreements is pre-selected; a block with any is shown with its disputed words called out and is not pre-selected. Self-reported `confidence` is still stored, for observability only — it must never gate anything. |
+| P23 | **Consensus is page-level, never block-level.** Block-aligned diffing was built and abandoned: the same page came back as 5 blocks from the check model on one run and 28 on the next, so the models never reliably agree on where a block begins. Page text is stable; segmentation is not. Word pairing must also be **character-similarity based, not adjacency based** — a naive adjacency pass reported `"V)" vs "Phenoxymethylpenicillin"` and buried the actual finding, because the two models place the `(Penicillin V)` gloss differently. Naming the wrong word is worse than raising no flag: the student checks something that isn't the error. |
 | P17 | **Own daily counter: `AI#<sub>` / `DAILY#PHOTO#<date>`, limit 10 photos/day.** Same atomic `ADD` + 48h TTL pattern as the question cap, separate key — photos and questions have different cost shapes and one should not consume the other. **The presign is issued inside the cap check**, or uploads stay uncapped even when parsing is capped. |
 | P18 | **No eval harness.** Phase 5 of AI recall was skipped and is skipped again here. **See Accepted risks.** |
 | P19 | **Un-allocating reverses the write.** The materialised row is soft-deleted (standard tombstone) and appended text is stripped back out of `Shift.notes`. Requires storing `appendedText` verbatim; if the student has since edited that text so it no longer matches, leave it in place and say so rather than guessing. |
@@ -41,19 +43,41 @@ namespace, no second auth path. Grilled 2026-07-27.
 
 **Set-by-default (veto on read):** nothing is written to the student's record without an
 explicit confirm; parse output is zod-validated and invalid blocks are dropped silently
-(fail closed, mirroring the sentinel parser); client downscales to ~1600px long edge,
-JPEG q0.8 before upload; `max_tokens` 2048 on the parse call; Cedar reuses the existing
-`List`/`SensitiveRecord` gate with `resourceId: "scope:ai-photo"` rather than a new
-policy-store action; metrics extend the existing `PlaceMate/AI` EMF namespace.
+(fail closed, mirroring the sentinel parser); **client downscales to 2400px long edge,
+JPEG q85** before upload — 1600px was tried and demonstrably cost drug names (see
+Appendix), 2400px lands at ~700 KB; `max_tokens` 4096 on each parse call; the check
+model's JSON is repaired-then-discarded, never stored; word-pair flagging ignores
+case, punctuation and leading/trailing dashes (the models disagree endlessly about
+whether a dash attaches left or right, and surfacing that is pure noise); Cedar reuses
+the existing `List`/`SensitiveRecord` gate with `resourceId: "scope:ai-photo"` rather
+than a new policy-store action; metrics extend the existing `PlaceMate/AI` EMF namespace.
 
-## Model
+## Model — two of them (P21)
 
-`qwen.qwen3-vl-235b-a22b-instruct` on the mantle `openai-compat` route — the **same
-adapter, endpoint and signing** as AI recall, with image content parts added. Model id is
-env config (`AI_VISION_MODEL_ID`), swappable without a deploy shape change.
+Both on the mantle `openai-compat` route, the **same adapter, endpoint and signing** as
+AI recall with image content parts added. Called **in parallel**; ids are env config
+(`AI_VISION_MODEL_ID`, `AI_VISION_CHECK_MODEL_ID`).
 
-Verified working end-to-end on 2026-07-27 — see Appendix. **Not yet verified on real
-handwriting** (see Open questions).
+| Role | Model | Job |
+|---|---|---|
+| **Structure** | `qwen.qwen3-vl-235b-a22b-instruct` | Owns blocks, kinds, groups, geometry, page fields. Its transcription is the one stored. |
+| **Check** | `google.gemma-3-27b-it` | Transcription cross-check only. Its output is never stored — it exists to disagree. |
+
+`gemma` is the check model **because its bias differs**, not because it's accurate. It
+reliably Americanises `Aciclovir` → `Acyclovir` and drops the `r` in `Filgrastim`, which
+guarantees a flag on exactly the class of word that matters. A more accurate model with
+*correlated* errors would be a worse checker.
+
+**Rejected: `mistral.ministral-3-14b-instruct`.** Fastest and briefly top of the
+accuracy table on a single run, but: 3 of 6 runs emitted unparseable JSON (unquoted
+property names); it paraphrases rather than transcribes (`preventative` → `Prophylactic`,
+`chemo` → `chemotherapy`, `taking` → `on`); it emitted a stray Korean character into
+"haematology patients"; and it returned the string `"null"` where JSON `null` belongs.
+A model that rewrites a student's notes into its own words is disqualified regardless of
+its score. **Single-run testing picked it as the winner** — only repeat trials exposed
+the drift. Any future model swap must be evaluated over ≥4 runs.
+
+Verified on real handwriting 2026-07-28 — see Appendix.
 
 ## Data model (single table; codegen via `gen:zod`)
 
@@ -89,6 +113,8 @@ interface NoteBlock extends Entity, UserOwned, Created, Updated {
   confidence: number;       // 0–1 (P16)
   bboxX0: number; bboxY0: number; bboxX1: number; bboxY1: number;  // 0–1 fractions
   rotationDeg: number;
+  disputedWords?: string;   // comma-separated "structureReading|checkReading" pairs (P22).
+                            // Empty/absent = both models agreed = safe to pre-select.
   groupId?: string;         // linked blocks share this (P10)
   shiftId?: string;         // defaults to the capture's, overridable (P6)
   status: NoteBlockStatus;
@@ -112,7 +138,7 @@ never `entityType` — see the 2026-07-26 sync breakage in `dynamoRepository.ts:
 | Route | Where | Purpose |
 |---|---|---|
 | `notes/presignCapture` | existing router RPC | `{ captureId, imageIndex, contentType, bytes }` → atomic `ADD` on `DAILY#PHOTO#<date>`; over limit → `CAP`. Under limit → presigned PUT URL, ~5 min expiry, content-length and content-type constrained. **The cap lives here** (P17). |
-| `POST {fnUrl}/parse` | new `parseFn` (JSON) | `{ captureId, imageKey, imageIndex }` → verify JWT → AVP gate → read object from S3 → one vision call → validated `{ blocks[], pageDateRaw }`. Writes nothing. |
+| `POST {fnUrl}/parse` | new `parseFn` (JSON) | `{ captureId, imageKey, imageIndex }` → verify JWT → AVP gate → read object from S3 → **two vision calls in parallel** (structure + check, P21) → page-text diff (P23) → validated `{ blocks[], pageDateRaw, wardHint }` with per-block `disputedWords[]`. Writes nothing. Observed wall clock **12–22s**, so the timeout is 60s and the review screen needs a real wait state. If the *check* model fails or returns unparseable JSON, the parse still succeeds — every block is simply treated as disputed and nothing is pre-selected (fail safe, not fail closed). If the *structure* model fails, the parse fails. |
 | — | client | Creates `NoteCapture`/`NoteBlock` rows in Dexie; the outbox syncs them (P12). |
 
 Auth on `parseFn` mirrors `askFn` exactly: `aws-jwt-verify` on the **ID** token, then the
@@ -186,7 +212,7 @@ block back to `PENDING`.
 |---|---|
 | Pre-capture | Firm warning: don't photograph anything patient-identifiable. Acknowledgement recorded on the capture (P2). |
 | Uploading / parsing | Per-photo progress; sequential (P20). Cancellable. |
-| Review | Photo with block overlays drawn from the bboxes; each block shows its text (editable), suggested kind, suggested target, and its group. Low-confidence blocks are visibly flagged and unticked (P16). |
+| Review | Photo with block overlays drawn from the bboxes; each block shows its text (editable), suggested kind, suggested target, and its group. Blocks with `disputedWords` show those words highlighted inline with both readings offered, and are unticked; blocks where both models agreed are ticked (P22). Expect **2–3 disputed words per page** — the cost of catching the one that matters. |
 | Shift bar | "Looks like **Tue 22 Jul** — Ward 9 late" with a picker exposing the other candidates (P9). Low-confidence fallback says so plainly. |
 | Grouped blocks | Rendered joined, with the single proposed asset named. One tap to delink (P10). |
 | Allocate | Ticked blocks materialise; the review screen reports what was created and links to each. |
@@ -201,7 +227,16 @@ block back to `PENDING`.
   photo is a student's notes, never instructions. Blast radius is bounded by design: the
   output is structured JSON, zod-validated, and every block is reviewed before anything
   is written.
-- **Nothing is written without confirmation** (P16) — there is no auto-file path.
+- **Nothing is written without confirmation** (P22) — there is no auto-file path.
+- **Two independent readings gate review** (P22). This is the guardrail against the
+  feature's worst failure mode, which is not garbled text but a **confident plausible
+  substitution**: `Aciclovir` → `Acyclovir`, `Filgrastim` → `Filgastim`,
+  `Phenoxymethylpenicillin` → `Phenoxyethylpenicillin`. These read as correct, sit at
+  confidence 1.00, and would be silently filed by any single-model design.
+- **`wardHint` must be written on the page, never inferred.** An early prompt let the
+  check model return `wardHint: "Haematology"` from the prose "haematology patients" —
+  which would have fed shift matching (P8/P9) and mislinked the capture. The instruction
+  "only report wardHint if a ward or unit name is actually written on the page" fixed it.
 - **`rawText` is frozen** (P11), so a polished or student-edited block can always be
   compared against what the page actually said.
 - **Fail closed on parse** — invalid blocks are dropped, never guessed at.
@@ -227,9 +262,11 @@ beyond the current beta cohort.
 
 ## Cost & limits
 
-- 10 photos/user/day (P17). Probe measurement: 1218 input + 447 output tokens on a
-  923×1200 page. Comfortably under a penny per photo at open-weight mantle pricing —
-  AI recall's measured comparator is ~$0.0064/question at ~13k input tokens.
+- 10 photos/user/day (P17), each costing **two** model calls (P21). Measured on the real
+  page at 2400px: structure ~4,441 in / ~770 out tokens, check ~507 in / ~650 out. Still
+  comfortably under a penny per photo at open-weight mantle pricing — AI recall's measured
+  comparator is ~$0.0064/question at ~13k input tokens. The daily cap counts **photos, not
+  calls**, so a cap hit is explainable to a student.
 - S3: ~400KB/photo downscaled. At the beta cohort this is rounding error; at scale it is
   the retention decision (P13), not the storage price, that matters.
 - Existing AWS Budgets alerts (`$50/$150/$400`) already cover Bedrock spend; S3 is not
@@ -241,13 +278,20 @@ Extends the existing `PlaceMate/AI` EMF namespace and the `alarms.ts` construct 
 dimension discipline (`[["Provider","Model"]]` only, so a new error code cannot fan out
 cost).
 
-New metrics: `PhotosParsed`, `ParseLatencyMs`, `BlocksDetected`, `LowConfidenceBlocks`,
-`BlocksAllocated`, `ParseErrors`, `PhotoCapHits`. Properties: `ErrorCode`, `ImageBytes`,
-`BlockKinds`.
+New metrics: `PhotosParsed`, `ParseLatencyMs`, `BlocksDetected`, `DisputedWords`,
+`DisputedBlocks`, `CheckModelFailures`, `BlocksAllocated`, `ParseErrors`, `PhotoCapHits`.
+Properties: `ErrorCode`, `ImageBytes`, `BlockKinds`.
 
-New alarm: `AiParseErrors` — `ParseErrors` Sum ≥3 / 5 min → the existing SNS topic.
-`BlocksAllocated` vs `BlocksDetected` is the health signal worth watching by eye early
-on: a wide gap means the suggestions are wrong often enough that students ignore them.
+New alarms: `AiParseErrors` — `ParseErrors` Sum ≥3 / 5 min → the existing SNS topic. And
+`AiCheckModelDown` — `CheckModelFailures` Sum ≥5 / 15 min, because a silently dead check
+model degrades the feature to single-model parsing while still looking healthy (the same
+class of silent failure as `AiCacheReadsZero` in AI recall, and the reason that alarm
+exists).
+
+Two signals worth watching by eye early on: `BlocksAllocated` vs `BlocksDetected` (a wide
+gap means suggestions are wrong often enough to be ignored), and `DisputedWords` per photo
+(measured at 2–3 on a clean page; a jump means the check model has drifted and is
+generating noise rather than signal).
 
 Every allocation writes the standard audit-log entry
 (`entityType: "NOTE_BLOCK"`, `action: "BLOCK_ALLOCATED"`).
@@ -267,14 +311,30 @@ Not optional, and not "later":
 
 ## Open questions
 
-- **Real handwriting is unvalidated.** The probe used printed text at odd angles. Biro on
-  a creased page under ward lighting is a different difficulty class. **Test this before
-  building anything** — if `qwen3-vl` cannot read it, the answer is a different model or
-  no feature, not a different data model. Alternatives to try in order:
-  `moonshotai.kimi-k2.5`, `google.gemma-3-27b-it`, `mistral.ministral-3-14b-instruct`.
+**Resolved 2026-07-28** by `scripts/eval-note-capture.ts` against a real page of
+handwritten medication notes: handwriting is legible to these models (the gate is passed);
+the downscale target is 2400px, not 1600px; confidence cannot gate review; one model is
+not enough; and `wardHint` must be constrained to text on the page.
+
+Still open:
+
+- **Long-word corruption is the residual risk.** Across 7 runs the structure model
+  corrupted `Phenoxymethylpenicillin` — the longest word on the page — in 3 of them, a
+  different way each time (`Phenoxyethyl…`, `Phenoxymenthyl…`, and once split across
+  tokens). Consensus caught two of the three cleanly. Worth measuring on more pages
+  before deciding whether long clinical terms need special handling.
+- **Words split across line breaks** defeat the word-level diff (run 5: the structure
+  model emitted `methylpenicillin` as its own token, so only part of the error paired).
+  Joining hyphen- and line-broken words before diffing would likely fix it.
+- **False-flag rate** is 2–3 per clean page, and one run produced 6 when the check model
+  had a bad pass. Acceptable now; needs a ceiling before wider release, or students will
+  learn to tick through the flags without reading them — which would defeat the whole
+  mechanism.
 - Bucket encryption choice (S3-managed vs KMS) given P2.
 - Whether the presign should constrain image dimensions as well as byte size.
-- Client downscale target — 1600px is a guess until tested against real handwriting.
+- Only one real page has been tested. It is single-column and evenly lit — the scattered,
+  rotated, multi-orientation page this feature was conceived for is **still unvalidated**
+  on real handwriting.
 
 ## V2 notes (explicitly out of scope)
 
@@ -325,13 +385,56 @@ It returned clean JSON with all five visible blocks, each correctly kinded
 (`date_header`, `clinical_skill`, `medication`, `reflection`, `todo`), plausible 0–1
 bboxes, and read the rotations (+15°, −10°).
 
-**Two caveats that shaped this spec:**
+**Two caveats from that first probe:**
 
-- The test image was **printed text**, not handwriting. Layout, rotation, grouping and
-  typing are proven; transcription of real scrawl is not.
+- The test image was **printed text**, not handwriting.
 - The page said `22/7`. The model returned `"pageDate": "2024-07-22"` — **it fabricated a
   year, and got it wrong by two.** This is the direct cause of P8 (model returns the date
   as written; the app resolves the year).
+
+---
+
+## Appendix 2 — real handwriting, 2026-07-28
+
+Run via `scripts/eval-note-capture.ts` against a photographed page of handwritten
+medication notes (3024×4032 iPhone original → 2400px / 696 KB upload). Ground truth was
+transcribed by hand and scored on 13 terms where a misread is dangerous rather than
+untidy. Logs in `evidence/note-capture/` (untracked — they contain the note text).
+
+**Model bake-off, 4 trials each at 2400px:**
+
+| Model | Clean runs | Errors observed | Failure character |
+|---|---|---|---|
+| `qwen.qwen3-vl-235b-a22b-instruct` | 3 / 4 | `Penicillin V` once | Occasional lapse, otherwise stable. Best segmentation and grouping. |
+| `mistral.ministral-3-14b-instruct` | 1 / 4 | `Aciclovir`, then `neutropenia`, then `GCSF` | **Random drift**, different term each run. **3 of 6 runs unparseable JSON.** Paraphrases. Rejected. |
+| `google.gemma-3-27b-it` | 0 / 2 | `Acyclovir`, `Filgastim` every time | **Systematic override** of the page from its own priors. Useless alone; ideal as a checker. |
+| `writer.palmyra-vision-7b` | — | network failure | Untested. |
+
+At **1600px** both leading models misread `Phenoxymethylpenicillin` (differently). At
+2400px both read it. That single comparison is why the downscale default changed.
+
+**Consensus, 7 runs of the page-level mechanism:** structure model perfect in 4; in the
+other 3 it corrupted `Phenoxymethylpenicillin`. Consensus caught 2 cleanly and 1 partially.
+Zero critical errors were missed once word pairing was similarity-based.
+
+The cleanest demonstration, run 7 — the structure model wrote a wrong drug name at
+confidence 1.00 and the checker caught it:
+
+```
+? "Phenoxymenthylpenicillin"  (check model read: "Phenoxymethylpenicillin")
+errors caught by consensus : 1
+errors missed by consensus : 0
+```
+
+**Why confidence was abandoned (P16 → P22).** Every flagged block in every run reported
+`selfConf 1.00`. `gemma` wrote `Acyclovir` at 1.00. `ministral`'s highest-confidence block
+held its worst error while its lowest-confidence block held a harmless expansion. There is
+no threshold that separates the good runs from the bad ones.
+
+**Method note worth keeping:** the first single-run bake-off ranked `ministral` first —
+11/11 terms in 5s, three times faster than `qwen`. It took repeat trials to expose that its
+errors merely moved around, and a sixth run to expose the unparseable JSON. **Never choose
+a vision model from one run.**
 
 **Textract** is reachable in eu-west-2 (`DetectDocumentText` answered
 `InvalidParameterException` to empty bytes) and remains a V2 fallback for geometry, but

@@ -3,3 +3,10 @@ dist
 *.local
 .DS_Store
 .claude/
+
+# Note Capture gate-test evidence — real note photos + their transcriptions
+IMG_*.jpg
+evidence/
+note-capture-*.log
+note-capture-*.json
+note-capture-*.mjs
