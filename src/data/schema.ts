@@ -17,6 +17,8 @@ import type {
   RevisionSession,
   RevisionTarget,
   RevisionTopic,
+  NoteBlock,
+  NoteCapture,
   SelfCareCheckin,
   Shift,
   Skill,
@@ -66,6 +68,8 @@ export interface EntityMap {
   revisionTopics: RevisionTopic;
   revisionSessions: RevisionSession;
   selfCareCheckins: SelfCareCheckin;
+  noteCaptures: NoteCapture;
+  noteBlocks: NoteBlock;
 }
 
 /** The set of persisted store names (single source of truth). */
@@ -115,4 +119,10 @@ export const STORE_INDEXES: Record<StoreName, string> = {
   revisionSessions: "id, userId, topicId, scheduledStart",
   // Self-care check-ins (private, on-device). `shiftId` unindexed (the capture join).
   selfCareCheckins: "id, userId, date, createdAt",
+  // Note capture (spec-note-capture.md P3). `shiftId` unindexed like every other capture
+  // join; `status` IS indexed because the review screen and the AI corpus both query by it
+  // (unallocated blocks only, P14). `kind`/`targetType` are filtered in memory — a block
+  // list is per-capture and small.
+  noteCaptures: "id, userId, createdAt, status",
+  noteBlocks: "id, userId, captureId, [captureId+imageIndex], status, groupId",
 };

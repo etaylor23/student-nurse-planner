@@ -161,6 +161,8 @@ export class DynamoRepository implements Repository {
     revisionTopic: (id: string) => `REVTOPIC#${id}`,
     revisionSession: (id: string) => `REVSESSION#${id}`,
     selfCareCheckin: (id: string) => `SELFCARE#${id}`,
+    noteCapture: (id: string) => `NOTECAP#${id}`,
+    noteBlock: (id: string) => `NOTEBLOCK#${id}`,
   };
 
   /** Tombstone reap horizon (spec §5: DynamoDB TTL reaps soft-deletes after ~90 days). */
@@ -1341,6 +1343,10 @@ export class DynamoRepository implements Repository {
         return `REVSESSION#${s(item.id)}`;
       case "selfCareCheckins":
         return `SELFCARE#${s(item.id)}`;
+      case "noteCaptures":
+        return `NOTECAP#${s(item.id)}`;
+      case "noteBlocks":
+        return `NOTEBLOCK#${s(item.id)}`;
       default:
         return undefined; // includes "proficiencies" (bundled reference — never synced)
     }

@@ -102,14 +102,7 @@ export const proficiencyProgressSchema = entitySchema.extend(userOwnedSchema.sha
     padSignOffDate: z.string().optional()
 });
 
-export const proficiencyStatusEventSchema = entitySchema.extend(createdSchema.shape).extend({
-    progressId: z.string(),
-    status: proficiencyStatusSchema,
-    partIndex: z.number(),
-    assessorName: z.string().optional(),
-    note: z.string().optional(),
-    occurredAt: z.string()
-});
+export const sourceTypeSchema = z.literal("NOTE_BLOCK");
 
 export const evidenceLinkSchema = entitySchema.extend(userOwnedSchema.shape).extend(createdSchema.shape).extend({
     proficiencyId: z.string(),
@@ -158,7 +151,9 @@ export const medicationLogSchema = entitySchema.extend(userOwnedSchema.shape).ex
     type: medLogTypeSchema,
     date: z.string(),
     route: z.string().optional(),
-    notes: z.string().optional()
+    notes: z.string().optional(),
+    sourceType: sourceTypeSchema.optional(),
+    sourceId: z.string().optional()
 });
 
 export const calcDrillSchema = entitySchema.extend(userOwnedSchema.shape).extend(createdSchema.shape).extend({
@@ -220,7 +215,9 @@ export const reflectionSchema = entitySchema.extend(userOwnedSchema.shape).exten
     occurredOn: z.string().optional(),
     shiftId: z.string().optional(),
     isLocked: z.boolean(),
-    piiAcknowledged: z.boolean()
+    piiAcknowledged: z.boolean(),
+    sourceType: sourceTypeSchema.optional(),
+    sourceId: z.string().optional()
 });
 
 export const reflectionSectionSchema = entitySchema.extend({
@@ -305,6 +302,53 @@ export const breakRuleSchema = entitySchema.extend({
     orderIndex: z.number()
 });
 
+export const noteCaptureStatusSchema = z.union([z.literal("PARSING"), z.literal("REVIEW"), z.literal("DONE")]);
+
+export const noteBlockKindSchema = z.union([z.literal("CLINICAL_SKILL"), z.literal("MEDICATION"), z.literal("REFLECTION"), z.literal("OBSERVATION"), z.literal("TODO"), z.literal("DATE_HEADER"), z.literal("UNKNOWN")]);
+
+export const noteBlockStatusSchema = z.union([z.literal("PENDING"), z.literal("ALLOCATED"), z.literal("DISMISSED")]);
+
+export const noteBlockTargetSchema = z.union([z.literal("REFLECTION"), z.literal("MED_LOG"), z.literal("PROFICIENCY_EVENT"), z.literal("SHIFT_NOTES")]);
+
+export const noteCaptureSchema = entitySchema.extend(userOwnedSchema.shape).extend(createdSchema.shape).extend(updatedSchema.shape).extend({
+    shiftId: z.string().optional(),
+    pageDateRaw: z.string().optional(),
+    imageKeys: z.string(),
+    piiAcknowledged: z.boolean(),
+    status: noteCaptureStatusSchema
+});
+
+export const noteCaptureDraftSchema = noteCaptureSchema.omit({ "id": true, "userId": true, "createdAt": true, "updatedAt": true });
+
+export const noteBlockSchema = entitySchema.extend(userOwnedSchema.shape).extend(createdSchema.shape).extend(updatedSchema.shape).extend({
+    captureId: z.string(),
+    imageIndex: z.number(),
+    fromRegions: z.string().optional(),
+    rawText: z.string(),
+    text: z.string(),
+    corrections: z.string().optional(),
+    disputedWords: z.string().optional(),
+    kind: noteBlockKindSchema,
+    confidence: z.number(),
+    bboxX0: z.number(),
+    bboxY0: z.number(),
+    bboxX1: z.number(),
+    bboxY1: z.number(),
+    rotationDeg: z.number(),
+    candidateCodes: z.string().optional(),
+    suggestedTags: z.string().optional(),
+    medicationCandidate: z.string().optional(),
+    groupId: z.string().optional(),
+    shiftId: z.string().optional(),
+    status: noteBlockStatusSchema,
+    targetType: noteBlockTargetSchema.optional(),
+    targetId: z.string().optional(),
+    appendedTo: z.string().optional(),
+    appendedText: z.string().optional()
+});
+
+export const noteBlockDraftSchema = noteBlockSchema.omit({ "id": true, "userId": true, "createdAt": true, "updatedAt": true });
+
 export const aiThreadSchema = entitySchema.extend(userOwnedSchema.shape).extend(createdSchema.shape).extend(updatedSchema.shape).extend({
     title: z.string(),
     messageCount: z.number(),
@@ -327,4 +371,15 @@ export const aiMessageSchema = entitySchema.extend(userOwnedSchema.shape).extend
     cacheReadTokens: z.number().optional(),
     latencyMs: z.number().optional(),
     stopReason: z.string().optional()
+});
+
+export const proficiencyStatusEventSchema = entitySchema.extend(createdSchema.shape).extend({
+    progressId: z.string(),
+    status: proficiencyStatusSchema,
+    partIndex: z.number(),
+    assessorName: z.string().optional(),
+    note: z.string().optional(),
+    occurredAt: z.string(),
+    sourceType: sourceTypeSchema.optional(),
+    sourceId: z.string().optional()
 });

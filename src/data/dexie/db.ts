@@ -76,6 +76,10 @@ export interface SyncMetaRow {
   value: string;
 }
 
+/** Stores added at version(7) — Note capture (spec-note-capture.md P3). Same additive
+ *  pattern as V2–V5: deployed databases gain two empty stores with no transform. */
+const V7_ADDED_STORES: StoreName[] = ["noteCaptures", "noteBlocks"];
+
 /**
  * Stores added at version(6) — the local-first sync layer (spec §5). Same additive
  * pattern as V2–V5; these are NOT domain entities (not in `STORE_INDEXES`/`EntityMap`),
@@ -99,7 +103,8 @@ const SYNC_STORES: Record<string, string> = {
  * version(1) declares the original schema; version(2) **additively** introduces the
  * clinical-skills stores (see `V2_ADDED_STORES`); version(3) the reflection stores
  * (`V3_ADDED_STORES`); version(4) the revision stores (`V4_ADDED_STORES`); version(5) the
- * self-care store (`V5_ADDED_STORES`) — all without `.upgrade()` transforms, so deployed
+ * self-care store (`V5_ADDED_STORES`); version(7) the note-capture stores
+ * (`V7_ADDED_STORES`) — all without `.upgrade()` transforms, so deployed
  * databases gain the new stores with zero data loss. The database name is suffixed
  * (`-v2`); bump that suffix only when a change must force a clean rebuild
  * (dropping/reshaping existing data) rather than an additive store.
@@ -132,6 +137,8 @@ export class PlannerDb extends Dexie {
   revisionTopics!: Table<EntityMap["revisionTopics"], string>;
   revisionSessions!: Table<EntityMap["revisionSessions"], string>;
   selfCareCheckins!: Table<EntityMap["selfCareCheckins"], string>;
+  noteCaptures!: Table<EntityMap["noteCaptures"], string>;
+  noteBlocks!: Table<EntityMap["noteBlocks"], string>;
   // Sync-layer stores (version 6) — see SYNC_STORES / the row interfaces above.
   outbox!: Table<OutboxRow, string>;
   recordMeta!: Table<RecordMetaRow, string>;
@@ -148,6 +155,7 @@ export class PlannerDb extends Dexie {
       ...V3_ADDED_STORES,
       ...V4_ADDED_STORES,
       ...V5_ADDED_STORES,
+      ...V7_ADDED_STORES,
     ]);
     const v1Stores = Object.fromEntries(
       Object.entries(STORE_INDEXES).filter(([k]) => !addedLater.has(k)),
@@ -160,5 +168,6 @@ export class PlannerDb extends Dexie {
     this.version(4).stores(later(V4_ADDED_STORES));
     this.version(5).stores(later(V5_ADDED_STORES));
     this.version(6).stores(SYNC_STORES);
+    this.version(7).stores(later(V7_ADDED_STORES));
   }
 }
