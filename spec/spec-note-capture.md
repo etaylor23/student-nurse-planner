@@ -15,6 +15,9 @@ Runs on the **same Bedrock mantle endpoint and provider adapter** as
 namespace, no second auth path. Grilled 2026-07-27, amended 2026-07-28 after the
 handwriting gate test.
 
+**Build order + human-in-the-loop actions:**
+[`spec-note-capture-implementation.md`](./spec-note-capture-implementation.md).
+
 ## Pipeline at a glance
 
 ```
@@ -48,11 +51,12 @@ handwriting gate test.
 
 **Four model calls per photo:** two vision in parallel, then sanitise, then classify.
 Sanitise must precede classify — matching against `Phenoxyethylpenicillin` finds nothing.
+The response is **staged** (P40): text back at ~20s, classification at ~28s.
 Nothing reaches the student's record without an explicit confirm.
 
 ## Decisions (locked — grilled 2026-07-27, amended 2026-07-28)
 
-Numbered P1–P38 in decision order; P26–P38 were added after grilling the classification
+Numbered P1–P40 in decision order; P26–P40 were added after grilling the classification
 stage. Two supersessions, both kept in place rather than
 deleted so nobody reinstates them:
 
@@ -100,6 +104,8 @@ deleted so nobody reinstates them:
 | P36 | **Deterministic serialisation.** Regions are sorted into reading order from their bbox (top-to-bottom by centre, left-to-right on ties) and handed over with **soft region markers** the classifier may cross. Determinism matters because model emission order is not stable — the check model returned 5 blocks on one run and 28 on the next — so without a sort the same photo could classify differently each time. |
 | P37 | **Tags: reuse existing labels, propose new ones.** Matched against the student's own `Tag` labels first and applied silently; genuinely new tags are surfaced as suggestions to tick. `Tag` is unique per user+label and its whole value is pulling notes back later for essays and revalidation, so near-duplicate sprawl (`haematology` / `haem` / `haematology patients`) would destroy the index it exists to be. |
 | P38 | **No deterministic lookup tables anywhere in the pipeline.** A BNF-derived lookup was prototyped and measurably worked — 2,589 keys, edit distance ≤2, it corrected every drug-name error observed in testing including the Americanisations, because BNF spelling is inherently British. **Rejected anyway**, and deliberately: the notes contain far more than drugs (`NG tube`, `pH 5.5`, `PAD sign off`, `OSCE`, procedures, conditions, equipment), so a table per domain does not generalise, goes stale, and turns one intelligent layer into a patchwork of special cases. Correction stays model-driven (P24). BNF data may still *pre-fill* a created medication card (P33) — that is linking, not correcting. |
+| P39 | **The two text calls get independent model config.** `AI_SANITISE_MODEL_ID` and `AI_CLASSIFY_MODEL_ID`, tunable separately, because the jobs pull in opposite directions: the sanitiser must be **narrow and conservative** (token-level, resist rewriting), the classifier must be **expansive and reasoning-heavy** (219-way ranking, cross-matches, grouping). One model would be wrong for one of them. Starting defaults — sanitiser `deepseek.v3.2` (already proven on the mantle route by AI recall), classifier a stronger reasoning model (`zai.glm-5`, `mistral.mistral-large-3-675b-instruct` and `moonshotai.kimi-k2-thinking` are the candidates). **Both are unmeasured and must be baked off before launch** — every model picked by guess this session turned out wrong. |
+| P40 | **`parseFn` returns a staged response, not one JSON object.** Transcribed, sanitised blocks come back as soon as the vision pair and sanitiser finish (~20s) so the student can start reading and editing; classification arrives after (~28s) and fills in kinds, targets, shortlists and tags. The wait becomes useful instead of blank, which matters because this happens on a phone straight after taking a photo. Consequences: the client must render a **pre-classification state** (blocks with text but no targets), the review screen must tolerate targets appearing under it, and blocks can be written to Dexie at stage one — with the classifier's re-splitting (P26) then reconciled against them. That reconciliation is the price of the staged response and must be designed, not discovered. |
 
 **Set-by-default (veto on read):** nothing is written to the student's record without an
 explicit confirm; parse output is zod-validated and invalid blocks are dropped silently
@@ -523,16 +529,17 @@ not enough; and `wardHint` must be constrained to text on the page.
 
 Still open:
 
-- **~30s is now the wait after taking a photo**, across four calls (vision 12–22s parallel,
-  sanitise ~4s, classify ~5–8s). That is a long spinner on a phone. The likely answer is to
-  return blocks as soon as vision+sanitise finish and fill classification in progressively,
-  but that changes `parseFn` from one JSON response to a staged one and is a real design
-  decision, not a detail. **Decide this before building the review screen.**
-- **Classifier accuracy is completely unmeasured.** Transcription has 8 runs of hard data;
-  the classifier has none. The whole shortlist design (P28) assumes it is roughly right and
-  the top candidate is usually correct. `scripts/eval-note-capture.ts` can be extended to
-  score it — it needs the expected codes for the test page hand-labelled once. Until then
-  `CodeShortlistAccepted` in production is the only evidence, which is late.
+- **Staged-response reconciliation** (P40, resolved but not designed): blocks are written at
+  stage one from the vision regions, then the classifier re-splits them (P26). Merging that
+  second result into rows the student may already be editing is the fiddliest part of the
+  build. Options are to hold stage-one blocks in memory only, or to write them and reconcile
+  by region ids. **Decide before the review screen.**
+- **Classifier accuracy is unmeasured** (resolved: it will be measured). Needs one
+  hand-labelling pass — the expected proficiency codes per block on the test page — after
+  which `scripts/eval-note-capture.ts` scores top-1 and top-3. That is a `[YOU]` action in
+  the implementation guide, and it gates launch, not the build.
+- **The sanitiser and classifier models are unmeasured** (P39). Both need the same repeat-run
+  bake-off the vision models got, and for the same reason.
 - **Tool-calling over the mantle `openai-compat` route is unverified.** SigV4 signing and
   image content parts are both proven; function calling is not. P29's future agentic
   classifier depends on it, so probe it cheaply before designing around it.
