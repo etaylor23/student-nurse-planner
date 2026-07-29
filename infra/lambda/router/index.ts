@@ -9,6 +9,7 @@ import { DynamoRepository } from "../../../src/data/dynamo/dynamoRepository";
 import { makeAuthorize, type Tier, type Verb } from "../../../src/data/dynamo/authorize";
 import { RelationshipStore } from "../../../src/data/dynamo/relationships";
 import { AiStore } from "../../../src/data/dynamo/aiStore";
+import { presignCapture, PresignError } from "./captures";
 import {
   type Caller,
   CrossUserAccess,
@@ -42,6 +43,7 @@ import {
 const TABLE = process.env.TABLE_NAME as string;
 const POLICY_STORE_ID = process.env.POLICY_STORE_ID as string;
 const USER_POOL_ID = process.env.USER_POOL_ID as string;
+const CAPTURE_BUCKET = process.env.CAPTURE_BUCKET as string;
 
 const doc = makeDocClient();
 const authorize = makeAuthorize({
@@ -250,6 +252,38 @@ async function dispatchAi(method: string, args: unknown[], caller: Caller): Prom
   }
 }
 
+/**
+ * Note capture (spec-note-capture.md P1/P17). Only the presign lives here — the capture and
+ * block ROWS are ordinary synced entities the client writes to Dexie, so they travel through
+ * syncPush like everything else and need no bespoke route.
+ *
+ * Tier is SensitiveRecord, matching AI recall and reflections: a photographed page is the
+ * student's own clinical notes, and P2 accepts that it may contain more than it should.
+ */
+const NOTES_METHODS = new Set(["notes/presignCapture"]);
+
+async function dispatchNotes(method: string, args: unknown[], caller: Caller): Promise<unknown> {
+  const ok = await authorize({
+    identityToken: caller.identityToken,
+    action: "Create",
+    tier: "SensitiveRecord",
+    resourceId: "scope:note-capture",
+    ownerId: `${USER_POOL_ID}|${caller.sub}`,
+  });
+  if (!ok) throw new CrossUserError("forbidden");
+
+  switch (method) {
+    case "notes/presignCapture":
+      return presignCapture(
+        { doc, tableName: TABLE, bucket: CAPTURE_BUCKET },
+        caller.sub,
+        args[0],
+      );
+    default:
+      throw new CrossUserError("bad_request");
+  }
+}
+
 const CROSS_USER = new Set([
   "shareRecord",
   "revokeShare",
@@ -356,6 +390,21 @@ export const handler = async (
         if (err instanceof CrossUserError) {
           const code = err.code === "forbidden" ? 403 : err.code === "not_found" ? 404 : 400;
           return json(code, { error: err.code, method });
+        }
+        return json(500, { error: "internal", detail: err instanceof Error ? err.message : String(err) });
+      }
+    }
+
+    if (NOTES_METHODS.has(method)) {
+      try {
+        const result = await dispatchNotes(method, args, { sub, identityToken });
+        return json(200, { result });
+      } catch (err) {
+        // A cap hit is NOT an error — it comes back as `{ ok: false, reason: "CAP" }` in the
+        // result. Only malformed input and authz failures land here.
+        if (err instanceof PresignError) return json(400, { error: err.detail, method });
+        if (err instanceof CrossUserError) {
+          return json(err.code === "forbidden" ? 403 : 400, { error: err.code, method });
         }
         return json(500, { error: "internal", detail: err instanceof Error ? err.message : String(err) });
       }

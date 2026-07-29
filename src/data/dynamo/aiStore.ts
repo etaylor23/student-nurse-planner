@@ -66,6 +66,9 @@ export class AiStore {
       `MSG#${threadId}#${createdAt}#${id}`,
     messagePrefix: (threadId: string) => `MSG#${threadId}#`,
     daily: (isoDate: string) => `DAILY#${isoDate}`,
+    /** Photo-parse cap (spec-note-capture.md P17) — a SEPARATE counter from `daily`, so a
+     *  photo-heavy day never locks the student out of asking questions, and vice versa. */
+    dailyPhoto: (isoDate: string) => `DAILY#PHOTO#${isoDate}`,
   };
 
   /**
@@ -108,6 +111,38 @@ export class AiStore {
       new UpdateCommand({
         TableName: this.tableName,
         Key: { PK: this.pk(), SK: AiStore.sk.daily(today) },
+        UpdateExpression: "ADD #c :one SET #ttl = :ttl, #o = :owner",
+        ExpressionAttributeNames: { "#c": "count", "#ttl": "ttl", "#o": "owner" },
+        ExpressionAttributeValues: {
+          ":one": 1,
+          ":ttl": Math.floor(Date.now() / 1000) + DAILY_TTL_SECONDS,
+          ":owner": this.sub,
+        },
+        ReturnValues: "UPDATED_NEW",
+      }),
+    );
+    const used = Number((res.Attributes as { count?: number } | undefined)?.count ?? 1);
+    return { allowed: used <= limit, remaining: Math.max(0, limit - used), resetsAt };
+  }
+
+  /**
+   * Atomically count one photo against today's photo cap (spec-note-capture.md P17).
+   *
+   * Separate key from `countQuestion` on purpose: photos and questions have different cost
+   * shapes, and one shouldn't consume the other. The cap counts **photos, not model calls**
+   * — a photo costs four calls (P21/P24/P27) but "10 photos a day" is what can be explained
+   * to a student.
+   *
+   * Call this BEFORE issuing the presigned URL. Presigning after the cap check is what
+   * makes the cap real: otherwise uploads are unbounded even while parsing is capped.
+   */
+  async countPhoto(limit: number): Promise<DailyCountResult> {
+    const today = nowIso().slice(0, 10);
+    const resetsAt = `${today}T23:59:59.999Z`;
+    const res = await this.doc.send(
+      new UpdateCommand({
+        TableName: this.tableName,
+        Key: { PK: this.pk(), SK: AiStore.sk.dailyPhoto(today) },
         UpdateExpression: "ADD #c :one SET #ttl = :ttl, #o = :owner",
         ExpressionAttributeNames: { "#c": "count", "#ttl": "ttl", "#o": "owner" },
         ExpressionAttributeValues: {
