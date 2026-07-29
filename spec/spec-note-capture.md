@@ -12,9 +12,35 @@ original image.
 
 Runs on the **same Bedrock mantle endpoint and provider adapter** as
 [`spec-ai-recall.md`](./spec-ai-recall.md) — no new AI infrastructure, no new IAM
-namespace, no second auth path. Grilled 2026-07-27.
+namespace, no second auth path. Grilled 2026-07-27, amended 2026-07-28 after the
+handwriting gate test.
 
-## Decisions (locked — grilled 2026-07-27)
+## Pipeline at a glance
+
+```
+ photo ──> presign + PUT to S3 ──────────────────────────────── P1, P17
+              │
+              ├─> structure model  (qwen3-vl)   blocks, kinds, groups, bbox, rawText
+              └─> check model      (gemma-3-27b) second transcription, discarded  P21
+                        │
+                        ├─> page-text diff  ──> disputedWords per block          P22, P23
+                        └─> sanitisation    ──> text + corrections               P24
+                                  │
+                        student reviews, edits, groups, picks a shift            P9, P10
+                                  │
+                        allocate ──> REAL domain row + sourceType/sourceId       P4, P5
+                                     Reflection · MedicationLog
+                                     ProficiencyStatusEvent · Shift.notes
+```
+
+Three model calls per photo: two vision in parallel, then one text. Nothing reaches the
+student's record without an explicit confirm.
+
+## Decisions (locked — grilled 2026-07-27, amended 2026-07-28)
+
+Numbered P1–P25 in decision order. **P16 is superseded by P22** — it is kept struck
+through rather than deleted, with the measurements that killed it, so nobody reinstates
+confidence-based gating later.
 
 | # | Decision |
 |---|----------|
@@ -28,18 +54,21 @@ namespace, no second auth path. Grilled 2026-07-27.
 | P8 | **The app resolves the shift, not the model.** The model returns the date **exactly as written** (`"22/7"`) plus any other evidence (ward name, shift type). The client matches against the local shift list via the existing `[userId+date]` Dexie index. The model is never asked to supply a year it cannot see, and never returns an id. |
 | P9 | **Ranked candidates, one recommendation, alternates visible.** Candidate shifts are day/month matches across **all years** (a student may be back-filling from last year), ranked most-recent-first. The top candidate is recommended and pre-selected; the rest are one tap away. No matching date at all → fall back to the most recent shift, flagged low confidence. Never silent. |
 | P10 | **Linked blocks arbitrate into one suggested asset.** Blocks stay separate rows sharing a `groupId`; the model reasons across their combined content and proposes a **single** target. The student can edit any block's text and delink blocks freely. The UI aims to be as eloquent as possible at connecting to existing models, while making override trivial. |
-| P11 | **Two text fields on one row: `rawText` frozen, `text` editable.** The model is permitted to *polish* transcribed text so imports read well — but the verbatim transcription is frozen at parse time and never overwritten. Three known states (verbatim → AI-polished → student-edited), not an open-ended revision history, so **no SK version-control pattern**: that would multiply synced rows (`syncPull` scans the whole user partition) and break the one-row-per-entity assumption in `EntityMap`/`STORE_INDEXES`. |
-| P12 | **New `parseFn` Lambda inside the existing `Ai` construct.** Reuses `auth.ts`, `provider.ts`, `metrics.ts` and the Bedrock/mantle IAM already granted. Its own Function URL, own timeout and memory, **non-streaming** (one ~8s call returning one JSON object). Returns blocks as JSON; **the client writes them to Dexie** and the outbox syncs them, so `parseFn` needs no table write access and the local-first pattern is untouched. |
+| P11 | **Two text fields on one row: `rawText` frozen, `text` editable.** `rawText` is the vision model's verbatim transcription, frozen at parse and never overwritten. `text` is what the student works with — produced by the sanitisation pass (P24), then editable by hand. Three known states (verbatim → sanitised → student-edited), not an open-ended revision history, so **no SK version-control pattern**: that would multiply synced rows (`syncPull` scans the whole user partition) and break the one-row-per-entity assumption in `EntityMap`/`STORE_INDEXES`. The frozen `rawText` is what makes P24 safe to auto-apply. |
+| P12 | **New `parseFn` Lambda inside the existing `Ai` construct.** Reuses `auth.ts`, `provider.ts`, `metrics.ts` and the Bedrock/mantle IAM already granted. Its own Function URL, own timeout and memory, **non-streaming** (three model calls, ~30s, returning one JSON object). Returns blocks as JSON; **the client writes them to Dexie** and the outbox syncs them, so `parseFn` needs no table write access and the local-first pattern is untouched. |
 | P13 | **Photos are kept for the life of the account.** No lifecycle expiry. A three-year degree means year-1 photos must still back year-3 PAD evidence. Deleted only by GDPR erasure. **See Accepted risks.** |
 | P14 | **Unallocated blocks feed the AI recall corpus; allocated ones do not.** Photo content becomes askable immediately, and once allocated the materialised row already covers it — so the same words never appear twice and input-token count stays honest. Adds a `NOTE_BLOCK` sentinel type to `NoteCard.tsx`. |
 | P15 | **Global capture entry point.** One affordance available anywhere; the app infers the shift (P8/P9). No shift-bound entry in v1. |
 | P16 | ~~Low-confidence blocks are shown, flagged, never pre-selected.~~ **SUPERSEDED by P22 (2026-07-28) — self-reported confidence is measurably worthless.** Measured against ground truth on a real page: `gemma` wrote `Acyclovir` for `Aciclovir` at `confidence: 1.00`; `qwen` corrupted the longest drug name on the page while reporting `1.00` on every block; `ministral`'s *highest*-confidence block held its *worst* error while its 0.90 block held a harmless expansion — confidence ran **inversely** to severity. The original P16 would have caught none of these and pre-selected all of them. |
-| P22 | **Review gating is by two-model disagreement, not confidence.** Both models transcribe; the app diffs their **whole-page text** and flags the individual words they disagree on, mapped back to the block containing them. A block with no disagreements is pre-selected; a block with any is shown with its disputed words called out and is not pre-selected. Self-reported `confidence` is still stored, for observability only — it must never gate anything. |
-| P23 | **Consensus is page-level, never block-level.** Block-aligned diffing was built and abandoned: the same page came back as 5 blocks from the check model on one run and 28 on the next, so the models never reliably agree on where a block begins. Page text is stable; segmentation is not. Word pairing must also be **character-similarity based, not adjacency based** — a naive adjacency pass reported `"V)" vs "Phenoxymethylpenicillin"` and buried the actual finding, because the two models place the `(Penicillin V)` gloss differently. Naming the wrong word is worse than raising no flag: the student checks something that isn't the error. |
 | P17 | **Own daily counter: `AI#<sub>` / `DAILY#PHOTO#<date>`, limit 10 photos/day.** Same atomic `ADD` + 48h TTL pattern as the question cap, separate key — photos and questions have different cost shapes and one should not consume the other. **The presign is issued inside the cap check**, or uploads stay uncapped even when parsing is capped. |
 | P18 | **No eval harness.** Phase 5 of AI recall was skipped and is skipped again here. **See Accepted risks.** |
 | P19 | **Un-allocating reverses the write.** The materialised row is soft-deleted (standard tombstone) and appended text is stripped back out of `Shift.notes`. Requires storing `appendedText` verbatim; if the student has since edited that text so it no longer matches, leave it in place and say so rather than guessing. |
 | P20 | **Several photos per capture, uploaded one at a time.** A capture is a notebook session, not a single page. Photos upload and parse sequentially, each appending blocks to the same `NoteCapture`. Combined with P17 this is up to 10 photos/day across any number of captures. |
+| P21 | **Two vision models per parse, called in parallel.** `qwen.qwen3-vl-235b-a22b-instruct` is the **structure** model — it owns blocks, kinds, groups, geometry and page fields, and its transcription is the one stored as `rawText`. `google.gemma-3-27b-it` is the **check** model, used only as a transcription cross-check; its output is never stored. gemma was chosen *because its bias differs*, not because it is more accurate — it reliably Americanises `Aciclovir` and drops the `r` in `Filgrastim`, which guarantees a flag on exactly the class of word that matters. A more accurate checker with *correlated* errors would be worse. Both ids are env config (`AI_VISION_MODEL_ID`, `AI_VISION_CHECK_MODEL_ID`). Full bake-off and the rejection of `mistral.ministral-3-14b-instruct` in Appendix 2. |
+| P22 | **Review gating is by two-model disagreement, not confidence.** Both models transcribe; the app diffs their **whole-page text** and flags the individual words they disagree on, mapped back to the block containing them. A block with no disagreements is pre-selected; a block with any is shown with its disputed words called out and is not pre-selected. Self-reported `confidence` is still stored, for observability only — it must never gate anything. |
+| P23 | **Consensus is page-level, never block-level.** Block-aligned diffing was built and abandoned: the same page came back as 5 blocks from the check model on one run and 28 on the next, so the models never reliably agree on where a block begins. Page text is stable; segmentation is not. Word pairing must also be **character-similarity based, not adjacency based** — a naive adjacency pass reported `"V)" vs "Phenoxymethylpenicillin"` and buried the actual finding, because the two models place the `(Penicillin V)` gloss differently. Naming the wrong word is worse than raising no flag: the student checks something that isn't the error. |
+| P24 | **Sanitisation pass — an intelligent medical spell-checker.** A third, text-only call takes the whole page (so it has surrounding context) and corrects **tokens that are not valid terms in UK clinical English**: non-existent drug names, mangled clinical terms, transcription artefacts, and US spellings. Its scope is a spell-checker's scope, and the boundary is strict — **a synonym is not an error.** It must not reorder, restructure, add content, expand abbreviations, or correct the student's clinical reasoning. `preventative` stays (valid British English). `man made` stays. `co-trimox` stays. `bacterial and fungal` stays even where the model would prefer `protozoal` — that is the student's note, and correcting their pharmacology is a different feature. British English is the target lexicon, so `Acyclovir` → `Aciclovir` is orthography rather than judgement. The "intelligent" part is context: `blow methotrexate clearance` is caught not because `blow` isn't a word but because it isn't valid usage here. Writes to **`text` only** — `rawText` stays frozen (P11), so every correction is diffable and revertible. **Auto-applied**, because a spell-checker does not ask permission per word, with the corrections list surfaced in review so anything wrong is one tap to undo. |
+| P25 | **The sanitiser and consensus are orthogonal, not alternatives.** Consensus (P22) catches *disagreement between two readings*; the sanitiser catches *tokens that aren't real*. A non-word both vision models agree on is caught **only** by the sanitiser. A plausible-but-wrong reading of a real word (`Aciclovir` → `Acyclovir`) is caught by either. A wrong-but-real word that both models agree on is caught by **neither** — that is the residual gap, and it is why the student still reviews. |
 
 **Set-by-default (veto on read):** nothing is written to the student's record without an
 explicit confirm; parse output is zod-validated and invalid blocks are dropped silently
@@ -52,7 +81,7 @@ whether a dash attaches left or right, and surfacing that is pure noise); Cedar 
 the existing `List`/`SensitiveRecord` gate with `resourceId: "scope:ai-photo"` rather
 than a new policy-store action; metrics extend the existing `PlaceMate/AI` EMF namespace.
 
-## Model — two of them (P21)
+## Models (P21)
 
 Both on the mantle `openai-compat` route, the **same adapter, endpoint and signing** as
 AI recall with image content parts added. Called **in parallel**; ids are env config
@@ -77,7 +106,7 @@ A model that rewrites a student's notes into its own words is disqualified regar
 its score. **Single-run testing picked it as the winner** — only repeat trials exposed
 the drift. Any future model swap must be evaluated over ≥4 runs.
 
-Verified on real handwriting 2026-07-28 — see Appendix.
+Verified on real handwriting 2026-07-28 — see Appendix 2.
 
 ## Data model (single table; codegen via `gen:zod`)
 
@@ -107,8 +136,10 @@ interface NoteCapture extends Entity, UserOwned, Created, Updated {
 interface NoteBlock extends Entity, UserOwned, Created, Updated {
   captureId: string;        // FK → NoteCapture
   imageIndex: number;       // which photo within the capture (P20)
-  rawText: string;          // verbatim transcription — frozen at parse (P11)
-  text: string;             // AI-polished, then student-edited (P11)
+  rawText: string;          // vision model's verbatim transcription — frozen at parse (P11)
+  text: string;             // sanitised (P24), then student-edited (P11)
+  corrections?: string;     // comma-separated "from|to" pairs the sanitiser applied (P24),
+                            // surfaced in review so any correction is one tap to revert
   kind: NoteBlockKind;      // suggested type (P3)
   confidence: number;       // 0–1 (P16)
   bboxX0: number; bboxY0: number; bboxX1: number; bboxY1: number;  // 0–1 fractions
@@ -138,7 +169,29 @@ never `entityType` — see the 2026-07-26 sync breakage in `dynamoRepository.ts:
 | Route | Where | Purpose |
 |---|---|---|
 | `notes/presignCapture` | existing router RPC | `{ captureId, imageIndex, contentType, bytes }` → atomic `ADD` on `DAILY#PHOTO#<date>`; over limit → `CAP`. Under limit → presigned PUT URL, ~5 min expiry, content-length and content-type constrained. **The cap lives here** (P17). |
-| `POST {fnUrl}/parse` | new `parseFn` (JSON) | `{ captureId, imageKey, imageIndex }` → verify JWT → AVP gate → read object from S3 → **two vision calls in parallel** (structure + check, P21) → page-text diff (P23) → validated `{ blocks[], pageDateRaw, wardHint }` with per-block `disputedWords[]`. Writes nothing. Observed wall clock **12–22s**, so the timeout is 60s and the review screen needs a real wait state. If the *check* model fails or returns unparseable JSON, the parse still succeeds — every block is simply treated as disputed and nothing is pre-selected (fail safe, not fail closed). If the *structure* model fails, the parse fails. |
+| `POST {fnUrl}/parse` | new `parseFn` (JSON) | `{ captureId, imageKey, imageIndex }` → verify JWT → AVP gate → read object from S3 → **two vision calls in parallel** (structure + check, P21) → page-text diff (P23) → **sanitisation call** (P24) → validated `{ blocks[], pageDateRaw, wardHint }` with per-block `disputedWords[]` and `corrections[]`. Writes nothing. |
+
+**Pipeline shape.** Three model calls: two vision calls in parallel, then one text call
+that depends on the structure model's output.
+
+```
+             ┌─ structure (qwen3-vl) ──┐            (rawText, blocks, kinds, groups)
+image ──────>┤                         ├─> diff ──> sanitise ──> blocks[]
+             └─ check (gemma-3-27b) ───┘   (P23)      (P24)       rawText + text
+                                                                 + disputedWords
+                                                                 + corrections
+```
+
+Observed wall clock 12–22s for the vision pair, plus ~3–5s for the sanitiser, so budget
+**~30s** and set the timeout to 60s. The review screen needs a real wait state.
+
+**Degradation is per-stage, and never fails the parse:**
+
+| Stage fails | Behaviour |
+|---|---|
+| Structure model | **Parse fails.** There is nothing to show. |
+| Check model | Parse succeeds; every block is treated as disputed so nothing is pre-selected (fail safe). |
+| Sanitiser | Parse succeeds; `text` falls back to `rawText` verbatim and no corrections are claimed. A missing spell-check is a degraded result, never a wrong one. |
 | — | client | Creates `NoteCapture`/`NoteBlock` rows in Dexie; the outbox syncs them (P12). |
 
 Auth on `parseFn` mirrors `askFn` exactly: `aws-jwt-verify` on the **ID** token, then the
@@ -156,8 +209,7 @@ The model is asked for one JSON object and nothing else:
   "pageDateRaw": "22/7",        // exactly as written, or null (P8)
   "wardHint": "Ward 9",         // any other shift evidence, or null
   "blocks": [{
-    "rawText": "…",             // verbatim (P11)
-    "text": "…",                // lightly polished (P11)
+    "rawText": "…",             // verbatim — the ONLY text the vision model produces (P11)
     "kind": "REFLECTION",
     "confidence": 0.94,
     "bbox": [0.07, 0.49, 0.46, 0.58],
@@ -174,6 +226,46 @@ than making the student do it at 9pm after a late. Stages it cannot fill are omi
 
 Response is zod-parsed. Blocks failing validation are **dropped silently**; a wholly
 unparseable response is a `PARSE_FAILED` error, not a partial write.
+
+**`bbox` needs normalising on receipt.** The contract asks for 0–1 fractions and the
+structure model returns a **0–1000 scale** instead (observed consistently: the same block
+came back as `[130,577,910,746]` across every run). Divide by 1000 on ingest and validate
+the range, or overlays render in the wrong place. The values themselves are stable and
+trustworthy — a crop taken from them landed exactly on the intended block.
+
+### Sanitisation contract (P24)
+
+A text-only call over the whole page's `rawText`. **The model is never handed prose it is
+licensed to rewrite** — its output is a list of token corrections plus the corrected text,
+and the scope boundary is enforced by the prompt, not by hope:
+
+```jsonc
+{
+  "corrections": [
+    { "from": "Phenoxyethylpenicillin", "to": "Phenoxymethylpenicillin",
+      "reason": "not a real drug name" },
+    { "from": "Acyclovir", "to": "Aciclovir", "reason": "US spelling" }
+  ],
+  "correctedText": "…"
+}
+```
+
+The instruction set that matters, in priority order:
+
+1. **British English / BNF conventions are the target lexicon** — `aciclovir` not
+   `acyclovir`, `haematology` not `hematology`, `-ise` not `-ize`.
+2. **Every drug name and clinical term must be real.** A name that does not exist as
+   written is always a transcription error and must be corrected to the real term it is
+   closest to.
+3. **Correct invalid usage in context** — `blow methotrexate clearance` → `block`.
+4. **A synonym is not an error.** Do not swap `preventative` → `prophylactic`, `man made`
+   → `recombinant`, or expand `chemo` → `chemotherapy` or `co-trimox` → `co-trimoxazole`.
+5. **Never reorder, restructure, add content, tidy grammar, or correct the student's
+   clinical reasoning.** `bacterial and fungal` stays as written.
+
+Every one of rules 4 and 5 exists because a model broke it in testing — see Appendix 3.
+A correction whose `from` does not appear verbatim in `rawText` is **discarded**, which
+mechanically blocks the whole class of invented edits.
 
 ## Shift resolution (P8/P9)
 
@@ -212,7 +304,8 @@ block back to `PENDING`.
 |---|---|
 | Pre-capture | Firm warning: don't photograph anything patient-identifiable. Acknowledgement recorded on the capture (P2). |
 | Uploading / parsing | Per-photo progress; sequential (P20). Cancellable. |
-| Review | Photo with block overlays drawn from the bboxes; each block shows its text (editable), suggested kind, suggested target, and its group. Blocks with `disputedWords` show those words highlighted inline with both readings offered, and are unticked; blocks where both models agreed are ticked (P22). Expect **2–3 disputed words per page** — the cost of catching the one that matters. |
+| Review | Photo with block overlays drawn from the bboxes; each block shows its sanitised `text` (editable), suggested kind, suggested target, and its group. Blocks with `disputedWords` show those words highlighted inline with both readings offered, and are unticked; blocks where both models agreed are ticked (P22). Expect **2–3 disputed words per page**. |
+| Corrections | Words the sanitiser changed (P24) are shown subtly marked, with the original from `rawText` on tap and a one-tap revert. Presented as "spell-checked", not as a decision the student must make — they are already applied. |
 | Shift bar | "Looks like **Tue 22 Jul** — Ward 9 late" with a picker exposing the other candidates (P9). Low-confidence fallback says so plainly. |
 | Grouped blocks | Rendered joined, with the single proposed asset named. One tap to delink (P10). |
 | Allocate | Ticked blocks materialise; the review screen reports what was created and links to each. |
@@ -237,8 +330,13 @@ block back to `PENDING`.
   check model return `wardHint: "Haematology"` from the prose "haematology patients" —
   which would have fed shift matching (P8/P9) and mislinked the capture. The instruction
   "only report wardHint if a ward or unit name is actually written on the page" fixed it.
-- **`rawText` is frozen** (P11), so a polished or student-edited block can always be
-  compared against what the page actually said.
+- **`rawText` is frozen** (P11), so a sanitised or student-edited block can always be
+  compared against what the vision model actually read.
+- **The sanitiser is scope-limited by construction, not by instruction alone** (P24): a
+  correction whose `from` string does not appear verbatim in `rawText` is discarded. This
+  is the mechanical guard against a model that decides to improve the prose — and it is
+  needed, because in testing three separate models rewrote clinical content while being
+  explicitly told not to.
 - **Fail closed on parse** — invalid blocks are dropped, never guessed at.
 - **Idempotent allocation** — the guard against duplicate rows and double appends.
 - **`SelfCareCheckin` is not an allocation target**, keeping the structural self-care
@@ -262,8 +360,9 @@ beyond the current beta cohort.
 
 ## Cost & limits
 
-- 10 photos/user/day (P17), each costing **two** model calls (P21). Measured on the real
-  page at 2400px: structure ~4,441 in / ~770 out tokens, check ~507 in / ~650 out. Still
+- 10 photos/user/day (P17), each costing **three** model calls — two vision (P21) plus one
+  text sanitiser (P24). Measured on the real page at 2400px: structure ~4,441 in / ~770 out
+  tokens, check ~507 in / ~650 out, sanitiser ~800 in / ~400 out (text only, so cheap). Still
   comfortably under a penny per photo at open-weight mantle pricing — AI recall's measured
   comparator is ~$0.0064/question at ~13k input tokens. The daily cap counts **photos, not
   calls**, so a cap hit is explainable to a student.
@@ -279,8 +378,13 @@ dimension discipline (`[["Provider","Model"]]` only, so a new error code cannot 
 cost).
 
 New metrics: `PhotosParsed`, `ParseLatencyMs`, `BlocksDetected`, `DisputedWords`,
-`DisputedBlocks`, `CheckModelFailures`, `BlocksAllocated`, `ParseErrors`, `PhotoCapHits`.
+`DisputedBlocks`, `CheckModelFailures`, `Corrections`, `CorrectionsReverted`,
+`SanitiserFailures`, `BlocksAllocated`, `ParseErrors`, `PhotoCapHits`.
 Properties: `ErrorCode`, `ImageBytes`, `BlockKinds`.
+
+`CorrectionsReverted` / `Corrections` is the signal that tells you whether the sanitiser is
+helping or meddling. A rising revert rate means it has started editing rather than
+spell-checking, and it is the only feedback loop on P24 that comes from real students.
 
 New alarms: `AiParseErrors` — `ParseErrors` Sum ≥3 / 5 min → the existing SNS topic. And
 `AiCheckModelDown` — `CheckModelFailures` Sum ≥5 / 15 min, because a silently dead check
@@ -347,7 +451,7 @@ tuning; `SKILL`/`SkillProgress` as an allocation target.
 
 ---
 
-## Appendix — live verification, 2026-07-27
+## Appendix 1 — first probe (printed text), 2026-07-27
 
 Everything below was executed against the real account (`personal`, 641364901830,
 eu-west-2) before this spec was written.
@@ -440,3 +544,44 @@ a vision model from one run.**
 `InvalidParameterException` to empty bytes) and remains a V2 fallback for geometry, but
 it supplies no semantics and would be a second service doing less than the one call this
 spec already makes.
+
+---
+
+## Appendix 3 — how NOT to prompt the sanitiser, 2026-07-28
+
+A first attempt at P24 was **mis-scoped, and the failure is instructive** because the
+symptoms look like a capability limit when they are actually a scope leak. Recorded so the
+mistake isn't repeated.
+
+The bad prompt handed the model the **whole page as prose** together with two conflicting
+instructions: "aggressively correct non-existent drug names" *and* "do not paraphrase,
+expand or tidy anything". Given a licence to rewrite and a contradiction to resolve, all
+three models tested resolved it by drifting into general copy-editing.
+
+Measured over 8 stored runs containing 4 known corruptions of `Phenoxymethylpenicillin`:
+
+| Judge model | Fixed (of 4) | Runs where it damaged correct text |
+|---|---|---|
+| `deepseek.v3.2` | 2 | 1 |
+| `zai.glm-4.7` | 2 | 1 |
+| `qwen.qwen3-235b-a22b-2507` | 0 | 6 of 8 |
+
+What "damaged" meant in practice — every one of these is now an explicit prohibition in
+the P24 contract:
+
+- `deepseek` rewrote `"side effects - lower back pain"` → `"side effects - bone pain (e.g.,
+  lower back)"`, **inventing clinical detail the student never wrote**, and swapped
+  `preventative` → `prophylactic` and `man made` → `recombinant`. On that same pass it
+  *failed* to fix the actual wrong drug name.
+- `glm-4.7` decided the student's pharmacology was wrong and changed `bacterial and fungal`
+  → `protozoal`. It also emitted hallucinated corrections where `from` equalled `to`,
+  reasoning about a word not present in the text.
+- `qwen3-235b` took a **correct** word and corrupted it: `block` → `blow`, with
+  justification that argued the opposite of the change it made.
+
+**The lesson is the prompt shape, not the models.** A sanitiser must be given a token-level
+job with a token-level output, and corrections must be mechanically validated against
+`rawText` (P24) so an invented edit cannot land regardless of what the model returns. The
+`from`-must-appear-verbatim rule would have rejected every single damaging edit above.
+
+This appendix records a *rejected implementation*, not a rejected decision. P24 stands.
