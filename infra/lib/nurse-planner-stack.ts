@@ -4,6 +4,7 @@ import type { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 import { HostedZone, type IHostedZone } from "aws-cdk-lib/aws-route53";
 import type { EnvConfig } from "./config";
 import { DataStore } from "./constructs/data";
+import { Captures } from "./constructs/captures";
 import { Auth } from "./constructs/auth";
 import { Authz } from "./constructs/authz";
 import { Api } from "./constructs/api";
@@ -36,6 +37,9 @@ export class NursePlannerStack extends Stack {
     const { config } = props;
 
     const data = new DataStore(this, "Data", { config });
+    // Photographed note pages (spec-note-capture.md P1). No lifecycle expiry by decision
+    // (P13) — the image is the end of the evidence chain, so it outlives the degree.
+    const captures = new Captures(this, "Captures", { config });
     const auth = new Auth(this, "Auth", { config });
     const authz = new Authz(this, "Authz", {
       config,
@@ -45,6 +49,7 @@ export class NursePlannerStack extends Stack {
     const api = new Api(this, "Api", {
       config,
       table: data.table,
+      captureBucket: captures.bucket,
       userPool: auth.userPool,
       userPoolClient: auth.userPoolClient,
       policyStore: authz.policyStore,

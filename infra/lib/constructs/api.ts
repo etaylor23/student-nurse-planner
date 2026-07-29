@@ -8,6 +8,7 @@ import { Runtime } from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction, OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
 import { PolicyStatement } from "aws-cdk-lib/aws-iam";
 import type { Table } from "aws-cdk-lib/aws-dynamodb";
+import type { Bucket } from "aws-cdk-lib/aws-s3";
 import type { UserPool, UserPoolClient } from "aws-cdk-lib/aws-cognito";
 import type { CfnPolicyStore } from "aws-cdk-lib/aws-verifiedpermissions";
 import type { EnvConfig } from "../config";
@@ -15,6 +16,8 @@ import type { EnvConfig } from "../config";
 export interface ApiProps {
   config: EnvConfig;
   table: Table;
+  /** Note-capture photo bucket (spec-note-capture.md P1) — the router issues presigned PUTs. */
+  captureBucket: Bucket;
   userPool: UserPool;
   userPoolClient: UserPoolClient;
   policyStore: CfnPolicyStore;
@@ -39,7 +42,7 @@ export class Api extends Construct {
 
   constructor(scope: Construct, id: string, props: ApiProps) {
     super(scope, id);
-    const { config, table, userPool, userPoolClient, policyStore } = props;
+    const { config, table, userPool, userPoolClient, policyStore, captureBucket } = props;
 
     const commonFnProps = {
       runtime: Runtime.NODEJS_20_X,
@@ -63,11 +66,18 @@ export class Api extends Construct {
         POLICY_STORE_ID: policyStore.attrPolicyStoreId,
         USER_POOL_ID: userPool.userPoolId,
         USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
+        CAPTURE_BUCKET: captureBucket.bucketName,
       },
     });
 
     // Least-privilege: the router owns user data (RW) and calls the AVP gate.
     table.grantReadWriteData(routerFn);
+    // Presigned PUT/GET for note-capture photos. A presigned URL carries the SIGNER's
+    // permissions, so this grant is exactly what a student's upload can do — object-level
+    // write and read, no ListBucket, no delete. Erasure deletes via the admin script's own
+    // credentials, not this role.
+    captureBucket.grantPut(routerFn);
+    captureBucket.grantRead(routerFn);
     routerFn.addToRolePolicy(
       new PolicyStatement({
         actions: [
