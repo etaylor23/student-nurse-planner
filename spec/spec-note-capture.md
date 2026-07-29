@@ -20,42 +20,60 @@ handwriting gate test.
 ```
  photo ──> presign + PUT to S3 ──────────────────────────────── P1, P17
               │
-              ├─> structure model  (qwen3-vl)   blocks, kinds, groups, bbox, rawText
-              └─> check model      (gemma-3-27b) second transcription, discarded  P21
-                        │
-                        ├─> page-text diff  ──> disputedWords per block          P22, P23
-                        └─> sanitisation    ──> text + corrections               P24
+    ┌─────────┴──────────┐  in parallel
+    │                    │
+ structure (qwen3-vl)   check (gemma-3-27b)                          P21
+ rawText, regions,      second transcription
+ generic hints          (discarded after diffing)
+    │                    │
+    └─────────┬──────────┘
+              ├─> page-text diff ──────> disputedWords per block      P22, P23
+              │
+              ├─> SANITISE (text) ─────> text + corrections           P24
+              │                          medical spell-check only
+              │
+              └─> CLASSIFY (text) ─────> the real blocks              P26-P31
+                    + 219 statements     semantic units, may span or
+                    + student context      subdivide vision regions
+                      (client-supplied)  kind · groupId · targetType
+                                         ranked code shortlist
+                                         tags · gibbs (reflections only)
                                   │
-                        student reviews, edits, groups, picks a shift            P9, P10
+                    student reviews, retypes, regroups, picks a shift  P35, P9
                                   │
-                        allocate ──> REAL domain row + sourceType/sourceId       P4, P5
-                                     Reflection · MedicationLog
-                                     ProficiencyStatusEvent · Shift.notes
+                    allocate ──> REAL domain row + sourceType/sourceId P4, P5
+                                 Reflection · MedicationLog
+                                 ProficiencyStatusEvent · Shift.notes
 ```
 
-Three model calls per photo: two vision in parallel, then one text. Nothing reaches the
-student's record without an explicit confirm.
+**Four model calls per photo:** two vision in parallel, then sanitise, then classify.
+Sanitise must precede classify — matching against `Phenoxyethylpenicillin` finds nothing.
+Nothing reaches the student's record without an explicit confirm.
 
 ## Decisions (locked — grilled 2026-07-27, amended 2026-07-28)
 
-Numbered P1–P25 in decision order. **P16 is superseded by P22** — it is kept struck
-through rather than deleted, with the measurements that killed it, so nobody reinstates
-confidence-based gating later.
+Numbered P1–P38 in decision order; P26–P38 were added after grilling the classification
+stage. Two supersessions, both kept in place rather than
+deleted so nobody reinstates them:
+
+- **P16 → P22.** Confidence-based review gating, with the measurements that killed it.
+- **P3's segmentation implication → P26.** Vision blocks were originally treated as the
+  block boundaries; the classifier owns them instead.
 
 | # | Decision |
 |---|----------|
 | P1 | **Photos are retained in S3.** Presign → direct PUT → parse. The image is a durable artefact, not a throwaway input: it is the terminal node of the evidence chain (P5) and the only ground truth for checking a transcription. Costs a new bucket, CORS, presign endpoint, lifecycle config and a new limb on the erasure runbook. |
 | P2 | **Patient-identifiable data: warning + accepted risk.** A camera cannot self-censor the way a keyboard can, so photos will sometimes contain identifiers. Firm warning before the camera opens; acknowledgement recorded per capture as `piiAcknowledged`, mirroring `Reflection.piiAcknowledged`. No PII gate, no redaction pass. Follows the precedent set for Sentry screenshots (`plans/2026-07-20-sentry-feedback.md` D-Screenshots). **See Accepted risks.** |
-| P3 | **Blocks are first-class persisted rows.** New `NoteCapture` + `NoteBlock` entities in the owner partition, registered in the Dexie/sync registry (unlike `AiThread`/`AiMessage`). A block carries its text, geometry, suggested kind, confidence, grouping and shift link. Value lands at capture, before any filing work. |
+| P3 | **Blocks are first-class persisted rows.** New `NoteCapture` + `NoteBlock` entities in the owner partition, registered in the Dexie/sync registry (unlike `AiThread`/`AiMessage`). A block carries its text, geometry, kind, grouping, target and shift link. Value lands at capture, before any filing work. **Amended by P26:** rows are created from the *classifier's* semantic units, not from the vision model's regions. |
 | P4 | **Allocation materialises the real domain row.** Allocating a block creates a genuine `Reflection` (+ sections), `MedicationLog` or `ProficiencyStatusEvent`. The `NoteBlock` survives as provenance. Presentation is seamless **by construction** — the thing *is* a Reflection, so it appears in every list, export and corpus with **zero changes to any read path**. |
 | P5 | **Provenance = discriminated pair on materialisable entities.** `sourceType?: SourceType` + `sourceId?: string` added to `Reflection`, `MedicationLog`, `ProficiencyStatusEvent`. Mirrors the existing `EvidenceLink { evidenceType, evidenceId }` idiom; keeps a meaningless column off the other ~20 entities; the discriminator absorbs future sources (voice, import) without a backfill. Optional fields need no Dexie migration. Chain: **domain row → `NoteBlock` → `NoteCapture` → S3 object**. |
 | P6 | **`shiftId` on both capture and block.** The capture carries the suggested shift for the page; each block defaults to it but is individually overridable, since a pocket notebook page can legitimately span two shifts. Materialised rows inherit the block's `shiftId`. Uses the existing "universal capture join" — no new concept. |
 | P7 | **Block text may be appended into `Shift.notes`.** `SHIFT_NOTES` is a valid allocation target: the transcribed text is appended to the shift's own notes field. Note the consequence — `Shift.notes` is a string on a pre-existing row, so P5's 1:1 provenance model **cannot express it**. Appended words carry no `sourceType`/`sourceId`. Mitigated by recording `appendedTo` + `appendedText` on the block for de-dupe and revert (P19). |
 | P8 | **The app resolves the shift, not the model.** The model returns the date **exactly as written** (`"22/7"`) plus any other evidence (ward name, shift type). The client matches against the local shift list via the existing `[userId+date]` Dexie index. The model is never asked to supply a year it cannot see, and never returns an id. |
 | P9 | **Ranked candidates, one recommendation, alternates visible.** Candidate shifts are day/month matches across **all years** (a student may be back-filling from last year), ranked most-recent-first. The top candidate is recommended and pre-selected; the rest are one tap away. No matching date at all → fall back to the most recent shift, flagged low confidence. Never silent. |
-| P10 | **Linked blocks arbitrate into one suggested asset.** Blocks stay separate rows sharing a `groupId`; the model reasons across their combined content and proposes a **single** target. The student can edit any block's text and delink blocks freely. The UI aims to be as eloquent as possible at connecting to existing models, while making override trivial. |
+| P10 | **Linked blocks arbitrate into one suggested asset.** Blocks stay separate rows sharing a `groupId`; the **classifier** (P27) reasons across their combined content and proposes a **single** target. The student can edit any block's text and delink blocks freely. The UI aims to be as eloquent as possible at connecting to existing models, while making override trivial. Note the division of labour with P26: the classifier decides both where one block *ends* and which blocks *belong together* — splitting and grouping are the same judgement seen from two directions. |
 | P11 | **Two text fields on one row: `rawText` frozen, `text` editable.** `rawText` is the vision model's verbatim transcription, frozen at parse and never overwritten. `text` is what the student works with — produced by the sanitisation pass (P24), then editable by hand. Three known states (verbatim → sanitised → student-edited), not an open-ended revision history, so **no SK version-control pattern**: that would multiply synced rows (`syncPull` scans the whole user partition) and break the one-row-per-entity assumption in `EntityMap`/`STORE_INDEXES`. The frozen `rawText` is what makes P24 safe to auto-apply. |
-| P12 | **New `parseFn` Lambda inside the existing `Ai` construct.** Reuses `auth.ts`, `provider.ts`, `metrics.ts` and the Bedrock/mantle IAM already granted. Its own Function URL, own timeout and memory, **non-streaming** (three model calls, ~30s, returning one JSON object). Returns blocks as JSON; **the client writes them to Dexie** and the outbox syncs them, so `parseFn` needs no table write access and the local-first pattern is untouched. |
+| P12 | **New `parseFn` Lambda inside the existing `Ai` construct.** Reuses `auth.ts`, `provider.ts`, `metrics.ts` and the Bedrock/mantle IAM already granted. Its own Function URL, own timeout and memory, **non-streaming** (four model calls, ~30s, returning one JSON object). Returns blocks as JSON; **the client writes them to Dexie** and the outbox syncs them. `parseFn` needs **no table access at all** — not even read — because the student's context arrives in the request body (P32) rather than being queried. |
 | P13 | **Photos are kept for the life of the account.** No lifecycle expiry. A three-year degree means year-1 photos must still back year-3 PAD evidence. Deleted only by GDPR erasure. **See Accepted risks.** |
 | P14 | **Unallocated blocks feed the AI recall corpus; allocated ones do not.** Photo content becomes askable immediately, and once allocated the materialised row already covers it — so the same words never appear twice and input-token count stays honest. Adds a `NOTE_BLOCK` sentinel type to `NoteCard.tsx`. |
 | P15 | **Global capture entry point.** One affordance available anywhere; the app infers the shift (P8/P9). No shift-bound entry in v1. |
@@ -69,6 +87,19 @@ confidence-based gating later.
 | P23 | **Consensus is page-level, never block-level.** Block-aligned diffing was built and abandoned: the same page came back as 5 blocks from the check model on one run and 28 on the next, so the models never reliably agree on where a block begins. Page text is stable; segmentation is not. Word pairing must also be **character-similarity based, not adjacency based** — a naive adjacency pass reported `"V)" vs "Phenoxymethylpenicillin"` and buried the actual finding, because the two models place the `(Penicillin V)` gloss differently. Naming the wrong word is worse than raising no flag: the student checks something that isn't the error. |
 | P24 | **Sanitisation pass — an intelligent medical spell-checker.** A third, text-only call takes the whole page (so it has surrounding context) and corrects **tokens that are not valid terms in UK clinical English**: non-existent drug names, mangled clinical terms, transcription artefacts, and US spellings. Its scope is a spell-checker's scope, and the boundary is strict — **a synonym is not an error.** It must not reorder, restructure, add content, expand abbreviations, or correct the student's clinical reasoning. `preventative` stays (valid British English). `man made` stays. `co-trimox` stays. `bacterial and fungal` stays even where the model would prefer `protozoal` — that is the student's note, and correcting their pharmacology is a different feature. British English is the target lexicon, so `Acyclovir` → `Aciclovir` is orthography rather than judgement. The "intelligent" part is context: `blow methotrexate clearance` is caught not because `blow` isn't a word but because it isn't valid usage here. Writes to **`text` only** — `rawText` stays frozen (P11), so every correction is diffable and revertible. **Auto-applied**, because a spell-checker does not ask permission per word, with the corrections list surfaced in review so anything wrong is one tap to undo. |
 | P25 | **The sanitiser and consensus are orthogonal, not alternatives.** Consensus (P22) catches *disagreement between two readings*; the sanitiser catches *tokens that aren't real*. A non-word both vision models agree on is caught **only** by the sanitiser. A plausible-but-wrong reading of a real word (`Aciclovir` → `Acyclovir`) is caught by either. A wrong-but-real word that both models agree on is caught by **neither** — that is the residual gap, and it is why the student still reviews. |
+| P26 | **Vision blocks are guidance; the classifier owns the boundaries.** The vision model's regions are *evidence about where the subject changes* — often right, not always. The real blocks are semantic: serialised patterns of text that may appear as one vision region or span two or three. So a `NoteBlock` is a **semantic unit**, and its rows are created after classification, not from the vision output. Supersedes the implication in P3 that vision segmentation is final. |
+| P27 | **Classification is its own call, on sanitised text.** The fourth model call. It is *not* folded into the sanitiser: Appendix 3 measured what happens when one model is handed two jobs, and it drifted into rewriting. It must run after P24 because matching depends on correct terms — `Phenoxyethylpenicillin` would match nothing. |
+| P28 | **Match depth: target type plus a ranked shortlist.** For each block the classifier returns the target type *and* its top 3–5 candidate taxonomy codes, ranked, top one pre-selected. It never silently commits to one of 219 statements. The shortlist is also how uncertainty is expressed — see P31. |
+| P29 | **The whole taxonomy is stuffed: all 219 statements, ~7.8k tokens.** Measured: code + statement is 31,237 chars. Sent once per photo, not per block. No vector store, consistent with AI recall's D3. **No pre-filtering by block kind** — a medication note must be able to evidence a Platform 4 statement about medicines management, and that cross-match is exactly what students need for PAD. Annexe B (84 items) doubles as the clinical-skills list via the existing 1:1 `skill_B2.1` ↔ `prof_B2.1` code mapping. Context is assembled as **discrete providers per context type** so each becomes a tool handler when the classifier goes agentic (see Open questions). |
+| P30 | **One classifier call, conditional output per block.** Type-specific fields are emitted only for the types that need them: Gibbs stages on reflection blocks, medication candidates on medication blocks, taxonomy codes on skill blocks, nothing extra on observations. Gibbs therefore moves out of the vision contract, where it was both meaningless for most blocks and computed from unsanitised text. Vision hints stay **generic** — segmentation and tags only. |
+| P31 | **No second classifier.** Transcription needed consensus because its errors are *invisible* — a wrong drug name reads as correct. A wrong classification is **visible**: it sits in a ranked list the student is already looking at, and swapping it is one tap. Asymmetric harm, asymmetric checking. Self-reported classifier confidence is not used to gate anything (P22 applies here too). |
+| P32 | **The client supplies the student's context; `parseFn` keeps zero table access.** The request carries the student's `Medication` card names, `Tag` labels and current placement name/`settingType` — the app is local-first and already holds all of it in Dexie, so there is no query on the hot path and no new IAM. **`ProficiencyStatus` is deliberately withheld:** letting the classifier see which statements are `NOT_YET_ACHIEVED` would rank evidence by what the student still needs rather than by what the note actually shows, which is the wrong incentive in a record heading toward the NMC. |
+| P33 | **Medication: link an existing card, else offer to create one.** Match against the student's own `Medication` cards (they are `UserOwned`). No card yet → the review screen offers to create one **pre-filled from the block's own content**, which for a page like the test photo already supplies class, indication and side effects. Never created silently. |
+| P34 | **Unclassifiable blocks are kept as `UNKNOWN` and retypeable.** A shopping list, a phone number, an illegible fragment gets an honest `UNKNOWN` kind rather than a confident wrong guess, and the student moves it to the right type in the UI (P35). Nothing the student wrote is ever discarded, and the block still reaches the AI recall corpus under P14. |
+| P35 | **Review layout: list on mobile, lanes on wider screens.** Narrow screens get blocks in reading order with a type control each; wider screens get lanes per target type with drag between them, so the whole page's routing is visible at a glance. **Mobile is the primary path** — students photograph notes on a phone — so the list must be the good experience and lanes are the enhancement. |
+| P36 | **Deterministic serialisation.** Regions are sorted into reading order from their bbox (top-to-bottom by centre, left-to-right on ties) and handed over with **soft region markers** the classifier may cross. Determinism matters because model emission order is not stable — the check model returned 5 blocks on one run and 28 on the next — so without a sort the same photo could classify differently each time. |
+| P37 | **Tags: reuse existing labels, propose new ones.** Matched against the student's own `Tag` labels first and applied silently; genuinely new tags are surfaced as suggestions to tick. `Tag` is unique per user+label and its whole value is pulling notes back later for essays and revalidation, so near-duplicate sprawl (`haematology` / `haem` / `haematology patients`) would destroy the index it exists to be. |
+| P38 | **No deterministic lookup tables anywhere in the pipeline.** A BNF-derived lookup was prototyped and measurably worked — 2,589 keys, edit distance ≤2, it corrected every drug-name error observed in testing including the Americanisations, because BNF spelling is inherently British. **Rejected anyway**, and deliberately: the notes contain far more than drugs (`NG tube`, `pH 5.5`, `PAD sign off`, `OSCE`, procedures, conditions, equipment), so a table per domain does not generalise, goes stale, and turns one intelligent layer into a patchwork of special cases. Correction stays model-driven (P24). BNF data may still *pre-fill* a created medication card (P33) — that is linking, not correcting. |
 
 **Set-by-default (veto on read):** nothing is written to the student's record without an
 explicit confirm; parse output is zod-validated and invalid blocks are dropped silently
@@ -118,7 +149,8 @@ export type NoteCaptureStatus = "PARSING" | "REVIEW" | "DONE";
 
 export type NoteBlockKind =
   | "CLINICAL_SKILL" | "MEDICATION" | "REFLECTION"
-  | "OBSERVATION"    | "TODO"       | "DATE_HEADER";
+  | "OBSERVATION"    | "TODO"       | "DATE_HEADER"
+  | "UNKNOWN";       // classifier couldn't type it — honest, retypeable (P34)
 
 export type NoteBlockStatus = "PENDING" | "ALLOCATED" | "DISMISSED";
 export type NoteBlockTarget = "REFLECTION" | "MED_LOG" | "PROFICIENCY_EVENT" | "SHIFT_NOTES";
@@ -140,6 +172,12 @@ interface NoteBlock extends Entity, UserOwned, Created, Updated {
   text: string;             // sanitised (P24), then student-edited (P11)
   corrections?: string;     // comma-separated "from|to" pairs the sanitiser applied (P24),
                             // surfaced in review so any correction is one tap to revert
+  candidateCodes?: string;  // comma-separated taxonomy codes, best first (P28) —
+                            // e.g. "B2.1,B2.4,3.4". First is pre-selected; the rest are
+                            // one tap away. Empty for kinds with no taxonomy target.
+  suggestedTags?: string;   // comma-separated tag labels (P37). Labels already in the
+                            // student's Tag list are applied; new ones need confirming.
+  medicationCandidate?: string;  // matched Medication.id, or a name to offer creating (P33)
   kind: NoteBlockKind;      // suggested type (P3)
   confidence: number;       // 0–1 (P16)
   bboxX0: number; bboxY0: number; bboxX1: number; bboxY1: number;  // 0–1 fractions
@@ -192,6 +230,7 @@ Observed wall clock 12–22s for the vision pair, plus ~3–5s for the sanitiser
 | Structure model | **Parse fails.** There is nothing to show. |
 | Check model | Parse succeeds; every block is treated as disputed so nothing is pre-selected (fail safe). |
 | Sanitiser | Parse succeeds; `text` falls back to `rawText` verbatim and no corrections are claimed. A missing spell-check is a degraded result, never a wrong one. |
+| Classifier | Parse succeeds; blocks fall back to the vision model's regions with `kind: UNKNOWN` and no targets. The student routes them by hand (P35) — the feature degrades to a transcription tool, which is still useful. |
 | — | client | Creates `NoteCapture`/`NoteBlock` rows in Dexie; the outbox syncs them (P12). |
 
 Auth on `parseFn` mirrors `askFn` exactly: `aws-jwt-verify` on the **ID** token, then the
@@ -267,6 +306,49 @@ Every one of rules 4 and 5 exists because a model broke it in testing — see Ap
 A correction whose `from` does not appear verbatim in `rawText` is **discarded**, which
 mechanically blocks the whole class of invented edits.
 
+### Classifier contract (P26–P37)
+
+A text-only call, after sanitisation. **Input:**
+
+1. The page's sanitised text in **deterministic reading order** with soft region markers
+   (P36) — `[r1] … [r2] …`, boundaries the classifier may cross.
+2. The vision model's **generic hints** — its own segmentation guess and any tags. Marked
+   explicitly as guidance, not instruction.
+3. **All 219 proficiency statements**, `code|statement`, ~7.8k tokens (P29).
+4. **The student's context, supplied by the client** (P32): `Medication` card names, `Tag`
+   labels, current placement name + `settingType`. Never `ProficiencyStatus`.
+
+**Output** — the blocks as the app will store them, one entry per *semantic* unit:
+
+```jsonc
+{
+  "blocks": [{
+    "fromRegions": [2, 3],          // which vision regions this drew from (may be 1 or many)
+    "text": "…",                    // the sanitised text belonging to this block
+    "kind": "CLINICAL_SKILL",       // or UNKNOWN (P34)
+    "groupKey": "a",                // shared with blocks that belong together (P10)
+    "targetType": "PROFICIENCY_EVENT",
+    "candidateCodes": ["B2.1", "B2.4", "3.4"],   // ranked, first pre-selected (P28)
+    "tags": ["haematology", "drug safety"],       // existing labels reused (P37)
+    "medicationCandidate": "Filgrastim",          // medication blocks only (P33)
+    "gibbs": { "DESCRIPTION": "…", "FEELINGS": "…", "ACTION_PLAN": "…" }  // reflections only (P30)
+  }]
+}
+```
+
+The conditional fields matter: `gibbs` on a medication block or `candidateCodes` on an
+observation are noise, and asking for them everywhere invites the model to invent them.
+
+**Why the taxonomy is not pre-filtered by kind** (P29): a medication note evidencing a
+Platform 4 statement on medicines management is precisely the cross-match a student needs
+for PAD, and filtering by `kind` — itself only a hint at this point — would make it
+unreachable.
+
+**Zod-validated on return.** A `candidateCode` that isn't a real proficiency code is
+dropped; a `medicationCandidate` that matches no card becomes a create-offer rather than a
+link; a block whose `text` isn't a substring of the sanitised page is discarded entirely,
+which is the same structural guard P24 uses against invented content.
+
 ## Shift resolution (P8/P9)
 
 Runs client-side against the local Dexie shift list:
@@ -304,7 +386,12 @@ block back to `PENDING`.
 |---|---|
 | Pre-capture | Firm warning: don't photograph anything patient-identifiable. Acknowledgement recorded on the capture (P2). |
 | Uploading / parsing | Per-photo progress; sequential (P20). Cancellable. |
-| Review | Photo with block overlays drawn from the bboxes; each block shows its sanitised `text` (editable), suggested kind, suggested target, and its group. Blocks with `disputedWords` show those words highlighted inline with both readings offered, and are unticked; blocks where both models agreed are ticked (P22). Expect **2–3 disputed words per page**. |
+| Review (mobile — primary) | Blocks in reading order, each with its sanitised `text` (editable), a type control, its group, and its shift. Blocks with `disputedWords` show those words highlighted inline with both readings offered and are unticked; blocks both models agreed on are ticked (P22). Expect **2–3 disputed words per page**. |
+| Review (wide) | The same blocks arranged in lanes per target type — Reflections, Medications, Clinical skills, Shift notes, Unknown — draggable between lanes, so the page's whole routing is visible at once (P35). |
+| Taxonomy pick | On a skill or proficiency block, the top `candidateCode` is pre-selected with its statement shown in full, and the remaining 2–4 candidates are one tap away. The full 219-item picker remains reachable for when none of them fit (P28). |
+| Unknown blocks | Grouped last under an honest label. Moving one to a type is a drag on wide screens, a dropdown on mobile (P34). Never auto-filed, never discarded. |
+| New medication | A medication block with no matching card offers "add Filgrastim to your medications?", pre-filled from the block's own content. Declining still files the `MedicationLog`, just unlinked (P33). |
+| New tags | Tags the student already uses are applied silently; genuinely new ones appear as tickable suggestions (P37). |
 | Corrections | Words the sanitiser changed (P24) are shown subtly marked, with the original from `rawText` on tap and a one-tap revert. Presented as "spell-checked", not as a decision the student must make — they are already applied. |
 | Shift bar | "Looks like **Tue 22 Jul** — Ward 9 late" with a picker exposing the other candidates (P9). Low-confidence fallback says so plainly. |
 | Grouped blocks | Rendered joined, with the single proposed asset named. One tap to delink (P10). |
@@ -341,6 +428,13 @@ block back to `PENDING`.
 - **Idempotent allocation** — the guard against duplicate rows and double appends.
 - **`SelfCareCheckin` is not an allocation target**, keeping the structural self-care
   exclusion (D4) intact.
+- **The classifier never sees `ProficiencyStatus`** (P32). Withholding it is a deliberate
+  integrity guard: a classifier that knows which statements are outstanding would rank
+  evidence by what the student *needs* rather than by what the note *shows*, and this
+  record ends up in front of the NMC.
+- **A block whose text isn't a substring of the sanitised page is discarded** (P26/P27) —
+  the same structural rule as P24's corrections, applied to segmentation. The classifier
+  can re-split and regroup the student's words; it cannot introduce any.
 
 ## Accepted risks
 
@@ -360,9 +454,10 @@ beyond the current beta cohort.
 
 ## Cost & limits
 
-- 10 photos/user/day (P17), each costing **three** model calls — two vision (P21) plus one
-  text sanitiser (P24). Measured on the real page at 2400px: structure ~4,441 in / ~770 out
-  tokens, check ~507 in / ~650 out, sanitiser ~800 in / ~400 out (text only, so cheap). Still
+- 10 photos/user/day (P17), each costing **four** model calls — two vision (P21), one text
+  sanitiser (P24), one classifier (P27). Measured on the real page at 2400px: structure
+  ~4,441 in / ~770 out tokens, check ~507 in / ~650 out, sanitiser ~800 in / ~400 out. The
+  classifier is the largest text call at ~9k in (7.8k of that the taxonomy, P29) / ~800 out. Still
   comfortably under a penny per photo at open-weight mantle pricing — AI recall's measured
   comparator is ~$0.0064/question at ~13k input tokens. The daily cap counts **photos, not
   calls**, so a cap hit is explainable to a student.
@@ -379,8 +474,14 @@ cost).
 
 New metrics: `PhotosParsed`, `ParseLatencyMs`, `BlocksDetected`, `DisputedWords`,
 `DisputedBlocks`, `CheckModelFailures`, `Corrections`, `CorrectionsReverted`,
-`SanitiserFailures`, `BlocksAllocated`, `ParseErrors`, `PhotoCapHits`.
+`SanitiserFailures`, `ClassifierFailures`, `UnknownBlocks`, `CodeShortlistAccepted`,
+`BlocksAllocated`, `ParseErrors`, `PhotoCapHits`.
 Properties: `ErrorCode`, `ImageBytes`, `BlockKinds`.
+
+`CodeShortlistAccepted` — how often the student keeps the pre-selected top code rather than
+picking a lower-ranked one or none — is the only measurement of classifier accuracy that
+comes from real use, and the shortlist design (P28) rests on it being high. `UnknownBlocks`
+rising means the classifier is giving up.
 
 `CorrectionsReverted` / `Corrections` is the signal that tells you whether the sanitiser is
 helping or meddling. A rising revert rate means it has started editing rather than
@@ -422,6 +523,24 @@ not enough; and `wardHint` must be constrained to text on the page.
 
 Still open:
 
+- **~30s is now the wait after taking a photo**, across four calls (vision 12–22s parallel,
+  sanitise ~4s, classify ~5–8s). That is a long spinner on a phone. The likely answer is to
+  return blocks as soon as vision+sanitise finish and fill classification in progressively,
+  but that changes `parseFn` from one JSON response to a staged one and is a real design
+  decision, not a detail. **Decide this before building the review screen.**
+- **Classifier accuracy is completely unmeasured.** Transcription has 8 runs of hard data;
+  the classifier has none. The whole shortlist design (P28) assumes it is roughly right and
+  the top candidate is usually correct. `scripts/eval-note-capture.ts` can be extended to
+  score it — it needs the expected codes for the test page hand-labelled once. Until then
+  `CodeShortlistAccepted` in production is the only evidence, which is late.
+- **Tool-calling over the mantle `openai-compat` route is unverified.** SigV4 signing and
+  image content parts are both proven; function calling is not. P29's future agentic
+  classifier depends on it, so probe it cheaply before designing around it.
+- **`kind` is now nearly redundant with `targetType`.** They map almost 1:1
+  (`MEDICATION`→`MED_LOG`, `REFLECTION`→`REFLECTION`, `CLINICAL_SKILL`→`PROFICIENCY_EVENT`,
+  the rest→`SHIFT_NOTES`). Both are kept because `kind` is what the vision model can hint
+  at and `targetType` is the classifier's decision, but if that distinction stops earning
+  its keep in the UI, collapse them.
 - **Long-word corruption is the residual risk.** Across 7 runs the structure model
   corrupted `Phenoxymethylpenicillin` — the longest word on the page — in 3 of them, a
   different way each time (`Phenoxyethyl…`, `Phenoxymenthyl…`, and once split across
@@ -441,6 +560,13 @@ Still open:
   on real handwriting.
 
 ## V2 notes (explicitly out of scope)
+
+**Agentic classifier with tools** (P29): instead of stuffing all 219 statements, the
+classifier fetches context on demand — `getProficiencyStatements(kind)`,
+`getClinicalSkills()`, `getMedicationCards()`, `getShifts(dateRange)`. v1 is built with
+context assembly split into **discrete providers per context type** precisely so each one
+becomes a tool handler without restructuring the classifier. Blocked on verifying that the
+mantle route supports function calling.
 
 Re-parsing stored photos when the vision model improves (P1 makes this possible, but no
 UI in v1); cross-page block grouping within a capture (P20 groups within a page only);
