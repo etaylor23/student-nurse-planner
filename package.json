@@ -11,7 +11,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit && tsc -p infra/lambda/ai/tsconfig.json",
+    "typecheck": "tsc --noEmit && tsc -p infra/lambda/ai/tsconfig.json && tsc -p infra/lambda/router/tsconfig.json && tsc -p infra/lambda/auth/tsconfig.json && tsc -p infra/lambda/feeds/tsconfig.json",
     "gen:zod": "ts-to-zod src/domain/types.ts src/domain/schemas.generated.ts",
     "gen:zod:check": "ts-to-zod src/domain/types.ts src/domain/schemas.generated.ts && git diff --exit-code src/domain/schemas.generated.ts",
     "test:watch": "vitest",
