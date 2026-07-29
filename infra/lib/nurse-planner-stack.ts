@@ -112,6 +112,8 @@ export class NursePlannerStack extends Stack {
     });
     new CfnOutput(this, "DistributionId", { value: web.distribution.distributionId });
     new CfnOutput(this, "SpaBucketName", { value: web.bucket.bucketName });
+    // Consumed by scripts/delete-user.ts — GDPR erasure deletes the user's prefix here.
+    new CfnOutput(this, "CaptureBucketName", { value: captures.bucket.bucketName });
     new CfnOutput(this, "Region", { value: config.region });
     if (config.customDomain) {
       new CfnOutput(this, "AppUrl", { value: `https://${config.customDomain.domainName}` });

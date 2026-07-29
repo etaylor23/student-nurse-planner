@@ -5,11 +5,8 @@
  * and default to dry-run.
  */
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import {
-  BatchWriteCommand,
-  DynamoDBDocumentClient,
-  QueryCommand,
-} from "@aws-sdk/lib-dynamodb";
+import { DeleteObjectsCommand, ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3";
+import { BatchWriteCommand, DynamoDBDocumentClient, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import {
   AdminCreateUserCommand,
   AdminDeleteUserCommand,
@@ -37,6 +34,13 @@ export interface StackConfig {
   tableName: string;
   userPoolId: string;
   clientId: string;
+  /**
+   * Note-capture photo bucket. **Optional on purpose:** the output only exists once a stack
+   * carrying the Captures construct is deployed, and erasure must still work (and say what
+   * it skipped) against a stack that predates it — rather than crashing halfway through a
+   * GDPR request.
+   */
+  captureBucket?: string;
 }
 
 /** Resolve the live table + user-pool + app-client ids from the CloudFormation stack. */
@@ -51,7 +55,7 @@ export async function resolveStackConfig(stack = STACK): Promise<StackConfig> {
   if (!tableName || !userPoolId || !clientId) {
     throw new Error(`Could not resolve TableName/UserPoolId/UserPoolClientId from stack ${stack}`);
   }
-  return { tableName, userPoolId, clientId };
+  return { tableName, userPoolId, clientId, captureBucket: get("CaptureBucketName") };
 }
 
 export function docClient(): DynamoDBDocumentClient {
@@ -60,6 +64,10 @@ export function docClient(): DynamoDBDocumentClient {
 
 export function cognitoClient(): CognitoIdentityProviderClient {
   return new CognitoIdentityProviderClient({ region: REGION });
+}
+
+export function s3Client(): S3Client {
+  return new S3Client({ region: REGION });
 }
 
 // ---------------------------------------------------------------------------
@@ -93,7 +101,9 @@ export async function findUser(
  * admin-created user to CONFIRMED. It's never usable to sign in (the app client allows
  * only CUSTOM_AUTH / magic-link, not password auth) and is discarded immediately. */
 function throwawayPassword(): string {
-  return `${randomBytes(24).toString("base64").replace(/[^A-Za-z0-9]/g, "")}aA1!`;
+  return `${randomBytes(24)
+    .toString("base64")
+    .replace(/[^A-Za-z0-9]/g, "")}aA1!`;
 }
 
 /**
@@ -200,6 +210,8 @@ type Key = { PK: string; SK: string };
 export interface EraseResult {
   partitionItems: number;
   counterparts: number;
+  /** Rows in the sibling `AI#<sub>` partition — chat threads/messages + daily counters. */
+  aiItems: number;
 }
 
 async function queryPartition(
@@ -282,20 +294,84 @@ export async function eraseUserData(
   const pk = `USER#${sub}`;
   const items = await queryPartition(doc, tableName, pk);
   const counterparts = deriveCounterparts(sub, items);
+  // AI recall deliberately stores chat in a SIBLING partition so it stays out of the sync
+  // scan (spec-ai-recall.md D16), which also means a `USER#`-only erasure silently leaves
+  // it behind: threads, every question and answer, and the daily counters. Erasure has to
+  // know about both partitions or it reports success while retaining personal data.
+  const aiPk = `AI#${sub}`;
+  const aiItems = await queryPartition(doc, tableName, aiPk);
   log(
-    `Partition ${pk}: ${items.length} item(s). Relationship counterparts elsewhere: ${counterparts.length}.`,
+    `Partition ${pk}: ${items.length} item(s). Partition ${aiPk}: ${aiItems.length} item(s). ` +
+      `Relationship counterparts elsewhere: ${counterparts.length}.`,
   );
   if (opts.dryRun) {
     for (const it of items) log(`  [dry-run] would delete ${pk} / ${String(it.SK)}`);
+    for (const it of aiItems) log(`  [dry-run] would delete ${aiPk} / ${String(it.SK)}`);
     for (const c of counterparts) log(`  [dry-run] would delete ${c.PK} / ${c.SK} (counterpart)`);
   } else {
     await batchDelete(doc, tableName, [
       ...counterparts,
       ...items.map((it) => ({ PK: String(it.PK), SK: String(it.SK) })),
+      ...aiItems.map((it) => ({ PK: String(it.PK), SK: String(it.SK) })),
     ]);
-    log(`Deleted ${items.length} partition item(s) and ${counterparts.length} counterpart(s).`);
+    log(
+      `Deleted ${items.length} partition item(s), ${aiItems.length} AI item(s) and ` +
+        `${counterparts.length} counterpart(s).`,
+    );
   }
-  return { partitionItems: items.length, counterparts: counterparts.length };
+  return {
+    partitionItems: items.length,
+    counterparts: counterparts.length,
+    aiItems: aiItems.length,
+  };
+}
+
+/**
+ * Delete every photographed note page for a user (spec-note-capture.md P1/P13).
+ *
+ * Photos have NO lifecycle expiry by decision — they back PAD evidence for the length of a
+ * degree — so erasure is the only thing that removes them. Without this, `delete-user.ts`
+ * would report success while the student's clinical imagery stayed in the bucket
+ * indefinitely, which is precisely the risk P2 accepted on the understanding that erasure
+ * works.
+ *
+ * Paginated: a heavy user could exceed one `ListObjectsV2` page, and `DeleteObjects` caps
+ * at 1000 keys per call.
+ */
+export async function eraseUserCaptures(
+  s3: S3Client,
+  bucket: string,
+  sub: string,
+  opts: { dryRun: boolean; log?: Log },
+): Promise<{ objects: number }> {
+  const log = opts.log ?? (() => {});
+  const Prefix = `u/${sub}/`;
+  const keys: string[] = [];
+  let ContinuationToken: string | undefined;
+  do {
+    const page = await s3.send(
+      new ListObjectsV2Command({ Bucket: bucket, Prefix, ContinuationToken }),
+    );
+    for (const o of page.Contents ?? []) if (o.Key) keys.push(o.Key);
+    ContinuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+  } while (ContinuationToken);
+
+  log(`Bucket ${bucket} prefix ${Prefix}: ${keys.length} object(s).`);
+  if (opts.dryRun) {
+    for (const k of keys) log(`  [dry-run] would delete s3://${bucket}/${k}`);
+    return { objects: keys.length };
+  }
+  for (let i = 0; i < keys.length; i += 1000) {
+    const chunk = keys.slice(i, i + 1000);
+    await s3.send(
+      new DeleteObjectsCommand({
+        Bucket: bucket,
+        Delete: { Objects: chunk.map((Key) => ({ Key })), Quiet: true },
+      }),
+    );
+  }
+  if (keys.length > 0) log(`Deleted ${keys.length} capture object(s).`);
+  return { objects: keys.length };
 }
 
 // ---------------------------------------------------------------------------

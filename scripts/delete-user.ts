@@ -12,10 +12,12 @@ import {
   cognitoClient,
   deleteCognitoUser,
   docClient,
+  eraseUserCaptures,
   eraseUserData,
   findUser,
   parseUserArgs,
   resolveStackConfig,
+  s3Client,
 } from "./lib/admin";
 
 async function main() {
@@ -24,24 +26,41 @@ async function main() {
     console.error("Usage: delete-user.ts <email> [--execute] [--stack <name>]");
     process.exit(1);
   }
-  const { tableName, userPoolId } = await resolveStackConfig(args.stack);
+  const { tableName, userPoolId, captureBucket } = await resolveStackConfig(args.stack);
   const cognito = cognitoClient();
   const doc = docClient();
 
   const user = await findUser(cognito, userPoolId, args.email);
   const mode = args.execute ? "DELETING" : "DRY-RUN for";
-  console.log(`\n${mode} ${args.email}${user ? ` (sub ${user.sub})` : " — no Cognito account found"}\n`);
+  console.log(
+    `\n${mode} ${args.email}${user ? ` (sub ${user.sub})` : " — no Cognito account found"}\n`,
+  );
 
   if (user) {
     await eraseUserData(doc, tableName, user.sub, {
       dryRun: !args.execute,
       log: (m) => console.log(m),
     });
+    // Photographed note pages (spec-note-capture.md P1). These have no lifecycle expiry by
+    // decision (P13), so erasure is the ONLY thing that removes them.
+    if (captureBucket) {
+      await eraseUserCaptures(s3Client(), captureBucket, user.sub, {
+        dryRun: !args.execute,
+        log: (m) => console.log(m),
+      });
+    } else {
+      console.log(
+        "No CaptureBucketName output on this stack — skipping note-capture photos.\n" +
+          "  If the stack has since been deployed with the Captures construct, re-run this.",
+      );
+    }
     if (args.execute) {
       await deleteCognitoUser(cognito, userPoolId, user.username, (m) => console.log(m));
     }
   } else {
-    console.log("Nothing in DynamoDB to scope without a sub — if data exists, delete by sub via the runbook.");
+    console.log(
+      "Nothing in DynamoDB to scope without a sub — if data exists, delete by sub via the runbook.",
+    );
   }
 
   if (!args.execute) {
