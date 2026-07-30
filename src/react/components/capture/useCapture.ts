@@ -4,6 +4,7 @@ import { API_BASE } from "../../../auth/passwordlessConfig";
 import { CaptureClient, CaptureUploadError } from "../../../data/api/captureClient";
 import { ParseClient, type ParseResponse } from "../../../data/api/parseClient";
 import { useRepository } from "../../RepositoryContext";
+import { resolveShift, type ShiftResolution } from "../../../logic/captureShift";
 import { PARSE_URL, parseAvailable } from "./config";
 import { CaptureImageError, downscaleForUpload } from "./downscale";
 import type { NoteBlock, NoteBlockKind, NoteBlockTarget, NoteCapture } from "../../../domain/types";
@@ -49,6 +50,8 @@ export interface CaptureState {
   parsed?: ParseResponse[];
   /** The PERSISTED blocks — what review edits and allocation act on. */
   blocks?: NoteBlock[];
+  /** Which shift the page belongs to, plus the alternates (P9). */
+  shift?: ShiftResolution;
   /** What the pipeline is doing right now, from the stream's stage frames (P40). */
   activity?: string;
   /** The verbatim transcription, shown ~30s before the classified blocks arrive. */
@@ -276,8 +279,10 @@ export function useCapture() {
         }));
         try {
           const ctx = await localContext();
-          let page: ParseResponse | null = null;
-          let streamError: { code: string; message: string } | null = null;
+          const held: { page: ParseResponse | null; error: { message: string } | null } = {
+            page: null,
+            error: null,
+          };
 
           await parser.parse(
             {
@@ -294,7 +299,7 @@ export function useCapture() {
               onTranscribed: (p) => setState((s) => ({ ...s, preview: p.pageText })),
               onCorrected: (p) => setState((s) => ({ ...s, preview: p.text })),
               onBlocks: (p) => {
-                page = {
+                held.page = {
                   ...p,
                   blocks: p.blocks.map((b) => ({
                     ...b,
@@ -303,17 +308,32 @@ export function useCapture() {
                 };
               },
               onDone: () => {},
-              onError: (code, message) => {
-                streamError = { code, message };
+              onError: (_code, message) => {
+                held.error = { message };
               },
             },
           );
 
           // An error FRAME arrives after a 200, so it can't be a thrown status — surface it
           // the same way a thrown failure would be.
-          if (streamError) throw new Error((streamError as { message: string }).message);
+          if (held.error) throw new Error(held.error.message);
+          const page = held.page;
           if (page) {
             parsed.push(page);
+            // Resolve the shift from the page's own written date (P8) — the app matches, the
+            // model only reported what it read.
+            if (parsed.length === 1) {
+              const shifts = await repo.listShifts(userId);
+              const resolution = resolveShift(page.pageDateRaw, shifts);
+              setState((s) => ({ ...s, shift: resolution }));
+              // Stamp it on the capture so allocation can inherit it (P6).
+              if (resolution.suggested) {
+                capture = await repo.updateNoteCapture(capture.id, {
+                  shiftId: resolution.suggested.shift.id,
+                  pageDateRaw: page.pageDateRaw ?? undefined,
+                });
+              }
+            }
             // Persist immediately, per page. Blocks are first-class rows (P3) and the review
             // screen edits THEM, not the in-memory response — otherwise closing the dialog
             // loses the parse, and allocation has no `sourceId` to point at (P5).
@@ -342,5 +362,15 @@ export function useCapture() {
     [client, parser, repo, userId, localContext, reconcileTags, persistBlocks],
   );
 
-  return { state, startCapture, reset };
+  /** Re-attach the capture to a different shift (P9). Allocation inherits it (P6). */
+  const selectShift = useCallback(
+    async (shiftId: string | undefined) => {
+      if (!state.capture) return;
+      const updated = await repo.updateNoteCapture(state.capture.id, { shiftId });
+      setState((s) => ({ ...s, capture: updated }));
+    },
+    [repo, state.capture],
+  );
+
+  return { state, startCapture, reset, selectShift };
 }

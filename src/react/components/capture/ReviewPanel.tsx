@@ -7,6 +7,8 @@ import {
 } from "../../../domain/types";
 import type { ParseResponse, ParsedBlockView } from "../../../data/api/parseClient";
 import { seedProficiencies } from "../../../data/seed/proficiencies";
+import type { ShiftResolution } from "../../../logic/captureShift";
+import { ShiftBar } from "./ShiftBar";
 
 /**
  * Review a parsed capture (spec-note-capture.md P35).
@@ -235,7 +237,17 @@ function BlockCard({ block, index }: { block: ParsedBlockView; index: number }) 
   );
 }
 
-export function ReviewPanel({ parsed }: { parsed: ParseResponse[] }) {
+export function ReviewPanel({
+  parsed,
+  shift,
+  selectedShiftId,
+  onSelectShift,
+}: {
+  parsed: ParseResponse[];
+  shift?: ShiftResolution;
+  selectedShiftId?: string;
+  onSelectShift?: (shiftId: string | undefined) => void;
+}) {
   const blocks = useMemo(() => parsed.flatMap((p) => p.blocks), [parsed]);
   const corrections = useMemo(() => parsed.flatMap((p) => p.corrections), [parsed]);
   const toCheck = blocks.filter((b) => b.disputedWords.length > 0).length;
@@ -265,6 +277,16 @@ export function ReviewPanel({ parsed }: { parsed: ParseResponse[] }) {
             );
           })}
         </p>
+      )}
+
+      {shift && (
+        <div className="mt-3">
+          <ShiftBar
+            resolution={shift}
+            selectedShiftId={selectedShiftId}
+            onSelect={onSelectShift ?? (() => {})}
+          />
+        </div>
       )}
 
       <ul className="mt-3 space-y-3">

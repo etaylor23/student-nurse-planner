@@ -25,7 +25,7 @@ import { useCapture } from "./useCapture";
 export function CaptureButton() {
   const { isGuest } = useRepository();
   const [open, setOpen] = useState(false);
-  const { state, startCapture, reset } = useCapture();
+  const { state, startCapture, reset, selectShift } = useCapture();
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -210,7 +210,12 @@ export function CaptureButton() {
                       Some pages couldn&apos;t be read, but the ones below worked.
                     </p>
                   )}
-                  <ReviewPanel parsed={state.parsed} />
+                  <ReviewPanel
+                    parsed={state.parsed}
+                    shift={state.shift}
+                    selectedShiftId={state.capture?.shiftId}
+                    onSelectShift={selectShift}
+                  />
                   <button
                     type="button"
                     onClick={close}
