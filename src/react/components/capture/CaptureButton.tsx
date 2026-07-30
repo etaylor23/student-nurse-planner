@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRepository } from "../../RepositoryContext";
 import { MAX_IMAGES_PER_CAPTURE } from "./config";
+import { ReviewPanel } from "./ReviewPanel";
 import { useCapture } from "./useCapture";
 
 /**
@@ -30,7 +31,8 @@ export function CaptureButton() {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && state.stage !== "uploading") setOpen(false);
+      if (e.key === "Escape" && state.stage !== "uploading" && state.stage !== "parsing")
+        setOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -40,7 +42,8 @@ export function CaptureButton() {
   if (isGuest) return null;
 
   function close() {
-    if (state.stage === "uploading") return; // don't abandon an in-flight upload silently
+    // Don't abandon an in-flight upload or parse silently.
+    if (state.stage === "uploading" || state.stage === "parsing") return;
     setOpen(false);
     reset();
   }
@@ -87,7 +90,9 @@ export function CaptureButton() {
               role="dialog"
               aria-modal="true"
               aria-label="Photograph your notes"
-              className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl"
+              className={`max-h-[85vh] w-full overflow-y-auto rounded-2xl bg-white p-5 shadow-xl ${
+                state.stage === "review" ? "max-w-2xl" : "max-w-lg"
+              }`}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-4">
@@ -95,7 +100,7 @@ export function CaptureButton() {
                 <button
                   type="button"
                   onClick={close}
-                  disabled={state.stage === "uploading"}
+                  disabled={state.stage === "uploading" || state.stage === "parsing"}
                   className="text-sm text-slate-400 hover:text-slate-600 disabled:opacity-40"
                 >
                   Esc
@@ -158,6 +163,39 @@ export function CaptureButton() {
                     />
                   </div>
                 </div>
+              )}
+
+              {state.stage === "parsing" && (
+                <div className="mt-6 text-sm text-slate-600">
+                  <p>
+                    Reading page {state.progress?.current} of {state.progress?.total}…
+                  </p>
+                  {/* Four model calls, ~70s measured. Saying so beats an unexplained spinner. */}
+                  <p className="mt-1 text-xs text-slate-400">
+                    This takes about a minute per page — your photo is already saved.
+                  </p>
+                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-full w-1/2 animate-pulse rounded-full bg-secondary-400" />
+                  </div>
+                </div>
+              )}
+
+              {state.stage === "review" && state.parsed && (
+                <>
+                  {state.error && (
+                    <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+                      Some pages couldn&apos;t be read, but the ones below worked.
+                    </p>
+                  )}
+                  <ReviewPanel parsed={state.parsed} />
+                  <button
+                    type="button"
+                    onClick={close}
+                    className="mt-4 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Close
+                  </button>
+                </>
               )}
 
               {state.stage === "done" && (

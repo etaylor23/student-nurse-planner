@@ -158,6 +158,11 @@ jobs:
           # it needs an absolute URL in the bundle. Set the repo Variable to the stack's
           # `AiAskUrl` output; unset => the AI feature stays coming-soon for this build.
           VITE_AI_ASK_URL: ${{ vars.VITE_AI_ASK_URL }}
+          # Note-capture parse endpoint — also a Function URL (four model calls take ~70s,
+          # far past API Gateway's 29s ceiling), so it needs an absolute URL in the bundle.
+          # Set the repo Variable to the stack's `AiParseUrl` output; unset means photos still
+          # upload and simply aren't parsed.
+          VITE_PARSE_URL: ${{ vars.VITE_PARSE_URL }}
           # Sentry source-map upload — runs only if SENTRY_AUTH_TOKEN is set (see
           # vite.config.ts). GITHUB_SHA is the release tag. Org/project are repo Variables.
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
