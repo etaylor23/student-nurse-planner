@@ -4,7 +4,8 @@ import { type DynamoLocal, startDynamoLocal } from "./helpers/dynamoLocal";
 import { DexieRepository } from "../src/data/dexie/dexieRepository";
 import { DynamoRepository } from "../src/data/dynamo/dynamoRepository";
 import { PlannerDb } from "../src/data/dexie/db";
-import type { NoteBlockDraft, Repository } from "../src/data/repository";
+import type { Repository } from "../src/data/repository";
+import type { NoteBlockDraft } from "../src/domain/types";
 
 /**
  * `NoteBlock` persistence (spec-note-capture.md P3/P11/P26).
