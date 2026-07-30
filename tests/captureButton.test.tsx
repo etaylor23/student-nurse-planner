@@ -12,14 +12,26 @@ import "./helpers/setupDom";
 
 // Typed with the real signature so `mock.calls[0][1]` is checked, not `any`.
 const startCapture = vi.fn(async (_files: File[], _opts: { piiAcknowledged: boolean }) => {});
+const reset = vi.fn();
 const useRepositoryMock = vi.fn(() => ({ isGuest: false }));
+/** Swapped per test so the dialog can be driven into its review stage. */
+let captureState: Record<string, unknown> = { stage: "idle" };
 
 vi.mock("../src/react/components/capture/config", () => ({
   MAX_IMAGES_PER_CAPTURE: 10,
 }));
 
 vi.mock("../src/react/components/capture/useCapture", () => ({
-  useCapture: () => ({ state: { stage: "idle" }, startCapture, reset: vi.fn() }),
+  useCapture: () => ({
+    state: captureState,
+    startCapture,
+    reset,
+    selectShift: vi.fn(),
+    allocate: vi.fn(),
+    unallocate: vi.fn(),
+    editBlock: vi.fn(),
+    createMedication: vi.fn(),
+  }),
 }));
 
 vi.mock("../src/react/RepositoryContext", () => ({
@@ -31,6 +43,8 @@ const { CaptureButton } = await import("../src/react/components/capture/CaptureB
 beforeEach(() => {
   useRepositoryMock.mockReturnValue({ isGuest: false });
   startCapture.mockClear();
+  reset.mockClear();
+  captureState = { stage: "idle" };
 });
 
 describe("CaptureButton — gating", () => {
@@ -87,5 +101,81 @@ describe("CaptureButton — the PII warning is unavoidable (P2)", () => {
 
     expect(startCapture).toHaveBeenCalledTimes(1);
     expect(startCapture.mock.calls[0][1]).toEqual({ piiAcknowledged: true });
+  });
+});
+
+describe("CaptureButton — closing must not cost the parse", () => {
+  /** A capture mid-review: 70 seconds of model time and real `NoteBlock` rows already written. */
+  function inReview() {
+    captureState = {
+      stage: "review",
+      blocks: [
+        {
+          id: "blk-1",
+          userId: "u1",
+          captureId: "cap-1",
+          imageIndex: 0,
+          rawText: "Aciclovir - antiviral medication.",
+          text: "Aciclovir - antiviral medication.",
+          kind: "MEDICATION",
+          confidence: 1,
+          bboxX0: 0,
+          bboxY0: 0,
+          bboxX1: 1,
+          bboxY1: 1,
+          rotationDeg: 0,
+          status: "PENDING",
+          targetType: "MED_LOG",
+          createdAt: "2026-07-30T10:00:00.000Z",
+          updatedAt: "2026-07-30T10:00:00.000Z",
+        },
+      ],
+      parsed: [{ corrections: [], pageDateRaw: null, blocks: [] }],
+    };
+  }
+
+  it("does NOT close when the backdrop is clicked", () => {
+    inReview();
+    render(<CaptureButton />);
+    fireEvent.click(screen.getByLabelText("Photograph your notes"));
+
+    // The backdrop is the dialog's parent. One stray tap here used to bin the whole parse.
+    fireEvent.click(screen.getByRole("dialog").parentElement!);
+    expect(screen.queryByRole("dialog")).toBeTruthy();
+  });
+
+  it("closes on the close button and keeps the capture, so re-opening resumes", () => {
+    inReview();
+    render(<CaptureButton />);
+    fireEvent.click(screen.getByLabelText("Photograph your notes"));
+    fireEvent.click(screen.getByLabelText("Close"));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    // Closing is putting the window down, not throwing the work away.
+    expect(reset).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByLabelText("Photograph your notes"));
+    expect(screen.getByRole("dialog").textContent).toContain("Aciclovir");
+  });
+
+  it("only discards the capture when the student explicitly starts again", () => {
+    inReview();
+    render(<CaptureButton />);
+    fireEvent.click(screen.getByLabelText("Photograph your notes"));
+    fireEvent.click(screen.getByRole("button", { name: /Start again/i }));
+
+    expect(reset).toHaveBeenCalledTimes(1);
+    // Still open, and back at the PII warning rather than straight into the camera (P2).
+    expect(screen.queryByRole("dialog")).toBeTruthy();
+  });
+
+  it("won't close mid-parse, by either route", () => {
+    captureState = { stage: "parsing", progress: { current: 1, total: 1 } };
+    render(<CaptureButton />);
+    fireEvent.click(screen.getByLabelText("Photograph your notes"));
+
+    expect(screen.getByLabelText("Close")).toHaveProperty("disabled", true);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeTruthy();
   });
 });

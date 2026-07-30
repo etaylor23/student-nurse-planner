@@ -54,7 +54,7 @@ export function ProficiencyPicker({ onPick }: { onPick: (code: string) => void }
         onChange={(e) => setQ(e.target.value)}
         placeholder="Search all 219 — e.g. “medicines”, “4.15”, “handover”"
         aria-label="Search NMC proficiencies"
-        className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs text-ink-900"
+        className="block w-full min-w-0 rounded-lg border border-slate-200 px-2 py-1 text-xs text-ink-900"
       />
       <ul className="mt-1.5 max-h-52 space-y-1 overflow-y-auto">
         {results.map((p) => (

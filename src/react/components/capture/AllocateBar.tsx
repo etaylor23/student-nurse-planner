@@ -93,11 +93,11 @@ export function AllocateBar({
       <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
         File this
       </h4>
-      <div className="mt-1 flex flex-wrap items-center gap-2">
+      <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2">
         <select
           value={target}
           onChange={(e) => onTargetChange(e.target.value as NoteBlockTarget)}
-          className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700"
+          className="min-w-0 flex-1 truncate rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700"
           aria-label="Where to file this block"
         >
           {/* No silent default: an unrouted block asks, rather than picking for the student. */}
@@ -112,7 +112,7 @@ export function AllocateBar({
           type="button"
           onClick={file}
           disabled={busy || blocked}
-          className="rounded-lg bg-primary-600 px-3 py-1 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
+          className="shrink-0 rounded-lg bg-primary-600 px-3 py-1 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
         >
           {busy ? "Filing…" : "File it"}
         </button>

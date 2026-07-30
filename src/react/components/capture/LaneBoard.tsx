@@ -61,30 +61,57 @@ export function LaneBoard({
     onMove(id, target);
   }
 
+  /**
+   * The card wrapper. `min-w-0` at every level, or one long word (this is a page of drug names)
+   * forces the lane wider than the column it lives in.
+   *
+   * A plain function, NOT a nested component: a component declared in here would be a new type
+   * on every render, so React would unmount and remount the card each time a drag started —
+   * throwing away whatever the student had typed into it.
+   */
+  function draggable(b: NoteBlock) {
+    const canDrag = b.status !== "ALLOCATED";
+    return (
+      <li
+        key={b.id}
+        draggable={canDrag}
+        onDragStart={() => setDragging(b.id)}
+        onDragEnd={() => setDragging(undefined)}
+        className={`min-w-0 ${canDrag ? "cursor-grab active:cursor-grabbing" : ""} ${
+          dragging === b.id ? "opacity-40" : ""
+        }`}
+      >
+        {canDrag && (
+          <p className="flex items-center gap-1 pb-1 pl-1 text-[10px] uppercase tracking-wide text-slate-400">
+            <span aria-hidden="true">⠿</span> drag me
+          </p>
+        )}
+        {renderBlock(b, indexOf.get(b.id) ?? 0)}
+      </li>
+    );
+  }
+
   return (
     <div className="mt-3">
       {undecided.length > 0 && (
-        <section className="mb-3 rounded-xl border border-dashed border-slate-300 p-3">
-          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+        <section className="mb-3 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/40 p-3">
+          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">
             Not decided ({undecided.length})
           </h4>
-          <p className="mt-0.5 text-xs text-slate-500">
-            We couldn&apos;t tell where these belong — drag one into a column, or set it on the
-            card.
+          <p className="mt-0.5 text-xs text-amber-900">
+            We couldn&apos;t tell where these belong — drag one into a column below, or set it on
+            the card.
           </p>
-          <ul className="mt-2 space-y-3">
-            {undecided.map((b) => (
-              <li key={b.id} draggable onDragStart={() => setDragging(b.id)}>
-                {renderBlock(b, indexOf.get(b.id) ?? 0)}
-              </li>
-            ))}
-          </ul>
+          <ul className="mt-2 min-w-0 space-y-3">{undecided.map(draggable)}</ul>
         </section>
       )}
 
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      {/* Every lane is visibly a drop target the moment a drag starts — the strongest signal
+          available, because until you pick a card up there is nothing to drop. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {LANES.map(({ target, blurb }) => {
           const mine = blocks.filter((b) => laneOf(b) === target);
+          const active = over === target;
           return (
             <section
               key={target}
@@ -95,31 +122,30 @@ export function LaneBoard({
               }}
               onDragLeave={() => setOver((o) => (o === target ? undefined : o))}
               onDrop={() => drop(target)}
-              className={`rounded-xl border p-2 transition-colors ${
-                over === target
-                  ? "border-secondary-400 bg-secondary-50/50"
-                  : "border-slate-200 bg-slate-50/50"
+              className={`min-w-0 rounded-xl border-2 p-2 transition-colors ${
+                active
+                  ? "border-solid border-secondary-500 bg-secondary-50"
+                  : dragging
+                    ? "border-dashed border-secondary-300 bg-secondary-50/30"
+                    : "border-dashed border-slate-300 bg-slate-50/60"
               }`}
             >
-              <h4 className="px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                {NOTE_BLOCK_TARGET_LABEL[target]} ({mine.length})
+              <h4 className="px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                {NOTE_BLOCK_TARGET_LABEL[target]}{" "}
+                <span className="font-normal text-slate-400">({mine.length})</span>
               </h4>
-              <p className="px-1 text-[11px] text-slate-400">{blurb}</p>
-              <ul className="mt-2 space-y-3">
-                {mine.map((b) => (
-                  <li
-                    key={b.id}
-                    draggable={b.status !== "ALLOCATED"}
-                    onDragStart={() => setDragging(b.id)}
-                    onDragEnd={() => setDragging(undefined)}
-                    className={dragging === b.id ? "opacity-50" : undefined}
-                  >
-                    {renderBlock(b, indexOf.get(b.id) ?? 0)}
-                  </li>
-                ))}
-                {mine.length === 0 && (
-                  <li className="px-1 pb-2 text-xs text-slate-400">Nothing here yet.</li>
-                )}
+              <p className="px-1 text-[11px] leading-snug text-slate-400">{blurb}</p>
+              <ul className="mt-2 min-w-0 space-y-3">
+                {mine.map(draggable)}
+                <li
+                  className={`rounded-lg border border-dashed px-1 py-3 text-center text-[11px] ${
+                    active
+                      ? "border-secondary-400 text-secondary-700"
+                      : "border-slate-200 text-slate-400"
+                  } ${mine.length > 0 && !dragging ? "hidden" : ""}`}
+                >
+                  {dragging ? "Drop it here" : "Drag a note here"}
+                </li>
               </ul>
             </section>
           );

@@ -319,7 +319,8 @@ describe("ReviewPanel — wide-screen lanes (P35)", () => {
         />,
       );
       expect(screen.getByText(/Not decided \(1\)/)).toBeTruthy();
-      expect(screen.getByLabelText("Shift notes column").textContent).toContain("Nothing here yet");
+      // An empty lane reads as a drop target rather than as an empty list.
+      expect(screen.getByLabelText("Shift notes column").textContent).toContain("Drag a note here");
     } finally {
       restore();
     }

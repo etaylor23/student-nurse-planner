@@ -64,10 +64,24 @@ export function CaptureButton() {
   // Guests only: no ID token means the presign can't be authorised (P17).
   if (isGuest) return null;
 
+  /**
+   * Close the dialog but KEEP the capture.
+   *
+   * A parse costs ~70 seconds and four model calls, and the blocks are real rows by this point.
+   * Closing used to reset, so one stray tap on the backdrop threw all of that away — hence the
+   * backdrop no longer closes at all, and closing is only ever putting the window down. The
+   * state lives in `useCapture`, which is mounted with the header, so re-opening lands exactly
+   * where they left off. A page refresh still starts clean, and "Start again" is explicit.
+   */
   function close() {
     // Don't abandon an in-flight upload or parse silently.
     if (state.stage === "uploading" || state.stage === "parsing") return;
     setOpen(false);
+  }
+
+  /** Discard the capture and go back to the start — including the PII warning, which is why
+   *  this doesn't open the camera directly (P2). */
+  function startAgain() {
     reset();
   }
 
@@ -105,18 +119,16 @@ export function CaptureButton() {
 
       {open &&
         createPortal(
-          <div
-            className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 p-4 backdrop-blur-sm sm:items-center"
-            onClick={close}
-          >
+          // No backdrop dismiss, deliberately: a stray tap out here used to bin a 70-second
+          // parse. Closing is the close button's job.
+          <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 p-4 backdrop-blur-sm sm:items-center">
             <div
               role="dialog"
               aria-modal="true"
               aria-label="Photograph your notes"
               className={`max-h-[85vh] w-full overflow-y-auto rounded-2xl bg-white p-5 shadow-xl ${
-                state.stage === "review" ? "max-w-2xl" : "max-w-lg"
+                state.stage === "review" ? "max-w-5xl" : "max-w-lg"
               }`}
-              onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-4">
                 <h2 className="text-lg font-semibold text-ink-900">Photograph your notes</h2>
@@ -124,9 +136,20 @@ export function CaptureButton() {
                   type="button"
                   onClick={close}
                   disabled={state.stage === "uploading" || state.stage === "parsing"}
-                  className="text-sm text-slate-400 hover:text-slate-600 disabled:opacity-40"
+                  aria-label="Close"
+                  className="-mr-1 -mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40"
                 >
-                  Esc
+                  <svg
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.8}
+                    strokeLinecap="round"
+                    className="h-4 w-4"
+                    aria-hidden="true"
+                  >
+                    <path d="M5 5l10 10M15 5L5 15" />
+                  </svg>
                 </button>
               </div>
 
@@ -250,13 +273,25 @@ export function CaptureButton() {
                       onCreateMedication: createMedication,
                     }}
                   />
-                  <button
-                    type="button"
-                    onClick={close}
-                    className="mt-4 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    Close
-                  </button>
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={close}
+                      className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                      Close — this stays here
+                    </button>
+                    <button
+                      type="button"
+                      onClick={startAgain}
+                      className="rounded-xl px-4 py-2.5 text-sm font-medium text-slate-400 hover:text-slate-700 hover:underline"
+                    >
+                      Start again with a new photo
+                    </button>
+                  </div>
+                  <p className="mt-2 text-center text-xs text-slate-400">
+                    Closing keeps this page of notes — the Photo button brings it straight back.
+                  </p>
                 </>
               )}
 

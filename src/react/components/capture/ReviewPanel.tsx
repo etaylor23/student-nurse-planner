@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { NOTE_BLOCK_KIND_LABEL, type NoteBlockKind } from "../../../domain/types";
 import type { GibbsStage, NoteBlock, NoteBlockTarget } from "../../../domain/types";
 import { seedProficiencies } from "../../../data/seed/proficiencies";
@@ -203,6 +203,31 @@ function BlockCard({
     void handlers.onEdit(block.id, { candidateCodes: next.join(",") });
   }
 
+  /**
+   * Grow the textarea to fit its content.
+   *
+   * A `rows` guessed from character count can't work: the same note is 2 lines in the mobile
+   * list and 6 in a 230px lane column, so anything computed from the text alone clips the
+   * student's own words in one layout or the other. Measured instead, and re-measured when the
+   * column resizes.
+   */
+  const textRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el) return;
+    const fit = () => {
+      el.style.height = "auto";
+      // Capped: a very long block in a 237px lane would otherwise make the column enormous.
+      // Past the cap it scrolls, which is the one case where scrolling is better than growing.
+      el.style.height = `${Math.min(el.scrollHeight + 2, 384)}px`;
+    };
+    fit();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [text]);
+
   /** Back to exactly what the models read (P24). Their own words are always one tap away. */
   function revert() {
     setText(block.rawText);
@@ -210,8 +235,10 @@ function BlockCard({
   }
 
   return (
+    // `min-w-0` + `break-words`: this card also lives in a ~13rem lane column, where one long
+    // drug name would otherwise push it straight through the lane's border.
     <div
-      className={`rounded-xl border p-3 ${
+      className={`min-w-0 break-words rounded-xl border p-3 ${
         allocated
           ? "border-primary-200 bg-primary-50/30"
           : openDisputes.length > 0
@@ -219,15 +246,15 @@ function BlockCard({
             : "border-slate-200 bg-white"
       }`}
     >
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-medium text-slate-400">#{index + 1}</span>
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="shrink-0 text-xs font-medium text-slate-400">#{index + 1}</span>
         <select
           value={block.kind}
           onChange={(e) =>
             void handlers.onEdit(block.id, { kind: e.target.value as NoteBlockKind })
           }
           disabled={allocated}
-          className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 disabled:opacity-60"
+          className="min-w-0 flex-1 truncate rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 disabled:opacity-60"
           aria-label={`Type of block ${index + 1}`}
         >
           {KIND_OPTIONS.map((k) => (
@@ -239,6 +266,7 @@ function BlockCard({
       </div>
 
       <textarea
+        ref={textRef}
         value={text}
         onChange={(e) => setText(e.target.value)}
         // Persisted on blur rather than per keystroke: one write per edit, not one per letter.
@@ -246,8 +274,10 @@ function BlockCard({
           if (text !== block.text) void handlers.onEdit(block.id, { text });
         }}
         disabled={allocated}
-        rows={Math.min(10, Math.max(2, Math.ceil(text.length / 60)))}
-        className="mt-2 w-full resize-y rounded-lg border border-slate-200 p-2 text-sm leading-relaxed text-ink-900 disabled:bg-slate-50 disabled:text-slate-500"
+        rows={2}
+        // `block w-full min-w-0`: a bare textarea has an intrinsic `cols` width that ignores its
+        // container, which is what pushed it out of the lane. Height comes from the effect above.
+        className="mt-2 block w-full min-w-0 resize-y overflow-y-auto rounded-lg border border-slate-200 p-2 text-sm leading-relaxed text-ink-900 disabled:bg-slate-50 disabled:text-slate-500"
         aria-label={`Text of block ${index + 1}`}
       />
 
