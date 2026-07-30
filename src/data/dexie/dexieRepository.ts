@@ -31,6 +31,8 @@ import type {
   RevisionTargetDraft,
   RevisionTopic,
   RevisionTopicDraft,
+  NoteCapture,
+  NoteCaptureDraft,
   SelfCareCheckin,
   SelfCareCheckinDraft,
   Shift,
@@ -879,5 +881,33 @@ export class DexieRepository implements Repository {
 
   async deleteSelfCareCheckin(id: string): Promise<void> {
     await this.db.selfCareCheckins.delete(id);
+  }
+
+  // ---- Note capture (spec-note-capture.md P1/P3) ----
+
+  async listNoteCaptures(userId: string): Promise<NoteCapture[]> {
+    return this.db.noteCaptures.where("userId").equals(userId).reverse().sortBy("createdAt");
+  }
+
+  async createNoteCapture(input: NoteCaptureDraft & { userId: string }): Promise<NoteCapture> {
+    const ts = nowIso();
+    const capture: NoteCapture = { ...input, id: newId(), createdAt: ts, updatedAt: ts };
+    await this.db.noteCaptures.put(capture);
+    return capture;
+  }
+
+  async updateNoteCapture(
+    id: string,
+    patch: Partial<Omit<NoteCapture, "id" | "userId" | "createdAt">>,
+  ): Promise<NoteCapture> {
+    const current = await this.db.noteCaptures.get(id);
+    if (!current) throw new Error(`NoteCapture ${id} not found`);
+    const updated: NoteCapture = { ...current, ...patch, id, updatedAt: nowIso() };
+    await this.db.noteCaptures.put(updated);
+    return updated;
+  }
+
+  async deleteNoteCapture(id: string): Promise<void> {
+    await this.db.noteCaptures.delete(id);
   }
 }

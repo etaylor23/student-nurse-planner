@@ -22,6 +22,7 @@ import {
   logInputSchema,
   medicationDraftSchema,
   medicationLogDraftSchema,
+  noteCaptureDraftSchema,
   proficiencyStatusChangeSchema,
   reflectionDraftSchema,
   revisionSessionDraftSchema,
@@ -157,6 +158,13 @@ const METHODS: Record<string, { verb: Verb; tier: Tier }> = {
   listSelfCareCheckins: { verb: "List", tier: "SensitiveRecord" },
   createSelfCareCheckin: { verb: "Create", tier: "SensitiveRecord" },
   deleteSelfCareCheckin: { verb: "Delete", tier: "SensitiveRecord" },
+  // Note capture (spec-note-capture.md P1/P3). SensitiveRecord like reflections and
+  // self-care: a photographed page is the student's own clinical notes, and P2 accepts that
+  // it may contain more than it should — so never mentor- or share-readable.
+  listNoteCaptures: { verb: "List", tier: "SensitiveRecord" },
+  createNoteCapture: { verb: "Create", tier: "SensitiveRecord" },
+  updateNoteCapture: { verb: "Update", tier: "SensitiveRecord" },
+  deleteNoteCapture: { verb: "Delete", tier: "SensitiveRecord" },
   // ---- Phase 3: local-first sync transport (spec §5) ----
   // Coarse EvidenceRecord gate: in v1 the only policy is owner==principal (§4.3), so the
   // decision is identical across tiers — and the server derives owner from the JWT sub and
@@ -191,6 +199,8 @@ const VALIDATORS: Record<string, { index: number; schema: z.ZodTypeAny }> = {
   createRevisionSession: { index: 0, schema: revisionSessionDraftSchema },
   updateRevisionSession: { index: 1, schema: revisionSessionDraftSchema.partial() },
   createSelfCareCheckin: { index: 0, schema: selfCareCheckinDraftSchema },
+  createNoteCapture: { index: 0, schema: noteCaptureDraftSchema },
+  updateNoteCapture: { index: 1, schema: noteCaptureDraftSchema.partial() },
 };
 
 function json(statusCode: number, body: unknown): APIGatewayProxyResultV2 {

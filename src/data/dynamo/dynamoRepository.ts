@@ -26,6 +26,7 @@ import {
   revisionSessionSchema,
   revisionTargetSchema,
   revisionTopicSchema,
+  noteCaptureSchema,
   selfCareCheckinSchema,
   shiftSchema,
   skillProgressSchema,
@@ -49,6 +50,8 @@ import type {
   MedicationDraft,
   MedicationLog,
   MedicationLogDraft,
+  NoteCapture,
+  NoteCaptureDraft,
   Placement,
   Proficiency,
   ProficiencyPadSignOff,
@@ -1211,6 +1214,50 @@ export class DynamoRepository implements Repository {
 
   async deleteSelfCareCheckin(id: string): Promise<void> {
     await this.delete(DynamoRepository.sk.selfCareCheckin(id));
+  }
+
+  // ---- Note capture (spec-note-capture.md P1/P3) ----
+  async listNoteCaptures(_userId: string): Promise<NoteCapture[]> {
+    const rows = (await this.queryPrefix("NOTECAP#")).map(
+      (r) => noteCaptureSchema.parse(r) as NoteCapture,
+    );
+    return rows.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)); // newest first
+  }
+
+  async createNoteCapture(input: NoteCaptureDraft & { userId: string }): Promise<NoteCapture> {
+    const ts = nowIso();
+    const capture: NoteCapture = {
+      ...input,
+      userId: this.sub,
+      id: newId(),
+      createdAt: ts,
+      updatedAt: ts,
+    };
+    await this.put("noteCaptures", DynamoRepository.sk.noteCapture(capture.id), capture, 1);
+    return capture;
+  }
+
+  async updateNoteCapture(
+    id: string,
+    patch: Partial<Omit<NoteCapture, "id" | "userId" | "createdAt">>,
+  ): Promise<NoteCapture> {
+    const sk = DynamoRepository.sk.noteCapture(id);
+    const raw = await this.getRaw(sk);
+    if (!raw) throw new Error(`NoteCapture ${id} not found`);
+    const current = noteCaptureSchema.parse(raw) as NoteCapture;
+    const updated: NoteCapture = {
+      ...current,
+      ...patch,
+      id,
+      userId: this.sub,
+      updatedAt: nowIso(),
+    };
+    await this.put("noteCaptures", sk, updated, (raw.version ?? 1) + 1);
+    return updated;
+  }
+
+  async deleteNoteCapture(id: string): Promise<void> {
+    await this.delete(DynamoRepository.sk.noteCapture(id));
   }
 
   // ---------------------------------------------------------------------------

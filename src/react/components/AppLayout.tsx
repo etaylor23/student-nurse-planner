@@ -5,6 +5,7 @@ import { FeedbackButton } from "./FeedbackButton";
 import { Logo } from "./Logo";
 import { SyncBanner, SyncIndicator } from "./SyncIndicator";
 import { AskNotesButton } from "./ai/AskNotesButton";
+import { CaptureButton } from "./capture/CaptureButton";
 
 /** Minimal line icons keyed by nav path. Inherit color + size from the parent. */
 const ICONS: Record<string, ReactNode> = {
@@ -188,6 +189,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <AskNotesButton />
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {/* Capture sits in the right cluster, not the centre: the ask field is the primary
+              search affordance and photographing notes is an action, so it reads better as a
+              button beside the other actions than as a second thing competing for the middle. */}
+          <CaptureButton />
           <SyncIndicator />
           <FeedbackButton />
         </div>

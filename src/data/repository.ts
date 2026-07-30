@@ -30,6 +30,8 @@ import type {
   RevisionTargetDraft,
   RevisionTopic,
   RevisionTopicDraft,
+  NoteCapture,
+  NoteCaptureDraft,
   SelfCareCheckin,
   SelfCareCheckinDraft,
   Shift,
@@ -253,4 +255,14 @@ export interface Repository {
   listSelfCareCheckins(userId: string): Promise<SelfCareCheckin[]>;
   createSelfCareCheckin(input: SelfCareCheckinDraft & { userId: string }): Promise<SelfCareCheckin>;
   deleteSelfCareCheckin(id: string): Promise<void>;
+
+  // ---- Note capture (spec-note-capture.md P1/P3) ----
+  /** A capture is one photographed notebook session; `imageKeys` grows as photos upload (P20). */
+  listNoteCaptures(userId: string): Promise<NoteCapture[]>;
+  createNoteCapture(input: NoteCaptureDraft & { userId: string }): Promise<NoteCapture>;
+  updateNoteCapture(
+    id: string,
+    patch: Partial<Omit<NoteCapture, "id" | "userId" | "createdAt">>,
+  ): Promise<NoteCapture>;
+  deleteNoteCapture(id: string): Promise<void>;
 }

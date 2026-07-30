@@ -35,6 +35,8 @@ import type {
   RevisionTargetDraft,
   RevisionTopic,
   RevisionTopicDraft,
+  NoteCapture,
+  NoteCaptureDraft,
   SelfCareCheckin,
   SelfCareCheckinDraft,
   Shift,
@@ -387,5 +389,19 @@ export class ApiRepository implements Repository {
   }
   deleteSelfCareCheckin(id: string) {
     return this.rpc<void>("deleteSelfCareCheckin", [id]);
+  }
+
+  // ---- Note capture (spec-note-capture.md P1/P3) ----
+  listNoteCaptures(userId: string) {
+    return this.rpc<NoteCapture[]>("listNoteCaptures", [userId]);
+  }
+  createNoteCapture(input: NoteCaptureDraft & { userId: string }) {
+    return this.rpc<NoteCapture>("createNoteCapture", [input]);
+  }
+  updateNoteCapture(id: string, patch: Partial<Omit<NoteCapture, "id" | "userId" | "createdAt">>) {
+    return this.rpc<NoteCapture>("updateNoteCapture", [id, patch]);
+  }
+  deleteNoteCapture(id: string) {
+    return this.rpc<void>("deleteNoteCapture", [id]);
   }
 }
