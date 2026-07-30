@@ -75,6 +75,13 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # `npm run typecheck` covers the four Lambda projects under infra/lambda/**, and those
+      # resolve their imports from infra/node_modules (@aws-sdk/s3-request-presigner and
+      # friends live there, not at the root). Without this install the root typecheck fails on
+      # a module it can find perfectly well locally — which is exactly how it broke first time.
+      - name: Install infra deps (Lambda projects are typechecked from the root)
+        working-directory: infra
+        run: npm ci
       - name: Typecheck
         run: npm run typecheck
       - name: Lint
