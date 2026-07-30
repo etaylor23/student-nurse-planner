@@ -1,0 +1,19 @@
+{
+  // Typecheck project for the note-capture parse lambda (spec-note-capture.md P12).
+  // `infra/tsconfig.json` excludes `lambda/**`, so without this file this Lambda is
+  // typechecked by nothing. Mirrors `../ai/tsconfig.json`; tsc follows the ../../../src
+  // imports, so the bundled seed data is checked too. Wired into the root `typecheck`.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true
+  },
+  "include": ["./**/*.ts"]
+}
