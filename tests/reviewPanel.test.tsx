@@ -68,9 +68,16 @@ function handlers(over: Partial<ReviewHandlers> = {}): ReviewHandlers {
     onEdit: vi.fn(async () => {}),
     onAllocate: vi.fn(async () => ({ ok: true as const, label: "Medication log" })),
     onUnallocate: vi.fn(async () => ({})),
+    onCreateMedication: vi.fn(async () => "med-new"),
     ...over,
   };
 }
+
+/** The student already uses "haematology" and already has a Filgrastim card. */
+const KNOWN = {
+  medications: [{ id: "med-filg", name: "Filgrastim" }],
+  tagLabels: ["haematology"],
+};
 
 describe("ReviewPanel", () => {
   it("renders every block's text so nothing parsed is hidden from the student", () => {
@@ -205,21 +212,109 @@ describe("ReviewPanel", () => {
     render(<ReviewPanel blocks={BLOCKS} pageDateRaw="22/7" handlers={handlers()} />);
     expect(screen.getByText(/22\/7/)).toBeTruthy();
   });
+
+  it("offers a way back to exactly what was on the page, but only once it differs", async () => {
+    const user = userEvent.setup();
+    const h = handlers();
+    // Sanitised text differs from the verbatim reading — the Americanised spelling was fixed.
+    render(
+      <ReviewPanel
+        blocks={[block({ rawText: "Acyclovir - antiviral medication.", text: "Aciclovir." })]}
+        handlers={h}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Back to what was on the page" }));
+    expect(h.onEdit).toHaveBeenCalledWith("blk-1", { text: "Acyclovir - antiviral medication." });
+    // Nothing to revert to once it matches, so the control goes away rather than lying.
+    expect(screen.queryByRole("button", { name: "Back to what was on the page" })).toBeNull();
+  });
+});
+
+describe("ReviewPanel — the full taxonomy (P28)", () => {
+  it("reaches any of the 219 statements by searching text, not just code", async () => {
+    const user = userEvent.setup();
+    const h = handlers();
+    render(<ReviewPanel blocks={[block()]} handlers={h} />);
+
+    await user.click(screen.getByRole("button", { name: "Find a different proficiency" }));
+    await user.type(screen.getByLabelText("Search NMC proficiencies"), "hand hygiene");
+    const hit = screen.getAllByRole("button", { name: /hand hygiene/i })[0];
+    await user.click(hit);
+
+    // The student's choice outranks the model's ranking, so it becomes the selected one.
+    const patch = (h.onEdit as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[1] as {
+      candidateCodes: string;
+    };
+    expect(patch.candidateCodes.split(",")[0]).not.toBe("4.14");
+    expect(patch.candidateCodes).toContain("4.14"); // the shortlist is kept, not thrown away
+  });
+
+  it("stays reachable when the classifier suggested nothing at all", () => {
+    render(<ReviewPanel blocks={[block({ candidateCodes: undefined })]} handlers={handlers()} />);
+    // Without this, a note evidencing something the classifier missed has no route in.
+    expect(screen.getByRole("button", { name: "Find a different proficiency" })).toBeTruthy();
+    expect(screen.getByText(/No proficiency suggested/)).toBeTruthy();
+  });
+});
+
+describe("ReviewPanel — medication cards (P33)", () => {
+  it("links a block to the card the student already has, without asking", () => {
+    render(<ReviewPanel blocks={BLOCKS} known={KNOWN} handlers={handlers()} />);
+    // Same drug, same card — nothing to decide.
+    expect(screen.getByText(/Linked to your/)).toBeTruthy();
+    expect(screen.getByText("Filgrastim", { selector: "span.font-medium" })).toBeTruthy();
+  });
+
+  it("offers to create a card for a drug they don't have, and links what it creates", async () => {
+    const user = userEvent.setup();
+    const h = handlers();
+    render(<ReviewPanel blocks={[block()]} known={KNOWN} handlers={h} />);
+
+    await user.click(screen.getByRole("button", { name: "Add Aciclovir" }));
+
+    // Pre-filled from the block's OWN content — the note becomes the card's notes.
+    expect(h.onCreateMedication).toHaveBeenCalledWith(
+      "Aciclovir",
+      expect.stringContaining("antiviral medication") as unknown as string,
+    );
+    await user.click(screen.getByRole("button", { name: "File it" }));
+    expect((h.onAllocate as ReturnType<typeof vi.fn>).mock.calls[0][1].medicationId).toBe(
+      "med-new",
+    );
+  });
+
+  it("still files the log when the offer is declined, just unlinked", async () => {
+    const user = userEvent.setup();
+    const h = handlers();
+    render(<ReviewPanel blocks={[block()]} known={KNOWN} handlers={h} />);
+
+    await user.click(screen.getByRole("button", { name: "No thanks" }));
+    expect(h.onCreateMedication).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "File it" }));
+    // Declining a card is not declining the note.
+    expect(h.onAllocate).toHaveBeenCalled();
+    expect(
+      (h.onAllocate as ReturnType<typeof vi.fn>).mock.calls[0][1].medicationId,
+    ).toBeUndefined();
+  });
 });
 
 describe("ReviewPanel — filing (P4/P19)", () => {
   it("files a block into the target the classifier suggested, with the kept tags and code", async () => {
     const user = userEvent.setup();
     const h = handlers();
-    render(<ReviewPanel blocks={BLOCKS} handlers={h} />);
+    render(<ReviewPanel blocks={BLOCKS} known={KNOWN} handlers={h} />);
 
     await user.click(screen.getAllByRole("button", { name: "File it" })[0]);
 
     expect(h.onAllocate).toHaveBeenCalledWith("blk-1", {
       targetType: "MED_LOG", // pre-selected from the block, not defaulted
       proficiencyId: "prof_4.14", // the code the student left at the top
-      tags: ["haematology", "antiviral", "HSV"],
+      // Only the label they already use — "antiviral" and "HSV" are new and opt-in (P37).
+      tags: ["haematology"],
       gibbs: undefined,
+      medicationId: undefined, // they haven't linked a card, so the log files unlinked (P33)
     });
   });
 
@@ -283,6 +378,33 @@ describe("ReviewPanel — filing (P4/P19)", () => {
 
     await user.click(screen.getByRole("button", { name: "Undo" }));
     expect(h.onUnallocate).toHaveBeenCalledWith("blk-1");
+  });
+
+  it("includes a new tag once the student ticks it", async () => {
+    const user = userEvent.setup();
+    const h = handlers();
+    render(<ReviewPanel blocks={[block()]} known={KNOWN} handlers={h} />);
+
+    // A new label is a permanent addition to the vocabulary their index is built on, so it is
+    // opt-in — but opting in has to work.
+    await user.click(screen.getByLabelText("Apply tag antiviral"));
+    await user.click(screen.getByRole("button", { name: "File it" }));
+
+    expect((h.onAllocate as ReturnType<typeof vi.fn>).mock.calls[0][1].tags).toEqual([
+      "haematology",
+      "antiviral",
+    ]);
+  });
+
+  it("un-ticks a tag the student already uses if they don't want it here", async () => {
+    const user = userEvent.setup();
+    const h = handlers();
+    render(<ReviewPanel blocks={[block()]} known={KNOWN} handlers={h} />);
+
+    await user.click(screen.getByLabelText("Don't apply tag haematology"));
+    await user.click(screen.getByRole("button", { name: "File it" }));
+
+    expect((h.onAllocate as ReturnType<typeof vi.fn>).mock.calls[0][1].tags).toEqual([]);
   });
 
   it("tells the student when an undo could not be cleanly reversed", async () => {

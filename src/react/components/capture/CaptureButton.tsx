@@ -26,7 +26,16 @@ import { useCapture } from "./useCapture";
 export function CaptureButton() {
   const { isGuest } = useRepository();
   const [open, setOpen] = useState(false);
-  const { state, startCapture, reset, selectShift, allocate, unallocate, editBlock } = useCapture();
+  const {
+    state,
+    startCapture,
+    reset,
+    selectShift,
+    allocate,
+    unallocate,
+    editBlock,
+    createMedication,
+  } = useCapture();
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -233,10 +242,12 @@ export function CaptureButton() {
                     shift={state.shift}
                     selectedShiftId={state.capture?.shiftId}
                     onSelectShift={selectShift}
+                    known={state.known}
                     handlers={{
                       onEdit: editBlock,
                       onAllocate: allocate,
                       onUnallocate: unallocate,
+                      onCreateMedication: createMedication,
                     }}
                   />
                   <button

@@ -4,6 +4,8 @@ import type { GibbsStage, NoteBlock, NoteBlockTarget } from "../../../domain/typ
 import { seedProficiencies } from "../../../data/seed/proficiencies";
 import type { ShiftResolution } from "../../../logic/captureShift";
 import { AllocateBar } from "./AllocateBar";
+import { MedicationOffer } from "./MedicationOffer";
+import { ProficiencyPicker } from "./ProficiencyPicker";
 import { ShiftBar } from "./ShiftBar";
 
 /**
@@ -62,6 +64,12 @@ export type BlockPatch = Partial<
   >
 >;
 
+/** The student's own vocabulary, so review LINKS to what they have rather than duplicating it. */
+export interface KnownContext {
+  medications: { id: string; name: string }[];
+  tagLabels: string[];
+}
+
 export interface ReviewHandlers {
   onEdit: (blockId: string, patch: BlockPatch) => Promise<void>;
   onAllocate: (
@@ -69,11 +77,14 @@ export interface ReviewHandlers {
     opts: {
       targetType: NoteBlockTarget;
       proficiencyId?: string;
+      medicationId?: string;
       tags?: string[];
       gibbs?: Partial<Record<GibbsStage, string>>;
     },
   ) => Promise<{ ok: true; label: string } | { ok: false; message: string }>;
   onUnallocate: (blockId: string) => Promise<{ warning?: string }>;
+  /** Creates a `Medication` card from a block (P33). Returns its id so filing can link it. */
+  onCreateMedication: (name: string, notes: string) => Promise<string | undefined>;
 }
 
 function Section({
@@ -117,11 +128,13 @@ function BlockCard({
   index,
   handlers,
   gibbs,
+  known,
 }: {
   block: NoteBlock;
   index: number;
   handlers: ReviewHandlers;
   gibbs?: Partial<Record<GibbsStage, string>>;
+  known: KnownContext;
 }) {
   const [text, setText] = useState(block.text);
   const [tags, setTags] = useState(() => list(block.suggestedTags));
@@ -129,10 +142,21 @@ function BlockCard({
   const [showAllCodes, setShowAllCodes] = useState(false);
   // A disputed word is resolved by choosing a reading — after that it stops being a question.
   const [resolved, setResolved] = useState<Record<string, true>>({});
+  const [medicationId, setMedicationId] = useState<string>();
+  // Tags the student ALREADY uses are applied; genuinely new ones start unticked, because a
+  // new label is a permanent addition to the vocabulary their whole index is built on (P37).
+  const [ticked, setTicked] = useState<Record<string, boolean>>(() => {
+    const mine = new Set(known.tagLabels.map((t) => t.toLowerCase()));
+    return Object.fromEntries(
+      list(block.suggestedTags).map((t) => [t, mine.has(t.toLowerCase())] as const),
+    );
+  });
 
   const openDisputes = list(block.disputedWords).filter((p) => !resolved[p]);
   const allocated = block.status === "ALLOCATED";
   const proficiencyId = codes[0] ? ID_FOR_CODE.get(codes[0]) : undefined;
+  const chosenTags = tags.filter((t) => ticked[t]);
+  const edited = text.trim() !== block.rawText.trim();
 
   function chooseReading(pair: string, chosen: string, other: string) {
     setResolved((r) => ({ ...r, [pair]: true }));
@@ -160,6 +184,20 @@ function BlockCard({
     const next = codes.filter((x) => x !== c);
     setCodes(next);
     void handlers.onEdit(block.id, { candidateCodes: next.join(",") });
+  }
+
+  /** A code from the full picker goes to the FRONT — the student's choice outranks the model's. */
+  function pickCode(c: string) {
+    const next = [c, ...codes.filter((x) => x !== c)];
+    setCodes(next);
+    setShowAllCodes(false);
+    void handlers.onEdit(block.id, { candidateCodes: next.join(",") });
+  }
+
+  /** Back to exactly what the models read (P24). Their own words are always one tap away. */
+  function revert() {
+    setText(block.rawText);
+    void handlers.onEdit(block.id, { text: block.rawText });
   }
 
   return (
@@ -204,6 +242,18 @@ function BlockCard({
         aria-label={`Text of block ${index + 1}`}
       />
 
+      {/* The sanitiser corrects British spellings and the student edits freely — either way,
+          exactly what the models read off the page is always one tap away (P11/P24). */}
+      {edited && !allocated && (
+        <button
+          type="button"
+          onClick={revert}
+          className="mt-1 text-xs text-slate-400 hover:text-slate-600 hover:underline"
+        >
+          Back to what was on the page
+        </button>
+      )}
+
       {openDisputes.length > 0 && !allocated && (
         <Section label="Worth a check" tone="warn">
           <p className="text-xs text-amber-900">
@@ -239,28 +289,55 @@ function BlockCard({
       {block.medicationCandidate && (
         <Section label="Medication">
           <p className="text-sm text-slate-700">{block.medicationCandidate}</p>
+          {!allocated && (
+            <MedicationOffer
+              candidate={block.medicationCandidate}
+              medications={known.medications}
+              linkedId={medicationId}
+              onLink={setMedicationId}
+              onCreate={(name) => handlers.onCreateMedication(name, text)}
+            />
+          )}
         </Section>
       )}
 
       {tags.length > 0 && (
         <Section label="Tags">
           <div className="flex flex-wrap gap-1">
-            {tags.map((t) => (
-              <span
-                key={t}
-                className="inline-flex items-center rounded-full bg-secondary-50 py-0.5 pl-2 pr-0.5 text-xs text-secondary-800"
-              >
-                {t}
-                {!allocated && (
-                  <RemoveButton label={`Remove tag ${t}`} onClick={() => dropTag(t)} />
-                )}
-              </span>
-            ))}
+            {tags.map((t) => {
+              const on = !!ticked[t];
+              return (
+                <span
+                  key={t}
+                  className={`inline-flex items-center rounded-full py-0.5 pl-1 pr-0.5 text-xs ${
+                    on
+                      ? "bg-secondary-50 text-secondary-800"
+                      : "border border-dashed border-slate-300 text-slate-500"
+                  }`}
+                >
+                  {/* A new label is a permanent addition to their vocabulary, so it is opt-in;
+                      one they already use is applied. Both stay removable. */}
+                  <button
+                    type="button"
+                    onClick={() => setTicked((v) => ({ ...v, [t]: !on }))}
+                    disabled={allocated}
+                    aria-label={`${on ? "Don't apply" : "Apply"} tag ${t}`}
+                    className="flex items-center gap-1 rounded-full px-1 disabled:opacity-100"
+                  >
+                    <span aria-hidden="true">{on ? "✓" : "+"}</span>
+                    <span>{t}</span>
+                  </button>
+                  {!allocated && (
+                    <RemoveButton label={`Remove tag ${t}`} onClick={() => dropTag(t)} />
+                  )}
+                </span>
+              );
+            })}
           </div>
         </Section>
       )}
 
-      {codes.length > 0 && (
+      {(codes.length > 0 || !allocated) && (
         <Section label="NMC proficiency evidence">
           <ul className="space-y-1.5">
             {(showAllCodes ? codes : codes.slice(0, 1)).map((c) => (
@@ -280,6 +357,11 @@ function BlockCard({
               </li>
             ))}
           </ul>
+          {codes.length === 0 && (
+            <p className="text-xs text-slate-500">
+              No proficiency suggested for this one — find it yourself if it evidences something.
+            </p>
+          )}
           {codes.length > 1 && (
             <button
               type="button"
@@ -291,16 +373,25 @@ function BlockCard({
                 : `Show ${codes.length - 1} other suggestion${codes.length === 2 ? "" : "s"}`}
             </button>
           )}
+          {/* The way past the shortlist (P28) — without it, a note evidencing something the
+              classifier missed has no route into the record at all. */}
+          {!allocated && <ProficiencyPicker onPick={pickCode} />}
         </Section>
       )}
 
       <AllocateBar
         block={block}
         proficiencyId={proficiencyId}
-        tags={tags}
+        tags={chosenTags}
         gibbs={gibbs}
         onAllocate={(targetType) =>
-          handlers.onAllocate(block.id, { targetType, proficiencyId, tags, gibbs })
+          handlers.onAllocate(block.id, {
+            targetType,
+            proficiencyId,
+            tags: chosenTags,
+            gibbs,
+            medicationId,
+          })
         }
         onUnallocate={() => handlers.onUnallocate(block.id)}
       />
@@ -317,6 +408,7 @@ export function ReviewPanel({
   shift,
   selectedShiftId,
   onSelectShift,
+  known = { medications: [], tagLabels: [] },
   handlers,
 }: {
   blocks: NoteBlock[];
@@ -328,6 +420,7 @@ export function ReviewPanel({
   shift?: ShiftResolution;
   selectedShiftId?: string;
   onSelectShift?: (shiftId: string | undefined) => void;
+  known?: KnownContext;
   handlers: ReviewHandlers;
 }) {
   const toCheck = useMemo(
@@ -381,6 +474,7 @@ export function ReviewPanel({
             index={i}
             handlers={handlers}
             gibbs={gibbsByRawText?.[b.rawText]}
+            known={known}
           />
         ))}
       </ul>

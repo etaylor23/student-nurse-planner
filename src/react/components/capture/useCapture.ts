@@ -59,6 +59,8 @@ export interface CaptureState {
   blocks?: NoteBlock[];
   /** Which shift the page belongs to, plus the alternates (P9). */
   shift?: ShiftResolution;
+  /** The student's own cards and tag labels, so review can link rather than duplicate (P33/P37). */
+  known?: { medications: { id: string; name: string }[]; tagLabels: string[] };
   /** What the pipeline is doing right now, from the stream's stage frames (P40). */
   activity?: string;
   /** The verbatim transcription, shown ~30s before the classified blocks arrive. */
@@ -180,6 +182,10 @@ export function useCapture() {
    * needs no table access at all — and it is all data the client already holds, so there is
    * no extra round-trip. `ProficiencyStatus` is deliberately not included: ranking evidence
    * by what the student still needs would corrupt a record headed for the NMC.
+   *
+   * The medication CARDS are kept client-side as well as their names being sent: the
+   * classifier returns a drug name, and turning that name into a link (or an offer to create
+   * a card) is the review screen's job, where the student's own cards live (P33).
    */
   const localContext = useCallback(async () => {
     const [meds, tags, placements] = await Promise.all([
@@ -189,10 +195,16 @@ export function useCapture() {
     ]);
     const current = placements[0];
     return {
-      medicationNames: meds.map((m) => m.name),
-      tagLabels: tags.map((t) => t.label),
-      placementName: current?.name,
-      placementSetting: current?.settingType,
+      wire: {
+        medicationNames: meds.map((m) => m.name),
+        tagLabels: tags.map((t) => t.label),
+        placementName: current?.name,
+        placementSetting: current?.settingType,
+      },
+      known: {
+        medications: meds.map((m) => ({ id: m.id, name: m.name })),
+        tagLabels: tags.map((t) => t.label),
+      },
     };
   }, [repo, userId]);
 
@@ -285,7 +297,8 @@ export function useCapture() {
           progress: { current: i + 1, total: keys.length },
         }));
         try {
-          const ctx = await localContext();
+          const { wire, known } = await localContext();
+          setState((s) => ({ ...s, known }));
           const held: { page: ParseResponse | null; error: { message: string } | null } = {
             page: null,
             error: null,
@@ -297,7 +310,7 @@ export function useCapture() {
               imageKey: keys[i],
               imageIndex: i,
               // What parseFn would otherwise need table access for (P32).
-              context: ctx,
+              context: wire,
             },
             {
               onStage: (_stage, message) => setState((s) => ({ ...s, activity: message })),
@@ -310,7 +323,7 @@ export function useCapture() {
                   ...p,
                   blocks: p.blocks.map((b) => ({
                     ...b,
-                    tags: reconcileTags(b.tags, ctx.tagLabels ?? []),
+                    tags: reconcileTags(b.tags, wire.tagLabels ?? []),
                   })),
                 };
               },
@@ -439,6 +452,50 @@ export function useCapture() {
     [repo],
   );
 
+  /**
+   * Create a `Medication` card from a block, pre-filled from the block's own content (P33).
+   *
+   * Never silent — this only runs when the student accepts the offer. The note's own words
+   * become the card's `keyNotes` rather than being split into `drugClass`/`sideEffects` by
+   * pattern-matching: the classifier doesn't return those fields, and guessing them from prose
+   * is exactly the deterministic parsing P38 rejected. The student fills the rest in.
+   */
+  const createMedication = useCallback(
+    async (name: string, notes: string): Promise<string | undefined> => {
+      const clean = name.trim();
+      if (!clean) return undefined;
+      try {
+        // Don't duplicate a card they already have — `Medication` is theirs and a second
+        // "Aciclovir" would split the study notes it exists to gather.
+        const existing = (await repo.listMedications(userId)).find(
+          (m) => m.name.toLowerCase() === clean.toLowerCase(),
+        );
+        const med =
+          existing ??
+          (await repo.createMedication({
+            userId,
+            name: clean,
+            keyNotes: notes.trim() || undefined,
+            highAlert: false,
+          }));
+        setState((s) => ({
+          ...s,
+          known: {
+            medications: [
+              ...(s.known?.medications ?? []).filter((m) => m.id !== med.id),
+              { id: med.id, name: med.name },
+            ],
+            tagLabels: s.known?.tagLabels ?? [],
+          },
+        }));
+        return med.id;
+      } catch {
+        return undefined;
+      }
+    },
+    [repo, userId],
+  );
+
   /** Re-attach the capture to a different shift (P9). Allocation inherits it (P6). */
   const selectShift = useCallback(
     async (shiftId: string | undefined) => {
@@ -449,5 +506,14 @@ export function useCapture() {
     [repo, state.capture],
   );
 
-  return { state, startCapture, reset, selectShift, allocate, unallocate, editBlock };
+  return {
+    state,
+    startCapture,
+    reset,
+    selectShift,
+    allocate,
+    unallocate,
+    editBlock,
+    createMedication,
+  };
 }

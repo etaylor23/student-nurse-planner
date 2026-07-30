@@ -37,6 +37,9 @@ export interface AllocateInput {
   targetType?: NoteBlockTarget;
   /** Which proficiency the student confirmed, when filing as evidence. */
   proficiencyId?: string;
+  /** A `Medication.id` the student linked the block to (P33). Absent files the log unlinked,
+   *  which is the correct outcome when they declined the offer to create a card. */
+  medicationId?: string;
   /** Tags the student kept (P37) — applied to a Reflection only. */
   tags?: string[];
   /** Gibbs content from the classifier (P30), stage → text. */
@@ -144,9 +147,9 @@ export async function allocateBlock(
         type: "OBSERVED",
         date: dateForShift(shiftId, input.shiftFallbackShift) ?? today(),
         notes: text,
-        medicationId: block.medicationCandidate?.startsWith("med")
-          ? block.medicationCandidate
-          : undefined,
+        // Only ever a card the STUDENT linked or created (P33). The classifier returns a drug
+        // name, not an id, and guessing a card from a name would attach a log to the wrong drug.
+        medicationId: input.medicationId,
         sourceType: "NOTE_BLOCK",
         sourceId: block.id,
       });
