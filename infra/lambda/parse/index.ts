@@ -6,6 +6,7 @@ import { verifyCaller } from "../ai/auth";
 import { UpstreamError } from "../ai/provider";
 import { type StudentContext, classify } from "./classify";
 import { disputedWords, mapDisputesToBlocks } from "./consensus";
+import { ensureRegionsCovered } from "./coverage";
 import { normaliseBbox } from "./schema";
 import { sanitise } from "./sanitise";
 import { readPage } from "./vision";
@@ -177,7 +178,7 @@ async function run(event: FunctionUrlEvent, responseStream: ResponseStream): Pro
 
     // Degraded path (P27): no classifier output → fall back to the vision regions as
     // UNKNOWN blocks so the student can route them by hand. Still a transcription tool.
-    const blocks =
+    const classifiedOrRaw =
       classified.blocks.length > 0
         ? classified.blocks
         : structure.parsed.blocks.map((b, i) => ({
@@ -187,6 +188,14 @@ async function run(event: FunctionUrlEvent, responseStream: ResponseStream): Pro
             candidateCodes: [] as string[],
             tags: [] as string[],
           }));
+
+    // Coverage guard: the classifier measurably loses whole regions (3 blocks from 5 on the
+    // real test page, a whole drug missing). Anything it didn't account for comes back as
+    // UNKNOWN rather than disappearing.
+    const { blocks, recovered } = ensureRegionsCovered(classifiedOrRaw, regions);
+    if (recovered.length > 0) {
+      console.warn(`coverage: recovered ${recovered.length} region(s) the classifier dropped`);
+    }
 
     const disputeMap = mapDisputesToBlocks(blocks, disputes);
 
@@ -220,6 +229,7 @@ async function run(event: FunctionUrlEvent, responseStream: ResponseStream): Pro
         sanitiser: { ms: cleaned.latencyMs, failed: cleaned.failed, applied: cleaned.corrections.length, rejected: cleaned.rejected.length },
         classifier: { ms: classified.latencyMs, failed: classified.failed, droppedBlocks: classified.droppedBlocks, droppedCodes: classified.droppedCodes },
         disputes: disputes.length,
+        recoveredRegions: recovered.length,
       },
     });
     out.end();
