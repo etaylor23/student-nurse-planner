@@ -46,6 +46,8 @@ export interface WebProps {
    * as a CORS message. Omit to leave the CSP unchanged.
    */
   aiAskOrigin?: string;
+  /** Scheme+host of the note-capture parse Function URL, for the CSP `connect-src`. */
+  aiParseOrigin?: string;
 }
 
 /**
@@ -99,7 +101,7 @@ export class Web extends Construct {
       "script-src 'self'",
       `connect-src 'self' https://cognito-idp.${config.region}.amazonaws.com${
         props.aiAskOrigin ? ` ${props.aiAskOrigin}` : ""
-      }`,
+      }${props.aiParseOrigin ? ` ${props.aiParseOrigin}` : ""}`,
       "form-action 'self'",
     ].join("; ");
 

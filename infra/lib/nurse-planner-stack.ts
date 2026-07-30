@@ -60,6 +60,7 @@ export class NursePlannerStack extends Stack {
     const ai = new Ai(this, "Ai", {
       config,
       table: data.table,
+      captureBucket: captures.bucket,
       userPool: auth.userPool,
       userPoolClient: auth.userPoolClient,
       policyStore: authz.policyStore,
@@ -80,8 +81,11 @@ export class NursePlannerStack extends Stack {
       httpApi: api.httpApi,
       certificate: props.certificate,
       hostedZone,
-      // The ask endpoint is a separate origin; without this the CSP blocks it.
+      // Both AI endpoints are separate origins; without these the CSP blocks them. CORS on
+      // the Function URL is a DIFFERENT gate — passing one and failing the other has bitten
+      // this project before.
       aiAskOrigin: ai.askOrigin,
+      aiParseOrigin: ai.parseOrigin,
     });
 
     if (config.customDomain && hostedZone) {

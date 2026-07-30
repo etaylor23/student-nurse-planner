@@ -41,6 +41,8 @@ export interface StackConfig {
    * GDPR request.
    */
   captureBucket?: string;
+  /** Note-capture parse Function URL. Optional for the same reason as `captureBucket`. */
+  parseUrl?: string;
 }
 
 /** Resolve the live table + user-pool + app-client ids from the CloudFormation stack. */
@@ -55,7 +57,13 @@ export async function resolveStackConfig(stack = STACK): Promise<StackConfig> {
   if (!tableName || !userPoolId || !clientId) {
     throw new Error(`Could not resolve TableName/UserPoolId/UserPoolClientId from stack ${stack}`);
   }
-  return { tableName, userPoolId, clientId, captureBucket: get("CaptureBucketName") };
+  return {
+    tableName,
+    userPoolId,
+    clientId,
+    captureBucket: get("CaptureBucketName"),
+    parseUrl: get("AiParseUrl"),
+  };
 }
 
 export function docClient(): DynamoDBDocumentClient {
