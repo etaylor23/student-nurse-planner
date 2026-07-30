@@ -102,12 +102,25 @@ jobs:
         run: npx cdk synth
 
   # ---- Deploys (only after CI passes AND the path filter matched / manual target chosen) ----
+  # The SPA deploys AFTER the backend, never beside it: a commit touching both used to race,
+  # and the frontend winning means the live app briefly calls RPC methods its API doesn't have
+  # yet (which is exactly how the note-capture button would have appeared before its bucket).
+  #
+  # `needs: deploy-backend` alone would be a bug: GitHub SKIPS a job whose dependency was
+  # skipped, so a frontend-only change (no infra/** or src/data/** touched) would stop
+  # deploying entirely. Hence `!cancelled()` to run even when the backend job is skipped,
+  # plus EXPLICIT ci-app/ci-infra result checks — `!cancelled()` would otherwise let a red
+  # CI through, undoing the gate this pipeline exists to provide.
   deploy-frontend:
     name: Deploy SPA → NursePlanner-${{ inputs.environment || 'dev' }}
-    needs: [changes, ci-app, ci-infra]
+    needs: [changes, ci-app, ci-infra, deploy-backend]
     if: >-
-      (github.event_name == 'push' && needs.changes.outputs.frontend == 'true') ||
-      (github.event_name == 'workflow_dispatch' && (inputs.target == 'all' || inputs.target == 'frontend'))
+      !cancelled()
+      && needs.ci-app.result == 'success'
+      && needs.ci-infra.result == 'success'
+      && needs.deploy-backend.result != 'failure'
+      && ((github.event_name == 'push' && needs.changes.outputs.frontend == 'true')
+          || (github.event_name == 'workflow_dispatch' && (inputs.target == 'all' || inputs.target == 'frontend')))
     runs-on: ubuntu-latest
     permissions:
       id-token: write
