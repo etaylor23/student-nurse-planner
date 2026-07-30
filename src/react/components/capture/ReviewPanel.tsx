@@ -147,7 +147,8 @@ function BlockCard({
   const [medicationId, setMedicationId] = useState<string>();
   // Where this will be filed. The row is the source of truth — the lane view writes the same
   // field (P35) — but it's mirrored locally so the select responds before the write lands.
-  const [target, setTarget] = useState<NoteBlockTarget>(block.targetType ?? "SHIFT_NOTES");
+  // `""` when nothing has routed it: an unrouted block asks rather than defaulting (P34).
+  const [target, setTarget] = useState<NoteBlockTarget | "">(block.targetType ?? "");
   useEffect(() => {
     if (block.targetType) setTarget(block.targetType);
   }, [block.targetType]);

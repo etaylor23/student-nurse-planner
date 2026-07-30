@@ -24,8 +24,9 @@ export function AllocateBar({
   onUnallocate,
 }: {
   block: NoteBlock;
-  /** Owned by the card, not here: the lane view writes the same field, so both must agree (P35). */
-  target: NoteBlockTarget;
+  /** Owned by the card, not here: the lane view writes the same field, so both must agree (P35).
+   *  `""` means the classifier didn't route this block and the student hasn't either. */
+  target: NoteBlockTarget | "";
   onTargetChange: (target: NoteBlockTarget) => void;
   /** The code the student has selected, needed before proficiency evidence can be filed. */
   proficiencyId?: string;
@@ -42,13 +43,16 @@ export function AllocateBar({
   const [warning, setWarning] = useState<string>();
 
   const allocated = block.status === "ALLOCATED";
-  // Filing proficiency evidence needs a confirmed code — the classifier can't decide the status
-  // or the part index, so allocation refuses rather than guessing (P30). Say so up front and
-  // don't offer the button, instead of letting the press fail.
-  const blocked = target === "PROFICIENCY_EVENT" && !proficiencyId;
+  // Two things stop the button being offered, and both are "we would have to guess":
+  //  - nothing routed this block, and quietly defaulting to shift notes is how a reflection
+  //    ends up appended to a shift as a wall of text (P34);
+  //  - proficiency evidence with no confirmed code, where the status and part index are the
+  //    student's judgement and allocation refuses rather than guessing (P30).
+  const blocked = !target || (target === "PROFICIENCY_EVENT" && !proficiencyId);
   const hasGibbs = Object.keys(gibbs ?? {}).length > 0;
 
   async function file() {
+    if (!target) return;
     setBusy(true);
     setError(undefined);
     const res = await onAllocate(target);
@@ -69,7 +73,7 @@ export function AllocateBar({
     return (
       <section className="mt-3 rounded-lg bg-primary-50 p-2.5">
         <p className="text-xs font-medium text-primary-900">
-          Filed as {filed ?? NOTE_BLOCK_TARGET_LABEL[target]} 🌱
+          Filed as {filed ?? (target ? NOTE_BLOCK_TARGET_LABEL[target] : "a note")} 🌱
         </p>
         {warning && <p className="mt-1 text-xs text-amber-800">{warning}</p>}
         <button
@@ -96,6 +100,8 @@ export function AllocateBar({
           className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700"
           aria-label="Where to file this block"
         >
+          {/* No silent default: an unrouted block asks, rather than picking for the student. */}
+          {!target && <option value="">Choose where…</option>}
           {TARGETS.map((t) => (
             <option key={t} value={t}>
               {NOTE_BLOCK_TARGET_LABEL[t]}
@@ -110,7 +116,11 @@ export function AllocateBar({
         >
           {busy ? "Filing…" : "File it"}
         </button>
-        {blocked && <span className="text-xs text-slate-500">Pick a proficiency above first</span>}
+        {blocked && (
+          <span className="text-xs text-slate-500">
+            {target ? "Pick a proficiency above first" : "Pick where it goes first"}
+          </span>
+        )}
       </div>
       {target === "REFLECTION" && (
         <p className="mt-1 text-xs text-slate-400">

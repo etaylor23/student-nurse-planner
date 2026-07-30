@@ -452,6 +452,22 @@ describe("ReviewPanel — filing (P4/P19)", () => {
     expect(h.onAllocate).not.toHaveBeenCalled();
   });
 
+  it("asks where an unrouted block goes rather than defaulting to shift notes (P34)", async () => {
+    const user = userEvent.setup();
+    const h = handlers();
+    render(
+      <ReviewPanel blocks={[block({ kind: "UNKNOWN", targetType: undefined })]} handlers={h} />,
+    );
+
+    // Quietly defaulting is how a reflection ends up appended to a shift as a wall of text.
+    expect(screen.getByRole("button", { name: "File it" })).toHaveProperty("disabled", true);
+    expect(screen.getByText("Pick where it goes first")).toBeTruthy();
+
+    await user.selectOptions(screen.getByLabelText("Where to file this block"), "REFLECTION");
+    expect(h.onEdit).toHaveBeenCalledWith("blk-1", { targetType: "REFLECTION" });
+    expect(screen.getByRole("button", { name: "File it" })).toHaveProperty("disabled", false);
+  });
+
   it("surfaces a refusal from allocation instead of failing silently", async () => {
     const user = userEvent.setup();
     const h = handlers({
