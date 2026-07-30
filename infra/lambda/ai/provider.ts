@@ -79,6 +79,86 @@ async function signedStreamingPost(path: string, body: unknown): Promise<Respons
   return res;
 }
 
+/**
+ * Non-streaming completion, for the note-capture parse pipeline
+ * (spec-note-capture.md P12/P21/P24/P27).
+ *
+ * The ask endpoint streams because a student is watching an answer appear. A parse is a
+ * batch job: four calls whose results are only useful assembled, so there is nothing to
+ * stream and a plain request/response is simpler to validate and to test.
+ *
+ * `content` is either a string (text calls — sanitise, classify) or OpenAI-style content
+ * parts (vision calls, which carry an `image_url` with a base64 data URI). The mantle
+ * `openai-compat` route accepts both; only that route is supported here, because the
+ * account has no standard Bedrock model access at all (see Appendix 1 of the spec — the
+ * `Error 002` gate is account-wide, not Anthropic-specific).
+ */
+export type ChatContent = string | Array<Record<string, unknown>>;
+
+export interface ChatMessage {
+  role: "system" | "user" | "assistant";
+  content: ChatContent;
+}
+
+export interface ChatRequest {
+  /** Model id — each pipeline stage has its own env-configured model (P21/P39). */
+  model: string;
+  messages: ChatMessage[];
+  maxTokens: number;
+}
+
+export interface ChatResult {
+  text: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  latencyMs: number;
+}
+
+export async function chat(req: ChatRequest): Promise<ChatResult> {
+  const url = new URL(ENDPOINT + "/v1/chat/completions");
+  const payload = JSON.stringify({
+    model: req.model,
+    max_tokens: req.maxTokens,
+    messages: req.messages,
+  });
+  const signed = await signer.sign(
+    new HttpRequest({
+      method: "POST",
+      protocol: url.protocol,
+      hostname: url.hostname,
+      path: url.pathname,
+      headers: { "content-type": "application/json", host: url.hostname },
+      body: payload,
+    }),
+  );
+  const t0 = Date.now();
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    headers: signed.headers as Record<string, string>,
+    body: payload,
+  });
+  const latencyMs = Date.now() - t0;
+  const body = await res.text();
+  if (!res.ok) {
+    throw new UpstreamError(res.status, res.status === 429 || res.status === 503, body);
+  }
+  let envelope: {
+    choices?: Array<{ message?: { content?: string | null } }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
+  };
+  try {
+    envelope = JSON.parse(body);
+  } catch {
+    throw new UpstreamError(res.status, false, `non-JSON envelope: ${body.slice(0, 200)}`);
+  }
+  return {
+    text: envelope.choices?.[0]?.message?.content ?? "",
+    inputTokens: envelope.usage?.prompt_tokens,
+    outputTokens: envelope.usage?.completion_tokens,
+    latencyMs,
+  };
+}
+
 /** Split a streamed body into SSE `data:` payload strings. */
 async function* sseData(res: Response): AsyncGenerator<string, void, void> {
   const reader = (res.body as ReadableStream<Uint8Array>).getReader();
