@@ -9,7 +9,7 @@
   "scripts": {
     "test": "vitest run",
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc -p tsconfig.build.json && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit && tsc -p infra/lambda/ai/tsconfig.json && tsc -p infra/lambda/router/tsconfig.json && tsc -p infra/lambda/auth/tsconfig.json && tsc -p infra/lambda/feeds/tsconfig.json && tsc -p infra/lambda/parse/tsconfig.json",
     "gen:zod": "ts-to-zod src/domain/types.ts src/domain/schemas.generated.ts",

@@ -1,0 +1,13 @@
+{
+  // Build-only typecheck: `src` alone.
+  //
+  // The root tsconfig includes `tests` too, and some tests import Lambda code under
+  // infra/lambda/** — so `tsc` followed those imports and the SPA build failed on a module
+  // that only exists in infra/node_modules. The production build has no business
+  // typechecking tests, so it uses this narrower project instead.
+  //
+  // Full coverage still happens in `npm run typecheck`: the root project (src + tests) plus
+  // one project per Lambda.
+  "extends": "./tsconfig.json",
+  "include": ["src"]
+}
