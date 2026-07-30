@@ -5,8 +5,15 @@ import { CaptureClient, CaptureUploadError } from "../../../data/api/captureClie
 import { ParseClient, type ParseResponse } from "../../../data/api/parseClient";
 import { useRepository } from "../../RepositoryContext";
 import { resolveShift, type ShiftResolution } from "../../../logic/captureShift";
+import {
+  AllocateError,
+  allocateBlock,
+  unallocateBlock,
+  type AllocateInput,
+} from "../../../logic/allocateBlock";
 import { PARSE_URL, parseAvailable } from "./config";
 import { CaptureImageError, downscaleForUpload } from "./downscale";
+import type { BlockPatch } from "./ReviewPanel";
 import type { NoteBlock, NoteBlockKind, NoteBlockTarget, NoteCapture } from "../../../domain/types";
 
 /**
@@ -342,13 +349,15 @@ export function useCapture() {
           }
         } catch (err) {
           // Partial results are worth keeping — a two-page capture whose second page failed
-          // still has a first page worth reviewing.
-          setState({
+          // still has a first page worth reviewing. Spread, don't replace: the persisted
+          // `blocks` and the resolved `shift` are already in state and review needs both.
+          setState((s) => ({
+            ...s,
             stage: parsed.length > 0 ? "review" : "error",
             capture,
             parsed,
             error: parsed.length > 0 ? undefined : messageFor(err),
-          });
+          }));
           return;
         }
       }
@@ -357,9 +366,77 @@ export function useCapture() {
         status: "REVIEW",
         pageDateRaw: parsed[0]?.pageDateRaw ?? undefined,
       });
-      setState((s) => ({ stage: "review", capture, parsed, remaining: s.remaining }));
+      setState((s) => ({ ...s, stage: "review", capture, parsed, activity: undefined }));
     },
     [client, parser, repo, userId, localContext, reconcileTags, persistBlocks],
+  );
+
+  /**
+   * File a block into the student's real records (P4), and reflect the result in state.
+   *
+   * Errors are returned rather than thrown: "pick a proficiency first" is a normal thing for
+   * the UI to say next to the block, not an exception for it to catch.
+   */
+  const allocate = useCallback(
+    async (
+      blockId: string,
+      opts: Omit<AllocateInput, "block"> = {},
+    ): Promise<{ ok: true; label: string } | { ok: false; message: string }> => {
+      const block = state.blocks?.find((b) => b.id === blockId);
+      if (!block) return { ok: false, message: "That block is no longer here." };
+      try {
+        const res = await allocateBlock(repo, userId, {
+          block,
+          shiftFallbackId: state.capture?.shiftId,
+          shiftFallbackShift: state.shift?.candidates.find(
+            (c) => c.shift.id === state.capture?.shiftId,
+          )?.shift,
+          ...opts,
+        });
+        setState((s) => ({
+          ...s,
+          blocks: (s.blocks ?? []).map((b) => (b.id === blockId ? res.block : b)),
+        }));
+        return { ok: true, label: res.created.label };
+      } catch (err) {
+        if (err instanceof AllocateError) return { ok: false, message: err.message };
+        return { ok: false, message: "Couldn't file that — try again." };
+      }
+    },
+    [repo, userId, state.blocks, state.capture, state.shift],
+  );
+
+  /** Reverse an allocation (P19). The warning is shown when text couldn't be cleanly removed. */
+  const unallocate = useCallback(
+    async (blockId: string): Promise<{ warning?: string }> => {
+      const block = state.blocks?.find((b) => b.id === blockId);
+      if (!block) return {};
+      const res = await unallocateBlock(repo, block);
+      setState((s) => ({
+        ...s,
+        blocks: (s.blocks ?? []).map((b) => (b.id === blockId ? res.block : b)),
+      }));
+      return { warning: res.warning };
+    },
+    [repo, state.blocks],
+  );
+
+  /**
+   * Persist a review edit — the student's decisions are durable (P3/P11).
+   *
+   * Every change review offers goes through here, including declining a suggestion. A removed
+   * tag that wasn't written back would reappear the next time the blocks were read, which
+   * would make the removal a lie. `rawText` is not in the patch type and cannot be touched.
+   */
+  const editBlock = useCallback(
+    async (blockId: string, patch: BlockPatch) => {
+      const updated = await repo.updateNoteBlock(blockId, patch);
+      setState((s) => ({
+        ...s,
+        blocks: (s.blocks ?? []).map((b) => (b.id === blockId ? updated : b)),
+      }));
+    },
+    [repo],
   );
 
   /** Re-attach the capture to a different shift (P9). Allocation inherits it (P6). */
@@ -372,5 +449,5 @@ export function useCapture() {
     [repo, state.capture],
   );
 
-  return { state, startCapture, reset, selectShift };
+  return { state, startCapture, reset, selectShift, allocate, unallocate, editBlock };
 }

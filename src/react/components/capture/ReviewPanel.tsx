@@ -1,17 +1,17 @@
 import { useMemo, useState } from "react";
-import {
-  NOTE_BLOCK_KIND_LABEL,
-  NOTE_BLOCK_TARGET_LABEL,
-  type NoteBlockKind,
-  type NoteBlockTarget,
-} from "../../../domain/types";
-import type { ParseResponse, ParsedBlockView } from "../../../data/api/parseClient";
+import { NOTE_BLOCK_KIND_LABEL, type NoteBlockKind } from "../../../domain/types";
+import type { GibbsStage, NoteBlock, NoteBlockTarget } from "../../../domain/types";
 import { seedProficiencies } from "../../../data/seed/proficiencies";
 import type { ShiftResolution } from "../../../logic/captureShift";
+import { AllocateBar } from "./AllocateBar";
 import { ShiftBar } from "./ShiftBar";
 
 /**
  * Review a parsed capture (spec-note-capture.md P35).
+ *
+ * Works off the **persisted `NoteBlock` rows**, not the in-memory parse response. That is
+ * load-bearing rather than tidy: edits have to survive closing the dialog, and allocation needs
+ * a real `block.id` to stamp as `sourceId` on the row it creates (P5).
  *
  * **Mobile list is the primary layout, by decision** — students photograph notes on a phone,
  * so the list is the experience that has to be good and wide-screen lanes are the enhancement.
@@ -42,6 +42,39 @@ const GROUPING = new Map(
     p.annexe !== "NONE" ? `Annexe ${p.annexe}` : `Platform ${p.platform}`,
   ]),
 );
+/** Code → the `Proficiency` row id, which is what a status event is actually recorded against. */
+const ID_FOR_CODE = new Map(seedProficiencies.map((p) => [p.code, p.id]));
+
+/** Blocks store their lists as comma-separated strings — the row is flat primitives only. */
+function list(s: string | undefined): string[] {
+  return (s ?? "")
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
+/** What review can change on a row. Everything a student does here is persisted, so closing
+ *  the dialog and coming back shows their decisions rather than the model's again. */
+export type BlockPatch = Partial<
+  Pick<
+    NoteBlock,
+    "text" | "kind" | "targetType" | "disputedWords" | "candidateCodes" | "suggestedTags"
+  >
+>;
+
+export interface ReviewHandlers {
+  onEdit: (blockId: string, patch: BlockPatch) => Promise<void>;
+  onAllocate: (
+    blockId: string,
+    opts: {
+      targetType: NoteBlockTarget;
+      proficiencyId?: string;
+      tags?: string[];
+      gibbs?: Partial<Record<GibbsStage, string>>;
+    },
+  ) => Promise<{ ok: true; label: string } | { ok: false; message: string }>;
+  onUnallocate: (blockId: string) => Promise<{ warning?: string }>;
+}
 
 function Section({
   label,
@@ -79,36 +112,75 @@ function RemoveButton({ onClick, label }: { onClick: () => void; label: string }
   );
 }
 
-function BlockCard({ block, index }: { block: ParsedBlockView; index: number }) {
-  const [kind, setKind] = useState<string>(block.kind);
+function BlockCard({
+  block,
+  index,
+  handlers,
+  gibbs,
+}: {
+  block: NoteBlock;
+  index: number;
+  handlers: ReviewHandlers;
+  gibbs?: Partial<Record<GibbsStage, string>>;
+}) {
   const [text, setText] = useState(block.text);
-  const [tags, setTags] = useState(block.tags);
-  const [codes, setCodes] = useState(block.candidateCodes);
+  const [tags, setTags] = useState(() => list(block.suggestedTags));
+  const [codes, setCodes] = useState(() => list(block.candidateCodes));
   const [showAllCodes, setShowAllCodes] = useState(false);
   // A disputed word is resolved by choosing a reading — after that it stops being a question.
-  const [resolved, setResolved] = useState<Record<string, string>>({});
+  const [resolved, setResolved] = useState<Record<string, true>>({});
 
-  const openDisputes = block.disputedWords.filter((p) => !resolved[p]);
-  const target = block.targetType as NoteBlockTarget | undefined;
+  const openDisputes = list(block.disputedWords).filter((p) => !resolved[p]);
+  const allocated = block.status === "ALLOCATED";
+  const proficiencyId = codes[0] ? ID_FOR_CODE.get(codes[0]) : undefined;
 
   function chooseReading(pair: string, chosen: string, other: string) {
-    setResolved((r) => ({ ...r, [pair]: chosen }));
-    // Swap the word in the text too, or "choosing" would be a label with no effect.
-    setText((t) => t.replace(new RegExp(`(^|\\W)${other}(?=\\W|$)`, "g"), `$1${chosen}`));
+    setResolved((r) => ({ ...r, [pair]: true }));
+    // Swap the word in the text too, or "choosing" would be a label with no effect — and
+    // persist both the text and the shortened dispute list, or the choice would be lost the
+    // moment the dialog closes and the page would ask the same question again.
+    const next = text.replace(new RegExp(`(^|\\W)${other}(?=\\W|$)`, "g"), `$1${chosen}`);
+    setText(next);
+    void handlers.onEdit(block.id, {
+      text: next,
+      disputedWords: list(block.disputedWords)
+        .filter((p) => p !== pair)
+        .join(","),
+    });
+  }
+
+  /** Removing a suggestion has to stick — otherwise it comes back on the next render. */
+  function dropTag(t: string) {
+    const next = tags.filter((x) => x !== t);
+    setTags(next);
+    void handlers.onEdit(block.id, { suggestedTags: next.join(",") });
+  }
+
+  function dropCode(c: string) {
+    const next = codes.filter((x) => x !== c);
+    setCodes(next);
+    void handlers.onEdit(block.id, { candidateCodes: next.join(",") });
   }
 
   return (
     <li
       className={`rounded-xl border p-3 ${
-        openDisputes.length > 0 ? "border-amber-300 bg-amber-50/30" : "border-slate-200 bg-white"
+        allocated
+          ? "border-primary-200 bg-primary-50/30"
+          : openDisputes.length > 0
+            ? "border-amber-300 bg-amber-50/30"
+            : "border-slate-200 bg-white"
       }`}
     >
       <div className="flex items-center gap-2">
         <span className="text-xs font-medium text-slate-400">#{index + 1}</span>
         <select
-          value={kind}
-          onChange={(e) => setKind(e.target.value)}
-          className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700"
+          value={block.kind}
+          onChange={(e) =>
+            void handlers.onEdit(block.id, { kind: e.target.value as NoteBlockKind })
+          }
+          disabled={allocated}
+          className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 disabled:opacity-60"
           aria-label={`Type of block ${index + 1}`}
         >
           {KIND_OPTIONS.map((k) => (
@@ -122,12 +194,17 @@ function BlockCard({ block, index }: { block: ParsedBlockView; index: number }) 
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
+        // Persisted on blur rather than per keystroke: one write per edit, not one per letter.
+        onBlur={() => {
+          if (text !== block.text) void handlers.onEdit(block.id, { text });
+        }}
+        disabled={allocated}
         rows={Math.min(10, Math.max(2, Math.ceil(text.length / 60)))}
-        className="mt-2 w-full resize-y rounded-lg border border-slate-200 p-2 text-sm leading-relaxed text-ink-900"
+        className="mt-2 w-full resize-y rounded-lg border border-slate-200 p-2 text-sm leading-relaxed text-ink-900 disabled:bg-slate-50 disabled:text-slate-500"
         aria-label={`Text of block ${index + 1}`}
       />
 
-      {openDisputes.length > 0 && (
+      {openDisputes.length > 0 && !allocated && (
         <Section label="Worth a check" tone="warn">
           <p className="text-xs text-amber-900">
             The two readings differ — pick the one that matches your handwriting.
@@ -159,14 +236,9 @@ function BlockCard({ block, index }: { block: ParsedBlockView; index: number }) 
         </Section>
       )}
 
-      {(target || block.medicationCandidate) && (
-        <Section label="Will file as">
-          <p className="text-sm text-slate-700">
-            {target ? NOTE_BLOCK_TARGET_LABEL[target] : "Not decided"}
-            {block.medicationCandidate && (
-              <span className="text-slate-500"> · {block.medicationCandidate}</span>
-            )}
-          </p>
+      {block.medicationCandidate && (
+        <Section label="Medication">
+          <p className="text-sm text-slate-700">{block.medicationCandidate}</p>
         </Section>
       )}
 
@@ -179,10 +251,9 @@ function BlockCard({ block, index }: { block: ParsedBlockView; index: number }) 
                 className="inline-flex items-center rounded-full bg-secondary-50 py-0.5 pl-2 pr-0.5 text-xs text-secondary-800"
               >
                 {t}
-                <RemoveButton
-                  label={`Remove tag ${t}`}
-                  onClick={() => setTags((v) => v.filter((x) => x !== t))}
-                />
+                {!allocated && (
+                  <RemoveButton label={`Remove tag ${t}`} onClick={() => dropTag(t)} />
+                )}
               </span>
             ))}
           </div>
@@ -203,10 +274,9 @@ function BlockCard({ block, index }: { block: ParsedBlockView; index: number }) 
                     {STATEMENTS.get(c) ?? "Unknown code"}
                   </p>
                 </div>
-                <RemoveButton
-                  label={`Remove proficiency ${c}`}
-                  onClick={() => setCodes((v) => v.filter((x) => x !== c))}
-                />
+                {!allocated && (
+                  <RemoveButton label={`Remove proficiency ${c}`} onClick={() => dropCode(c)} />
+                )}
               </li>
             ))}
           </ul>
@@ -224,45 +294,59 @@ function BlockCard({ block, index }: { block: ParsedBlockView; index: number }) 
         </Section>
       )}
 
-      {block.gibbs && (
-        <Section label="Reflection stages found">
-          <p className="text-xs text-slate-600">
-            {Object.keys(block.gibbs)
-              .map((k) => k.replace("_", " ").toLowerCase())
-              .join(", ")}
-          </p>
-        </Section>
-      )}
+      <AllocateBar
+        block={block}
+        proficiencyId={proficiencyId}
+        tags={tags}
+        gibbs={gibbs}
+        onAllocate={(targetType) =>
+          handlers.onAllocate(block.id, { targetType, proficiencyId, tags, gibbs })
+        }
+        onUnallocate={() => handlers.onUnallocate(block.id)}
+      />
     </li>
   );
 }
 
 export function ReviewPanel({
-  parsed,
+  blocks,
+  corrections = [],
+  pageDateRaw,
+  pageCount = 1,
+  gibbsByRawText,
   shift,
   selectedShiftId,
   onSelectShift,
+  handlers,
 }: {
-  parsed: ParseResponse[];
+  blocks: NoteBlock[];
+  corrections?: string[];
+  pageDateRaw?: string | null;
+  pageCount?: number;
+  /** Gibbs splits from the parse, keyed by the block's verbatim text — the row doesn't hold them. */
+  gibbsByRawText?: Record<string, Partial<Record<GibbsStage, string>>>;
   shift?: ShiftResolution;
   selectedShiftId?: string;
   onSelectShift?: (shiftId: string | undefined) => void;
+  handlers: ReviewHandlers;
 }) {
-  const blocks = useMemo(() => parsed.flatMap((p) => p.blocks), [parsed]);
-  const corrections = useMemo(() => parsed.flatMap((p) => p.corrections), [parsed]);
-  const toCheck = blocks.filter((b) => b.disputedWords.length > 0).length;
-  const pageDate = parsed[0]?.pageDateRaw;
+  const toCheck = useMemo(
+    () => blocks.filter((b) => b.status !== "ALLOCATED" && list(b.disputedWords).length > 0).length,
+    [blocks],
+  );
+  const filed = blocks.filter((b) => b.status === "ALLOCATED").length;
 
   return (
     <div className="mt-4">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
         <span>
-          {blocks.length} block{blocks.length === 1 ? "" : "s"} from {parsed.length} page
-          {parsed.length === 1 ? "" : "s"}
+          {blocks.length} block{blocks.length === 1 ? "" : "s"} from {pageCount} page
+          {pageCount === 1 ? "" : "s"}
         </span>
         {/* Shown exactly as written — the app resolves the year, the model never invents one (P8). */}
-        {pageDate && <span>date on page: “{pageDate}”</span>}
+        {pageDateRaw && <span>date on page: “{pageDateRaw}”</span>}
         {toCheck > 0 && <span className="font-medium text-amber-700">{toCheck} to check</span>}
+        {filed > 0 && <span className="font-medium text-primary-700">{filed} filed</span>}
       </div>
 
       {corrections.length > 0 && (
@@ -291,13 +375,15 @@ export function ReviewPanel({
 
       <ul className="mt-3 space-y-3">
         {blocks.map((b, i) => (
-          <BlockCard key={`${b.text.slice(0, 24)}-${i}`} block={b} index={i} />
+          <BlockCard
+            key={b.id}
+            block={b}
+            index={i}
+            handlers={handlers}
+            gibbs={gibbsByRawText?.[b.rawText]}
+          />
         ))}
       </ul>
-
-      <p className="mt-3 text-center text-xs text-slate-400">
-        Filing these into your records is the next piece — not built yet.
-      </p>
     </div>
   );
 }

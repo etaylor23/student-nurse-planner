@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRepository } from "../../RepositoryContext";
+import type { GibbsStage } from "../../../domain/types";
 import { MAX_IMAGES_PER_CAPTURE } from "./config";
 import { ReviewPanel } from "./ReviewPanel";
 import { useCapture } from "./useCapture";
@@ -25,7 +26,7 @@ import { useCapture } from "./useCapture";
 export function CaptureButton() {
   const { isGuest } = useRepository();
   const [open, setOpen] = useState(false);
-  const { state, startCapture, reset, selectShift } = useCapture();
+  const { state, startCapture, reset, selectShift, allocate, unallocate, editBlock } = useCapture();
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -37,6 +38,19 @@ export function CaptureButton() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, state.stage]);
+
+  // The Gibbs split is a classifier suggestion, not part of the block row — it only becomes
+  // real content when the student files the block as a reflection. Keyed by the verbatim text,
+  // which is what `persistBlocks` stored as `rawText`.
+  const gibbsByRawText = useMemo(() => {
+    const out: Record<string, Partial<Record<GibbsStage, string>>> = {};
+    for (const page of state.parsed ?? []) {
+      for (const b of page.blocks) {
+        if (b.gibbs) out[b.text] = b.gibbs as Partial<Record<GibbsStage, string>>;
+      }
+    }
+    return out;
+  }, [state.parsed]);
 
   // Guests only: no ID token means the presign can't be authorised (P17).
   if (isGuest) return null;
@@ -203,7 +217,7 @@ export function CaptureButton() {
                 </div>
               )}
 
-              {state.stage === "review" && state.parsed && (
+              {state.stage === "review" && state.blocks && (
                 <>
                   {state.error && (
                     <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
@@ -211,10 +225,19 @@ export function CaptureButton() {
                     </p>
                   )}
                   <ReviewPanel
-                    parsed={state.parsed}
+                    blocks={state.blocks}
+                    corrections={state.parsed?.flatMap((p) => p.corrections) ?? []}
+                    pageDateRaw={state.parsed?.[0]?.pageDateRaw}
+                    pageCount={state.parsed?.length ?? 1}
+                    gibbsByRawText={gibbsByRawText}
                     shift={state.shift}
                     selectedShiftId={state.capture?.shiftId}
                     onSelectShift={selectShift}
+                    handlers={{
+                      onEdit: editBlock,
+                      onAllocate: allocate,
+                      onUnallocate: unallocate,
+                    }}
                   />
                   <button
                     type="button"
