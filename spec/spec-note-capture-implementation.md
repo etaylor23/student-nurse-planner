@@ -13,6 +13,12 @@ semantic blocks, allocation)._
 - **The golden rule: prove the whole seam end-to-end on ONE real photo (Phase 2) before
   building breadth (review UI, allocation, lanes).** Depth before width. This is the same
   rule AI recall followed and it is why its Phase 1 was a curl-verified thin slice.
+- **Phases 3 and 4 were swapped on 2026-07-30** (review UI now 3, measurement now 4). Phase 2
+  left the pipeline testable only through a terminal script that needs a hand-pasted ID token,
+  which is a bad way to look at parse output and a worse way to judge it. Building the review
+  screen first makes the thing inspectable in a browser, and the classifier's measurement is
+  more meaningful once its output can actually be seen and corrected. Measurement still gates
+  launch — it has just stopped gating the UI.
 - Legend:
   - **[AGENT]** — implementing agent does this (code, tests, IaC, CLI checks).
   - **[YOU]** — human-only action (sign-offs, labelling, judgement). Agent **stops and asks**.
@@ -27,7 +33,7 @@ semantic blocks, allocation)._
 | When | Action | Why |
 |---|---|---|
 | Phase 1 | **[YOU]** Confirm the S3 retention posture in writing (P13: no expiry, deleted only by erasure) and that the privacy policy will disclose photo storage + team review | You accepted this risk; the policy text is yours to sign off, and the bucket is built to match it. |
-| Phase 3 | **[YOU]** Hand-label the expected proficiency codes per block for the test photo | Turns the classifier from unmeasured into measured. Roughly an hour. Gates launch, not the build. |
+| Phase 4 | **[YOU]** Hand-label the expected proficiency codes per block for the test photo | Turns the classifier from unmeasured into measured. Roughly an hour. Gates launch, not the build. |
 | Phase 5 | **[YOU]** Sign off all copy: the pre-camera PII warning, correction/disputed-word wording, cap and failure messages | Same posture as AI recall D19 — you are the sole copy gate. |
 | Phase 5 | **[YOU]** Approve the erasure-runbook change before it ships | `scripts/delete-user.ts` currently reports success while leaving photos behind. That is a GDPR defect the moment Phase 1 lands. |
 
@@ -118,24 +124,7 @@ browser (not just locally) so CORS and CSP are both confirmed.
 
 ---
 
-## Phase 3 — Measurement
-
-Goal: know how good the classifier actually is before students rely on it.
-
-1. **[YOU]** Hand-label the expected proficiency codes per block for the test photo.
-2. **[AGENT]** Extend `scripts/eval-note-capture.ts` to score classification: top-1 and
-   top-3 code accuracy, target-type accuracy, block-split stability across runs.
-3. **[AGENT]** Run ≥4 trials. Record results in this file's appendix, including the
-   false-flag rate for disputed words (measured at 2–3 per clean page today).
-4. **[AGENT]** If top-3 accuracy is poor, **stop and report** — P28's shortlist design
-   assumes the right code is usually in the list. A shortlist that usually misses is worse
-   than no suggestion, because it teaches students to trust it.
-
-**[GATE 3]** Classifier accuracy is a number in this document, not an assumption.
-
----
-
-## Phase 4 — Review UI + allocation
+## Phase 3 — Review UI + allocation
 
 Goal: the student can act on a parsed photo.
 
@@ -161,8 +150,25 @@ Goal: the student can act on a parsed photo.
    `environmentMatchGlobs` on `*.test.tsx`, `AiClient`-style mock with captured handlers so
    tests drive the staged response by hand.
 
-**[GATE 4]** A real photo becomes a real `Reflection` and a real `MedicationLog`, both
+**[GATE 3]** A real photo becomes a real `Reflection` and a real `MedicationLog`, both
 carrying provenance back to the S3 object, and un-allocating cleanly reverses both.
+
+---
+
+## Phase 4 — Measurement
+
+Goal: know how good the classifier actually is before students rely on it.
+
+1. **[YOU]** Hand-label the expected proficiency codes per block for the test photo.
+2. **[AGENT]** Extend `scripts/eval-note-capture.ts` to score classification: top-1 and
+   top-3 code accuracy, target-type accuracy, block-split stability across runs.
+3. **[AGENT]** Run ≥4 trials. Record results in this file's appendix, including the
+   false-flag rate for disputed words (measured at 2–3 per clean page today).
+4. **[AGENT]** If top-3 accuracy is poor, **stop and report** — P28's shortlist design
+   assumes the right code is usually in the list. A shortlist that usually misses is worse
+   than no suggestion, because it teaches students to trust it.
+
+**[GATE 4]** Classifier accuracy is a number in this document, not an assumption.
 
 ---
 
