@@ -15,6 +15,8 @@ const TARGETS: NoteBlockTarget[] = ["REFLECTION", "MED_LOG", "PROFICIENCY_EVENT"
 
 export function AllocateBar({
   block,
+  target,
+  onTargetChange,
   proficiencyId,
   tags,
   gibbs,
@@ -22,6 +24,9 @@ export function AllocateBar({
   onUnallocate,
 }: {
   block: NoteBlock;
+  /** Owned by the card, not here: the lane view writes the same field, so both must agree (P35). */
+  target: NoteBlockTarget;
+  onTargetChange: (target: NoteBlockTarget) => void;
   /** The code the student has selected, needed before proficiency evidence can be filed. */
   proficiencyId?: string;
   tags: string[];
@@ -35,9 +40,6 @@ export function AllocateBar({
   const [error, setError] = useState<string>();
   const [filed, setFiled] = useState<string>();
   const [warning, setWarning] = useState<string>();
-  const [target, setTarget] = useState<NoteBlockTarget>(
-    (block.targetType as NoteBlockTarget | undefined) ?? "SHIFT_NOTES",
-  );
 
   const allocated = block.status === "ALLOCATED";
   // Filing proficiency evidence needs a confirmed code — the classifier can't decide the status
@@ -90,7 +92,7 @@ export function AllocateBar({
       <div className="mt-1 flex flex-wrap items-center gap-2">
         <select
           value={target}
-          onChange={(e) => setTarget(e.target.value as NoteBlockTarget)}
+          onChange={(e) => onTargetChange(e.target.value as NoteBlockTarget)}
           className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700"
           aria-label="Where to file this block"
         >

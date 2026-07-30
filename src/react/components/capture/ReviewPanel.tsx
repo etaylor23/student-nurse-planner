@@ -1,12 +1,14 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NOTE_BLOCK_KIND_LABEL, type NoteBlockKind } from "../../../domain/types";
 import type { GibbsStage, NoteBlock, NoteBlockTarget } from "../../../domain/types";
 import { seedProficiencies } from "../../../data/seed/proficiencies";
 import type { ShiftResolution } from "../../../logic/captureShift";
 import { AllocateBar } from "./AllocateBar";
+import { LaneBoard } from "./LaneBoard";
 import { MedicationOffer } from "./MedicationOffer";
 import { ProficiencyPicker } from "./ProficiencyPicker";
 import { ShiftBar } from "./ShiftBar";
+import { useWideScreen } from "./useWideScreen";
 
 /**
  * Review a parsed capture (spec-note-capture.md P35).
@@ -143,6 +145,12 @@ function BlockCard({
   // A disputed word is resolved by choosing a reading — after that it stops being a question.
   const [resolved, setResolved] = useState<Record<string, true>>({});
   const [medicationId, setMedicationId] = useState<string>();
+  // Where this will be filed. The row is the source of truth — the lane view writes the same
+  // field (P35) — but it's mirrored locally so the select responds before the write lands.
+  const [target, setTarget] = useState<NoteBlockTarget>(block.targetType ?? "SHIFT_NOTES");
+  useEffect(() => {
+    if (block.targetType) setTarget(block.targetType);
+  }, [block.targetType]);
   // Tags the student ALREADY uses are applied; genuinely new ones start unticked, because a
   // new label is a permanent addition to the vocabulary their whole index is built on (P37).
   const [ticked, setTicked] = useState<Record<string, boolean>>(() => {
@@ -201,7 +209,7 @@ function BlockCard({
   }
 
   return (
-    <li
+    <div
       className={`rounded-xl border p-3 ${
         allocated
           ? "border-primary-200 bg-primary-50/30"
@@ -381,6 +389,11 @@ function BlockCard({
 
       <AllocateBar
         block={block}
+        target={target}
+        onTargetChange={(t) => {
+          setTarget(t);
+          void handlers.onEdit(block.id, { targetType: t });
+        }}
         proficiencyId={proficiencyId}
         tags={chosenTags}
         gibbs={gibbs}
@@ -395,7 +408,7 @@ function BlockCard({
         }
         onUnallocate={() => handlers.onUnallocate(block.id)}
       />
-    </li>
+    </div>
   );
 }
 
@@ -428,6 +441,17 @@ export function ReviewPanel({
     [blocks],
   );
   const filed = blocks.filter((b) => b.status === "ALLOCATED").length;
+  const wide = useWideScreen();
+
+  const card = (b: NoteBlock, i: number) => (
+    <BlockCard
+      block={b}
+      index={i}
+      handlers={handlers}
+      gibbs={gibbsByRawText?.[b.rawText]}
+      known={known}
+    />
+  );
 
   return (
     <div className="mt-4">
@@ -466,18 +490,22 @@ export function ReviewPanel({
         </div>
       )}
 
-      <ul className="mt-3 space-y-3">
-        {blocks.map((b, i) => (
-          <BlockCard
-            key={b.id}
-            block={b}
-            index={i}
-            handlers={handlers}
-            gibbs={gibbsByRawText?.[b.rawText]}
-            known={known}
-          />
-        ))}
-      </ul>
+      {/* Lanes on a wide screen (P35), the list everywhere else. Switched in JS rather than with
+          a CSS breakpoint so only ONE copy of each card is ever mounted — two would each hold
+          their own edit state and quietly diverge. */}
+      {wide ? (
+        <LaneBoard
+          blocks={blocks}
+          onMove={(id, target) => void handlers.onEdit(id, { targetType: target })}
+          renderBlock={card}
+        />
+      ) : (
+        <ul className="mt-3 space-y-3">
+          {blocks.map((b, i) => (
+            <li key={b.id}>{card(b, i)}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

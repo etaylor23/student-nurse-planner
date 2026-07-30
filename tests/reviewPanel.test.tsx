@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "./helpers/setupDom";
 import { ReviewPanel, type ReviewHandlers } from "../src/react/components/capture/ReviewPanel";
@@ -254,6 +254,112 @@ describe("ReviewPanel — the full taxonomy (P28)", () => {
     // Without this, a note evidencing something the classifier missed has no route in.
     expect(screen.getByRole("button", { name: "Find a different proficiency" })).toBeTruthy();
     expect(screen.getByText(/No proficiency suggested/)).toBeTruthy();
+  });
+});
+
+describe("ReviewPanel — wide-screen lanes (P35)", () => {
+  /** Lanes are chosen in JS, not CSS, so the test picks the viewport by stubbing matchMedia. */
+  function wideScreen() {
+    const real = window.matchMedia;
+    window.matchMedia = ((q: string) => ({
+      matches: q.includes("min-width"),
+      media: q,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    return () => {
+      window.matchMedia = real;
+    };
+  }
+
+  it("stays a list on a narrow screen — mobile is the primary path", () => {
+    render(<ReviewPanel blocks={BLOCKS} handlers={handlers()} />);
+    expect(screen.queryByLabelText("Medication log column")).toBeNull();
+  });
+
+  it("puts each block in the column for where it will be filed", () => {
+    const restore = wideScreen();
+    try {
+      render(
+        <ReviewPanel
+          blocks={[block(), block({ id: "blk-2", targetType: "REFLECTION" })]}
+          handlers={handlers()}
+        />,
+      );
+      // All four routes are visible at once, which is the whole point of the layout.
+      for (const lane of [
+        "Reflection column",
+        "Medication log column",
+        "Proficiency evidence column",
+        "Shift notes column",
+      ]) {
+        expect(screen.getByLabelText(lane)).toBeTruthy();
+      }
+      const meds = screen.getByLabelText("Medication log column");
+      expect(meds.textContent).toContain("Medication log (1)");
+      expect(screen.getByLabelText("Reflection column").textContent).toContain("Reflection (1)");
+      // Only ONE copy of each card is mounted, or each would hold its own edit state.
+      expect(screen.getAllByRole("textbox")).toHaveLength(2);
+    } finally {
+      restore();
+    }
+  });
+
+  it("gives blocks the classifier wouldn't route their own honest area (P34)", () => {
+    const restore = wideScreen();
+    try {
+      render(
+        <ReviewPanel
+          blocks={[block({ kind: "UNKNOWN", targetType: undefined })]}
+          handlers={handlers()}
+        />,
+      );
+      expect(screen.getByText(/Not decided \(1\)/)).toBeTruthy();
+      expect(screen.getByLabelText("Shift notes column").textContent).toContain("Nothing here yet");
+    } finally {
+      restore();
+    }
+  });
+
+  it("retypes the block when it's dropped in another column", () => {
+    const restore = wideScreen();
+    try {
+      const h = handlers();
+      render(<ReviewPanel blocks={[block()]} handlers={h} />);
+
+      const card = screen.getByLabelText("Medication log column").querySelector("li")!;
+      fireEvent.dragStart(card);
+      const lane = screen.getByLabelText("Reflection column");
+      fireEvent.dragOver(lane);
+      fireEvent.drop(lane);
+
+      // The lane view and the card's own target control write the SAME field, so they agree.
+      expect(h.onEdit).toHaveBeenCalledWith("blk-1", { targetType: "REFLECTION" });
+    } finally {
+      restore();
+    }
+  });
+
+  it("won't let a block that's already filed be dragged somewhere else", () => {
+    const restore = wideScreen();
+    try {
+      const h = handlers();
+      render(<ReviewPanel blocks={[block({ status: "ALLOCATED" })]} handlers={h} />);
+
+      const card = screen.getByLabelText("Medication log column").querySelector("li")!;
+      expect(card.getAttribute("draggable")).toBe("false");
+      fireEvent.dragStart(card);
+      fireEvent.drop(screen.getByLabelText("Reflection column"));
+
+      // The real row already exists; moving the block would leave the two out of step.
+      expect(h.onEdit).not.toHaveBeenCalled();
+    } finally {
+      restore();
+    }
   });
 });
 
