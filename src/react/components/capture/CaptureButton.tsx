@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRepository } from "../../RepositoryContext";
-import { MAX_IMAGES_PER_CAPTURE, captureAvailable } from "./config";
+import { MAX_IMAGES_PER_CAPTURE } from "./config";
 import { useCapture } from "./useCapture";
 
 /**
@@ -13,8 +13,9 @@ import { useCapture } from "./useCapture";
  * — so the only honest mitigation is to say so before the camera opens, and to record that
  * it was said (`piiAcknowledged` on the capture row).
  *
- * Hidden for guests (no token, so no presign) and when the build hasn't opted in, so an
- * undeployed backend shows nothing rather than a button that always fails.
+ * Hidden for guests only — they have no ID token, so the presign can't be authorised.
+ * There is no build-time flag: if the backend isn't deployed the upload reports an error,
+ * which tells you more than an invisible feature would.
  *
  * Portalled to `document.body` for the same reason the ask overlay is: the header carries
  * `backdrop-blur-md`, and a `backdrop-filter` ancestor becomes the containing block for
@@ -35,7 +36,8 @@ export function CaptureButton() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, state.stage]);
 
-  if (isGuest || !captureAvailable()) return null;
+  // Guests only: no ID token means the presign can't be authorised (P17).
+  if (isGuest) return null;
 
   function close() {
     if (state.stage === "uploading") return; // don't abandon an in-flight upload silently

@@ -138,12 +138,6 @@ jobs:
           # it needs an absolute URL in the bundle. Set the repo Variable to the stack's
           # `AiAskUrl` output; unset => the AI feature stays coming-soon for this build.
           VITE_AI_ASK_URL: ${{ vars.VITE_AI_ASK_URL }}
-          # Note capture (spec-note-capture.md). No URL to inject — the endpoints are on the
-          # same-origin /api/rpc — but the bundle can't detect whether the S3 bucket and the
-          # router's CAPTURE_BUCKET env var are deployed. Set this repo Variable to "true"
-          # only once they are; unset => the capture button stays hidden, which is better
-          # than a button that always fails.
-          VITE_CAPTURE_ENABLED: ${{ vars.VITE_CAPTURE_ENABLED }}
           # Sentry source-map upload — runs only if SENTRY_AUTH_TOKEN is set (see
           # vite.config.ts). GITHUB_SHA is the release tag. Org/project are repo Variables.
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}

@@ -6,19 +6,16 @@ import "./helpers/setupDom";
  * The capture affordance (spec-note-capture.md P2/P15).
  *
  * What's actually worth asserting here is the GATING, not the pixels: the PII warning has to
- * be unavoidable before the camera opens (P2), and the button must be absent for guests and
- * for builds whose backend isn't deployed — a button that always fails is worse than none.
+ * be unavoidable before the camera opens (P2), and the button must be absent for guests —
+ * they have no ID token, so the presign could never be authorised.
  */
 
-const captureAvailable = vi.fn(() => true);
 // Typed with the real signature so `mock.calls[0][1]` is checked, not `any`.
 const startCapture = vi.fn(async (_files: File[], _opts: { piiAcknowledged: boolean }) => {});
 const useRepositoryMock = vi.fn(() => ({ isGuest: false }));
 
 vi.mock("../src/react/components/capture/config", () => ({
-  captureAvailable: () => captureAvailable(),
   MAX_IMAGES_PER_CAPTURE: 10,
-  CAPTURE_ENABLED: true,
 }));
 
 vi.mock("../src/react/components/capture/useCapture", () => ({
@@ -32,7 +29,6 @@ vi.mock("../src/react/RepositoryContext", () => ({
 const { CaptureButton } = await import("../src/react/components/capture/CaptureButton");
 
 beforeEach(() => {
-  captureAvailable.mockReturnValue(true);
   useRepositoryMock.mockReturnValue({ isGuest: false });
   startCapture.mockClear();
 });
@@ -44,13 +40,7 @@ describe("CaptureButton — gating", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("renders nothing when the build hasn't opted in", () => {
-    captureAvailable.mockReturnValue(false);
-    const { container } = render(<CaptureButton />);
-    expect(container).toBeEmptyDOMElement();
-  });
-
-  it("renders for a signed-in user on an opted-in build", () => {
+  it("renders for any signed-in user — there is no build-time flag", () => {
     render(<CaptureButton />);
     expect(screen.getByLabelText("Photograph your notes")).toBeTruthy();
   });

@@ -1,21 +1,15 @@
 /**
- * Note-capture build-time config (spec-note-capture.md).
+ * Note-capture client constants (spec-note-capture.md).
  *
- * Unlike AI recall, the capture endpoints live on the ordinary same-origin `/api/rpc`, so
- * there is no absolute URL to inject. But there is still a deploy dependency the bundle
- * can't detect: the S3 bucket and the `CAPTURE_BUCKET` env var on the router. Without them
- * the presign fails at runtime, and a button that always errors is worse than no button.
+ * There is deliberately no build-time feature flag here. The capture endpoints live on the
+ * ordinary same-origin `/api/rpc`, so there is no URL to inject, and gating on a repo
+ * Variable proved to be more ceremony than it was worth. The button is shown to any
+ * signed-in user; if the backend isn't deployed the upload surfaces an error, which is a
+ * clearer signal than a feature that silently isn't there.
  *
- * So the UI is gated on an explicit opt-in flag, set by CI once the backend is deployed —
- * same posture as `aiAvailable()`: a missing or failed deploy hides the feature rather than
- * surfacing a broken one.
+ * Guests are still excluded, but that isn't a flag — they have no ID token, so the presign
+ * cannot be authorised at all.
  */
-export const CAPTURE_ENABLED =
-  (import.meta.env.VITE_CAPTURE_ENABLED as string | undefined)?.trim() === "true";
-
-export function captureAvailable(): boolean {
-  return CAPTURE_ENABLED;
-}
 
 /** Max photos per capture, mirroring the server's `MAX_IMAGES_PER_CAPTURE` (P20). */
 export const MAX_IMAGES_PER_CAPTURE = 10;
