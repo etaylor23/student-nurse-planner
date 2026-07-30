@@ -22,6 +22,7 @@ import {
   logInputSchema,
   medicationDraftSchema,
   medicationLogDraftSchema,
+  noteBlockDraftSchema,
   noteCaptureDraftSchema,
   proficiencyStatusChangeSchema,
   reflectionDraftSchema,
@@ -165,6 +166,10 @@ const METHODS: Record<string, { verb: Verb; tier: Tier }> = {
   createNoteCapture: { verb: "Create", tier: "SensitiveRecord" },
   updateNoteCapture: { verb: "Update", tier: "SensitiveRecord" },
   deleteNoteCapture: { verb: "Delete", tier: "SensitiveRecord" },
+  listNoteBlocks: { verb: "List", tier: "SensitiveRecord" },
+  createNoteBlock: { verb: "Create", tier: "SensitiveRecord" },
+  updateNoteBlock: { verb: "Update", tier: "SensitiveRecord" },
+  deleteNoteBlock: { verb: "Delete", tier: "SensitiveRecord" },
   // ---- Phase 3: local-first sync transport (spec §5) ----
   // Coarse EvidenceRecord gate: in v1 the only policy is owner==principal (§4.3), so the
   // decision is identical across tiers — and the server derives owner from the JWT sub and
@@ -200,6 +205,7 @@ const VALIDATORS: Record<string, { index: number; schema: z.ZodTypeAny }> = {
   updateRevisionSession: { index: 1, schema: revisionSessionDraftSchema.partial() },
   createSelfCareCheckin: { index: 0, schema: selfCareCheckinDraftSchema },
   createNoteCapture: { index: 0, schema: noteCaptureDraftSchema },
+  createNoteBlock: { index: 0, schema: noteBlockDraftSchema },
   updateNoteCapture: { index: 1, schema: noteCaptureDraftSchema.partial() },
 };
 

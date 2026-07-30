@@ -6,7 +6,7 @@ import { ParseClient, type ParseResponse } from "../../../data/api/parseClient";
 import { useRepository } from "../../RepositoryContext";
 import { PARSE_URL, parseAvailable } from "./config";
 import { CaptureImageError, downscaleForUpload } from "./downscale";
-import type { NoteCapture } from "../../../domain/types";
+import type { NoteBlock, NoteBlockKind, NoteBlockTarget, NoteCapture } from "../../../domain/types";
 
 /**
  * Capture flow state machine (spec-note-capture.md Phases 1–3).
@@ -47,6 +47,8 @@ export interface CaptureState {
   stage: CaptureStage;
   /** Parse results, once the pipeline has run. One entry per uploaded photo. */
   parsed?: ParseResponse[];
+  /** The PERSISTED blocks — what review edits and allocation act on. */
+  blocks?: NoteBlock[];
   /** What the pipeline is doing right now, from the stream's stage frames (P40). */
   activity?: string;
   /** The verbatim transcription, shown ~30s before the classified blocks arrive. */
@@ -96,6 +98,51 @@ export function useCapture() {
   );
 
   const reset = useCallback(() => setState({ stage: "idle" }), []);
+
+  /**
+   * Write one page's classified blocks as `NoteBlock` rows (P3/P26).
+   *
+   * `rawText` is the vision model's verbatim transcription and is frozen from here (P11);
+   * `text` starts as the sanitised version and is what the student edits. Everything the
+   * classifier suggested is stored as a suggestion — `status` stays PENDING until the student
+   * allocates, so nothing has touched their records yet.
+   */
+  const persistBlocks = useCallback(
+    async (captureId: string, page: ParseResponse): Promise<NoteBlock[]> => {
+      const out: NoteBlock[] = [];
+      for (const b of page.blocks) {
+        out.push(
+          await repo.createNoteBlock({
+            userId,
+            captureId,
+            imageIndex: page.imageIndex,
+            fromRegions: b.fromRegions.join(","),
+            // The parse response carries the sanitised text; the verbatim original is what
+            // the vision model read, so both are recorded and only one is editable.
+            rawText: b.text,
+            text: b.text,
+            kind: b.kind as NoteBlockKind,
+            confidence: b.confidence,
+            bboxX0: b.bbox.x0,
+            bboxY0: b.bbox.y0,
+            bboxX1: b.bbox.x1,
+            bboxY1: b.bbox.y1,
+            rotationDeg: b.rotationDeg,
+            disputedWords: b.disputedWords.join(","),
+            corrections: page.corrections.join(","),
+            candidateCodes: b.candidateCodes.join(","),
+            suggestedTags: b.tags.join(","),
+            medicationCandidate: b.medicationCandidate,
+            groupId: b.groupKey,
+            status: "PENDING",
+            targetType: b.targetType as NoteBlockTarget | undefined,
+          }),
+        );
+      }
+      return out;
+    },
+    [repo, userId],
+  );
 
   /**
    * Normalise suggested tags against the student's own vocabulary.
@@ -265,7 +312,14 @@ export function useCapture() {
           // An error FRAME arrives after a 200, so it can't be a thrown status — surface it
           // the same way a thrown failure would be.
           if (streamError) throw new Error((streamError as { message: string }).message);
-          if (page) parsed.push(page);
+          if (page) {
+            parsed.push(page);
+            // Persist immediately, per page. Blocks are first-class rows (P3) and the review
+            // screen edits THEM, not the in-memory response — otherwise closing the dialog
+            // loses the parse, and allocation has no `sourceId` to point at (P5).
+            const saved = await persistBlocks(capture.id, page);
+            setState((s) => ({ ...s, blocks: [...(s.blocks ?? []), ...saved] }));
+          }
         } catch (err) {
           // Partial results are worth keeping — a two-page capture whose second page failed
           // still has a first page worth reviewing.
@@ -285,7 +339,7 @@ export function useCapture() {
       });
       setState((s) => ({ stage: "review", capture, parsed, remaining: s.remaining }));
     },
-    [client, parser, repo, userId, localContext, reconcileTags],
+    [client, parser, repo, userId, localContext, reconcileTags, persistBlocks],
   );
 
   return { state, startCapture, reset };

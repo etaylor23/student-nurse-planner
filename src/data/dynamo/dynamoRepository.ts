@@ -26,6 +26,7 @@ import {
   revisionSessionSchema,
   revisionTargetSchema,
   revisionTopicSchema,
+  noteBlockSchema,
   noteCaptureSchema,
   selfCareCheckinSchema,
   shiftSchema,
@@ -50,6 +51,8 @@ import type {
   MedicationDraft,
   MedicationLog,
   MedicationLogDraft,
+  NoteBlock,
+  NoteBlockDraft,
   NoteCapture,
   NoteCaptureDraft,
   Placement,
@@ -1258,6 +1261,58 @@ export class DynamoRepository implements Repository {
 
   async deleteNoteCapture(id: string): Promise<void> {
     await this.delete(DynamoRepository.sk.noteCapture(id));
+  }
+
+  async listNoteBlocks(_userId: string, captureId?: string): Promise<NoteBlock[]> {
+    const rows = (await this.queryPrefix("NOTEBLOCK#")).map(
+      (r) => noteBlockSchema.parse(r) as NoteBlock,
+    );
+    const scoped = captureId ? rows.filter((b) => b.captureId === captureId) : rows;
+    return scoped.sort((a, b) =>
+      a.imageIndex !== b.imageIndex
+        ? a.imageIndex - b.imageIndex
+        : a.createdAt < b.createdAt
+          ? -1
+          : 1,
+    );
+  }
+
+  async createNoteBlock(input: NoteBlockDraft & { userId: string }): Promise<NoteBlock> {
+    const ts = nowIso();
+    const block: NoteBlock = {
+      ...input,
+      userId: this.sub,
+      id: newId(),
+      createdAt: ts,
+      updatedAt: ts,
+    };
+    await this.put("noteBlocks", DynamoRepository.sk.noteBlock(block.id), block, 1);
+    return block;
+  }
+
+  async updateNoteBlock(
+    id: string,
+    patch: Partial<Omit<NoteBlock, "id" | "userId" | "createdAt" | "rawText">>,
+  ): Promise<NoteBlock> {
+    const sk = DynamoRepository.sk.noteBlock(id);
+    const raw = await this.getRaw(sk);
+    if (!raw) throw new Error(`NoteBlock ${id} not found`);
+    const current = noteBlockSchema.parse(raw) as NoteBlock;
+    // `rawText` is frozen (P11) — the verbatim transcription must survive every edit.
+    const updated: NoteBlock = {
+      ...current,
+      ...patch,
+      id,
+      userId: this.sub,
+      rawText: current.rawText,
+      updatedAt: nowIso(),
+    };
+    await this.put("noteBlocks", sk, updated, (raw.version ?? 1) + 1);
+    return updated;
+  }
+
+  async deleteNoteBlock(id: string): Promise<void> {
+    await this.delete(DynamoRepository.sk.noteBlock(id));
   }
 
   // ---------------------------------------------------------------------------

@@ -30,6 +30,8 @@ import type {
   RevisionTargetDraft,
   RevisionTopic,
   RevisionTopicDraft,
+  NoteBlock,
+  NoteBlockDraft,
   NoteCapture,
   NoteCaptureDraft,
   SelfCareCheckin,
@@ -265,4 +267,13 @@ export interface Repository {
     patch: Partial<Omit<NoteCapture, "id" | "userId" | "createdAt">>,
   ): Promise<NoteCapture>;
   deleteNoteCapture(id: string): Promise<void>;
+
+  /** Semantic units of a captured page (P26). `rawText` is frozen; `text` is editable (P11). */
+  listNoteBlocks(userId: string, captureId?: string): Promise<NoteBlock[]>;
+  createNoteBlock(input: NoteBlockDraft & { userId: string }): Promise<NoteBlock>;
+  updateNoteBlock(
+    id: string,
+    patch: Partial<Omit<NoteBlock, "id" | "userId" | "createdAt" | "rawText">>,
+  ): Promise<NoteBlock>;
+  deleteNoteBlock(id: string): Promise<void>;
 }

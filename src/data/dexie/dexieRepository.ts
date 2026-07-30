@@ -31,6 +31,8 @@ import type {
   RevisionTargetDraft,
   RevisionTopic,
   RevisionTopicDraft,
+  NoteBlock,
+  NoteBlockDraft,
   NoteCapture,
   NoteCaptureDraft,
   SelfCareCheckin,
@@ -909,5 +911,49 @@ export class DexieRepository implements Repository {
 
   async deleteNoteCapture(id: string): Promise<void> {
     await this.db.noteCaptures.delete(id);
+  }
+
+  async listNoteBlocks(userId: string, captureId?: string): Promise<NoteBlock[]> {
+    const rows = captureId
+      ? await this.db.noteBlocks.where("captureId").equals(captureId).toArray()
+      : await this.db.noteBlocks.where("userId").equals(userId).toArray();
+    // Reading order within a page, then page order across a multi-page capture (P20/P36).
+    return rows.sort((a, b) =>
+      a.imageIndex !== b.imageIndex
+        ? a.imageIndex - b.imageIndex
+        : a.createdAt < b.createdAt
+          ? -1
+          : 1,
+    );
+  }
+
+  async createNoteBlock(input: NoteBlockDraft & { userId: string }): Promise<NoteBlock> {
+    const ts = nowIso();
+    const block: NoteBlock = { ...input, id: newId(), createdAt: ts, updatedAt: ts };
+    await this.db.noteBlocks.put(block);
+    return block;
+  }
+
+  async updateNoteBlock(
+    id: string,
+    patch: Partial<Omit<NoteBlock, "id" | "userId" | "createdAt" | "rawText">>,
+  ): Promise<NoteBlock> {
+    const current = await this.db.noteBlocks.get(id);
+    if (!current) throw new Error(`NoteBlock ${id} not found`);
+    // `rawText` is frozen (P11) — excluded from the patch type, and re-asserted here so a
+    // cast can't slip one through.
+    const updated: NoteBlock = {
+      ...current,
+      ...patch,
+      id,
+      rawText: current.rawText,
+      updatedAt: nowIso(),
+    };
+    await this.db.noteBlocks.put(updated);
+    return updated;
+  }
+
+  async deleteNoteBlock(id: string): Promise<void> {
+    await this.db.noteBlocks.delete(id);
   }
 }

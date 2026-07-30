@@ -35,6 +35,8 @@ import type {
   RevisionTargetDraft,
   RevisionTopic,
   RevisionTopicDraft,
+  NoteBlock,
+  NoteBlockDraft,
   NoteCapture,
   NoteCaptureDraft,
   SelfCareCheckin,
@@ -403,5 +405,20 @@ export class ApiRepository implements Repository {
   }
   deleteNoteCapture(id: string) {
     return this.rpc<void>("deleteNoteCapture", [id]);
+  }
+  listNoteBlocks(userId: string, captureId?: string) {
+    return this.rpc<NoteBlock[]>("listNoteBlocks", [userId, captureId]);
+  }
+  createNoteBlock(input: NoteBlockDraft & { userId: string }) {
+    return this.rpc<NoteBlock>("createNoteBlock", [input]);
+  }
+  updateNoteBlock(
+    id: string,
+    patch: Partial<Omit<NoteBlock, "id" | "userId" | "createdAt" | "rawText">>,
+  ) {
+    return this.rpc<NoteBlock>("updateNoteBlock", [id, patch]);
+  }
+  deleteNoteBlock(id: string) {
+    return this.rpc<void>("deleteNoteBlock", [id]);
   }
 }
