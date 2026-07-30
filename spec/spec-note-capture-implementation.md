@@ -124,34 +124,54 @@ browser (not just locally) so CORS and CSP are both confirmed.
 
 ---
 
-## Phase 3 — Review UI + allocation
+## Phase 3 — Review UI + allocation — **BUILT**
 
 Goal: the student can act on a parsed photo.
 
-1. **[AGENT]** Staged response handling (P40): render blocks at ~20s with text editable and
+1. ✅ **[AGENT]** Staged response handling (P40): render blocks at ~20s with text editable and
    no targets, then reconcile the classifier's semantic blocks when they arrive. **Design the
    reconciliation before writing it** — the spec flags this as the fiddliest part of the build.
-2. **[AGENT]** Mobile list view first (P35 — the primary path): blocks in reading order,
+   → **Designed as: no reconciliation.** Stage one streams as read-only text; rows are written
+   once from the classifier's units. See P40 for why the ~8 seconds of earlier editability
+   isn't worth the hardest merge in the build. Coverage is guaranteed structurally by
+   `ensureRegionsCovered` (`infra/lambda/parse/coverage.ts`) instead.
+2. ✅ **[AGENT]** Mobile list view first (P35 — the primary path): blocks in reading order,
    editable text, type control, disputed words highlighted with both readings, corrections
    subtly marked with one-tap revert to `rawText`.
-3. **[AGENT]** Shift bar: ranked candidates, top pre-selected, alternates one tap away,
+3. ✅ **[AGENT]** Shift bar: ranked candidates, top pre-selected, alternates one tap away,
    low-confidence fallback stated plainly (P9).
-4. **[AGENT]** Taxonomy picker: top `candidateCode` pre-selected with its full statement,
-   remaining candidates one tap away, full 219-item picker reachable (P28).
-5. **[AGENT]** Allocation (P4): materialise the real row with `sourceType`/`sourceId` and
+4. ✅ **[AGENT]** Taxonomy picker: top `candidateCode` pre-selected with its full statement,
+   remaining candidates one tap away, full 219-item picker reachable (P28) — searchable by
+   code *and* statement text, because 219 is far too many to scroll.
+5. ✅ **[AGENT]** Allocation (P4): materialise the real row with `sourceType`/`sourceId` and
    inherited `shiftId`; Gibbs sections from the classifier for reflections; `Shift.notes`
    append recording `appendedTo` + `appendedText`; idempotent on `block.status`.
-6. **[AGENT]** Un-allocation (P19): soft-delete the row, strip appended text **only if it
-   still matches verbatim**, otherwise leave it and say so.
-7. **[AGENT]** Medication create-offer pre-filled from block content (P33); tag suggestions
+6. ✅ **[AGENT]** Un-allocation (P19): soft-delete the row, strip appended text **only if it
+   still matches verbatim**, otherwise leave it and say so. Proficiency status is deliberately
+   *not* reverted — there is no honest "un-set" — and the student is told.
+7. ✅ **[AGENT]** Medication create-offer pre-filled from block content (P33); tag suggestions
    with existing labels applied and new ones tickable (P37); `UNKNOWN` blocks retypeable.
-8. **[AGENT]** Wide-screen lanes with drag (P35) — **after** the mobile list is good.
-9. **[AGENT]** Component tests following `tests/askNotesPanel.test.tsx`: jsdom via
+   → **Deviation:** the created card is pre-filled with the block's own text as `keyNotes`,
+   *not* split into `drugClass` / indication / `sideEffects`. The classifier doesn't return
+   those fields, and deriving them from prose by pattern-matching is the deterministic parsing
+   P38 rejected. Getting them properly means adding them to the classifier's per-block output
+   — a contract change, so it is deliberately left for after Phase 4's measurement.
+8. ✅ **[AGENT]** Wide-screen lanes with drag (P35) — **after** the mobile list is good. The
+   layout is switched in JS (`useWideScreen`), not by a CSS breakpoint, so only one copy of
+   each card is ever mounted; two would each hold their own edit state.
+9. ✅ **[AGENT]** Component tests following `tests/askNotesPanel.test.tsx`: jsdom via
    `environmentMatchGlobs` on `*.test.tsx`, `AiClient`-style mock with captured handlers so
-   tests drive the staged response by hand.
+   tests drive the staged response by hand. → `tests/reviewPanel.test.tsx` (30) and
+   `tests/allocateBlock.test.ts` (16), fixtures taken from the real deployed parse output.
 
 **[GATE 3]** A real photo becomes a real `Reflection` and a real `MedicationLog`, both
 carrying provenance back to the S3 object, and un-allocating cleanly reverses both.
+
+**Gate 3 status:** proven at the logic layer against a real `DexieRepository` —
+`tests/allocateBlock.test.ts` files a real `Reflection` with its Gibbs sections and a real
+`MedicationLog` dated to the shift, asserts `sourceType`/`sourceId` both ways, and reverses
+both. **Not yet proven end-to-end from a photo in the browser**, which needs a signed-in
+session on `app.placemate.uk` and is a `[YOU]` step.
 
 ---
 

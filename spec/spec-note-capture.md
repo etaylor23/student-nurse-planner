@@ -113,7 +113,7 @@ deleted so nobody reinstates them:
 | P37 | **Tags: reuse existing labels, propose new ones.** Matched against the student's own `Tag` labels first and applied silently; genuinely new tags are surfaced as suggestions to tick. `Tag` is unique per user+label and its whole value is pulling notes back later for essays and revalidation, so near-duplicate sprawl (`haematology` / `haem` / `haematology patients`) would destroy the index it exists to be. |
 | P38 | **No deterministic lookup tables anywhere in the pipeline.** A BNF-derived lookup was prototyped and measurably worked — 2,589 keys, edit distance ≤2, it corrected every drug-name error observed in testing including the Americanisations, because BNF spelling is inherently British. **Rejected anyway**, and deliberately: the notes contain far more than drugs (`NG tube`, `pH 5.5`, `PAD sign off`, `OSCE`, procedures, conditions, equipment), so a table per domain does not generalise, goes stale, and turns one intelligent layer into a patchwork of special cases. Correction stays model-driven (P24). BNF data may still *pre-fill* a created medication card (P33) — that is linking, not correcting. |
 | P39 | **The two text calls get independent model config.** `AI_SANITISE_MODEL_ID` and `AI_CLASSIFY_MODEL_ID`, tunable separately, because the jobs pull in opposite directions: the sanitiser must be **narrow and conservative** (token-level, resist rewriting), the classifier must be **expansive and reasoning-heavy** (219-way ranking, cross-matches, grouping). One model would be wrong for one of them. Starting defaults — sanitiser `deepseek.v3.2` (already proven on the mantle route by AI recall), classifier a stronger reasoning model (`zai.glm-5`, `mistral.mistral-large-3-675b-instruct` and `moonshotai.kimi-k2-thinking` are the candidates). **Both are unmeasured and must be baked off before launch** — every model picked by guess this session turned out wrong. |
-| P40 | **`parseFn` returns a staged response, not one JSON object.** Transcribed, sanitised blocks come back as soon as the vision pair and sanitiser finish (~20s) so the student can start reading and editing; classification arrives after (~28s) and fills in kinds, targets, shortlists and tags. The wait becomes useful instead of blank, which matters because this happens on a phone straight after taking a photo. Consequences: the client must render a **pre-classification state** (blocks with text but no targets), the review screen must tolerate targets appearing under it, and blocks can be written to Dexie at stage one — with the classifier's re-splitting (P26) then reconciled against them. That reconciliation is the price of the staged response and must be designed, not discovered. |
+| P40 | **`parseFn` returns a staged response, not one JSON object.** Transcribed, sanitised blocks come back as soon as the vision pair and sanitiser finish (~20s) so the student can start reading and editing; classification arrives after (~28s) and fills in kinds, targets, shortlists and tags. The wait becomes useful instead of blank, which matters because this happens on a phone straight after taking a photo. Consequences: the client must render a **pre-classification state**, and the review screen must tolerate the classified blocks arriving under it. **Built as: stage one is read-only text held in memory, and rows are written once from the classifier's units (P26).** Writing vision regions as rows first and merging the re-split into them would buy ~8 seconds of earlier editability at the cost of the hardest merge in the build, on exactly the data where a wrong merge silently loses the student's words. No-region-left-behind is guaranteed structurally instead (`ensureRegionsCovered`). |
 
 **Set-by-default (veto on read):** nothing is written to the student's record without an
 explicit confirm; parse output is zod-validated and invalid blocks are dropped silently
@@ -537,11 +537,16 @@ not enough; and `wardHint` must be constrained to text on the page.
 
 Still open:
 
-- **Staged-response reconciliation** (P40, resolved but not designed): blocks are written at
-  stage one from the vision regions, then the classifier re-splits them (P26). Merging that
-  second result into rows the student may already be editing is the fiddliest part of the
-  build. Options are to hold stage-one blocks in memory only, or to write them and reconcile
-  by region ids. **Decide before the review screen.**
+- ~~**Staged-response reconciliation** (P40, resolved but not designed)~~ — **decided and
+  built: stage one is held in memory only.** The transcription streams in as read-only text
+  (`What we read so far`), and `NoteBlock` rows are written once, from the classifier's
+  semantic units (P26). There is nothing to reconcile, because nothing was written to
+  reconcile against. The alternative — write vision regions as rows, then merge the
+  classifier's re-split into rows the student may already be editing — buys about eight
+  seconds of earlier editability and pays for it with the hardest merge in the build, on
+  exactly the data where a wrong merge silently loses the student's words. Coverage is
+  guaranteed structurally instead (`ensureRegionsCovered`), so no region is dropped on the way
+  from the page to the rows.
 - **Classifier accuracy is unmeasured** (resolved: it will be measured). Needs one
   hand-labelling pass — the expected proficiency codes per block on the test page — after
   which `scripts/eval-note-capture.ts` scores top-1 and top-3. That is a `[YOU]` action in
