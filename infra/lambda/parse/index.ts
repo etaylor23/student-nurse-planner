@@ -1,6 +1,6 @@
+/// <reference path="./runtime.d.ts" />
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { VerifiedPermissionsClient } from "@aws-sdk/client-verifiedpermissions";
-import type { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
 import { makeAuthorize } from "../../../src/data/dynamo/authorize";
 import { verifyCaller } from "../ai/auth";
 import { UpstreamError } from "../ai/provider";
@@ -21,10 +21,10 @@ import { readPage } from "./vision";
  * names, tag labels, placement — arrives in the request body, because the app is local-first
  * and already holds it in Dexie. That keeps this function's IAM to Bedrock and one S3 prefix.
  *
- * Phase 2 returns ONE JSON response. P40 specifies a staged response (text at ~20s,
- * classification at ~28s) for the review screen; that is a Phase 4 change to this handler's
- * response shape, deliberately deferred so Gate 2 can prove the pipeline with a terminal
- * script and no UI.
+ * **Streamed, in stages (P40).** The whole pipeline takes ~70s measured, and a blank spinner
+ * for that long reads as a hang. So this streams SSE and reports each stage as it lands:
+ * the transcription arrives around 40s, the classified blocks around 70s, and stage markers
+ * before both. The student sees their own words long before the filing suggestions.
  */
 
 const USER_POOL_ID = process.env.USER_POOL_ID as string;
@@ -47,11 +47,26 @@ interface ParseRequest {
   context?: StudentContext;
 }
 
-function json(statusCode: number, body: unknown): APIGatewayProxyResultV2 {
-  return { statusCode, headers: { "content-type": "application/json" }, body: JSON.stringify(body) };
+/** Non-200s stay plain JSON: nothing has been streamed yet, so there is no partial state. */
+function fail(stream: ResponseStream, statusCode: number, body: unknown): void {
+  const out = awslambda.HttpResponseStream.from(stream, {
+    statusCode,
+    headers: { "content-type": "application/json" },
+  });
+  out.write(JSON.stringify(body));
+  out.end();
 }
 
-function parseBody(event: APIGatewayProxyEventV2): ParseRequest | null {
+function frame(stream: ResponseStream, event: string, data: unknown): void {
+  stream.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
+/** A stage marker, so the UI can say what is happening rather than just spinning. */
+function stage(stream: ResponseStream, name: string, detail?: Record<string, unknown>): void {
+  frame(stream, "stage", { stage: name, ...detail });
+}
+
+function parseBody(event: FunctionUrlEvent): ParseRequest | null {
   if (!event.body) return null;
   let raw: unknown;
   try {
@@ -67,21 +82,21 @@ function parseBody(event: APIGatewayProxyEventV2): ParseRequest | null {
   return { captureId, imageKey, imageIndex, context: (o.context ?? {}) as StudentContext };
 }
 
-export const handler = async (
-  event: APIGatewayProxyEventV2,
-): Promise<APIGatewayProxyResultV2> => {
-  if (event.requestContext?.http?.method !== "POST") return json(405, { error: "method_not_allowed" });
+async function run(event: FunctionUrlEvent, responseStream: ResponseStream): Promise<void> {
+  if (event.requestContext?.http?.method !== "POST") {
+    return fail(responseStream, 405, { error: "method_not_allowed" });
+  }
 
   const caller = await verifyCaller(event.headers as Record<string, string | undefined>);
-  if (!caller) return json(401, { error: "unauthorised" });
+  if (!caller) return fail(responseStream, 401, { error: "unauthorised" });
 
   const req = parseBody(event);
-  if (!req) return json(400, { error: "bad_request" });
+  if (!req) return fail(responseStream, 400, { error: "bad_request" });
 
   // The key must sit under the caller's own prefix. The presign derives keys server-side,
   // so a key outside it can only come from a caller trying to read someone else's photo.
   const prefix = `u/${caller.sub}/`;
-  if (!req.imageKey.startsWith(prefix)) return json(403, { error: "forbidden_key" });
+  if (!req.imageKey.startsWith(prefix)) return fail(responseStream, 403, { error: "forbidden_key" });
 
   const ok = await authorize({
     identityToken: caller.identityToken,
@@ -90,36 +105,66 @@ export const handler = async (
     resourceId: "scope:note-capture",
     ownerId: `${USER_POOL_ID}|${caller.sub}`,
   });
-  if (!ok) return json(403, { error: "forbidden" });
+  if (!ok) return fail(responseStream, 403, { error: "forbidden" });
 
   // ---- fetch the photo ----
   let imageBase64: string;
   let contentType: string;
   try {
     const obj = await s3.send(new GetObjectCommand({ Bucket: CAPTURE_BUCKET, Key: req.imageKey }));
-    if ((obj.ContentLength ?? 0) > MAX_IMAGE_BYTES) return json(413, { error: "image_too_large" });
+    if ((obj.ContentLength ?? 0) > MAX_IMAGE_BYTES) {
+      return fail(responseStream, 413, { error: "image_too_large" });
+    }
     const bytes = await obj.Body?.transformToByteArray();
-    if (!bytes) return json(404, { error: "image_not_found" });
+    if (!bytes) return fail(responseStream, 404, { error: "image_not_found" });
     imageBase64 = Buffer.from(bytes).toString("base64");
     contentType = obj.ContentType ?? "image/jpeg";
   } catch (err) {
     console.warn("could not read capture object", err);
-    return json(404, { error: "image_not_found" });
+    return fail(responseStream, 404, { error: "image_not_found" });
   }
 
   const startedAt = Date.now();
+  // From here the response is a stream: 200 is already committed, so later failures arrive as
+  // an `error` FRAME rather than an HTTP status (the same shape askFn uses).
+  const out = awslambda.HttpResponseStream.from(responseStream, {
+    statusCode: 200,
+    headers: { "content-type": "text/event-stream", "cache-control": "no-cache" },
+  });
+
   try {
+    stage(out, "reading", { message: "Reading your handwriting" });
+
     // ---- 1 + 2: the vision pair, in parallel ----
     const { structure, check } = await readPage(imageBase64, contentType);
     if (!structure.parsed) {
-      // The only failure that fails the parse — there is nothing to show without it.
-      return json(502, { error: "parse_failed", detail: "structure model returned no usable JSON" });
+      frame(out, "error", { code: "PARSE_FAILED", message: "Could not read that photo." });
+      out.end();
+      return;
     }
     const regions = structure.parsed.blocks.map((b) => b.rawText);
     const pageText = structure.pageText;
 
+    // The student's own words, as soon as they exist — ~40s earlier than the blocks. This is
+    // the whole point of streaming: they can start checking the transcription while the
+    // filing suggestions are still being worked out.
+    frame(out, "transcribed", {
+      pageText,
+      regions,
+      pageDateRaw: structure.parsed.pageDateRaw ?? null,
+      wardHint: structure.parsed.wardHint ?? null,
+    });
+    stage(out, "spellchecking", { message: "Checking drug names and clinical terms" });
+
     // ---- 3: sanitise ----
     const cleaned = await sanitise(pageText);
+    if (cleaned.corrections.length > 0) {
+      frame(out, "corrected", {
+        text: cleaned.text,
+        corrections: cleaned.corrections.map((c) => `${c.from}|${c.to}`),
+      });
+    }
+    stage(out, "classifying", { message: "Working out what each note is" });
 
     // ---- consensus over the two whole-page transcriptions (P23) ----
     // Against the SANITISED text, so a word the sanitiser already fixed isn't also raised as
@@ -145,7 +190,7 @@ export const handler = async (
 
     const disputeMap = mapDisputesToBlocks(blocks, disputes);
 
-    return json(200, {
+    frame(out, "blocks", {
       captureId: req.captureId,
       imageIndex: req.imageIndex,
       pageDateRaw: structure.parsed.pageDateRaw ?? null,
@@ -164,6 +209,9 @@ export const handler = async (
         };
       }),
       corrections: cleaned.corrections.map((c) => `${c.from}|${c.to}`),
+    });
+
+    frame(out, "done", {
       // Everything a Gate-2 eyeball (and later, metrics) needs to judge the run.
       diagnostics: {
         totalMs: Date.now() - startedAt,
@@ -174,14 +222,20 @@ export const handler = async (
         disputes: disputes.length,
       },
     });
+    out.end();
   } catch (err) {
+    // 200 is already sent, so an error can only be a frame from here.
     if (err instanceof UpstreamError) {
-      return json(err.throttled ? 429 : 502, {
-        error: err.throttled ? "throttled" : "upstream",
-        detail: err.message.slice(0, 300),
+      frame(out, "error", {
+        code: err.throttled ? "THROTTLED" : "UPSTREAM",
+        message: err.throttled ? "The models are busy — try again in a moment." : "That didn't work — try again.",
       });
+    } else {
+      console.error("parse failed", err);
+      frame(out, "error", { code: "INTERNAL", message: "Something went wrong reading that photo." });
     }
-    console.error("parse failed", err);
-    return json(500, { error: "internal" });
+    out.end();
   }
-};
+}
+
+export const handler = awslambda.streamifyResponse(run);

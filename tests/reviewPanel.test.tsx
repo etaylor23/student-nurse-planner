@@ -77,12 +77,43 @@ describe("ReviewPanel", () => {
     expect(screen.getByText(/2 to check/)).toBeTruthy();
   });
 
-  it("shows the top code with its STATEMENT, not just the bare code", () => {
+  it("shows a code with its PLATFORM heading and full statement, not a bare number", () => {
     render(<ReviewPanel parsed={[REAL_PARSE]} />);
-    // "4.14" alone is meaningless to a student; the statement is what lets them judge it.
-    const top = screen.getAllByRole("button", { name: /^4\.1[45] —/ });
-    expect(top.length).toBeGreaterThan(0);
-    expect(top[0].textContent).toMatch(/\+4 more/);
+    // "4.15" alone is meaningless to a student. The platform is the heading it needs, and the
+    // statement is what lets them judge whether the suggestion is right.
+    expect(screen.getAllByText(/Platform 4 · 4\.1[45]/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Demonstrate knowledge of pharmacology/i).length).toBeGreaterThan(0);
+    // Section heading, so it is obvious what the codes ARE.
+    expect(screen.getAllByText("NMC proficiency evidence").length).toBe(2);
+  });
+
+  it("lets a suggested code and a suggested tag be removed", async () => {
+    const { default: userEventDefault } = await import("@testing-library/user-event");
+    const user = userEventDefault.setup();
+    render(<ReviewPanel parsed={[REAL_PARSE]} />);
+
+    // A suggestion you cannot decline is not a suggestion.
+    const beforeTags = screen.getAllByText("haematology").length;
+    await user.click(screen.getAllByLabelText("Remove tag haematology")[0]);
+    expect(screen.getAllByText("haematology").length).toBe(beforeTags - 1);
+
+    // Block 1 leads with 4.14, block 2 with 4.15 — one remove button each.
+    expect(screen.getByLabelText("Remove proficiency 4.14")).toBeTruthy();
+    await user.click(screen.getByLabelText("Remove proficiency 4.14"));
+    // Gone, and block 1 now leads with its next-ranked suggestion instead.
+    expect(screen.queryByLabelText("Remove proficiency 4.14")).toBeNull();
+    expect(screen.getAllByLabelText("Remove proficiency 4.15")).toHaveLength(2);
+  });
+
+  it("groups each part of a block under its own labelled section", () => {
+    render(<ReviewPanel parsed={[REAL_PARSE]} />);
+    // The first version stacked target, group, disputes, tags and codes as undifferentiated
+    // chips and read as noise. These headings are what make it scannable.
+    for (const heading of ["Worth a check", "Will file as", "Tags", "NMC proficiency evidence"]) {
+      expect(screen.getAllByText(heading).length).toBeGreaterThan(0);
+    }
+    // The raw group key is NOT surfaced — it meant nothing to a reader.
+    expect(screen.queryByText(/med-notes-haematology/)).toBeNull();
   });
 
   it("lets a block be retyped, including away from UNKNOWN (P34)", () => {

@@ -166,17 +166,40 @@ export function CaptureButton() {
               )}
 
               {state.stage === "parsing" && (
-                <div className="mt-6 text-sm text-slate-600">
-                  <p>
-                    Reading page {state.progress?.current} of {state.progress?.total}…
-                  </p>
-                  {/* Four model calls, ~70s measured. Saying so beats an unexplained spinner. */}
-                  <p className="mt-1 text-xs text-slate-400">
-                    This takes about a minute per page — your photo is already saved.
-                  </p>
-                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                    <div className="h-full w-1/2 animate-pulse rounded-full bg-secondary-400" />
+                <div className="mt-5 text-sm text-slate-600">
+                  <div className="flex items-baseline justify-between gap-3">
+                    {/* The live stage from the stream, not a static label — the pipeline takes
+                        ~70s and the student should be able to see it moving (P40). */}
+                    <p className="font-medium text-ink-900">
+                      {state.activity ?? "Reading your handwriting"}…
+                    </p>
+                    {(state.progress?.total ?? 1) > 1 && (
+                      <span className="shrink-0 text-xs text-slate-400">
+                        page {state.progress?.current} of {state.progress?.total}
+                      </span>
+                    )}
                   </div>
+                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-full w-1/3 animate-pulse rounded-full bg-secondary-400" />
+                  </div>
+
+                  {state.preview ? (
+                    <>
+                      <p className="mt-4 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                        What we read so far
+                      </p>
+                      <pre className="mt-1 max-h-56 overflow-y-auto whitespace-pre-wrap rounded-lg bg-slate-50 p-2 font-sans text-xs leading-relaxed text-slate-700">
+                        {state.preview}
+                      </pre>
+                      <p className="mt-2 text-xs text-slate-400">
+                        Still working out what each note is and where it should go.
+                      </p>
+                    </>
+                  ) : (
+                    <p className="mt-2 text-xs text-slate-400">
+                      Your photo is already saved — this part takes about a minute.
+                    </p>
+                  )}
                 </div>
               )}
 

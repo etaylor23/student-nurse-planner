@@ -143,10 +143,10 @@ export class Ai extends Construct {
     new CfnOutput(stack, "AiAskUrl", { value: this.askUrl.url });
 
     // ---- Note-capture parse endpoint (spec-note-capture.md P12) ----
-    // A sibling Function URL rather than a router RPC: four model calls take ~30s, which sits
-    // badly on an API Gateway path built for fast CRUD (and past its 29s ceiling). Same auth
-    // as askFn — Cognito ID token verified in-Lambda + the AVP gate. NOT streaming: a parse
-    // is a batch whose results are only useful assembled.
+    // A sibling Function URL rather than a router RPC: the pipeline takes ~70s measured, far
+    // past API Gateway's 29s ceiling. Same auth as askFn — Cognito ID token verified
+    // in-Lambda + the AVP gate. STREAMING, because 70s of blank spinner reads as a hang: the
+    // transcription is emitted at ~40s and the classified blocks at ~70s (P40).
     this.parseFn = new NodejsFunction(this, "ParseFn", {
       runtime: Runtime.NODEJS_20_X,
       handler: "handler",
@@ -206,6 +206,7 @@ export class Ai extends Construct {
 
     this.parseUrl = this.parseFn.addFunctionUrl({
       authType: FunctionUrlAuthType.NONE, // auth = in-Lambda JWT verify + AVP, as askFn
+      invokeMode: InvokeMode.RESPONSE_STREAM, // staged frames, not one late blob (P40)
       cors: {
         allowedOrigins: config.allowedOrigins,
         allowedMethods: [HttpMethod.POST],

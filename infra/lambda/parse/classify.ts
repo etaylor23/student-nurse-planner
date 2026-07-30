@@ -72,7 +72,7 @@ For each block, decide:
 - "fromRegions": which region numbers this block drew from.
 - "groupKey": shared by blocks that belong together.
 
-CRITICAL: "text" must be copied from the page text given to you. You may split it and regroup it; you may NOT reword it, summarise it, or add to it.
+CRITICAL: "text" must use the SAME WORDS as the page text given to you, in the same order. You may split it, regroup it, and JOIN HARD-WRAPPED LINES back into flowing sentences and paragraphs so it reads naturally — handwritten notes wrap mid-sentence and that line structure is an artefact of the paper, not the meaning. You may NOT reword it, substitute synonyms, summarise it, or add to it.
 
 Return ONLY JSON: {"blocks":[{...}]}`;
 

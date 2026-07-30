@@ -47,6 +47,10 @@ export interface CaptureState {
   stage: CaptureStage;
   /** Parse results, once the pipeline has run. One entry per uploaded photo. */
   parsed?: ParseResponse[];
+  /** What the pipeline is doing right now, from the stream's stage frames (P40). */
+  activity?: string;
+  /** The verbatim transcription, shown ~30s before the classified blocks arrive. */
+  preview?: string;
   progress?: CaptureProgress;
   capture?: NoteCapture;
   /** Photos left today, once known (P17). */
@@ -92,6 +96,27 @@ export function useCapture() {
   );
 
   const reset = useCallback(() => setState({ stage: "idle" }), []);
+
+  /**
+   * Normalise suggested tags against the student's own vocabulary.
+   *
+   * An existing tag keeps ITS original casing — the student typed "haematology" that way and
+   * a second differently-cased variant would split their index, which is the whole thing
+   * `Tag`'s unique-per-user-label constraint exists to prevent. A genuinely new tag is Title
+   * Cased, because the model returns whatever casing it feels like.
+   */
+  const reconcileTags = useCallback((suggested: string[], existing: string[]): string[] => {
+    const byLower = new Map(existing.map((t) => [t.toLowerCase(), t]));
+    const out: string[] = [];
+    for (const raw of suggested) {
+      const t = raw.trim();
+      if (!t) continue;
+      const match = byLower.get(t.toLowerCase());
+      const label = match ?? t.replace(/\b\w/g, (c) => c.toUpperCase());
+      if (!out.includes(label)) out.push(label);
+    }
+    return out;
+  }, []);
 
   /**
    * The student's own context, read from the LOCAL database (P32). Sending it means parseFn
@@ -203,15 +228,44 @@ export function useCapture() {
           progress: { current: i + 1, total: keys.length },
         }));
         try {
-          parsed.push(
-            await parser.parse({
+          const ctx = await localContext();
+          let page: ParseResponse | null = null;
+          let streamError: { code: string; message: string } | null = null;
+
+          await parser.parse(
+            {
               captureId: capture.id,
               imageKey: keys[i],
               imageIndex: i,
               // What parseFn would otherwise need table access for (P32).
-              context: await localContext(),
-            }),
+              context: ctx,
+            },
+            {
+              onStage: (_stage, message) => setState((s) => ({ ...s, activity: message })),
+              // The student's own words, ~30s before the filing suggestions. Showing these
+              // early is the entire reason this endpoint streams.
+              onTranscribed: (p) => setState((s) => ({ ...s, preview: p.pageText })),
+              onCorrected: (p) => setState((s) => ({ ...s, preview: p.text })),
+              onBlocks: (p) => {
+                page = {
+                  ...p,
+                  blocks: p.blocks.map((b) => ({
+                    ...b,
+                    tags: reconcileTags(b.tags, ctx.tagLabels ?? []),
+                  })),
+                };
+              },
+              onDone: () => {},
+              onError: (code, message) => {
+                streamError = { code, message };
+              },
+            },
           );
+
+          // An error FRAME arrives after a 200, so it can't be a thrown status — surface it
+          // the same way a thrown failure would be.
+          if (streamError) throw new Error((streamError as { message: string }).message);
+          if (page) parsed.push(page);
         } catch (err) {
           // Partial results are worth keeping — a two-page capture whose second page failed
           // still has a first page worth reviewing.
@@ -231,7 +285,7 @@ export function useCapture() {
       });
       setState((s) => ({ stage: "review", capture, parsed, remaining: s.remaining }));
     },
-    [client, parser, repo, userId, localContext],
+    [client, parser, repo, userId, localContext, reconcileTags],
   );
 
   return { state, startCapture, reset };
