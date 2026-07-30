@@ -11,7 +11,14 @@
  * With no --key it parses the most recent object under the user's prefix.
  */
 import { ListObjectsV2Command } from "@aws-sdk/client-s3";
-import { cognitoClient, findUser, parseUserArgs, resolveStackConfig, s3Client } from "./lib/admin";
+import {
+  APP_ORIGIN,
+  cognitoClient,
+  findUser,
+  parseUserArgs,
+  resolveStackConfig,
+  s3Client,
+} from "./lib/admin";
 import {
   AdminInitiateAuthCommand,
   AdminRespondToAuthChallengeCommand,
@@ -39,7 +46,11 @@ async function idTokenFor(userPoolId: string, clientId: string, username: string
       ChallengeName: "CUSTOM_CHALLENGE",
       Session: init.Session,
       ChallengeResponses: { USERNAME: username, ANSWER: "__dummy__" },
-      ClientMetadata: { signInMethod: "MAGIC_LINK", alreadyHaveMagicLink: "no" },
+      ClientMetadata: {
+        signInMethod: "MAGIC_LINK",
+        redirectUri: APP_ORIGIN,
+        alreadyHaveMagicLink: "no",
+      },
     }),
   );
   const token = res.AuthenticationResult?.IdToken;
