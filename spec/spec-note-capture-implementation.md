@@ -26,7 +26,6 @@ semantic blocks, allocation)._
 
 | When | Action | Why |
 |---|---|---|
-| ⏳ **Now** | **[YOU]** Photograph a **genuinely messy page** — notes scattered at different angles, the thing this feature was conceived for — and hand it over | Every layout claim (P26, P36) rests on a *synthetic* printed test image. One real chaotic page could invalidate the segmentation and ordering design before either is built. Cheap now, expensive later. |
 | Phase 1 | **[YOU]** Confirm the S3 retention posture in writing (P13: no expiry, deleted only by erasure) and that the privacy policy will disclose photo storage + team review | You accepted this risk; the policy text is yours to sign off, and the bucket is built to match it. |
 | Phase 3 | **[YOU]** Hand-label the expected proficiency codes per block for the test photo | Turns the classifier from unmeasured into measured. Roughly an hour. Gates launch, not the build. |
 | Phase 5 | **[YOU]** Sign off all copy: the pre-camera PII warning, correction/disputed-word wording, cap and failure messages | Same posture as AI recall D19 — you are the sole copy gate. |
@@ -42,23 +41,22 @@ leaves open, **before** any infrastructure exists.
 1. **[AGENT]** Re-run `scripts/eval-note-capture.ts` on the existing test photo to confirm
    nothing has drifted (the mantle catalogue is not versioned; model ids have moved once
    already — `qwen.qwen3-vl-235b-a22b` needed an `-instruct` suffix).
-2. **[YOU]** Provide the messy multi-orientation page (checklist above).
-3. **[AGENT]** Run the harness on it. Check specifically: does the structure model find the
-   scattered regions, are the bboxes usable, does reading-order sorting (P36) produce
-   sensible serialisation on a non-linear page? **If it does not, stop** — P26 and P36 need
-   revisiting before anything is built on them.
-4. **[AGENT]** Bake off the **sanitiser** model (P39) over ≥4 runs each, scored on the
+2. ~~Provide a messy multi-orientation page.~~ **Closed 2026-07-30: no such page exists.**
+   Single-column is the target and multi-orientation is V2 — see the scope note in the spec.
+   Nothing here is blocked on it; the residual limitation (one page, one writer, even lighting)
+   is recorded in the spec's Open questions.
+3. **[AGENT]** Bake off the **sanitiser** model (P39) over ≥4 runs each, scored on the
    Appendix 3 criteria: does it fix real errors, and does it damage correct text? Candidates:
    `deepseek.v3.2`, `zai.glm-4.7`, `zai.glm-5`, `mistral.mistral-large-3-675b-instruct`.
    Use the **token-scoped** contract from P24, not the mis-scoped prose prompt.
-5. **[AGENT]** Bake off the **classifier** model (P39) over ≥4 runs, scored on top-1 and
+4. **[AGENT]** Bake off the **classifier** model (P39) over ≥4 runs, scored on top-1 and
    top-3 code accuracy once Phase 3's labels exist — until then, score on whether output
    validates and whether block splits are stable across runs.
-6. **[AGENT]** Probe whether the mantle `openai-compat` route supports **function calling**
+5. **[AGENT]** Probe whether the mantle `openai-compat` route supports **function calling**
    (one trivial tool definition). Record the answer in this file's appendix — P29's future
    agentic classifier depends on it.
 
-**[GATE 0]** Handwriting confirmed on a messy page; sanitiser and classifier models chosen
+**[GATE 0]** Sanitiser and classifier models chosen
 with run counts recorded; tool-calling answer recorded. **No model chosen from a single
 run** — that mistake is documented in Appendix 2 and must not repeat.
 

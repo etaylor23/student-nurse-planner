@@ -1,14 +1,22 @@
-# Spec — Note Capture: photos of handwritten notes  (Status: SPECCED, not built — handwriting gate PASSED 2026-07-28)
+# Spec — Note Capture: photos of handwritten notes  (Status: PHASE 1 BUILT + backend deployed; Phase 2 next)
 
-The second AI layer in PlaceMate. A student photographs a page of their own scribbled
-placement notes; a vision model finds the **distinct blocks** on the page — however they
-are scattered, rotated or interleaved — transcribes each one, **suggests what kind of
-note it is** (clinical skill, medication, reflection…), **suggests which blocks belong
-together**, and **suggests the shift** the page belongs to. The student reviews, edits,
-and allocates. Allocating creates the **real domain row** — a genuine `Reflection`,
-`MedicationLog` or `ProficiencyStatusEvent` — so captured notes are indistinguishable
-from typed ones everywhere in the app, while keeping an evidence trail back to the
-original image.
+The second AI layer in PlaceMate. A student photographs a page of their own handwritten
+placement notes; a vision model finds the **distinct blocks** on the page, transcribes each
+one, **suggests what kind of note it is** (clinical skill, medication, reflection…),
+**suggests which blocks belong together**, and **suggests the shift** the page belongs to.
+
+The student reviews, edits, and allocates. Allocating creates the **real domain row** — a
+genuine `Reflection`, `MedicationLog` or `ProficiencyStatusEvent` — so captured notes are
+indistinguishable from typed ones everywhere in the app, while keeping an evidence trail
+back to the original image.
+
+**Scope note on page layout (revised 2026-07-30).** This spec was conceived around pages of
+"abstract thoughts in different orientations scribbled across a page". The only real pages
+available are **single-column, top-to-bottom, with hanging indents** — that is what these
+notes actually look like, so it is what the design targets. Multi-orientation and scattered
+layouts are **V2**, not a v1 requirement: the mechanism still tolerates one block spanning
+several regions (P26), but nothing in v1 is designed for, or validated against, rotated or
+non-linear pages. Do not add complexity for a layout no one has produced.
 
 Runs on the **same Bedrock mantle endpoint and provider adapter** as
 [`spec-ai-recall.md`](./spec-ai-recall.md) — no new AI infrastructure, no new IAM
@@ -91,7 +99,7 @@ deleted so nobody reinstates them:
 | P23 | **Consensus is page-level, never block-level.** Block-aligned diffing was built and abandoned: the same page came back as 5 blocks from the check model on one run and 28 on the next, so the models never reliably agree on where a block begins. Page text is stable; segmentation is not. Word pairing must also be **character-similarity based, not adjacency based** — a naive adjacency pass reported `"V)" vs "Phenoxymethylpenicillin"` and buried the actual finding, because the two models place the `(Penicillin V)` gloss differently. Naming the wrong word is worse than raising no flag: the student checks something that isn't the error. |
 | P24 | **Sanitisation pass — an intelligent medical spell-checker.** A third, text-only call takes the whole page (so it has surrounding context) and corrects **tokens that are not valid terms in UK clinical English**: non-existent drug names, mangled clinical terms, transcription artefacts, and US spellings. Its scope is a spell-checker's scope, and the boundary is strict — **a synonym is not an error.** It must not reorder, restructure, add content, expand abbreviations, or correct the student's clinical reasoning. `preventative` stays (valid British English). `man made` stays. `co-trimox` stays. `bacterial and fungal` stays even where the model would prefer `protozoal` — that is the student's note, and correcting their pharmacology is a different feature. British English is the target lexicon, so `Acyclovir` → `Aciclovir` is orthography rather than judgement. The "intelligent" part is context: `blow methotrexate clearance` is caught not because `blow` isn't a word but because it isn't valid usage here. Writes to **`text` only** — `rawText` stays frozen (P11), so every correction is diffable and revertible. **Auto-applied**, because a spell-checker does not ask permission per word, with the corrections list surfaced in review so anything wrong is one tap to undo. |
 | P25 | **The sanitiser and consensus are orthogonal, not alternatives.** Consensus (P22) catches *disagreement between two readings*; the sanitiser catches *tokens that aren't real*. A non-word both vision models agree on is caught **only** by the sanitiser. A plausible-but-wrong reading of a real word (`Aciclovir` → `Acyclovir`) is caught by either. A wrong-but-real word that both models agree on is caught by **neither** — that is the residual gap, and it is why the student still reviews. |
-| P26 | **Vision blocks are guidance; the classifier owns the boundaries.** The vision model's regions are *evidence about where the subject changes* — often right, not always. The real blocks are semantic: serialised patterns of text that may appear as one vision region or span two or three. So a `NoteBlock` is a **semantic unit**, and its rows are created after classification, not from the vision output. Supersedes the implication in P3 that vision segmentation is final. |
+| P26 | **Vision blocks are guidance; the classifier owns the boundaries.** The vision model's regions are *evidence about where the subject changes* — often right, not always. **Validated on single-column pages only** (see the scope note): the case this earns its keep on is one paragraph holding two subjects, not a block scattered across a page. The real blocks are semantic: serialised patterns of text that may appear as one vision region or span two or three. So a `NoteBlock` is a **semantic unit**, and its rows are created after classification, not from the vision output. Supersedes the implication in P3 that vision segmentation is final. |
 | P27 | **Classification is its own call, on sanitised text.** The fourth model call. It is *not* folded into the sanitiser: Appendix 3 measured what happens when one model is handed two jobs, and it drifted into rewriting. It must run after P24 because matching depends on correct terms — `Phenoxyethylpenicillin` would match nothing. |
 | P28 | **Match depth: target type plus a ranked shortlist.** For each block the classifier returns the target type *and* its top 3–5 candidate taxonomy codes, ranked, top one pre-selected. It never silently commits to one of 219 statements. The shortlist is also how uncertainty is expressed — see P31. |
 | P29 | **The whole taxonomy is stuffed: all 219 statements, ~7.8k tokens.** Measured: code + statement is 31,237 chars. Sent once per photo, not per block. No vector store, consistent with AI recall's D3. **No pre-filtering by block kind** — a medication note must be able to evidence a Platform 4 statement about medicines management, and that cross-match is exactly what students need for PAD. Annexe B (84 items) doubles as the clinical-skills list via the existing 1:1 `skill_B2.1` ↔ `prof_B2.1` code mapping. Context is assembled as **discrete providers per context type** so each becomes a tool handler when the classifier goes agentic (see Open questions). |
@@ -101,7 +109,7 @@ deleted so nobody reinstates them:
 | P33 | **Medication: link an existing card, else offer to create one.** Match against the student's own `Medication` cards (they are `UserOwned`). No card yet → the review screen offers to create one **pre-filled from the block's own content**, which for a page like the test photo already supplies class, indication and side effects. Never created silently. |
 | P34 | **Unclassifiable blocks are kept as `UNKNOWN` and retypeable.** A shopping list, a phone number, an illegible fragment gets an honest `UNKNOWN` kind rather than a confident wrong guess, and the student moves it to the right type in the UI (P35). Nothing the student wrote is ever discarded, and the block still reaches the AI recall corpus under P14. |
 | P35 | **Review layout: list on mobile, lanes on wider screens.** Narrow screens get blocks in reading order with a type control each; wider screens get lanes per target type with drag between them, so the whole page's routing is visible at a glance. **Mobile is the primary path** — students photograph notes on a phone — so the list must be the good experience and lanes are the enhancement. |
-| P36 | **Deterministic serialisation.** Regions are sorted into reading order from their bbox (top-to-bottom by centre, left-to-right on ties) and handed over with **soft region markers** the classifier may cross. Determinism matters because model emission order is not stable — the check model returned 5 blocks on one run and 28 on the next — so without a sort the same photo could classify differently each time. |
+| P36 | **Deterministic serialisation.** Regions are sorted into reading order from their bbox (top-to-bottom by centre, left-to-right on ties) and handed over with **soft region markers** the classifier may cross. On the single-column pages this targets (see the scope note) the sort is close to trivial — its value is *determinism*, not clever layout reasoning, and it should not grow into the latter without a real page that needs it. Determinism matters because model emission order is not stable — the check model returned 5 blocks on one run and 28 on the next — so without a sort the same photo could classify differently each time. |
 | P37 | **Tags: reuse existing labels, propose new ones.** Matched against the student's own `Tag` labels first and applied silently; genuinely new tags are surfaced as suggestions to tick. `Tag` is unique per user+label and its whole value is pulling notes back later for essays and revalidation, so near-duplicate sprawl (`haematology` / `haem` / `haematology patients`) would destroy the index it exists to be. |
 | P38 | **No deterministic lookup tables anywhere in the pipeline.** A BNF-derived lookup was prototyped and measurably worked — 2,589 keys, edit distance ≤2, it corrected every drug-name error observed in testing including the Americanisations, because BNF spelling is inherently British. **Rejected anyway**, and deliberately: the notes contain far more than drugs (`NG tube`, `pH 5.5`, `PAD sign off`, `OSCE`, procedures, conditions, equipment), so a table per domain does not generalise, goes stale, and turns one intelligent layer into a patchwork of special cases. Correction stays model-driven (P24). BNF data may still *pre-fill* a created medication card (P33) — that is linking, not correcting. |
 | P39 | **The two text calls get independent model config.** `AI_SANITISE_MODEL_ID` and `AI_CLASSIFY_MODEL_ID`, tunable separately, because the jobs pull in opposite directions: the sanitiser must be **narrow and conservative** (token-level, resist rewriting), the classifier must be **expansive and reasoning-heavy** (219-way ranking, cross-matches, grouping). One model would be wrong for one of them. Starting defaults — sanitiser `deepseek.v3.2` (already proven on the mantle route by AI recall), classifier a stronger reasoning model (`zai.glm-5`, `mistral.mistral-large-3-675b-instruct` and `moonshotai.kimi-k2-thinking` are the candidates). **Both are unmeasured and must be baked off before launch** — every model picked by guess this session turned out wrong. |
@@ -562,11 +570,20 @@ Still open:
   mechanism.
 - Bucket encryption choice (S3-managed vs KMS) given P2.
 - Whether the presign should constrain image dimensions as well as byte size.
-- Only one real page has been tested. It is single-column and evenly lit — the scattered,
-  rotated, multi-orientation page this feature was conceived for is **still unvalidated**
-  on real handwriting.
+- **CLOSED 2026-07-30, with a different answer than expected.** The scattered,
+  multi-orientation page was never validated because **no such page exists** — asked for one,
+  and the single-column medication-notes photo is the only real page there is. So this stopped
+  being an open risk and became a scope decision: single-column is the target, multi-orientation
+  is V2 (see the scope note at the top). The residual limitation is narrower but real — the
+  design is validated against **one page, from one writer, evenly lit**. Legibility on a
+  different hand, or a creased page under ward lighting, is still unknown.
 
 ## V2 notes (explicitly out of scope)
+
+**Multi-orientation / scattered pages.** The original premise, deferred because no real page
+of that shape turned up (see the scope note). Revisit if students actually produce them: it
+would mean validating the bbox reading-order sort on a non-linear page, and probably a review
+UI that shows blocks positioned on the photo rather than as a list.
 
 **Agentic classifier with tools** (P29): instead of stuffing all 219 statements, the
 classifier fetches context on demand — `getProficiencyStatements(kind)`,
