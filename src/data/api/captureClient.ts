@@ -15,11 +15,21 @@
 
 export interface PresignAllowed {
   ok: true;
+  cached?: false;
   key: string;
   url: string;
   expiresInSeconds: number;
   /** Photos left today after this one — drives the "2 photos left" hint. */
   remaining: number;
+}
+
+/** This page has been read before (P41): the previous parse is one GET away. */
+export interface PresignCached {
+  ok: true;
+  cached: true;
+  key: string;
+  parseUrl: string;
+  parsedAt?: string;
 }
 
 export interface PresignCapped {
@@ -30,7 +40,28 @@ export interface PresignCapped {
   resetsAt: string;
 }
 
-export type PresignResponse = PresignAllowed | PresignCapped;
+export type PresignResponse = PresignAllowed | PresignCached | PresignCapped;
+
+/** `cached` is the discriminant, present on both arms so narrowing works either way. */
+export type UploadResult =
+  | { ok: true; cached?: false; key: string; remaining: number }
+  | { ok: true; cached: true; key: string; parse: unknown; parsedAt?: string }
+  | PresignCapped;
+
+/**
+ * SHA-256 of the bytes about to be uploaded — the page's identity (P41).
+ *
+ * `crypto.subtle` needs a secure context, which localhost and https both are. Hashing the
+ * DOWNSCALED blob rather than the original file is deliberate: two shots of the same page
+ * differ byte-for-byte, but the thing we key the cache on has to be exactly what the models
+ * were given, or a "hit" could serve a parse of a different image.
+ */
+export async function hashBlob(blob: Blob): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
 
 export interface CaptureClientOptions {
   /** RPC base, e.g. "/api" — mirrors ApiRepository. */
@@ -67,6 +98,8 @@ export class CaptureClient {
     imageIndex: number;
     contentType: string;
     bytes: number;
+    imageHash: string;
+    refresh?: boolean;
   }): Promise<PresignResponse> {
     const token = await this.getIdToken();
     const res = await this.fetchImpl(`${this.apiBase}/rpc`, {
@@ -106,21 +139,40 @@ export class CaptureClient {
     }
   }
 
-  /** presign + upload as one step. Returns the stored key, or the cap result. */
+  /** Fetch a cached parse. No auth header — the presigned GET is the authorisation. */
+  async fetchCachedParse(parseUrl: string, signal?: AbortSignal): Promise<unknown> {
+    const res = await this.fetchImpl(parseUrl, { signal });
+    if (!res.ok) throw new CaptureUploadError("upload_failed", `cache read failed (${res.status})`);
+    return res.json();
+  }
+
+  /**
+   * presign + upload as one step. Three possible outcomes: a cache hit (nothing uploaded, the
+   * previous parse returned), a fresh upload, or the daily cap.
+   */
   async uploadPhoto(input: {
     captureId: string;
     imageIndex: number;
     blob: Blob;
     contentType: string;
     signal?: AbortSignal;
-  }): Promise<{ ok: true; key: string; remaining: number } | PresignCapped> {
+    /** Skip the cache and read the page again from scratch (P41). */
+    refresh?: boolean;
+  }): Promise<UploadResult> {
+    const imageHash = await hashBlob(input.blob);
     const presigned = await this.presign({
       captureId: input.captureId,
       imageIndex: input.imageIndex,
       contentType: input.contentType,
       bytes: input.blob.size,
+      imageHash,
+      refresh: input.refresh,
     });
     if (!presigned.ok) return presigned;
+    if (presigned.cached) {
+      const parse = await this.fetchCachedParse(presigned.parseUrl, input.signal);
+      return { ok: true, cached: true, key: presigned.key, parse, parsedAt: presigned.parsedAt };
+    }
     await this.upload(presigned.url, input.blob, input.contentType, input.signal);
     return { ok: true, key: presigned.key, remaining: presigned.remaining };
   }

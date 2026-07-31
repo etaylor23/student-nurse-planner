@@ -1,5 +1,5 @@
 /// <reference path="./runtime.d.ts" />
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { VerifiedPermissionsClient } from "@aws-sdk/client-verifiedpermissions";
 import { makeAuthorize } from "../../../src/data/dynamo/authorize";
 import { verifyCaller } from "../ai/auth";
@@ -65,6 +65,34 @@ function frame(stream: ResponseStream, event: string, data: unknown): void {
 /** A stage marker, so the UI can say what is happening rather than just spinning. */
 function stage(stream: ResponseStream, name: string, detail?: Record<string, unknown>): void {
   frame(stream, "stage", { stage: name, ...detail });
+}
+
+/**
+ * Cache the finished parse beside the photo it came from (P41).
+ *
+ * The key is content-addressed, so the same page always maps to the same prefix and this file
+ * is what lets the presign hand back a previous read instead of spending ~70 seconds and four
+ * model calls again. What's stored is the `blocks` payload **as first presented** — before any
+ * of the student's edits, retyping or filing, since those live on their `NoteBlock` rows.
+ *
+ * A failure here is logged and swallowed: the student already has their parse on the stream,
+ * and losing the cache costs a re-read next time, not this result.
+ */
+async function cacheParse(imageKey: string, payload: unknown): Promise<void> {
+  const dir = imageKey.slice(0, imageKey.lastIndexOf("/") + 1);
+  if (!dir) return;
+  try {
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: CAPTURE_BUCKET,
+        Key: `${dir}parse.json`,
+        ContentType: "application/json",
+        Body: JSON.stringify(payload),
+      }),
+    );
+  } catch (err) {
+    console.warn("could not cache parse", err);
+  }
 }
 
 function parseBody(event: FunctionUrlEvent): ParseRequest | null {
@@ -199,7 +227,7 @@ async function run(event: FunctionUrlEvent, responseStream: ResponseStream): Pro
 
     const disputeMap = mapDisputesToBlocks(blocks, disputes);
 
-    frame(out, "blocks", {
+    const blocksPayload = {
       captureId: req.captureId,
       imageIndex: req.imageIndex,
       pageDateRaw: structure.parsed.pageDateRaw ?? null,
@@ -218,7 +246,13 @@ async function run(event: FunctionUrlEvent, responseStream: ResponseStream): Pro
         };
       }),
       corrections: cleaned.corrections.map((c) => `${c.from}|${c.to}`),
-    });
+    };
+
+    frame(out, "blocks", blocksPayload);
+
+    // Cached AFTER the student has their result, so a slow PutObject can't delay the thing
+    // they are waiting for.
+    await cacheParse(req.imageKey, { ...blocksPayload, parsedAt: new Date().toISOString() });
 
     frame(out, "done", {
       // Everything a Gate-2 eyeball (and later, metrics) needs to judge the run.

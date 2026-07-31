@@ -81,6 +81,17 @@ const GROUPING = new Map(
 /** Code → the `Proficiency` row id, which is what a status event is actually recorded against. */
 const ID_FOR_CODE = new Map(seedProficiencies.map((p) => [p.code, p.id]));
 
+/** "today" / "yesterday" / "on 28 Jul" — enough to judge whether a stored reading is stale. */
+function relativeDay(iso: string): string {
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return "last time";
+  const days = Math.floor((Date.now() - then.getTime()) / 86_400_000);
+  if (days <= 0) return "earlier today";
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days} days ago`;
+  return `on ${then.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
+}
+
 /** Blocks store their lists as comma-separated strings — the row is flat primitives only. */
 function list(s: string | undefined): string[] {
   return (s ?? "")
@@ -119,6 +130,8 @@ export interface ReviewHandlers {
   onUnallocate: (blockId: string) => Promise<{ warning?: string }>;
   /** Creates a `Medication` card from a block (P33). Returns its id so filing can link it. */
   onCreateMedication: (name: string, notes: string) => Promise<string | undefined>;
+  /** Drops a block that isn't worth keeping. The photo is untouched (P13/P34). */
+  onDismiss: (blockId: string) => Promise<void>;
 }
 
 /**
@@ -188,6 +201,7 @@ function BlockCard({
   // A disputed word is resolved by choosing a reading — after that it stops being a question.
   const [resolved, setResolved] = useState<Record<string, true>>({});
   const [medicationId, setMedicationId] = useState<string>();
+  const [confirmDismiss, setConfirmDismiss] = useState(false);
   // Where this will be filed. The row is the source of truth — the lane view writes the same
   // field (P35) — but it's mirrored locally so the select responds before the write lands.
   // `""` when nothing has routed it: an unrouted block asks rather than defaulting (P34).
@@ -327,7 +341,54 @@ function BlockCard({
             </option>
           ))}
         </select>
+        {/* Not everything on a page is worth a row — a title, a phone number, a stray line.
+            Two taps rather than one, because it removes a row; and it says plainly that the
+            photo is untouched, which is what makes it safe (P13/P41). */}
+        {!allocated &&
+          (confirmDismiss ? (
+            <span className="flex shrink-0 items-center gap-1.5 text-xs">
+              <button
+                type="button"
+                onClick={() => void handlers.onDismiss(block.id)}
+                className="rounded-lg bg-slate-800 px-2 py-1 font-medium text-white hover:bg-slate-900"
+              >
+                Remove
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmDismiss(false)}
+                className="text-slate-400 hover:text-slate-700"
+              >
+                Keep
+              </button>
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmDismiss(true)}
+              aria-label={`Remove block ${index + 1}`}
+              title="Not useful — remove it (your photo is kept)"
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-slate-300 transition-colors hover:bg-slate-100 hover:text-slate-600"
+            >
+              <svg
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                className="h-3.5 w-3.5"
+                aria-hidden="true"
+              >
+                <path d="M5 5l10 10M15 5L5 15" />
+              </svg>
+            </button>
+          ))}
       </div>
+      {confirmDismiss && (
+        <p className="mt-1 text-[11px] text-slate-400">
+          Removes this note only — your photo is kept, so reading the page again brings it back.
+        </p>
+      )}
       {target && !inLane && (
         <p className="mt-1 pl-6 text-[11px] text-slate-400">{TARGET_BLURB[target]}</p>
       )}
@@ -516,6 +577,8 @@ export function ReviewPanel({
   selectedShiftId,
   onSelectShift,
   known = { medications: [], tagLabels: [] },
+  cachedFrom,
+  onRerun,
   handlers,
 }: {
   blocks: NoteBlock[];
@@ -528,6 +591,9 @@ export function ReviewPanel({
   selectedShiftId?: string;
   onSelectShift?: (shiftId: string | undefined) => void;
   known?: KnownContext;
+  /** Set when this came from the stored parse rather than the models (P41). */
+  cachedFrom?: string;
+  onRerun?: () => void;
   handlers: ReviewHandlers;
 }) {
   const toCheck = useMemo(
@@ -560,6 +626,26 @@ export function ReviewPanel({
         {toCheck > 0 && <span className="font-medium text-amber-700">{toCheck} to check</span>}
         {filed > 0 && <span className="font-medium text-primary-700">{filed} filed</span>}
       </div>
+
+      {cachedFrom && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-secondary-50 px-3 py-2 text-xs text-secondary-900">
+          <span>
+            {/* Say where it came from. A result that looks live but is months old would be
+                worse than a slower one. */}
+            We&apos;ve read this page before, so this is what we found {relativeDay(cachedFrom)} —
+            no waiting.
+          </span>
+          {onRerun && (
+            <button
+              type="button"
+              onClick={onRerun}
+              className="font-medium text-secondary-700 underline hover:text-secondary-900"
+            >
+              Read it again from scratch
+            </button>
+          )}
+        </div>
+      )}
 
       {corrections.length > 0 && (
         <p className="mt-2 rounded-lg bg-slate-50 p-2 text-xs text-slate-600">

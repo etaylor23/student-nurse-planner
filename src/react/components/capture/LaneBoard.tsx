@@ -91,17 +91,23 @@ export function LaneBoard({
     );
   }
 
+  const hasUndecided = undecided.length > 0;
+
   return (
-    <div className="mt-3">
+    // Undecided cards SIDE BY SIDE with the columns, not stacked above them. Stacked, the
+    // columns sat below the fold, so "drag one into a column" pointed at something the student
+    // couldn't see — and an instruction you can't see the target of isn't one. Half and half:
+    // the undecided cards stay readable, and where they can go is in the same eyeful.
+    <div className={`mt-3 gap-4 ${hasUndecided ? "lg:grid lg:grid-cols-2" : ""}`}>
       {/* No box, no wash: a container around these cards competed with the cards themselves for
           attention, and it is the cards that are the thing. Just a heading and the cards. */}
-      {undecided.length > 0 && (
-        <section className="mb-4">
+      {hasUndecided && (
+        <section className="mb-4 min-w-0 lg:mb-0">
           <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
             Not decided ({undecided.length})
           </h4>
           <p className="mt-0.5 text-xs text-slate-400">
-            We couldn&apos;t tell where these belong — drag one into a column below, or set it on
+            We couldn&apos;t tell where these belong — drag one across into a column, or set it on
             the card.
           </p>
           <ul className="mt-2 min-w-0 space-y-3">{undecided.map(draggable)}</ul>
@@ -110,7 +116,11 @@ export function LaneBoard({
 
       {/* Every lane is visibly a drop target the moment a drag starts — the strongest signal
           available, because until you pick a card up there is nothing to drop. */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div
+        className={`grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 ${
+          hasUndecided ? "lg:content-start" : "xl:grid-cols-4"
+        }`}
+      >
         {LANES.map(({ target, blurb }) => {
           const mine = blocks.filter((b) => laneOf(b) === target);
           const active = over === target;
@@ -137,7 +147,10 @@ export function LaneBoard({
                 <span className="font-normal text-slate-400">({mine.length})</span>
               </h4>
               <p className="px-1 text-[11px] leading-snug text-slate-400">{blurb}</p>
-              <ul className="mt-2 min-w-0 space-y-3">
+              {/* The lane's CONTENT scrolls, not the lane. One full medication card is taller
+                  than the viewport, and without this a busy column pushed the other three off
+                  the bottom — which defeats the point of showing all four routes at once. */}
+              <ul className="mt-2 min-w-0 space-y-3 overflow-y-auto lg:max-h-[26rem]">
                 {mine.map(draggable)}
                 <li
                   className={`rounded-lg border border-dashed px-1 py-3 text-center text-[11px] ${

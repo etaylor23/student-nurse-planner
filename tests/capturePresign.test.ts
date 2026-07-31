@@ -34,15 +34,24 @@ process.env.AWS_REGION ??= "eu-west-2";
 process.env.AWS_ACCESS_KEY_ID ??= "AKIATEST";
 process.env.AWS_SECRET_ACCESS_KEY ??= "secret";
 
-function deps() {
-  return { doc: ddb.doc, tableName: ddb.tableName, bucket: "test-captures" };
+/** No cached parse unless a test says otherwise — `headParseCache` keeps this offline. */
+function deps(parsedAt: Date | null = null) {
+  return {
+    doc: ddb.doc,
+    tableName: ddb.tableName,
+    bucket: "test-captures",
+    headParseCache: async () => parsedAt,
+  };
 }
+
+const HASH = "a".repeat(64);
 
 const good = {
   captureId: "cap-abcdef123456",
   imageIndex: 0,
   contentType: "image/jpeg",
   bytes: 700_000,
+  imageHash: HASH,
 };
 
 describe("presignCapture — input validation", () => {
@@ -60,6 +69,11 @@ describe("presignCapture — input validation", () => {
     ],
     ["oversized upload", { ...good, bytes: MAX_UPLOAD_BYTES + 1 }, "bad_size"],
     ["zero bytes", { ...good, bytes: 0 }, "bad_size"],
+    // The hash IS the object key, so anything that isn't 64 hex chars is a path injection.
+    ["path traversal in the hash", { ...good, imageHash: "../../etc/passwd" }, "bad_image_hash"],
+    ["short hash", { ...good, imageHash: "abc123" }, "bad_image_hash"],
+    ["non-hex hash", { ...good, imageHash: "z".repeat(64) }, "bad_image_hash"],
+    ["missing hash", { ...good, imageHash: undefined }, "bad_image_hash"],
   ];
 
   it.each(cases)("rejects %s", async (_label, payload, detail) => {
@@ -82,20 +96,22 @@ describe("presignCapture — key derivation", () => {
     });
     expect(res.ok).toBe(true);
     if (!res.ok) return;
-    expect(res.key).toBe(`${userPrefix("sub-keys")}${good.captureId}/0.jpg`);
+    // Content-addressed (P41): the hash, not the captureId, decides where the page lives.
+    expect(res.key).toBe(`${userPrefix("sub-keys")}h/${HASH}/page.jpg`);
+    expect(res.key).not.toContain(good.captureId);
     expect(res.key.startsWith("u/sub-keys/")).toBe(true);
     expect(res.key).not.toContain("someone-else");
   });
 
   it("uses a .png extension for a png upload", async () => {
     const res = await presignCapture(deps(), "sub-png", { ...good, contentType: "image/png" });
-    expect(res.ok && res.key.endsWith("/0.png")).toBe(true);
+    expect(res.ok && res.key.endsWith("/page.png")).toBe(true);
   });
 
   it("signs the content type and length, so the URL fits only the authorised upload", async () => {
     const res = await presignCapture(deps(), "sub-signed", good);
     expect(res.ok).toBe(true);
-    if (!res.ok) return;
+    if (!res.ok || res.cached) return;
     const signed = decodeURIComponent(res.url);
     expect(signed).toContain("X-Amz-Signature");
     expect(signed).toContain("content-length");
@@ -126,7 +142,7 @@ describe("presignCapture — the daily cap gates the signing (P17)", () => {
     const first = await presignCapture(deps(), sub, { ...good, captureId: "cap-first00000" });
     const second = await presignCapture(deps(), sub, { ...good, captureId: "cap-second0000" });
     expect(first.ok && second.ok).toBe(true);
-    if (!first.ok || !second.ok) return;
+    if (!first.ok || first.cached || !second.ok || second.cached) return;
     expect(first.remaining).toBe(DAILY_PHOTO_LIMIT - 1);
     expect(second.remaining).toBe(DAILY_PHOTO_LIMIT - 2);
   });
@@ -150,5 +166,72 @@ describe("presignCapture — the daily cap gates the signing (P17)", () => {
     const q = await ai.countQuestion(30);
     expect(q.allowed).toBe(true);
     expect(q.remaining).toBe(29);
+  });
+});
+
+describe("presignCapture — the content-addressed parse cache (P41)", () => {
+  const parsedAt = new Date("2026-07-28T09:15:00.000Z");
+
+  it("hands back the previous parse instead of an upload URL", async () => {
+    const res = await presignCapture(deps(parsedAt), "sub-cache-hit", good);
+    expect(res.ok).toBe(true);
+    if (!res.ok || !res.cached) throw new Error("expected a cache hit");
+
+    // A GET for the cached JSON, not a PUT for the photo — nothing is uploaded.
+    expect(res.parseUrl).toContain(`h/${HASH}/parse.json`);
+    expect(res.parseUrl).toContain("X-Amz-Signature");
+    expect(res).not.toHaveProperty("url");
+    expect(res.parsedAt).toBe(parsedAt.toISOString());
+  });
+
+  it("does NOT spend a photo from the daily cap on a cache hit", async () => {
+    const sub = "sub-cache-free";
+    // Twenty re-reads of a page already parsed: twice the daily limit, all served.
+    for (let i = 0; i < DAILY_PHOTO_LIMIT * 2; i++) {
+      const res = await presignCapture(deps(parsedAt), sub, good);
+      expect(res.ok, `re-read ${i + 1} should be served`).toBe(true);
+    }
+    // And the cap is still completely untouched, because no model ever ran.
+    const { AiStore } = await import("../src/data/dynamo/aiStore");
+    const ai = new AiStore({ doc: ddb.doc, tableName: ddb.tableName, sub });
+    const count = await ai.countPhoto(DAILY_PHOTO_LIMIT);
+    expect(count.remaining).toBe(DAILY_PHOTO_LIMIT - 1); // -1 for this very check
+  });
+
+  it("`refresh` ignores the cache and signs a fresh upload", async () => {
+    const res = await presignCapture(deps(parsedAt), "sub-refresh", { ...good, refresh: true });
+    expect(res.ok).toBe(true);
+    if (!res.ok || res.cached) throw new Error("expected a fresh upload");
+    expect(res.url).toContain("X-Amz-Signature");
+    // The same key, so a re-read OVERWRITES the cache rather than orphaning it.
+    expect(res.key).toBe(`${userPrefix("sub-refresh")}h/${HASH}/page.jpg`);
+    expect(res.remaining).toBe(DAILY_PHOTO_LIMIT - 1); // and it does cost a photo
+  });
+
+  it("caches per user, never across them", async () => {
+    // The cache key includes the sub, so one student's parse can't be served to another.
+    const mine = await presignCapture(deps(parsedAt), "sub-mine", good);
+    if (!mine.ok || !mine.cached) throw new Error("expected a cache hit");
+    expect(mine.parseUrl).toContain("u/sub-mine/");
+    expect(mine.parseUrl).not.toContain("sub-theirs");
+  });
+
+  it("treats an unreadable cache as a miss rather than a failure", async () => {
+    const res = await presignCapture(
+      {
+        doc: ddb.doc,
+        tableName: ddb.tableName,
+        bucket: "test-captures",
+        headParseCache: async () => {
+          throw new Error("S3 is having a day");
+        },
+      },
+      "sub-cache-broken",
+      good,
+    );
+    // A cache that can't be read costs a re-parse, never a broken upload.
+    expect(res.ok).toBe(true);
+    if (!res.ok || res.cached) throw new Error("expected a fresh upload");
+    expect(res.url).toContain("X-Amz-Signature");
   });
 });

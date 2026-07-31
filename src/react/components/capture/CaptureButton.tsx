@@ -34,7 +34,9 @@ export function CaptureButton() {
     allocate,
     unallocate,
     editBlock,
+    dismissBlock,
     createMedication,
+    rerunFromScratch,
   } = useCapture();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -273,11 +275,14 @@ export function CaptureButton() {
                     selectedShiftId={state.capture?.shiftId}
                     onSelectShift={selectShift}
                     known={state.known}
+                    cachedFrom={state.cachedFrom}
+                    onRerun={() => void rerunFromScratch()}
                     handlers={{
                       onEdit: editBlock,
                       onAllocate: allocate,
                       onUnallocate: unallocate,
                       onCreateMedication: createMedication,
+                      onDismiss: dismissBlock,
                     }}
                   />
                   <div className="mt-4 flex flex-col gap-2 sm:flex-row">

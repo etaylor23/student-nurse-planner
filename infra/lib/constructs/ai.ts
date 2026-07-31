@@ -180,8 +180,10 @@ export class Ai extends Construct {
     });
 
     // Deliberately NO table grant (P32): the student's context arrives in the request body,
-    // because the client already holds it locally. Read-only on their own photo prefix.
-    captureBucket.grantRead(this.parseFn);
+    // because the client already holds it locally. The bucket is read+write because the
+    // finished parse is cached beside the photo it came from (P41) — still nothing but this
+    // one bucket.
+    captureBucket.grantReadWrite(this.parseFn);
     this.parseFn.addToRolePolicy(
       new PolicyStatement({
         actions: ["verifiedpermissions:IsAuthorized", "verifiedpermissions:IsAuthorizedWithToken"],

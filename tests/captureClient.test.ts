@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CaptureClient, CaptureUploadError } from "../src/data/api/captureClient";
+import { CaptureClient, CaptureUploadError, hashBlob } from "../src/data/api/captureClient";
 import { LONG_EDGE, targetSize } from "../src/react/components/capture/downscale";
 
 /**
@@ -39,7 +39,13 @@ interface FetchCall {
 }
 
 /** A fetch stub that answers the presign RPC and the S3 PUT, recording both. */
-function stubFetch(opts: { presign?: unknown; presignStatus?: number; uploadStatus?: number }): {
+function stubFetch(opts: {
+  presign?: unknown;
+  presignStatus?: number;
+  uploadStatus?: number;
+  /** Body served for the cached-parse GET (P41). */
+  cachedParse?: unknown;
+}): {
   fetchImpl: typeof fetch;
   calls: FetchCall[];
 } {
@@ -54,6 +60,9 @@ function stubFetch(opts: { presign?: unknown; presignStatus?: number; uploadStat
         status,
         json: async () => ({ result: opts.presign, error: status >= 400 ? "boom" : undefined }),
       } as Response;
+    }
+    if (opts.cachedParse !== undefined && (init?.method ?? "GET") === "GET") {
+      return { ok: true, status: 200, json: async () => opts.cachedParse } as Response;
     }
     const status = opts.uploadStatus ?? 200;
     return { ok: status < 400, status, json: async () => ({}) } as Response;
@@ -134,7 +143,19 @@ describe("CaptureClient", () => {
       imageIndex: 2,
       contentType: "image/jpeg",
       bytes: 4321,
+      // The hash of those same bytes — the page's identity (P41).
+      imageHash: await hashBlob(b),
+      refresh: undefined,
     });
+  });
+
+  it("hashes the DOWNSCALED bytes, so a 'hit' can only be the image the models saw (P41)", async () => {
+    const a = new Blob([new Uint8Array([1, 2, 3])], { type: "image/jpeg" });
+    const b = new Blob([new Uint8Array([1, 2, 4])], { type: "image/jpeg" });
+    const ha = await hashBlob(a);
+    expect(ha).toMatch(/^[a-f0-9]{64}$/);
+    expect(ha).toBe(await hashBlob(new Blob([new Uint8Array([1, 2, 3])])));
+    expect(ha).not.toBe(await hashBlob(b));
   });
 
   it("returns the cap result without attempting an upload", async () => {
@@ -178,5 +199,68 @@ describe("CaptureClient", () => {
         contentType: "image/jpeg",
       }),
     ).rejects.toThrow(/S3 upload failed \(403\)/);
+  });
+});
+
+describe("CaptureClient — the parse cache (P41)", () => {
+  const cached = {
+    ok: true,
+    cached: true,
+    key: "u/sub/h/abc/page.jpg",
+    parseUrl: "https://s3/parse.json?sig",
+    parsedAt: "2026-07-28T09:15:00.000Z",
+  };
+
+  it("fetches the stored parse and never uploads the photo", async () => {
+    const { fetchImpl, calls } = stubFetch({
+      presign: cached,
+      cachedParse: { blocks: [{ text: "Aciclovir" }] },
+    });
+
+    const res = await client(fetchImpl).uploadPhoto({
+      captureId: "cap-1",
+      imageIndex: 0,
+      blob: blob(),
+      contentType: "image/jpeg",
+    });
+
+    expect(res.ok && res.cached).toBe(true);
+    if (!res.ok || !res.cached) return;
+    expect(res.parse).toEqual({ blocks: [{ text: "Aciclovir" }] });
+    expect(res.parsedAt).toBe(cached.parsedAt);
+    // Two calls: the RPC and the cache GET. No PUT — the whole point.
+    expect(calls).toHaveLength(2);
+    expect(calls.some((c) => c.init?.method === "PUT")).toBe(false);
+  });
+
+  it("asks to skip the cache when re-reading from scratch", async () => {
+    const { fetchImpl, calls } = stubFetch({
+      presign: { ok: true, key: "k", url: "https://s3/k?sig", expiresInSeconds: 300, remaining: 4 },
+    });
+    await client(fetchImpl).uploadPhoto({
+      captureId: "cap-1",
+      imageIndex: 0,
+      blob: blob(),
+      contentType: "image/jpeg",
+      refresh: true,
+    });
+    const body = JSON.parse(String(calls[0].init?.body)) as {
+      args: Array<Record<string, unknown>>;
+    };
+    expect(body.args[0].refresh).toBe(true);
+    // And it does upload, because the server will re-read the page.
+    expect(calls.some((c) => c.init?.method === "PUT")).toBe(true);
+  });
+
+  it("surfaces an unreadable cache rather than pretending it parsed", async () => {
+    const { fetchImpl } = stubFetch({ presign: cached, uploadStatus: 500 });
+    await expect(
+      client(fetchImpl).uploadPhoto({
+        captureId: "cap-1",
+        imageIndex: 0,
+        blob: blob(),
+        contentType: "image/jpeg",
+      }),
+    ).rejects.toThrow(CaptureUploadError);
   });
 });

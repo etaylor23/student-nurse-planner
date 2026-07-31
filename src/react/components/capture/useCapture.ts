@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { retrieveTokens } from "amazon-cognito-passwordless-auth/storage";
 import { API_BASE } from "../../../auth/passwordlessConfig";
 import { CaptureClient, CaptureUploadError } from "../../../data/api/captureClient";
@@ -12,7 +12,7 @@ import {
   type AllocateInput,
 } from "../../../logic/allocateBlock";
 import { PARSE_URL, parseAvailable } from "./config";
-import { CaptureImageError, downscaleForUpload } from "./downscale";
+import { CaptureImageError, downscaleForUpload, type DownscaleResult } from "./downscale";
 import type { BlockPatch } from "./ReviewPanel";
 import type { NoteBlock, NoteBlockKind, NoteBlockTarget, NoteCapture } from "../../../domain/types";
 
@@ -69,8 +69,40 @@ export interface CaptureState {
   capture?: NoteCapture;
   /** Photos left today, once known (P17). */
   remaining?: number;
+  /** Set when this parse came from the S3 cache rather than the models (P41). */
+  cachedFrom?: string;
   resetsAt?: string;
   error?: string;
+}
+
+/** Object keys in upload order (P20), for the capture row. */
+function keyList(pages: { key: string }[]): string {
+  return pages.map((p) => p.key).join(",");
+}
+
+/**
+ * Accept a cached parse only if it still looks like one (P41).
+ *
+ * The cache is our own JSON in our own bucket, but it was written by a different deploy than
+ * the one reading it, so the shape is not guaranteed across a schema change. A malformed cache
+ * degrades to a normal parse rather than crashing review — same fail-closed posture the
+ * sentinel parser and the zod guards take.
+ */
+function asParseResponse(
+  raw: unknown,
+  captureId: string,
+  imageIndex: number,
+): ParseResponse | null {
+  const o = raw as Partial<ParseResponse> | null;
+  if (!o || !Array.isArray(o.blocks) || o.blocks.length === 0) return null;
+  return {
+    captureId,
+    imageIndex,
+    pageDateRaw: o.pageDateRaw ?? null,
+    wardHint: o.wardHint ?? null,
+    corrections: Array.isArray(o.corrections) ? o.corrections : [],
+    blocks: o.blocks,
+  };
 }
 
 /** Copy for the failure modes the student can actually hit. */
@@ -96,6 +128,8 @@ function messageFor(err: unknown): string {
 export function useCapture() {
   const { repo, userId } = useRepository();
   const [state, setState] = useState<CaptureState>({ stage: "idle" });
+  /** The downscaled photos of the current capture, kept so a re-read (P41) needs no re-pick. */
+  const lastRun = useRef<{ pages: DownscaleResult[]; piiAcknowledged: boolean } | null>(null);
 
   const idToken = async () => {
     const tokens = await retrieveTokens();
@@ -213,10 +247,10 @@ export function useCapture() {
    * assumed: the row records that the warning was shown and accepted (P2), so it must come
    * from the UI that actually showed it.
    */
-  const startCapture = useCallback(
-    async (files: File[], opts: { piiAcknowledged: boolean }) => {
-      if (files.length === 0) return;
-      setState({ stage: "uploading", progress: { current: 1, total: files.length } });
+  const runCapture = useCallback(
+    async (pages: DownscaleResult[], opts: { piiAcknowledged: boolean; refresh?: boolean }) => {
+      if (pages.length === 0) return;
+      setState({ stage: "uploading", progress: { current: 1, total: pages.length } });
 
       // The row is created FIRST so the capture id is the one the object keys are built
       // from — that keeps the S3 prefix and the row in step even if an upload fails
@@ -234,46 +268,55 @@ export function useCapture() {
         return;
       }
 
-      const keys: string[] = [];
-      for (let i = 0; i < files.length; i++) {
-        setState({ stage: "uploading", progress: { current: i + 1, total: files.length } });
+      // One entry per page, in upload order (P20). `cached` is set when this exact page has
+      // been read before (P41) — nothing was uploaded and no model will run for it.
+      const uploaded: { key: string; cached?: ParseResponse; parsedAt?: string }[] = [];
+      for (let i = 0; i < pages.length; i++) {
+        setState({ stage: "uploading", progress: { current: i + 1, total: pages.length } });
         try {
-          const shrunk = await downscaleForUpload(files[i]);
           const res = await client.uploadPhoto({
             captureId: capture.id,
             imageIndex: i,
-            blob: shrunk.blob,
-            contentType: shrunk.contentType,
+            blob: pages[i].blob,
+            contentType: pages[i].contentType,
+            refresh: opts.refresh,
           });
           if (!res.ok) {
             // Cap hit mid-run: keep whatever landed rather than discarding it, and say so.
-            if (keys.length > 0) {
-              capture = await repo.updateNoteCapture(capture.id, { imageKeys: keys.join(",") });
+            if (uploaded.length > 0) {
+              capture = await repo.updateNoteCapture(capture.id, { imageKeys: keyList(uploaded) });
             }
             setState({
               stage: "capped",
-              capture: keys.length > 0 ? capture : undefined,
+              capture: uploaded.length > 0 ? capture : undefined,
               remaining: 0,
               resetsAt: res.resetsAt,
             });
             return;
           }
-          keys.push(res.key);
-          setState((s) => ({ ...s, remaining: res.remaining }));
+          if (res.cached) {
+            const page = asParseResponse(res.parse, capture.id, i);
+            uploaded.push(
+              page ? { key: res.key, cached: page, parsedAt: res.parsedAt } : { key: res.key },
+            );
+          } else {
+            uploaded.push({ key: res.key });
+            setState((s) => ({ ...s, remaining: res.remaining }));
+          }
         } catch (err) {
-          if (keys.length > 0) {
-            capture = await repo.updateNoteCapture(capture.id, { imageKeys: keys.join(",") });
+          if (uploaded.length > 0) {
+            capture = await repo.updateNoteCapture(capture.id, { imageKeys: keyList(uploaded) });
           }
           setState({
             stage: "error",
-            capture: keys.length > 0 ? capture : undefined,
+            capture: uploaded.length > 0 ? capture : undefined,
             error: messageFor(err),
           });
           return;
         }
       }
 
-      capture = await repo.updateNoteCapture(capture.id, { imageKeys: keys.join(",") });
+      capture = await repo.updateNoteCapture(capture.id, { imageKeys: keyList(uploaded) });
 
       // Photos are stored; that part is already durable. Parsing is a separate concern and a
       // failure here must NOT lose the upload — the student can retry the read later.
@@ -287,14 +330,14 @@ export function useCapture() {
         ...s,
         stage: "parsing",
         capture,
-        progress: { current: 1, total: keys.length },
+        progress: { current: 1, total: uploaded.length },
       }));
       const parsed: ParseResponse[] = [];
-      for (let i = 0; i < keys.length; i++) {
+      for (let i = 0; i < uploaded.length; i++) {
         setState((s) => ({
           ...s,
           stage: "parsing",
-          progress: { current: i + 1, total: keys.length },
+          progress: { current: i + 1, total: uploaded.length },
         }));
         try {
           const { wire, known } = await localContext();
@@ -304,35 +347,48 @@ export function useCapture() {
             error: null,
           };
 
-          await parser.parse(
-            {
-              captureId: capture.id,
-              imageKey: keys[i],
-              imageIndex: i,
-              // What parseFn would otherwise need table access for (P32).
-              context: wire,
-            },
-            {
-              onStage: (_stage, message) => setState((s) => ({ ...s, activity: message })),
-              // The student's own words, ~30s before the filing suggestions. Showing these
-              // early is the entire reason this endpoint streams.
-              onTranscribed: (p) => setState((s) => ({ ...s, preview: p.pageText })),
-              onCorrected: (p) => setState((s) => ({ ...s, preview: p.text })),
-              onBlocks: (p) => {
-                held.page = {
-                  ...p,
-                  blocks: p.blocks.map((b) => ({
-                    ...b,
-                    tags: reconcileTags(b.tags, wire.tagLabels ?? []),
-                  })),
-                };
+          // A page we've read before skips all four model calls (P41). The cached parse is
+          // what was FIRST presented — before any editing or filing, which live on the rows.
+          const fromCache = uploaded[i].cached;
+          if (fromCache) {
+            held.page = {
+              ...fromCache,
+              blocks: fromCache.blocks.map((b) => ({
+                ...b,
+                tags: reconcileTags(b.tags, wire.tagLabels ?? []),
+              })),
+            };
+            setState((s) => ({ ...s, cachedFrom: uploaded[i].parsedAt ?? "earlier" }));
+          } else
+            await parser.parse(
+              {
+                captureId: capture.id,
+                imageKey: uploaded[i].key,
+                imageIndex: i,
+                // What parseFn would otherwise need table access for (P32).
+                context: wire,
               },
-              onDone: () => {},
-              onError: (_code, message) => {
-                held.error = { message };
+              {
+                onStage: (_stage, message) => setState((s) => ({ ...s, activity: message })),
+                // The student's own words, ~30s before the filing suggestions. Showing these
+                // early is the entire reason this endpoint streams.
+                onTranscribed: (p) => setState((s) => ({ ...s, preview: p.pageText })),
+                onCorrected: (p) => setState((s) => ({ ...s, preview: p.text })),
+                onBlocks: (p) => {
+                  held.page = {
+                    ...p,
+                    blocks: p.blocks.map((b) => ({
+                      ...b,
+                      tags: reconcileTags(b.tags, wire.tagLabels ?? []),
+                    })),
+                  };
+                },
+                onDone: () => {},
+                onError: (_code, message) => {
+                  held.error = { message };
+                },
               },
-            },
-          );
+            );
 
           // An error FRAME arrives after a 200, so it can't be a thrown status — surface it
           // the same way a thrown failure would be.
@@ -383,6 +439,37 @@ export function useCapture() {
     },
     [client, parser, repo, userId, localContext, reconcileTags, persistBlocks],
   );
+
+  /**
+   * Downscale the picked photos, then run the capture.
+   *
+   * The downscaled blobs are RETAINED for the session so "read it again from scratch" (P41)
+   * doesn't need the student to find the photo a second time — and so the re-read hashes to
+   * the same key, which is what makes it overwrite the cache rather than orphan it.
+   */
+  const startCapture = useCallback(
+    async (files: File[], opts: { piiAcknowledged: boolean }) => {
+      if (files.length === 0) return;
+      setState({ stage: "uploading", progress: { current: 1, total: files.length } });
+      const pages: DownscaleResult[] = [];
+      try {
+        for (const f of files) pages.push(await downscaleForUpload(f));
+      } catch (err) {
+        setState({ stage: "error", error: messageFor(err) });
+        return;
+      }
+      lastRun.current = { pages, piiAcknowledged: opts.piiAcknowledged };
+      await runCapture(pages, opts);
+    },
+    [runCapture],
+  );
+
+  /** Ignore the cached parse and read the page again with the models (P41). */
+  const rerunFromScratch = useCallback(async () => {
+    const last = lastRun.current;
+    if (!last) return;
+    await runCapture(last.pages, { piiAcknowledged: last.piiAcknowledged, refresh: true });
+  }, [runCapture]);
 
   /**
    * File a block into the student's real records (P4), and reflect the result in state.
@@ -496,6 +583,23 @@ export function useCapture() {
     [repo, userId],
   );
 
+  /**
+   * Drop a block the student says isn't useful — a page title, a phone number, a stray line.
+   *
+   * This deletes the `NoteBlock` row (softly, through the normal repository path, so it
+   * tombstones and syncs). It does NOT touch the photo, which is retained for the life of the
+   * account (P13) — and since the parse is cached against the image's hash (P41), re-reading
+   * the page brings the block back for free. So "nothing the student wrote is discarded" (P34)
+   * still holds: the page is intact, this is just not a row they want.
+   */
+  const dismissBlock = useCallback(
+    async (blockId: string) => {
+      await repo.deleteNoteBlock(blockId);
+      setState((s) => ({ ...s, blocks: (s.blocks ?? []).filter((b) => b.id !== blockId) }));
+    },
+    [repo],
+  );
+
   /** Re-attach the capture to a different shift (P9). Allocation inherits it (P6). */
   const selectShift = useCallback(
     async (shiftId: string | undefined) => {
@@ -509,11 +613,13 @@ export function useCapture() {
   return {
     state,
     startCapture,
+    rerunFromScratch,
     reset,
     selectShift,
     allocate,
     unallocate,
     editBlock,
+    dismissBlock,
     createMedication,
   };
 }

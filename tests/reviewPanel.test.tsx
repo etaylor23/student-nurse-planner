@@ -69,6 +69,7 @@ function handlers(over: Partial<ReviewHandlers> = {}): ReviewHandlers {
     onAllocate: vi.fn(async () => ({ ok: true as const, label: "Medication log" })),
     onUnallocate: vi.fn(async () => ({})),
     onCreateMedication: vi.fn(async () => "med-new"),
+    onDismiss: vi.fn(async () => {}),
     ...over,
   };
 }
@@ -572,5 +573,66 @@ describe("ReviewPanel — filing (P4/P19)", () => {
     await user.click(screen.getByRole("button", { name: "Undo" }));
     // Silently deleting a paragraph the student had rewritten would be worse than saying so.
     expect(screen.getByText("That text has been edited in your notes.")).toBeTruthy();
+  });
+});
+
+describe("ReviewPanel — dismissing a block", () => {
+  it("takes two taps and says the photo is kept", async () => {
+    const user = userEvent.setup();
+    const h = handlers();
+    render(<ReviewPanel blocks={BLOCKS} handlers={h} />);
+
+    await user.click(screen.getByLabelText("Remove block 1"));
+    // Not a one-tap delete: it removes a row, so it asks.
+    expect(h.onDismiss).not.toHaveBeenCalled();
+    expect(screen.getByText(/your photo is kept/i)).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Remove" }));
+    expect(h.onDismiss).toHaveBeenCalledWith("blk-1");
+  });
+
+  it("can be backed out of", async () => {
+    const user = userEvent.setup();
+    const h = handlers();
+    render(<ReviewPanel blocks={[block()]} handlers={h} />);
+
+    await user.click(screen.getByLabelText("Remove block 1"));
+    await user.click(screen.getByRole("button", { name: "Keep" }));
+
+    expect(h.onDismiss).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Remove block 1")).toBeTruthy();
+  });
+
+  it("is not offered for a block that has already been filed", () => {
+    render(<ReviewPanel blocks={[block({ status: "ALLOCATED" })]} handlers={handlers()} />);
+    // The real row exists; undo the filing first.
+    expect(screen.queryByLabelText("Remove block 1")).toBeNull();
+  });
+});
+
+describe("ReviewPanel — a stored reading (P41)", () => {
+  it("says the result is from a previous read and offers to redo it", async () => {
+    const user = userEvent.setup();
+    const onRerun = vi.fn();
+    render(
+      <ReviewPanel
+        blocks={BLOCKS}
+        cachedFrom={new Date(Date.now() - 2 * 86_400_000).toISOString()}
+        onRerun={onRerun}
+        handlers={handlers()}
+      />,
+    );
+
+    // A stored result that looked live would be worse than a slower one.
+    expect(screen.getByText(/read this page before/i)).toBeTruthy();
+    expect(screen.getByText(/2 days ago/)).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: /Read it again from scratch/i }));
+    expect(onRerun).toHaveBeenCalledTimes(1);
+  });
+
+  it("says nothing at all when the parse was live", () => {
+    render(<ReviewPanel blocks={BLOCKS} handlers={handlers()} />);
+    expect(screen.queryByText(/read this page before/i)).toBeNull();
   });
 });
