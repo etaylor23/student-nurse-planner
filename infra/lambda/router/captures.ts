@@ -40,6 +40,17 @@ export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 /** How long the signed URL stays usable. Long enough for a slow ward connection to finish. */
 export const PRESIGN_EXPIRY_SECONDS = 5 * 60;
 
+/**
+ * How long a signed GET of the page itself stays usable — deliberately longer than the upload's
+ * five minutes.
+ *
+ * Review is a screen a student SITS on, and the capture survives closing the dialog on purpose
+ * (see `CaptureButton.close()`), so a five-minute URL would show a broken photo at exactly the
+ * moment they come back to finish filing. An hour is long enough for that, and short enough
+ * that a URL which leaks out of the page is not durable access to clinical imagery.
+ */
+export const PAGE_VIEW_EXPIRY_SECONDS = 60 * 60;
+
 const ALLOWED_CONTENT_TYPES = new Set(["image/jpeg", "image/png"]);
 
 /** Ids we generate: uuid-ish. Anything else is rejected rather than sanitised. */
@@ -47,6 +58,9 @@ const SAFE_ID = /^[A-Za-z0-9_-]{8,64}$/;
 
 /** SHA-256, lowercase hex. Fixed length and charset, so it can't escape the prefix. */
 const SAFE_HASH = /^[a-f0-9]{64}$/;
+
+/** A page object key, exactly as `captureKey` builds one. Anchored, so nothing else parses. */
+const SAFE_PAGE_KEY = /^u\/([^/]+)\/h\/([a-f0-9]{64})\/page\.(jpg|png)$/;
 
 /** The cached parse, written by parseFn next to the photo it came from. */
 export const PARSE_CACHE_FILE = "parse.json";
@@ -206,6 +220,49 @@ export async function presignCapture(
   );
 
   return { ok: true, key, url, expiresInSeconds: PRESIGN_EXPIRY_SECONDS, remaining: count.remaining };
+}
+
+export interface PageImageResult {
+  url: string;
+  expiresInSeconds: number;
+}
+
+/**
+ * A signed GET for one page the student has already uploaded, so review can show the photo
+ * beside the blocks read off it (P1).
+ *
+ * P1 keeps the photo precisely so a transcription can be checked against it — but until this
+ * existed the student could never SEE it while reviewing, which made the retention a promise
+ * rather than a feature.
+ *
+ * The key is **rebuilt, not accepted**, for the same reason the PUT path derives it: a
+ * presigned URL carries the signer's permissions, so honouring a client-supplied key would be
+ * a cross-user read. The caller names a key, it is matched against the one shape
+ * `captureKey` produces, the hash is pulled out of it, and the key handed to S3 is composed
+ * from the verified `sub` — so a request naming another student's prefix cannot be signed,
+ * only rejected. Note this deliberately does NOT check the object exists: a HeadObject per
+ * review render is a round-trip to prove something the row already asserts, and a missing
+ * object simply fails the image load, which the photo pane already treats as "no photo".
+ */
+export async function presignPageImage(
+  deps: { bucket: string; s3?: S3Client },
+  sub: string,
+  raw: unknown,
+): Promise<PageImageResult> {
+  const o = (raw ?? {}) as Record<string, unknown>;
+  const imageKey = typeof o.imageKey === "string" ? o.imageKey : "";
+  const parts = SAFE_PAGE_KEY.exec(imageKey);
+  if (!parts) throw new PresignError("bad_image_key");
+  const [, keySub, imageHash, ext] = parts;
+  if (keySub !== sub) throw new PresignError("bad_image_key");
+
+  const s3 = deps.s3 ?? new S3Client({});
+  const url = await getSignedUrl(
+    s3,
+    new GetObjectCommand({ Bucket: deps.bucket, Key: captureKey(sub, imageHash, ext) }),
+    { expiresIn: PAGE_VIEW_EXPIRY_SECONDS },
+  );
+  return { url, expiresInSeconds: PAGE_VIEW_EXPIRY_SECONDS };
 }
 
 /**

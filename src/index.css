@@ -262,3 +262,51 @@
   background-color: var(--color-primary-500);
   opacity: 0.16;
 }
+/* ── Note capture review ────────────────────────────────────────────────────
+   Append to src/index.css, next to the existing pm-modal-in / pm-payoff-in
+   keyframes. Motion is gated the same way they are: declared unconditionally,
+   applied only through Tailwind's `motion-safe:` variant, so a reduced-motion
+   student sees every state change instantly with no movement.
+
+   Three animations, one job each:
+     pm-card-in   the focused note card arriving when focus moves
+     pm-tick      a filed confirmation — fires on the pip, the photo badge and
+                  the filed row in the same frame, so filing reads as ONE event
+     pm-panel-in  meta-strip panels and the card's detail drawer
+   ─────────────────────────────────────────────────────────────────────────── */
+
+@keyframes pm-card-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  60% {
+    transform: scale(1.005);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pm-tick {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pm-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

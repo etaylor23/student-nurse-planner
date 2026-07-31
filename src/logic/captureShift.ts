@@ -1,3 +1,4 @@
+import { SHIFT_TYPE_LABEL } from "../domain/types";
 import type { Shift } from "../domain/types";
 
 /**
@@ -127,9 +128,15 @@ export function resolveShift(
   return { suggested: candidates[0], candidates, isFallback: true };
 }
 
-/** "Tue 22 Jul" — short enough for a chip, unambiguous about which shift it means. */
+/**
+ * "Tue 22 Jul · Long day" — short enough for a chip, unambiguous about which shift it means.
+ *
+ * The type comes from `SHIFT_TYPE_LABEL`, not from lower-casing the enum: that produced
+ * "long_day", with the underscore showing, and it was a second set of shift-type names competing
+ * with the one the form, the calendar and the .ics feed all share.
+ */
 export function formatShiftLabel(shift: Shift): string {
   const d = new Date(`${shift.date}T00:00:00`);
   const day = d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
-  return `${day} · ${shift.shiftType.toLowerCase()}`;
+  return `${day} · ${SHIFT_TYPE_LABEL[shift.shiftType]}`;
 }

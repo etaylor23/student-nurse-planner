@@ -139,6 +139,28 @@ export class CaptureClient {
     }
   }
 
+  /**
+   * A signed GET for a page already uploaded, so review can show it beside the blocks (P1).
+   *
+   * Returns `undefined` rather than throwing on any failure. The photo pane is an
+   * enhancement — `PagePreview` renders nothing without a URL and the cards are unaffected —
+   * so a presign that fails must never take the review screen down with it.
+   */
+  async presignPageImage(imageKey: string): Promise<string | undefined> {
+    try {
+      const token = await this.getIdToken();
+      const res = await this.fetchImpl(`${this.apiBase}/rpc`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+        body: JSON.stringify({ method: "notes/presignPageImage", args: [{ imageKey }] }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { result?: { url?: string } };
+      return res.ok ? data.result?.url : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
   /** Fetch a cached parse. No auth header — the presigned GET is the authorisation. */
   async fetchCachedParse(parseUrl: string, signal?: AbortSignal): Promise<unknown> {
     const res = await this.fetchImpl(parseUrl, { signal });

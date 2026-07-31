@@ -3,8 +3,11 @@ import { type DynamoLocal, startDynamoLocal } from "./helpers/dynamoLocal";
 import {
   DAILY_PHOTO_LIMIT,
   MAX_UPLOAD_BYTES,
+  PAGE_VIEW_EXPIRY_SECONDS,
+  PRESIGN_EXPIRY_SECONDS,
   PresignError,
   presignCapture,
+  presignPageImage,
   userPrefix,
 } from "../infra/lambda/router/captures";
 
@@ -234,4 +237,45 @@ describe("presignCapture — the content-addressed parse cache (P41)", () => {
     if (!res.ok || res.cached) throw new Error("expected a fresh upload");
     expect(res.url).toContain("X-Amz-Signature");
   });
+});
+
+describe("presignPageImage — reading a page back (P1)", () => {
+  const view = { bucket: "test-captures" };
+  const key = `${userPrefix("sub-mine")}h/${HASH}/page.jpg`;
+
+  it("signs a GET for a page the caller uploaded", async () => {
+    const res = await presignPageImage(view, "sub-mine", { imageKey: key });
+    expect(res.url).toContain("X-Amz-Signature");
+    expect(res.url).toContain(`u/sub-mine/h/${HASH}/page.jpg`);
+    expect(res.expiresInSeconds).toBe(PAGE_VIEW_EXPIRY_SECONDS);
+  });
+
+  it("lasts longer than an upload URL, because review is a screen you sit on", () => {
+    // A five-minute URL would show a broken photo exactly when the student comes back to
+    // finish filing — the capture deliberately outlives the dialog.
+    expect(PAGE_VIEW_EXPIRY_SECONDS).toBeGreaterThan(PRESIGN_EXPIRY_SECONDS);
+  });
+
+  it("refuses another student's key rather than signing it", async () => {
+    // A presigned URL carries the SIGNER's permissions, so honouring a caller-supplied key
+    // would be a cross-user read of clinical imagery.
+    await expect(presignPageImage(view, "sub-theirs", { imageKey: key })).rejects.toThrow(
+      PresignError,
+    );
+  });
+
+  const bad: Array<[string, unknown]> = [
+    ["nothing at all", {}],
+    ["a key that isn't a string", { imageKey: 42 }],
+    ["path traversal", { imageKey: "u/sub-mine/h/../../other/page.jpg" }],
+    ["a hash that isn't one", { imageKey: "u/sub-mine/h/not-a-hash/page.jpg" }],
+    ["the cached parse instead of the photo", { imageKey: `u/sub-mine/h/${HASH}/parse.json` }],
+    ["an unexpected extension", { imageKey: `u/sub-mine/h/${HASH}/page.svg` }],
+    ["a bare prefix", { imageKey: `u/sub-mine/h/${HASH}/` }],
+  ];
+  for (const [name, raw] of bad) {
+    it(`rejects ${name}`, async () => {
+      await expect(presignPageImage(view, "sub-mine", raw)).rejects.toThrow(PresignError);
+    });
+  }
 });

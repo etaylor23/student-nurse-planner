@@ -1,14 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { NOTE_BLOCK_TARGET_LABEL, type NoteBlockKind } from "../../../domain/types";
+import { ChevronDown, GripVertical, RotateCcw, SpellCheck, X } from "lucide-react";
+import {
+  NOTE_BLOCK_KIND_LABEL,
+  NOTE_BLOCK_TARGET_LABEL,
+  type NoteBlockKind,
+} from "../../../domain/types";
 import type { GibbsStage, NoteBlock, NoteBlockTarget } from "../../../domain/types";
 import { seedProficiencies } from "../../../data/seed/proficiencies";
 import type { ShiftResolution } from "../../../logic/captureShift";
-import { AllocateBar } from "./AllocateBar";
-import { LaneBoard } from "./LaneBoard";
+import { AllocateBar, UndoFiling } from "./AllocateBar";
+import { DESTINATION_KEYS, DestinationDropBar, DestinationTiles } from "./DestinationTiles";
 import { MedicationOffer } from "./MedicationOffer";
+import { MetaChip } from "./MetaChip";
+import { PagePreview } from "./PagePreview";
 import { ProficiencyPicker } from "./ProficiencyPicker";
-import { ShiftBar } from "./ShiftBar";
+import { ProgressSpine } from "./ProgressSpine";
+import { ShiftChip } from "./ShiftBar";
 import { WorthACheck } from "./WorthACheck";
+import { hasOpenDispute, isTypingTarget, list, pendingBlocks } from "./blockState";
 import { useWideScreen } from "./useWideScreen";
 
 /**
@@ -18,37 +27,33 @@ import { useWideScreen } from "./useWideScreen";
  * load-bearing rather than tidy: edits have to survive closing the dialog, and allocation needs
  * a real `block.id` to stamp as `sourceId` on the row it creates (P5).
  *
- * **Mobile list is the primary layout, by decision** — students photograph notes on a phone,
- * so the list is the experience that has to be good and wide-screen lanes are the enhancement.
+ * **The photo is the map.** A sticky pane shows the page with every block outlined on it,
+ * numbered and coloured by state; clicking a region focuses that note and focusing a note
+ * highlights its region. P1 retains the photo precisely so a transcription can be checked
+ * against it, and until this the student could never see it while reviewing. It also does the
+ * job four permanent lanes were doing badly — showing the whole page's state at a glance — at a
+ * quarter of the width and while actually being about their own handwriting.
  *
- * Every part of a block is a LABELLED ROW rather than a row of chips. The first version put the
- * target, the group key, the disputed words, the tags and the proficiency codes in one
- * undifferentiated stack, and it read as noise — you could not tell which text belonged to
- * which idea. The labels stay, but short values sit BESIDE their label rather than under it:
- * five stacked headings per card turned out to be its own kind of noise. Anything suggested is
- * also removable: a suggestion you cannot decline is not a suggestion.
+ * **One note expanded, the rest one line each.** The first version put every field of every
+ * block on one plane: tags, NMC evidence, a drug-card offer and a file button for a note whose
+ * destination the student had not yet decided. Now the stack is grouped `Needs you` / `Filed`,
+ * the focused note is a full card, and everything else is a row — number, one-line preview,
+ * `worth a check` if flagged, destination. Progressive disclosure, without a wizard: the whole
+ * page's routing is still readable in one eyeful.
  *
- * **One control decides the block, not two.** `kind` and `targetType` map almost 1:1 and the
- * spec flagged the redundancy — asking "what is this?" and then "where does it go?" was asking
- * the same question twice with different words. The student picks the destination; `kind` is
- * kept up to date underneath it, because that is what the vision model hints at and what the
- * recall corpus reads (P14), but it is no longer a second question.
+ * **One control decides the note, not two.** `kind` and `targetType` map almost 1:1 and the spec
+ * flagged the redundancy — asking "what is this?" and then "where does it go?" was the same
+ * question twice. The student picks a destination from four tiles; `kind` is kept up to date
+ * underneath, because that is what the vision model hints at and what the recall corpus reads
+ * (P14). The tiles replace BOTH the old `<select>` and the lane board: one decision, one
+ * control, visible only while a note is being decided.
+ *
+ * **Nothing here changes what the app writes** — same handlers, same guards, same order of
+ * operations. It changes what the student sees and when they are asked to decide.
+ *
+ * Copy note: **"notes", not "blocks"**, everywhere the student can read it, aria-labels
+ * included. "Block" is our word for the row, not theirs for the thing on their page.
  */
-
-const TARGET_OPTIONS: NoteBlockTarget[] = [
-  "REFLECTION",
-  "MED_LOG",
-  "PROFICIENCY_EVENT",
-  "SHIFT_NOTES",
-];
-
-/** What each destination means for the student, in the words the lanes use. */
-const TARGET_BLURB: Record<NoteBlockTarget, string> = {
-  REFLECTION: "becomes a Gibbs reflection",
-  MED_LOG: "becomes a medication log",
-  PROFICIENCY_EVENT: "evidence against a proficiency",
-  SHIFT_NOTES: "appended to the shift",
-};
 
 /** The `kind` a destination implies, for keeping the two fields in step. */
 const KIND_FOR_TARGET: Record<NoteBlockTarget, NoteBlockKind> = {
@@ -93,12 +98,24 @@ function relativeDay(iso: string): string {
   return `on ${then.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
 }
 
-/** Blocks store their lists as comma-separated strings — the row is flat primitives only. */
-function list(s: string | undefined): string[] {
-  return (s ?? "")
-    .split(",")
-    .map((x) => x.trim())
-    .filter(Boolean);
+const PREVIEW_CHARS = 78;
+
+/**
+ * The one-line version of a note, for a collapsed row.
+ *
+ * A written summary would be better — "Aciclovir — antiviral medication, HSV prevention in
+ * haematology" — but the classifier doesn't return one, so this truncates at a WORD boundary
+ * instead. Never mid-word, deliberately: "Phenoxymethyl…" and "Phenoxyethyl…" are the exact
+ * pair the student may be being asked to tell apart, and half a drug name is worse than a
+ * shorter line. A single word longer than the budget is cut anyway — there is nothing else to
+ * do with it, and it can't be a pair of readings the student is choosing between.
+ */
+function previewOf(text: string): string {
+  const flat = text.replace(/\s+/g, " ").trim();
+  if (flat.length <= PREVIEW_CHARS) return flat;
+  const cut = flat.slice(0, PREVIEW_CHARS);
+  const space = cut.lastIndexOf(" ");
+  return `${(space > 20 ? cut.slice(0, space) : cut).replace(/[\s,;:.–—-]+$/, "")}…`;
 }
 
 /** What review can change on a row. Everything a student does here is persisted, so closing
@@ -135,65 +152,174 @@ export interface ReviewHandlers {
   onDismiss: (blockId: string) => Promise<void>;
 }
 
-/**
- * One labelled row of a card.
- *
- * The label sits BESIDE its content and wraps above it only when the column is too narrow to
- * hold both — so a wide card reads as a tidy two-column list and a 296px lane still reads as
- * labelled sections. Five stacked uppercase headings per card was the "busy and congested"
- * problem: the information was right, the chrome around it wasn't.
- */
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <section className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-slate-100 pt-2 first:border-0">
-      <h4 className="w-full shrink-0 text-[10px] font-semibold uppercase tracking-wide text-slate-400 sm:w-20">
-        {label}
-      </h4>
-      <div className="min-w-0 flex-1">{children}</div>
-    </section>
-  );
-}
-
-function RemoveButton({ onClick, label }: { onClick: () => void; label: string }) {
+function RemoveButton({
+  onClick,
+  label,
+  hidden = false,
+}: {
+  onClick: () => void;
+  label: string;
+  /** Revealed on hover/focus. Five permanent ×es on a row of code pills reads as a demolition
+   *  site; the removal still has to be reachable, so it is present and focusable, not absent. */
+  hidden?: boolean;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label={label}
-      className="ml-1 rounded-full px-1 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-700"
+      className={`ml-0.5 rounded-full px-1 text-slate-400 transition-all hover:bg-slate-200 hover:text-ink ${
+        hidden ? "opacity-0 focus:opacity-100 group-hover:opacity-100" : ""
+      }`}
     >
       ×
     </button>
   );
 }
 
+/** The uppercase micro-heading used inside the card. One ramp, one weight, one tracking. */
+function Label({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">{children}</p>
+  );
+}
+
+/**
+ * A note the student isn't currently on — one line.
+ *
+ * Pending rows are a single `<button>`, because that is all they do: jump. Filed rows are not
+ * clickable (there is no card to open — the note is a real row now) but they do carry an Undo,
+ * so they are a plain container with `AllocateBar` in the tail.
+ */
+function BlockRow({
+  block,
+  index,
+  onFocus,
+  onUnallocate,
+}: {
+  block: NoteBlock;
+  index: number;
+  onFocus: (blockId: string) => void;
+  onUnallocate: () => Promise<{ warning?: string }>;
+}) {
+  const filed = block.status === "ALLOCATED";
+  const check = !filed && hasOpenDispute(block);
+  const target = block.targetType;
+
+  const badge = (
+    <span
+      className={`flex h-[21px] w-[21px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+        filed
+          ? "bg-primary-600 text-white"
+          : check
+            ? "bg-accent-600 text-white"
+            : "bg-slate-100 text-slate-600"
+      }`}
+    >
+      {filed ? (
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={3}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-2.5 w-2.5 motion-safe:animate-[pm-tick_320ms_cubic-bezier(.2,.9,.3,1.5)_both]"
+          aria-hidden="true"
+        >
+          <path d="m4 10.5 4 4 8-9" />
+        </svg>
+      ) : (
+        index + 1
+      )}
+    </span>
+  );
+
+  // `basis-[calc(100%-2.5rem)]` up to `sm` is what forces the row onto two lines on a phone:
+  // the preview takes the rest of line one beside the badge, and the pip and chip wrap under it.
+  // As a plain `flex-1` it lost to them at 375px and truncated to nothing — and the preview is
+  // the only part of a collapsed row that says WHICH note it is.
+  const preview = (
+    <span className="min-w-0 flex-1 basis-[calc(100%-2.5rem)] truncate text-left text-[13.5px] text-slate-600 sm:basis-0">
+      {previewOf(block.text)}
+    </span>
+  );
+
+  // Filed says "Filed as X" and pending says where it will go — the same chip, carrying the
+  // tense of the decision. `Not decided` stays dashed and unfilled: an empty slot, not a value.
+  const chip = (
+    <span
+      className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+        filed
+          ? "text-primary-800"
+          : target
+            ? "bg-slate-100 text-slate-600"
+            : "border border-dashed border-slate-300 text-slate-400"
+      }`}
+    >
+      {filed
+        ? `Filed as ${target ? NOTE_BLOCK_TARGET_LABEL[target] : "a note"}`
+        : target
+          ? NOTE_BLOCK_TARGET_LABEL[target]
+          : "Not decided"}
+    </span>
+  );
+
+  if (filed) {
+    return (
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5 rounded-xl bg-primary-50/60 px-3.5 py-2.5 ring-1 ring-primary-200">
+        {badge}
+        {preview}
+        {chip}
+        <UndoFiling onUnallocate={onUnallocate} />
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => onFocus(block.id)}
+      className="flex w-full min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5 rounded-xl bg-white px-3.5 py-2.5 ring-1 ring-slate-200 transition-shadow hover:ring-slate-300"
+    >
+      {badge}
+      {preview}
+      {check && <WorthACheck />}
+      {chip}
+    </button>
+  );
+}
+
+/**
+ * The note the student is on — the one expanded card, and the only elevation on the screen
+ * besides the modal itself. That is what makes "this is the one you're on" legible without a
+ * colour wash competing with `filed` for meaning.
+ */
 function BlockCard({
   block,
   index,
   handlers,
   gibbs,
   known,
-  inLane = false,
+  onSkip,
 }: {
   block: NoteBlock;
   index: number;
   handlers: ReviewHandlers;
   gibbs?: Partial<Record<GibbsStage, string>>;
   known: KnownContext;
-  /** The lane header already says what this destination means — don't say it twice. */
-  inLane?: boolean;
+  onSkip: () => void;
 }) {
   const [text, setText] = useState(block.text);
   const [tags, setTags] = useState(() => list(block.suggestedTags));
   const [codes, setCodes] = useState(() => list(block.candidateCodes));
-  const [showAllCodes, setShowAllCodes] = useState(false);
   // A disputed word is resolved by choosing a reading — after that it stops being a question.
   const [resolved, setResolved] = useState<Record<string, true>>({});
   const [medicationId, setMedicationId] = useState<string>();
   const [confirmDismiss, setConfirmDismiss] = useState(false);
-  // Where this will be filed. The row is the source of truth — the lane view writes the same
-  // field (P35) — but it's mirrored locally so the select responds before the write lands.
-  // `""` when nothing has routed it: an unrouted block asks rather than defaulting (P34).
+  // Where this will be filed. The row is the source of truth — a drop on the drag bar writes
+  // the same field — but it's mirrored locally so the tiles respond before the write lands.
+  // `""` when nothing has routed it: an unrouted note asks rather than defaulting (P34).
   const [target, setTarget] = useState<NoteBlockTarget | "">(block.targetType ?? "");
   useEffect(() => {
     if (block.targetType) setTarget(block.targetType);
@@ -208,7 +334,6 @@ function BlockCard({
   });
 
   const openDisputes = list(block.disputedWords).filter((p) => !resolved[p]);
-  const allocated = block.status === "ALLOCATED";
   const proficiencyId = codes[0] ? ID_FOR_CODE.get(codes[0]) : undefined;
   const chosenTags = tags.filter((t) => ticked[t]);
   const edited = text.trim() !== block.rawText.trim();
@@ -241,11 +366,11 @@ function BlockCard({
     void handlers.onEdit(block.id, { candidateCodes: next.join(",") });
   }
 
-  /** A code from the full picker goes to the FRONT — the student's choice outranks the model's. */
+  /** A code the student picks goes to the FRONT — their choice outranks the model's ranking,
+   *  and the leading code is the one filing records the evidence against. */
   function pickCode(c: string) {
     const next = [c, ...codes.filter((x) => x !== c)];
     setCodes(next);
-    setShowAllCodes(false);
     void handlers.onEdit(block.id, { candidateCodes: next.join(",") });
   }
 
@@ -253,9 +378,9 @@ function BlockCard({
    * Grow the textarea to fit its content.
    *
    * A `rows` guessed from character count can't work: the same note is 2 lines in the mobile
-   * list and 6 in a 230px lane column, so anything computed from the text alone clips the
-   * student's own words in one layout or the other. Measured instead, and re-measured when the
-   * column resizes.
+   * list and 6 in a narrow column, so anything computed from the text alone clips the student's
+   * own words in one layout or the other. Measured instead, and re-measured when the column
+   * resizes.
    */
   const textRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -264,9 +389,9 @@ function BlockCard({
     const fit = () => {
       el.style.height = "auto";
       const needed = el.scrollHeight + 2;
-      // Capped: a very long block in a 237px lane would otherwise make the column enormous.
-      // Past the cap it scrolls, which is the one case where scrolling is better than growing —
-      // and only then, so a fitted box doesn't draw a scrollbar gutter it never needs.
+      // Capped: a very long note would otherwise make the card enormous. Past the cap it
+      // scrolls, which is the one case where scrolling beats growing — and only then, so a
+      // fitted box doesn't draw a scrollbar gutter it never needs.
       el.style.height = `${Math.min(needed, 384)}px`;
       el.style.overflowY = needed > 384 ? "auto" : "hidden";
     };
@@ -284,7 +409,7 @@ function BlockCard({
   }
 
   /**
-   * Set where the block goes, and keep `kind` in step underneath it.
+   * Set where the note goes, and keep `kind` in step underneath it.
    *
    * `kind` is left alone when it already implies this destination — retyping a `DATE_HEADER`
    * into shift notes shouldn't silently make it an `OBSERVATION`, and `kind` is what the recall
@@ -297,253 +422,299 @@ function BlockCard({
     void handlers.onEdit(block.id, patch);
   }
 
+  /** `1`–`4` are the tiles, on the keyboard. Bound on `window` so they work wherever focus is
+   *  sitting, and ignored while the student is typing — "4.15" is a search, not a shortcut. */
+  const setDest = useRef(setDestination);
+  setDest.current = setDestination;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // Never steal a modified key: ⌘1 switches browser tab and always should.
+      if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
+      const n = Number(e.key);
+      if (!Number.isInteger(n) || n < 1 || n > DESTINATION_KEYS.length) return;
+      e.preventDefault();
+      setDest.current(DESTINATION_KEYS[n - 1]);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // The detail drawer is conditional on the destination, and shows only the parts that
+  // destination needs. Tags are the exception — they apply to all four, so they are always
+  // there once a destination exists.
+  const showMed = target === "MED_LOG" && !!block.medicationCandidate;
+  const showProficiency = target === "PROFICIENCY_EVENT";
+  const gibbsStages = Object.entries(gibbs ?? {}) as [GibbsStage, string][];
+  const showGibbs = target === "REFLECTION" && gibbsStages.length > 0;
+  const showTags = !!target && tags.length > 0;
+  const showDrawer = showMed || showProficiency || showGibbs || showTags;
+
   return (
-    // `min-w-0` + `break-words`: this card also lives in a ~13rem lane column, where one long
-    // drug name would otherwise push it straight through the lane's border.
-    <div
-      // White cards throughout: state is a RING, not a wash. Three coloured backgrounds
-      // stacked inside a coloured group was the "visual aggression" — the colour now marks
-      // one thing (this card wants attention) instead of the whole region.
-      className={`min-w-0 break-words rounded-xl bg-white p-3 ${
-        allocated
-          ? "ring-1 ring-primary-300"
-          : openDisputes.length > 0
-            ? "ring-1 ring-accent-300"
-            : "ring-1 ring-slate-200"
-      }`}
-    >
-      <div className="flex min-w-0 items-center gap-2">
-        <span className="shrink-0 text-xs font-medium text-slate-400">#{index + 1}</span>
-        {/* ONE control. See the module comment: `kind` and `targetType` were the same question
-            asked twice, so the student picks the destination and `kind` follows underneath. */}
-        <select
-          value={target}
-          onChange={(e) => setDestination(e.target.value as NoteBlockTarget)}
-          disabled={allocated}
-          className="min-w-0 flex-1 truncate rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 disabled:opacity-60"
-          aria-label={`Where block ${index + 1} goes`}
+    // `min-w-0` + `break-words`: one long drug name would otherwise push the card straight
+    // through the column it lives in. `Phenoxymethylpenicillin` is 24 characters.
+    <article className="min-w-0 break-words rounded-2xl bg-white shadow-[0_1px_2px_rgba(16,24,40,.04),0_16px_40px_-16px_rgba(16,24,40,.22)] ring-1 ring-slate-900/7 motion-safe:animate-[pm-card-in_240ms_ease-out_both]">
+      <div className="flex min-w-0 items-center gap-2.5 border-b border-slate-100 px-4 py-2.5">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ink text-[11px] font-bold text-white">
+          {index + 1}
+        </span>
+        <span className="truncate text-[11px] font-bold uppercase tracking-[0.08em] text-slate-400">
+          {NOTE_BLOCK_KIND_LABEL[block.kind]}
+        </span>
+        {openDisputes.length > 0 && <WorthACheck />}
+        <span
+          aria-hidden="true"
+          title="Drag onto a destination"
+          className="ml-auto flex shrink-0 items-center gap-1 text-[11px] text-slate-400"
         >
-          {!target && <option value="">Choose where this goes…</option>}
-          {TARGET_OPTIONS.map((t) => (
-            <option key={t} value={t}>
-              {NOTE_BLOCK_TARGET_LABEL[t]}
-            </option>
-          ))}
-        </select>
+          <GripVertical className="h-3.5 w-3.5" />
+          drag me
+        </span>
         {/* Not everything on a page is worth a row — a title, a phone number, a stray line.
             Two taps rather than one, because it removes a row; and it says plainly that the
-            photo is untouched, which is what makes it safe (P13/P41). */}
-        {!allocated &&
-          (confirmDismiss ? (
-            <span className="flex shrink-0 items-center gap-1.5 text-xs">
-              <button
-                type="button"
-                onClick={() => void handlers.onDismiss(block.id)}
-                className="rounded-lg bg-slate-800 px-2 py-1 font-medium text-white hover:bg-slate-900"
-              >
-                Remove
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmDismiss(false)}
-                className="text-slate-400 hover:text-slate-700"
-              >
-                Keep
-              </button>
-            </span>
-          ) : (
+            photo is untouched, which is what makes it safe (P13/P42). */}
+        {confirmDismiss ? (
+          <span className="flex shrink-0 items-center gap-1.5 text-xs">
             <button
               type="button"
-              onClick={() => setConfirmDismiss(true)}
-              aria-label={`Remove block ${index + 1}`}
-              title="Not useful — remove it (your photo is kept)"
-              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-slate-300 transition-colors hover:bg-slate-100 hover:text-slate-600"
+              onClick={() => void handlers.onDismiss(block.id)}
+              className="rounded-lg bg-ink px-2 py-1 font-medium text-white hover:bg-slate-900"
             >
-              <svg
-                viewBox="0 0 20 20"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.8}
-                strokeLinecap="round"
-                className="h-3.5 w-3.5"
-                aria-hidden="true"
-              >
-                <path d="M5 5l10 10M15 5L5 15" />
-              </svg>
+              Remove
             </button>
-          ))}
+            <button
+              type="button"
+              onClick={() => setConfirmDismiss(false)}
+              className="text-slate-400 hover:text-ink"
+            >
+              Keep
+            </button>
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirmDismiss(true)}
+            aria-label={`Remove note ${index + 1}`}
+            title="Not a note — remove it (your photo is kept)"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px] text-slate-400 transition-colors hover:bg-slate-100 hover:text-ink"
+          >
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+        )}
       </div>
-      {confirmDismiss && (
-        <p className="mt-1 text-[11px] text-slate-400">
-          Removes this note only — your photo is kept, so reading the page again brings it back.
-        </p>
-      )}
-      {target && !inLane && (
-        <p className="mt-1 pl-6 text-[11px] text-slate-400">{TARGET_BLURB[target]}</p>
-      )}
 
-      <textarea
-        ref={textRef}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        // Persisted on blur rather than per keystroke: one write per edit, not one per letter.
-        onBlur={() => {
-          if (text !== block.text) void handlers.onEdit(block.id, { text });
-        }}
-        disabled={allocated}
-        rows={2}
-        // `block w-full min-w-0`: a bare textarea has an intrinsic `cols` width that ignores its
-        // container, which is what pushed it out of the lane. Height comes from the effect above.
-        className="mt-2 block w-full min-w-0 resize-y rounded-lg border border-slate-200 p-2 text-sm leading-relaxed text-ink-900 disabled:bg-slate-50 disabled:text-slate-500"
-        aria-label={`Text of block ${index + 1}`}
-      />
-
-      {/* The sanitiser corrects British spellings and the student edits freely — either way,
-          exactly what the models read off the page is always one tap away (P11/P24). */}
-      {edited && !allocated && (
-        <button
-          type="button"
-          onClick={revert}
-          className="mt-1 text-xs text-slate-400 hover:text-slate-600 hover:underline"
-        >
-          Back to what was on the page
-        </button>
-      )}
-
-      {/* The same badge the shift bar uses, on its own line — as a two-word Row label it wrapped
-          to "WORTH A / CHECK" in a lane column and read as a section heading, not a flag. */}
-      {openDisputes.length > 0 && !allocated && (
-        <section className="mt-2 border-t border-slate-100 pt-2">
-          <WorthACheck />
-          <p className="mt-1 text-xs text-slate-600">
-            The two readings differ — pick the one that matches your handwriting.
+      <div className="min-w-0 px-4 py-4">
+        {confirmDismiss && (
+          <p className="mb-2.5 text-[11px] text-slate-400">
+            Removes this note only — your photo is kept, so reading the page again brings it back.
           </p>
-          <ul className="mt-1.5 space-y-1.5">
+        )}
+
+        <textarea
+          ref={textRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          // Persisted on blur rather than per keystroke: one write per edit, not one per letter.
+          onBlur={() => {
+            if (text !== block.text) void handlers.onEdit(block.id, { text });
+          }}
+          rows={2}
+          // `block w-full min-w-0`: a bare textarea has an intrinsic `cols` width that ignores
+          // its container. `resize-none` because the height is measured above, not dragged.
+          className="block w-full min-w-0 resize-none rounded-xl border-0 bg-slate-50 p-3.5 text-[15px] leading-relaxed text-ink ring-1 ring-slate-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-400"
+          aria-label={`Note ${index + 1} text`}
+        />
+
+        {/* The sanitiser corrects British spellings and the student edits freely — either way,
+            exactly what the models read off the page is always one tap away (P11/P24). */}
+        {edited && (
+          <button
+            type="button"
+            onClick={revert}
+            className="mt-1.5 text-xs text-slate-400 hover:text-ink hover:underline"
+          >
+            Back to what was on the page
+          </button>
+        )}
+
+        {/* One question, two answers — so one segmented control, not two loose buttons. The
+            applied reading is filled; "currently this, could be that" is exactly the state.
+            One strip per disputed pair: two questions deserve two controls (P22). */}
+        {openDisputes.length > 0 && (
+          <div className="mt-2.5 space-y-2">
             {openDisputes.map((pair) => {
               const [structure, check] = pair.split("|");
               return (
-                <li key={pair} className="flex flex-wrap items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => chooseReading(pair, structure, check)}
-                    className="rounded-lg border border-accent-300 bg-white px-2 py-0.5 text-xs font-medium text-accent-700 hover:bg-accent-50"
-                  >
-                    {structure}
-                  </button>
-                  <span className="text-xs text-slate-400">or</span>
-                  <button
-                    type="button"
-                    onClick={() => chooseReading(pair, check, structure)}
-                    className="rounded-lg border border-accent-300 bg-white px-2 py-0.5 text-xs text-accent-700 hover:bg-accent-50"
-                  >
-                    {check}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
-
-      {block.medicationCandidate && (
-        <Row label="Drug">
-          <p className="text-sm text-slate-700">{block.medicationCandidate}</p>
-          {!allocated && (
-            <MedicationOffer
-              candidate={block.medicationCandidate}
-              medications={known.medications}
-              linkedId={medicationId}
-              onLink={setMedicationId}
-              onCreate={(name) => handlers.onCreateMedication(name, text)}
-            />
-          )}
-        </Row>
-      )}
-
-      {tags.length > 0 && (
-        <Row label="Tags">
-          <div className="flex flex-wrap gap-1">
-            {tags.map((t) => {
-              const on = !!ticked[t];
-              return (
-                <span
-                  key={t}
-                  className={`inline-flex items-center rounded-full py-0.5 pl-1 pr-0.5 text-xs ${
-                    on
-                      ? "bg-secondary-50 text-secondary-800"
-                      : "border border-dashed border-slate-300 text-slate-500"
-                  }`}
+                <div
+                  key={pair}
+                  className="flex flex-wrap items-center gap-2.5 rounded-xl bg-accent-50 px-3 py-2.5 ring-1 ring-accent-200"
                 >
-                  {/* A new label is a permanent addition to their vocabulary, so it is opt-in;
-                      one they already use is applied. Both stay removable. */}
-                  <button
-                    type="button"
-                    onClick={() => setTicked((v) => ({ ...v, [t]: !on }))}
-                    disabled={allocated}
-                    aria-label={`${on ? "Don't apply" : "Apply"} tag ${t}`}
-                    className="flex items-center gap-1 rounded-full px-1 disabled:opacity-100"
-                  >
-                    <span aria-hidden="true">{on ? "✓" : "+"}</span>
-                    <span>{t}</span>
-                  </button>
-                  {!allocated && (
-                    <RemoveButton label={`Remove tag ${t}`} onClick={() => dropTag(t)} />
-                  )}
-                </span>
+                  <span className="text-[12.5px] text-slate-600">The two readings differ —</span>
+                  <span className="flex overflow-hidden rounded-[9px] ring-1 ring-accent-300">
+                    <button
+                      type="button"
+                      onClick={() => chooseReading(pair, structure, check)}
+                      className="bg-accent-600 px-2.5 py-1 text-[12.5px] font-semibold text-white"
+                    >
+                      {structure}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => chooseReading(pair, check, structure)}
+                      className="bg-white px-2.5 py-1 text-[12.5px] font-semibold text-accent-700 hover:bg-accent-50"
+                    >
+                      {check}
+                    </button>
+                  </span>
+                  <span className="text-[12.5px] text-slate-600">
+                    which matches your handwriting?
+                  </span>
+                </div>
               );
             })}
           </div>
-        </Row>
-      )}
+        )}
 
-      {(codes.length > 0 || !allocated) && (
-        <Row label="NMC evidence">
-          <ul className="space-y-1.5">
-            {(showAllCodes ? codes : codes.slice(0, 1)).map((c) => (
-              <li key={c} className="flex items-start gap-1">
-                <div className="min-w-0 flex-1">
-                  {/* The platform/annexe is the heading a bare code needs to mean anything. */}
-                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                    {GROUPING.get(c) ?? "NMC"} · {c}
-                  </p>
-                  <p className="text-xs leading-snug text-slate-700">
-                    {STATEMENTS.get(c) ?? "Unknown code"}
-                  </p>
+        <DestinationTiles value={target} onChange={setDestination} />
+
+        {showDrawer && (
+          <div className="mt-3 min-w-0 rounded-xl bg-slate-50 p-3.5 ring-1 ring-slate-200 motion-safe:animate-[pm-panel-in_220ms_ease-out_both]">
+            {showMed && block.medicationCandidate && (
+              <div>
+                <div className="flex flex-wrap items-baseline gap-x-2">
+                  <Label>Drug card</Label>
+                  <span className="text-sm font-semibold text-ink">
+                    {block.medicationCandidate}
+                  </span>
                 </div>
-                {!allocated && (
-                  <RemoveButton label={`Remove proficiency ${c}`} onClick={() => dropCode(c)} />
-                )}
-              </li>
-            ))}
-          </ul>
-          {codes.length === 0 && (
-            <p className="text-xs text-slate-500">
-              No proficiency suggested for this one — find it yourself if it evidences something.
-            </p>
-          )}
-          {codes.length > 1 && (
-            <button
-              type="button"
-              onClick={() => setShowAllCodes((v) => !v)}
-              className="mt-1.5 text-xs font-medium text-secondary-700 hover:underline"
-            >
-              {showAllCodes
-                ? "Show fewer"
-                : `Show ${codes.length - 1} other suggestion${codes.length === 2 ? "" : "s"}`}
-            </button>
-          )}
-          {/* The way past the shortlist (P28) — without it, a note evidencing something the
-              classifier missed has no route into the record at all. */}
-          {!allocated && <ProficiencyPicker onPick={pickCode} />}
-        </Row>
-      )}
+                <MedicationOffer
+                  candidate={block.medicationCandidate}
+                  medications={known.medications}
+                  linkedId={medicationId}
+                  onLink={setMedicationId}
+                  onCreate={(name) => handlers.onCreateMedication(name, text)}
+                />
+              </div>
+            )}
+
+            {/* The codes are a CHOICE, so they look like one. The selected pill is the code
+                filing records against; the statement underneath is what lets the student judge
+                whether it's the right one. */}
+            {showProficiency && (
+              <div className="min-w-0">
+                <Label>NMC evidence</Label>
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  {codes.map((c) => {
+                    const on = c === codes[0];
+                    return (
+                      <span
+                        key={c}
+                        className={`group inline-flex items-center rounded-[9px] py-1 pl-2.5 pr-1 text-xs font-bold ring-1 ${
+                          on
+                            ? "bg-secondary-600 text-white ring-secondary-600"
+                            : "bg-white text-slate-600 ring-slate-200"
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => pickCode(c)}
+                          title={STATEMENTS.get(c) ?? c}
+                          aria-pressed={on}
+                          aria-label={`Evidence ${c} — ${STATEMENTS.get(c) ?? "unknown code"}`}
+                        >
+                          {c}
+                        </button>
+                        <RemoveButton
+                          hidden
+                          label={`Remove proficiency ${c}`}
+                          onClick={() => dropCode(c)}
+                        />
+                      </span>
+                    );
+                  })}
+                  {/* The way past the shortlist (P28) — without it, a note evidencing something
+                      the classifier missed has no route into the record at all. */}
+                  <ProficiencyPicker onPick={pickCode} />
+                </div>
+                <p className="mt-2 text-[12.5px] leading-snug text-slate-600">
+                  {codes[0] ? (
+                    <>
+                      <span className="font-semibold text-slate-500">
+                        {GROUPING.get(codes[0]) ?? "NMC"} · {codes[0]}
+                      </span>{" "}
+                      — {STATEMENTS.get(codes[0]) ?? "Unknown code"}
+                    </>
+                  ) : (
+                    "No proficiency suggested for this one — find it yourself if it evidences something."
+                  )}
+                </p>
+              </div>
+            )}
+
+            {/* Currently the student is told "the reflection stages we found will be filled in"
+                and shown nothing. Show them. */}
+            {showGibbs && (
+              <div className="min-w-0">
+                <Label>Reflection stages we found</Label>
+                <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                  {gibbsStages.map(([stage, body]) => (
+                    <div key={stage} className="rounded-[9px] bg-white p-2.5 ring-1 ring-slate-200">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.06em] text-primary-700">
+                        {stage.toLowerCase()}
+                      </p>
+                      <p className="mt-1 text-xs leading-snug text-slate-600">{body}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {showTags && (
+              <div
+                className={`flex flex-wrap items-center gap-1.5 ${
+                  showMed || showProficiency || showGibbs
+                    ? "mt-3 border-t border-slate-200 pt-3"
+                    : ""
+                }`}
+              >
+                <Label>Tags</Label>
+                {tags.map((t) => {
+                  const on = !!ticked[t];
+                  return (
+                    <span
+                      key={t}
+                      className={`inline-flex items-center rounded-full py-0.5 pl-1 pr-0.5 text-xs ${
+                        on
+                          ? "bg-secondary-50 text-secondary-800 ring-1 ring-secondary-200"
+                          : "border border-dashed border-slate-300 text-slate-500"
+                      }`}
+                    >
+                      {/* A new label is a permanent addition to their vocabulary, so it is
+                          opt-in; one they already use is applied. Both stay removable. */}
+                      <button
+                        type="button"
+                        onClick={() => setTicked((v) => ({ ...v, [t]: !on }))}
+                        aria-label={`${on ? "Don't apply" : "Apply"} tag ${t}`}
+                        className="flex items-center gap-1 rounded-full px-1"
+                      >
+                        <span aria-hidden="true">{on ? "✓" : "+"}</span>
+                        <span>{t}</span>
+                      </button>
+                      <RemoveButton label={`Remove tag ${t}`} onClick={() => dropTag(t)} />
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       <AllocateBar
-        block={block}
         target={target}
         proficiencyId={proficiencyId}
         tags={chosenTags}
         gibbs={gibbs}
+        onSkip={onSkip}
         onAllocate={(targetType) =>
           handlers.onAllocate(block.id, {
             targetType,
@@ -553,9 +724,8 @@ function BlockCard({
             medicationId,
           })
         }
-        onUnallocate={() => handlers.onUnallocate(block.id)}
       />
-    </div>
+    </article>
   );
 }
 
@@ -564,6 +734,7 @@ export function ReviewPanel({
   corrections = [],
   pageDateRaw,
   pageCount = 1,
+  imageUrl,
   gibbsByRawText,
   shift,
   selectedShiftId,
@@ -571,12 +742,17 @@ export function ReviewPanel({
   known = { medications: [], tagLabels: [] },
   cachedFrom,
   onRerun,
+  onClose,
+  onStartAgain,
   handlers,
 }: {
   blocks: NoteBlock[];
   corrections?: string[];
   pageDateRaw?: string | null;
   pageCount?: number;
+  /** Signed GET for the page itself (P1). Without one the photo pane isn't rendered and the
+   *  stack takes the full width — every other part of the screen stands on its own. */
+  imageUrl?: string;
   /** Gibbs splits from the parse, keyed by the block's verbatim text — the row doesn't hold them. */
   gibbsByRawText?: Record<string, Partial<Record<GibbsStage, string>>>;
   shift?: ShiftResolution;
@@ -586,98 +762,349 @@ export function ReviewPanel({
   /** Set when this came from the stored parse rather than the models (P41). */
   cachedFrom?: string;
   onRerun?: () => void;
+  /** Put the window down, keeping the capture. Rendered as the header ✕ and the footer button. */
+  onClose?: () => void;
+  onStartAgain?: () => void;
   handlers: ReviewHandlers;
 }) {
-  const toCheck = useMemo(
-    () => blocks.filter((b) => b.status !== "ALLOCATED" && list(b.disputedWords).length > 0).length,
-    [blocks],
-  );
-  const filed = blocks.filter((b) => b.status === "ALLOCATED").length;
-  const wide = useWideScreen();
+  const pending = useMemo(() => pendingBlocks(blocks), [blocks]);
+  const filed = useMemo(() => blocks.filter((b) => b.status === "ALLOCATED"), [blocks]);
+  const toCheck = useMemo(() => pending.filter(hasOpenDispute).length, [pending]);
 
-  const card = (b: NoteBlock, i: number) => (
-    <BlockCard
-      block={b}
-      index={i}
-      handlers={handlers}
-      gibbs={gibbsByRawText?.[b.rawText]}
-      known={known}
-      inLane={wide}
-    />
+  const [focusId, setFocusId] = useState<string | undefined>(() => pendingBlocks(blocks)[0]?.id);
+  /** Only one meta panel is open at a time — opening one closes the others. */
+  const [panel, setPanel] = useState<"cache" | "spell" | "shift">();
+  const [dragging, setDragging] = useState<string>();
+  const [over, setOver] = useState<NoteBlockTarget>();
+  /** Below `lg` the photo is a strip you tap open rather than a column — still the map, just
+   *  not always on screen (P35: mobile is the primary path). */
+  const wide = useWideScreen();
+  const [pageOpen, setPageOpen] = useState(false);
+
+  /**
+   * Focus always names a note the student can still act on.
+   *
+   * Restored here rather than inside each handler: filing, dismissing, undoing and a second
+   * page arriving all break the same invariant, and one effect is easier to trust than four
+   * call sites remembering to advance. When nothing is left, focus is empty and the stack shows
+   * only `Filed (n)` — the natural end state, not a special case.
+   */
+  useEffect(() => {
+    if (focusId && pending.some((b) => b.id === focusId)) return;
+    setFocusId(pending[0]?.id);
+  }, [focusId, pending]);
+
+  /** `↑`/`↓` walk the pending notes in page order. A filed note isn't a stop on the way. */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      if (isTypingTarget(e.target)) return;
+      e.preventDefault();
+      setFocusId((current) => {
+        if (pending.length === 0) return undefined;
+        const at = pending.findIndex((b) => b.id === current);
+        const next = Math.max(
+          0,
+          Math.min(pending.length - 1, (at < 0 ? 0 : at) + (e.key === "ArrowDown" ? 1 : -1)),
+        );
+        return pending[next].id;
+      });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [pending]);
+
+  /** A filed note has no card to open, so a click on its region or pip is not a focus change —
+   *  bouncing focus to some other note would be worse than doing nothing. */
+  function focus(blockId: string) {
+    if (pending.some((b) => b.id === blockId)) setFocusId(blockId);
+  }
+
+  function toggle(which: "cache" | "spell" | "shift") {
+    setPanel((open) => (open === which ? undefined : which));
+  }
+
+  const hasMeta = !!cachedFrom || corrections.length > 0 || !!shift || !!pageDateRaw;
+
+  const group = (title: string, hint: string, rows: NoteBlock[], tone: "pending" | "filed") => (
+    <section className="mb-6 min-w-0">
+      <div className="mb-2.5 flex items-baseline gap-2.5">
+        <h3
+          className={`text-xs font-bold uppercase tracking-[0.12em] ${
+            tone === "filed" ? "text-primary-800" : "text-ink"
+          }`}
+        >
+          {title}
+        </h3>
+        <span className="text-xs text-slate-400">{hint}</span>
+      </div>
+      <ul className="min-w-0 space-y-2.5">
+        {rows.map((b) => (
+          <li
+            key={b.id}
+            className="min-w-0"
+            // Drag is never the only route — the tiles in the card and the keys `1`–`4` both do
+            // the same thing. A filed note doesn't drag: the real row exists, and moving the
+            // note would leave the two out of step.
+            draggable={b.status !== "ALLOCATED"}
+            // Checked again in the handler, not just declared in the attribute: `draggable` is
+            // a hint the browser honours and any synthetic drag ignores, and the reason a filed
+            // note can't move is that the real row already exists — too load-bearing to leave
+            // resting on a hint.
+            onDragStart={() => {
+              if (b.status !== "ALLOCATED") setDragging(b.id);
+            }}
+            onDragEnd={() => {
+              setDragging(undefined);
+              setOver(undefined);
+            }}
+          >
+            {b.id === focusId && b.status !== "ALLOCATED" ? (
+              <BlockCard
+                block={b}
+                index={blocks.indexOf(b)}
+                handlers={handlers}
+                gibbs={gibbsByRawText?.[b.rawText]}
+                known={known}
+                onSkip={() => {
+                  const at = pending.findIndex((p) => p.id === b.id);
+                  setFocusId(pending[Math.min(pending.length - 1, at + 1)]?.id);
+                }}
+              />
+            ) : (
+              <BlockRow
+                block={b}
+                index={blocks.indexOf(b)}
+                onFocus={focus}
+                onUnallocate={() => handlers.onUnallocate(b.id)}
+              />
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 
   return (
-    <div className="mt-4">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-        <span>
-          {blocks.length} block{blocks.length === 1 ? "" : "s"} from {pageCount} page
-          {pageCount === 1 ? "" : "s"}
-        </span>
-        {/* Shown exactly as written — the app resolves the year, the model never invents one (P8). */}
-        {pageDateRaw && <span>date on page: “{pageDateRaw}”</span>}
-        {toCheck > 0 && <span className="font-medium text-accent-700">{toCheck} to check</span>}
-        {filed > 0 && <span className="font-medium text-primary-700">{filed} filed</span>}
-      </div>
-
-      {cachedFrom && (
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-primary-50 px-3 py-2 text-xs text-primary-900">
-          <span>
-            {/* Say where it came from. A result that looks live but is months old would be
-                worse than a slower one. */}
-            We&apos;ve read this page before, so this is what we found {relativeDay(cachedFrom)} —
-            no waiting.
+    <div className="min-w-0">
+      <header className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-slate-100 px-6 py-3.5">
+        {/* On a phone the header is two lines: title + ✕, then the spine on its own. `order-last`
+            is what does it — five pips and "2 of 5 filed" do not fit beside a title at 375px, and
+            a capture is a notebook session, so there can be a great deal more than five. */}
+        <div className="min-w-0 flex-1 lg:w-[230px] lg:flex-none">
+          <h2 className="text-[15px] font-semibold tracking-tight text-ink">
+            Photograph your notes
+          </h2>
+          <p className="text-xs text-slate-400">
+            {blocks.length} note{blocks.length === 1 ? "" : "s"} from {pageCount} page
+            {pageCount === 1 ? "" : "s"}
+            {toCheck > 0 && ` · ${toCheck} worth a check`}
+          </p>
+        </div>
+        <div className="order-last flex w-full min-w-0 items-center lg:order-none lg:w-auto lg:flex-1 lg:justify-center">
+          <ProgressSpine blocks={blocks} focusId={focusId} onFocus={focus} />
+        </div>
+        <div className="flex items-center gap-2.5">
+          {/* Shown, not hidden in a help menu — a shortcut nobody knows about isn't one. */}
+          <span className="hidden items-center gap-1.5 rounded-[9px] bg-slate-50 px-2.5 py-1.5 text-[11px] text-slate-400 ring-1 ring-slate-200 xl:inline-flex">
+            <kbd className="rounded bg-white px-1.5 font-sans font-semibold text-slate-600 ring-1 ring-slate-200">
+              ↑↓
+            </kbd>
+            move
+            <kbd className="rounded bg-white px-1.5 font-sans font-semibold text-slate-600 ring-1 ring-slate-200">
+              1–4
+            </kbd>
+            where
+            <kbd className="rounded bg-white px-1.5 font-sans font-semibold text-slate-600 ring-1 ring-slate-200">
+              ⏎
+            </kbd>
+            file
           </span>
-          {onRerun && (
+          {onClose && (
             <button
               type="button"
-              onClick={onRerun}
-              className="font-medium text-primary-700 underline hover:text-primary-900"
+              onClick={onClose}
+              aria-label="Close"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] text-slate-400 transition-colors hover:bg-slate-100 hover:text-ink"
             >
-              Read it again from scratch
+              <X className="h-4 w-4" aria-hidden="true" />
             </button>
+          )}
+        </div>
+      </header>
+
+      {/* Three facts that used to arrive as stacked full-width banners before the student had
+          seen a single note. All true, none of them the first thing to do. Each states itself
+          in three words and holds its detail — and its undo — one click away. */}
+      {hasMeta && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50 px-6 py-2.5">
+          {cachedFrom && (
+            <MetaChip
+              open={panel === "cache"}
+              onToggle={() => toggle("cache")}
+              icon={<RotateCcw aria-hidden="true" className="h-3 w-3 text-slate-400" />}
+              label={`Read ${relativeDay(cachedFrom)}`}
+            >
+              {/* Say where it came from. A result that looks live but is months old would be
+                  worse than a slower one — and P41 says the re-read is free, so say that too. */}
+              <p>
+                We&apos;ve read this page before, so this is what we found {relativeDay(cachedFrom)}{" "}
+                — no waiting, and no charge against your daily photos. Your photo is unchanged.{" "}
+                {onRerun && (
+                  <button
+                    type="button"
+                    onClick={onRerun}
+                    className="font-semibold text-secondary-700 underline underline-offset-2 hover:text-secondary-800"
+                  >
+                    Read it again from scratch
+                  </button>
+                )}
+              </p>
+            </MetaChip>
+          )}
+
+          {corrections.length > 0 && (
+            <MetaChip
+              open={panel === "spell"}
+              onToggle={() => toggle("spell")}
+              icon={<SpellCheck aria-hidden="true" className="h-3 w-3 text-slate-400" />}
+              label={`${corrections.length} spelling${corrections.length === 1 ? "" : "s"} fixed`}
+            >
+              {/* The P24 boundary, stated: clinical spelling only. That's the reassuring part. */}
+              <p>
+                Spell-checked against UK clinical English — your wording and abbreviations are
+                untouched.
+              </p>
+              <p className="mt-1.5 flex flex-wrap gap-1.5">
+                {corrections.map((c) => {
+                  const [from, to] = c.split("|");
+                  return (
+                    <span
+                      key={c}
+                      className="whitespace-nowrap rounded bg-slate-100 px-1.5 py-0.5 text-[11px]"
+                    >
+                      <span className="line-through opacity-60">{from}</span> → {to}
+                    </span>
+                  );
+                })}
+              </p>
+            </MetaChip>
+          )}
+
+          {shift ? (
+            <ShiftChip
+              resolution={shift}
+              selectedShiftId={selectedShiftId}
+              onSelect={onSelectShift ?? (() => {})}
+              pageDateRaw={pageDateRaw}
+              open={panel === "shift"}
+              onToggle={() => toggle("shift")}
+            />
+          ) : (
+            // Shown exactly as written — the app resolves the year, the model never invents
+            // one (P8).
+            pageDateRaw && (
+              <span className="ml-auto text-[11px] text-slate-400">
+                Dated &ldquo;{pageDateRaw}&rdquo;
+              </span>
+            )
           )}
         </div>
       )}
 
-      {corrections.length > 0 && (
-        <p className="mt-2 rounded-lg bg-slate-50 p-2 text-xs text-slate-600">
-          <span className="font-medium">Spell-checked:</span>{" "}
-          {corrections.map((c) => {
-            const [from, to] = c.split("|");
-            return (
-              <span key={c} className="mr-2 whitespace-nowrap">
-                <span className="line-through opacity-60">{from}</span> → {to}
-              </span>
-            );
-          })}
-        </p>
-      )}
+      <div
+        className={`grid items-start ${imageUrl ? "grid-cols-1 lg:grid-cols-[340px_1fr]" : "grid-cols-1"}`}
+      >
+        {imageUrl && (
+          <aside className="min-w-0 border-b border-slate-100 bg-slate-50 p-5 lg:border-b-0 lg:border-r">
+            {wide ? (
+              <PagePreview imageUrl={imageUrl} blocks={blocks} focusId={focusId} onFocus={focus} />
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setPageOpen((v) => !v)}
+                  aria-expanded={pageOpen}
+                  className="flex w-full items-center gap-2 rounded-xl bg-white px-3.5 py-2.5 text-[13px] font-semibold text-slate-600 ring-1 ring-slate-200"
+                >
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={`h-4 w-4 text-slate-400 transition-transform ${pageOpen ? "rotate-180" : ""}`}
+                  />
+                  {pageOpen ? "Hide your page" : "See your page"}
+                </button>
+                {pageOpen && (
+                  <div className="mt-3">
+                    <PagePreview
+                      imageUrl={imageUrl}
+                      blocks={blocks}
+                      focusId={focusId}
+                      onFocus={focus}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </aside>
+        )}
 
-      {shift && (
-        <div className="mt-3">
-          <ShiftBar
-            resolution={shift}
-            selectedShiftId={selectedShiftId}
-            onSelect={onSelectShift ?? (() => {})}
-          />
+        <div className="min-w-0 p-6">
+          {/* Groups render only when non-empty: an empty "Filed" heading is a promise, not a
+              status, and an empty "Needs you" is the end of the job. */}
+          {pending.length > 0 &&
+            group(
+              `Needs you (${pending.length})`,
+              toCheck > 0 ? `${toCheck} worth a check` : "nothing flagged",
+              pending,
+              "pending",
+            )}
+          {/* Say plainly that filing created a genuine row (P4). */}
+          {filed.length > 0 && group(`Filed (${filed.length})`, "real entries now", filed, "filed")}
+
+          {(onClose || onStartAgain) && (
+            <div className="flex flex-wrap items-center gap-3.5 border-t border-slate-100 pt-4">
+              {onClose && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Close — this stays here
+                </button>
+              )}
+              {onStartAgain && (
+                <button
+                  type="button"
+                  onClick={onStartAgain}
+                  className="text-sm font-semibold text-slate-400 hover:text-ink hover:underline"
+                >
+                  Start again with a new photo
+                </button>
+              )}
+              <p className="ml-auto text-xs text-slate-400">
+                Closing keeps this page of notes — the Photo button brings it straight back.
+              </p>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
-      {/* Lanes on a wide screen (P35), the list everywhere else. Switched in JS rather than with
-          a CSS breakpoint so only ONE copy of each card is ever mounted — two would each hold
-          their own edit state and quietly diverge. */}
-      {wide ? (
-        <LaneBoard
-          blocks={blocks}
-          onMove={(id, target) => void handlers.onEdit(id, { targetType: target })}
-          renderBlock={card}
+      {/* Lanes were right that dragging needs somewhere to drop, and wrong about everything
+          else: there is nothing to drop until you pick a note up. Not rendered below `lg` —
+          touch drag is unreliable and the tiles already do the job (P35). */}
+      {dragging && wide && (
+        <DestinationDropBar
+          over={over}
+          onOver={setOver}
+          onLeave={() => setOver(undefined)}
+          onDrop={(t) => {
+            // The same write the lanes made. `kind` is deliberately left alone here: a drop
+            // says where it goes, and re-typing the note is the card's decision to make.
+            void handlers.onEdit(dragging, { targetType: t });
+            setDragging(undefined);
+            setOver(undefined);
+          }}
         />
-      ) : (
-        <ul className="mt-3 space-y-3">
-          {blocks.map((b, i) => (
-            <li key={b.id}>{card(b, i)}</li>
-          ))}
-        </ul>
       )}
     </div>
   );

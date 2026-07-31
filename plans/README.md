@@ -3,6 +3,20 @@
 Working implementation plans, grilled into shape before building. One file per piece
 of work.
 
+## 2026-07-31 — note capture review screen
+
+- **[note-capture-review-redesign.md](2026-07-31-note-capture-review-redesign.md)** —
+  **BUILT.** Re-layout of the photo-import review screen against
+  [`spec/spec-note-capture.md`](../spec/spec-note-capture.md), no behaviour change. Three
+  moves: the photo becomes the map (a sticky pane with each block outlined on the page,
+  click-to-focus both ways), one note expanded and the rest one line each grouped
+  `Needs you` / `Filed`, and destination as four tiles replacing both the `<select>` and
+  the four permanent lanes — which cost half the width to say four words. Three banners
+  collapse into one ~40px meta strip of chips; `LaneBoard` is gone and drag survives as a
+  drop bar that only exists during a drag; `↑↓` `1–4` `⏎` throughout. Adds one piece of
+  backend plumbing, `notes/presignPageImage`, so the review screen can actually show the
+  photo P1 has been retaining all along.
+
 ## 2026-07-20 — today's five
 
 1. **[Sentry feedback + error capture](2026-07-20-sentry-feedback.md)** — `@sentry/react`

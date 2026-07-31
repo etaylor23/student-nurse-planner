@@ -13,13 +13,45 @@ import "./helpers/setupDom";
 // Typed with the real signature so `mock.calls[0][1]` is checked, not `any`.
 const startCapture = vi.fn(async (_files: File[], _opts: { piiAcknowledged: boolean }) => {});
 const reset = vi.fn();
+/** A signed page URL expires, and the capture outlives the dialog — so opening it re-signs. */
+const ensurePageImage = vi.fn(async () => {});
 const useRepositoryMock = vi.fn(() => ({ isGuest: false }));
 /** Swapped per test so the dialog can be driven into its review stage. */
 let captureState: Record<string, unknown> = { stage: "idle" };
 
 vi.mock("../src/react/components/capture/config", () => ({
   MAX_IMAGES_PER_CAPTURE: 10,
+  DAILY_PHOTO_LIMIT: 10,
 }));
+
+/** A capture mid-review: 70 seconds of model time and real `NoteBlock` rows already written. */
+function inReview() {
+  captureState = {
+    stage: "review",
+    blocks: [
+      {
+        id: "blk-1",
+        userId: "u1",
+        captureId: "cap-1",
+        imageIndex: 0,
+        rawText: "Aciclovir - antiviral medication.",
+        text: "Aciclovir - antiviral medication.",
+        kind: "MEDICATION",
+        confidence: 1,
+        bboxX0: 0,
+        bboxY0: 0,
+        bboxX1: 1,
+        bboxY1: 1,
+        rotationDeg: 0,
+        status: "PENDING",
+        targetType: "MED_LOG",
+        createdAt: "2026-07-30T10:00:00.000Z",
+        updatedAt: "2026-07-30T10:00:00.000Z",
+      },
+    ],
+    parsed: [{ corrections: [], pageDateRaw: null, blocks: [] }],
+  };
+}
 
 vi.mock("../src/react/components/capture/useCapture", () => ({
   useCapture: () => ({
@@ -30,7 +62,10 @@ vi.mock("../src/react/components/capture/useCapture", () => ({
     allocate: vi.fn(),
     unallocate: vi.fn(),
     editBlock: vi.fn(),
+    dismissBlock: vi.fn(),
     createMedication: vi.fn(),
+    rerunFromScratch: vi.fn(),
+    ensurePageImage,
   }),
 }));
 
@@ -44,6 +79,7 @@ beforeEach(() => {
   useRepositoryMock.mockReturnValue({ isGuest: false });
   startCapture.mockClear();
   reset.mockClear();
+  ensurePageImage.mockClear();
   captureState = { stage: "idle" };
 });
 
@@ -105,35 +141,6 @@ describe("CaptureButton — the PII warning is unavoidable (P2)", () => {
 });
 
 describe("CaptureButton — closing must not cost the parse", () => {
-  /** A capture mid-review: 70 seconds of model time and real `NoteBlock` rows already written. */
-  function inReview() {
-    captureState = {
-      stage: "review",
-      blocks: [
-        {
-          id: "blk-1",
-          userId: "u1",
-          captureId: "cap-1",
-          imageIndex: 0,
-          rawText: "Aciclovir - antiviral medication.",
-          text: "Aciclovir - antiviral medication.",
-          kind: "MEDICATION",
-          confidence: 1,
-          bboxX0: 0,
-          bboxY0: 0,
-          bboxX1: 1,
-          bboxY1: 1,
-          rotationDeg: 0,
-          status: "PENDING",
-          targetType: "MED_LOG",
-          createdAt: "2026-07-30T10:00:00.000Z",
-          updatedAt: "2026-07-30T10:00:00.000Z",
-        },
-      ],
-      parsed: [{ corrections: [], pageDateRaw: null, blocks: [] }],
-    };
-  }
-
   it("does NOT close when the backdrop is clicked", () => {
     inReview();
     render(<CaptureButton />);
@@ -177,5 +184,26 @@ describe("CaptureButton — closing must not cost the parse", () => {
     expect(screen.getByLabelText("Close")).toHaveProperty("disabled", true);
     fireEvent.keyDown(window, { key: "Escape" });
     expect(screen.queryByRole("dialog")).toBeTruthy();
+  });
+});
+
+describe("CaptureButton — the page photo", () => {
+  it("re-signs the page URL when the dialog opens", () => {
+    // The signed GET lasts an hour, and the capture deliberately outlives the dialog — so a
+    // student who comes back later must not find a broken photo where their page was.
+    inReview();
+    render(<CaptureButton />);
+    expect(ensurePageImage).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByLabelText("Photograph your notes"));
+    expect(ensurePageImage).toHaveBeenCalledTimes(1);
+  });
+
+  it("reviews perfectly well without one", () => {
+    inReview();
+    render(<CaptureButton />);
+    fireEvent.click(screen.getByLabelText("Photograph your notes"));
+    // No `pageImageUrl` in state: the photo pane simply isn't there, and the notes are.
+    expect(screen.queryByAltText(/page of notes you photographed/i)).toBeNull();
+    expect(screen.getByRole("dialog").textContent).toContain("Aciclovir");
   });
 });

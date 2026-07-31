@@ -18,3 +18,13 @@ export function parseAvailable(): boolean {
 
 /** Max photos per capture, mirroring the server's `MAX_IMAGES_PER_CAPTURE` (P20). */
 export const MAX_IMAGES_PER_CAPTURE = 10;
+
+/**
+ * Photos per day, mirroring the server's `DAILY_PHOTO_LIMIT` (P17).
+ *
+ * Display only — the server counts, and the presign is what enforces it. Held separately from
+ * `MAX_IMAGES_PER_CAPTURE` even though the two are the same number today: one bounds a notebook
+ * session and the other bounds a day, and the cap screen would start lying the moment either
+ * moved.
+ */
+export const DAILY_PHOTO_LIMIT = 10;

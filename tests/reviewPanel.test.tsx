@@ -3,7 +3,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "./helpers/setupDom";
 import { ReviewPanel, type ReviewHandlers } from "../src/react/components/capture/ReviewPanel";
-import type { NoteBlock } from "../src/domain/types";
+import type { NoteBlock, Shift } from "../src/domain/types";
+import type { ShiftResolution } from "../src/logic/captureShift";
 
 /**
  * Review screen (spec-note-capture.md P35).
@@ -15,6 +16,11 @@ import type { NoteBlock } from "../src/domain/types";
  *
  * The panel reads the PERSISTED rows, so these fixtures are rows, not parse frames: that is
  * what allocation acts on, and what survives closing the dialog.
+ *
+ * **These assertions are about behaviour, not layout.** The screen was rebuilt around
+ * progressive disclosure — one note expanded, the rest one line each — so most selectors here
+ * now open something before asserting on it. What is asserted is unchanged: the same writes, the
+ * same guards, the same refusals to guess.
  */
 
 function block(over: Partial<NoteBlock> = {}): NoteBlock {
@@ -80,124 +86,177 @@ const KNOWN = {
   tagLabels: ["haematology"],
 };
 
-describe("ReviewPanel", () => {
-  it("renders every block's text so nothing parsed is hidden from the student", () => {
+/** The tiles are labelled with the full destination name, which is what gets announced. */
+const TILE = {
+  reflection: "Reflection",
+  medLog: "Medication log",
+  proficiency: "Proficiency evidence",
+  shift: "Shift notes",
+} as const;
+
+/** The drawer's own headings are `<p>`s. Scoping matters for "NMC evidence" in particular:
+ *  it is also the Proficiency tile's blurb, in a `<span>`. */
+const AS_LABEL = { selector: "p" } as const;
+
+/** Focus is what expands a note into a card, so most tests have to move it first. */
+function focusNote(n: number) {
+  return userEvent.setup().click(screen.getByLabelText(new RegExp(`^Go to note ${n}\\b`)));
+}
+
+/** The layout above `lg` — photo column, drag drop-bar. Chosen in JS, not CSS, so the test
+ *  picks the viewport by stubbing matchMedia (the same reason `useWideScreen` exists). */
+function wideScreen() {
+  const real = window.matchMedia;
+  window.matchMedia = ((q: string) => ({
+    matches: q.includes("min-width"),
+    media: q,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+  return () => {
+    window.matchMedia = real;
+  };
+}
+
+describe("ReviewPanel — progressive disclosure", () => {
+  it("expands ONE note and shows the rest as one line each", () => {
     render(<ReviewPanel blocks={BLOCKS} handlers={handlers()} />);
-    const boxes = screen.getAllByRole("textbox");
-    expect(boxes).toHaveLength(2);
-    expect((boxes[0] as HTMLTextAreaElement).value).toContain("Aciclovir - antiviral medication");
-    expect((boxes[1] as HTMLTextAreaElement).value).toContain("Filgrastim (GCSF)");
+    // The first version put every field of all five notes on one plane and there was no first
+    // action. Exactly one note is editable at a time now.
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
+    expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toContain(
+      "Aciclovir - antiviral medication",
+    );
+    // Nothing parsed is hidden, though — every other note is still on screen as a preview, so
+    // the whole page's routing reads in one eyeful.
+    expect(screen.getByText(/Filgrastim \(GCSF\)/)).toBeTruthy();
+    expect(screen.getByText("Needs you (2)")).toBeTruthy();
   });
 
-  it("shows BOTH readings of every disputed word (P22)", () => {
-    render(<ReviewPanel blocks={BLOCKS} handlers={handlers()} />);
-    // Disagreement is the only uncertainty signal that tracked correctness, so the student
-    // must be able to see what the alternative was — not just that something is uncertain.
-    for (const word of [
-      "Aciclovir",
-      "Acyclovir",
-      "Filgrastim",
-      "Filgastim",
-      "transplants",
-      "transplant",
-    ]) {
-      expect(screen.getAllByText(word).length).toBeGreaterThan(0);
-    }
-    expect(screen.getByText(/2 to check/)).toBeTruthy();
-  });
-
-  it("shows a code with its PLATFORM heading and full statement, not a bare number", () => {
-    render(<ReviewPanel blocks={BLOCKS} handlers={handlers()} />);
-    // "4.15" alone is meaningless to a student. The platform is the heading it needs, and the
-    // statement is what lets them judge whether the suggestion is right.
-    expect(screen.getAllByText(/Platform 4 · 4\.1[45]/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Demonstrate knowledge of pharmacology/i).length).toBeGreaterThan(0);
-    // Section heading, so it is obvious what the codes ARE.
-    expect(screen.getAllByText("NMC evidence").length).toBe(2);
-  });
-
-  it("lets a suggested code and a suggested tag be removed, and writes the removal back", async () => {
-    const user = userEvent.setup();
-    const h = handlers();
-    render(<ReviewPanel blocks={BLOCKS} handlers={h} />);
-
-    // A suggestion you cannot decline is not a suggestion.
-    const beforeTags = screen.getAllByText("haematology").length;
-    await user.click(screen.getAllByLabelText("Remove tag haematology")[0]);
-    expect(screen.getAllByText("haematology").length).toBe(beforeTags - 1);
-    // Persisted — a removal that didn't stick would reappear on the next read.
-    expect(h.onEdit).toHaveBeenCalledWith("blk-1", { suggestedTags: "antiviral,HSV" });
-
-    // Block 1 leads with 4.14, block 2 with 4.15 — one remove button each.
-    expect(screen.getByLabelText("Remove proficiency 4.14")).toBeTruthy();
-    await user.click(screen.getByLabelText("Remove proficiency 4.14"));
-    // Gone, and block 1 now leads with its next-ranked suggestion instead.
-    expect(screen.queryByLabelText("Remove proficiency 4.14")).toBeNull();
-    expect(screen.getAllByLabelText("Remove proficiency 4.15")).toHaveLength(2);
-    expect(h.onEdit).toHaveBeenCalledWith("blk-1", { candidateCodes: "4.15,3.3,2.12,B11.6" });
-  });
-
-  it("labels each part of a block so it's clear what belongs to what", () => {
-    render(<ReviewPanel blocks={BLOCKS} handlers={handlers()} />);
-    // The first version stacked target, group, disputes, tags and codes as undifferentiated
-    // chips and read as noise. These labels are what make it scannable.
-    for (const label of ["Drug", "Tags", "NMC evidence"]) {
-      expect(screen.getAllByText(label).length).toBeGreaterThan(0);
-    }
-    // Uncertainty is a badge, not a section heading, and the SAME badge everywhere (P22/P9).
-    expect(screen.getAllByText("worth a check").length).toBe(2);
-    // The raw group key is NOT surfaced — it meant nothing to a reader.
-    expect(screen.queryByText(/med-notes-haematology/)).toBeNull();
-  });
-
-  it("decides the block with ONE control, not a type AND a destination", async () => {
-    const user = userEvent.setup();
-    const h = handlers();
-    render(<ReviewPanel blocks={BLOCKS} handlers={h} />);
-
-    // `kind` and `targetType` were the same question asked twice. There is one select per card.
-    expect(screen.getAllByRole("combobox")).toHaveLength(2);
-    const where = screen.getAllByLabelText(/^Where block/);
-    expect((where[0] as HTMLSelectElement).value).toBe("MED_LOG");
-    expect(where[0].querySelectorAll("option")).toHaveLength(4);
-    // What it means, not just where it goes.
-    expect(screen.getAllByText("becomes a medication log").length).toBe(2);
-
-    await user.selectOptions(where[0], "REFLECTION");
-    // `kind` follows underneath — it's what the recall corpus reads later (P14).
-    expect(h.onEdit).toHaveBeenCalledWith("blk-1", {
-      targetType: "REFLECTION",
-      kind: "REFLECTION",
-    });
-  });
-
-  it("leaves `kind` alone when it already implies the new destination", async () => {
-    const user = userEvent.setup();
-    const h = handlers();
-    // A date header filed to shift notes: DATE_HEADER already maps to SHIFT_NOTES.
+  it("truncates a preview at a word boundary, never mid-drug-name", () => {
     render(
       <ReviewPanel
-        blocks={[block({ kind: "DATE_HEADER", targetType: "REFLECTION" })]}
-        handlers={h}
+        blocks={[
+          block(),
+          block({
+            id: "blk-2",
+            text: "Phenoxymethylpenicillin (Penicillin V) - antibiotic, treats pneumococcal and bacterial infections given to haematology patients.",
+          }),
+        ]}
+        handlers={handlers()}
       />,
     );
-
-    await user.selectOptions(screen.getByLabelText("Where block 1 goes"), "SHIFT_NOTES");
-    // No `kind` in the patch — turning it into an OBSERVATION would lose what it actually is.
-    expect(h.onEdit).toHaveBeenCalledWith("blk-1", { targetType: "SHIFT_NOTES" });
+    // "Phenoxymethyl…" and "Phenoxyethyl…" are the exact pair a student may be being asked to
+    // tell apart, so half a drug name is worse than a shorter line.
+    const preview = screen.getByText(/^Phenoxymethylpenicillin/).textContent ?? "";
+    expect(preview.endsWith("…")).toBe(true);
+    expect(preview).toContain("Phenoxymethylpenicillin (Penicillin V)");
+    for (const word of preview.replace("…", "").split(" ")) {
+      expect(
+        "Phenoxymethylpenicillin (Penicillin V) - antibiotic, treats pneumococcal and bacterial infections given to haematology patients.",
+      ).toContain(word);
+    }
   });
 
-  it("persists an edit to the text on blur, not on every keystroke", async () => {
+  it("moves focus with the arrow keys, and never into a filed note", async () => {
+    render(
+      <ReviewPanel
+        blocks={[block(), block({ id: "blk-2", status: "ALLOCATED" }), block({ id: "blk-3" })]}
+        handlers={handlers()}
+      />,
+    );
+    expect(screen.getByLabelText("Note 1 text")).toBeTruthy();
+    fireEvent.keyDown(window, { key: "ArrowDown" });
+    // Note 2 is filed — it is not a stop on the way, so ↓ lands on note 3.
+    expect(screen.getByLabelText("Note 3 text")).toBeTruthy();
+    fireEvent.keyDown(window, { key: "ArrowUp" });
+    expect(screen.getByLabelText("Note 1 text")).toBeTruthy();
+  });
+
+  it("does not fire shortcuts while the student is typing", async () => {
     const user = userEvent.setup();
     const h = handlers();
     render(<ReviewPanel blocks={BLOCKS} handlers={h} />);
-    const box = screen.getAllByRole("textbox")[0];
+
+    const box = screen.getByRole("textbox");
     await user.click(box);
-    await user.type(box, " Checked.");
+    // "4" is a destination shortcut AND a character. In a textarea it must be a character.
+    await user.type(box, " 4{Enter}");
+    expect(h.onAllocate).not.toHaveBeenCalled();
     expect(h.onEdit).not.toHaveBeenCalled();
-    await user.tab();
-    expect(h.onEdit).toHaveBeenCalledTimes(1);
-    expect((h.onEdit as ReturnType<typeof vi.fn>).mock.calls[0][1].text).toContain(" Checked.");
+    expect(screen.getByLabelText("Note 1 text")).toBeTruthy(); // ⏎ didn't file it either
+  });
+
+  it("has no bulk-accept control anywhere", () => {
+    render(<ReviewPanel blocks={BLOCKS} handlers={handlers()} />);
+    // Every note is filed by its own button, deliberately. A "file all" would make the whole
+    // review a formality.
+    for (const b of screen.getAllByRole("button")) {
+      expect(b.textContent ?? "").not.toMatch(/file all|accept all|approve all/i);
+    }
+  });
+});
+
+describe("ReviewPanel — the photo is the map (P1)", () => {
+  it("shows a region per note and focuses that note when one is clicked", async () => {
+    const restore = wideScreen();
+    try {
+      const user = userEvent.setup();
+      render(<ReviewPanel blocks={BLOCKS} imageUrl="https://s3/page.jpg" handlers={handlers()} />);
+
+      const regions = screen.getAllByLabelText(/^Note \d+ on the page$/);
+      expect(regions).toHaveLength(2);
+      // Geometry comes from the bbox fractions already on the row.
+      const box = (regions[0] as HTMLElement).style;
+      expect(parseFloat(box.left)).toBeCloseTo(18);
+      expect(parseFloat(box.top)).toBeCloseTo(10);
+      expect(parseFloat(box.width)).toBeCloseTo(64);
+      expect(parseFloat(box.height)).toBeCloseTo(14);
+
+      await user.click(screen.getByLabelText("Note 2 on the page"));
+      expect(screen.getByLabelText("Note 2 text")).toBeTruthy();
+      // And back the other way: focusing a note marks its region as the current one.
+      expect(screen.getByLabelText("Note 2 on the page").getAttribute("aria-current")).toBe("true");
+      expect(screen.getByLabelText("Note 1 on the page").getAttribute("aria-current")).toBe(
+        "false",
+      );
+    } finally {
+      restore();
+    }
+  });
+
+  it("stands up with no photo at all — the pane is an enhancement, not the route in", () => {
+    render(<ReviewPanel blocks={BLOCKS} handlers={handlers()} />);
+    expect(screen.queryByLabelText(/on the page$/)).toBeNull();
+    // Still every note, still editable.
+    expect(screen.getByLabelText("Note 1 text")).toBeTruthy();
+    expect(screen.getByText("Needs you (2)")).toBeTruthy();
+  });
+});
+
+describe("ReviewPanel — the notes themselves", () => {
+  it("shows BOTH readings of every disputed word (P22)", async () => {
+    render(<ReviewPanel blocks={BLOCKS} handlers={handlers()} />);
+    // Disagreement is the only uncertainty signal that tracked correctness, so the student must
+    // be able to see what the alternative was — not just that something is uncertain.
+    for (const word of ["Aciclovir", "Acyclovir"]) {
+      expect(screen.getAllByRole("button", { name: word }).length).toBeGreaterThan(0);
+    }
+    // Both flagged notes say so before they're opened, and both the header and the group say
+    // how many there are — the same count in the two places a student looks for it.
+    expect(screen.getAllByText("worth a check")).toHaveLength(2);
+    expect(screen.getAllByText(/2 worth a check/)).toHaveLength(2);
+
+    await focusNote(2);
+    // Two disputed pairs, so two questions and two controls — not one merged into the other.
+    for (const word of ["Filgrastim", "Filgastim", "transplants", "transplant"]) {
+      expect(screen.getAllByRole("button", { name: word }).length).toBeGreaterThan(0);
+    }
+    expect(screen.getAllByText(/which matches your handwriting/)).toHaveLength(2);
   });
 
   it("choosing a reading rewrites the text AND saves it", async () => {
@@ -206,7 +265,7 @@ describe("ReviewPanel", () => {
     render(<ReviewPanel blocks={BLOCKS} handlers={h} />);
     // Pick the check model's reading; the word must actually change in the note.
     await user.click(screen.getByRole("button", { name: "Acyclovir" }));
-    expect((screen.getAllByRole("textbox")[0] as HTMLTextAreaElement).value).toContain("Acyclovir");
+    expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toContain("Acyclovir");
     // Both the new text and the shortened dispute list, so the page doesn't ask again.
     expect(h.onEdit).toHaveBeenCalledWith("blk-1", {
       text: expect.stringContaining("Acyclovir") as unknown as string,
@@ -216,21 +275,17 @@ describe("ReviewPanel", () => {
     expect(screen.queryByRole("button", { name: "Acyclovir" })).toBeNull();
   });
 
-  it("shows sanitiser corrections when there are any (P24)", () => {
-    render(
-      <ReviewPanel
-        blocks={BLOCKS}
-        corrections={["Phenoxyethylpenicillin|Phenoxymethylpenicillin"]}
-        handlers={handlers()}
-      />,
-    );
-    expect(screen.getByText(/Spell-checked/)).toBeTruthy();
-    expect(screen.getByText("Phenoxyethylpenicillin")).toBeTruthy();
-  });
-
-  it("shows a page date exactly as written, never normalised (P8)", () => {
-    render(<ReviewPanel blocks={BLOCKS} pageDateRaw="22/7" handlers={handlers()} />);
-    expect(screen.getByText(/22\/7/)).toBeTruthy();
+  it("persists an edit to the text on blur, not on every keystroke", async () => {
+    const user = userEvent.setup();
+    const h = handlers();
+    render(<ReviewPanel blocks={BLOCKS} handlers={h} />);
+    const box = screen.getByRole("textbox");
+    await user.click(box);
+    await user.type(box, " Checked.");
+    expect(h.onEdit).not.toHaveBeenCalled();
+    await user.tab();
+    expect(h.onEdit).toHaveBeenCalledTimes(1);
+    expect((h.onEdit as ReturnType<typeof vi.fn>).mock.calls[0][1].text).toContain(" Checked.");
   });
 
   it("offers a way back to exactly what was on the page, but only once it differs", async () => {
@@ -248,6 +303,174 @@ describe("ReviewPanel", () => {
     // Nothing to revert to once it matches, so the control goes away rather than lying.
     expect(screen.queryByRole("button", { name: "Back to what was on the page" })).toBeNull();
   });
+
+  it("names what the classifier thought each note was", () => {
+    render(<ReviewPanel blocks={BLOCKS} handlers={handlers()} />);
+    expect(screen.getByText("Medication")).toBeTruthy();
+    // The raw group key is NOT surfaced — it meant nothing to a reader.
+    expect(screen.queryByText(/med-notes-haematology/)).toBeNull();
+  });
+});
+
+describe("ReviewPanel — where a note goes", () => {
+  it("decides the note with ONE control, four visible options and no select", async () => {
+    const user = userEvent.setup();
+    const h = handlers();
+    render(<ReviewPanel blocks={BLOCKS} handlers={h} />);
+
+    // `kind` and `targetType` were the same question asked twice, and a select hid three of the
+    // four answers behind a click.
+    expect(screen.queryAllByRole("combobox")).toHaveLength(0);
+    expect(screen.getByText("Where does this go?")).toBeTruthy();
+    for (const label of Object.values(TILE)) {
+      expect(screen.getByRole("button", { name: label })).toBeTruthy();
+    }
+    // The classifier's route is pre-selected, not defaulted.
+    expect(screen.getByRole("button", { name: TILE.medLog }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+    // ...and what each one becomes, so the choice isn't four bare nouns.
+    expect(screen.getByText("A medication log")).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: TILE.reflection }));
+    // `kind` follows underneath — it's what the recall corpus reads later (P14).
+    expect(h.onEdit).toHaveBeenCalledWith("blk-1", {
+      targetType: "REFLECTION",
+      kind: "REFLECTION",
+    });
+  });
+
+  it("sets the destination from the keyboard, on the number printed on the tile", () => {
+    const h = handlers();
+    render(<ReviewPanel blocks={[block()]} handlers={h} />);
+    fireEvent.keyDown(window, { key: "3" });
+    expect(h.onEdit).toHaveBeenCalledWith("blk-1", {
+      targetType: "PROFICIENCY_EVENT",
+      kind: "CLINICAL_SKILL",
+    });
+  });
+
+  it("leaves `kind` alone when it already implies the new destination", async () => {
+    const user = userEvent.setup();
+    const h = handlers();
+    // A date header filed to shift notes: DATE_HEADER already maps to SHIFT_NOTES.
+    render(
+      <ReviewPanel
+        blocks={[block({ kind: "DATE_HEADER", targetType: "REFLECTION" })]}
+        handlers={h}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: TILE.shift }));
+    // No `kind` in the patch — turning it into an OBSERVATION would lose what it actually is.
+    expect(h.onEdit).toHaveBeenCalledWith("blk-1", { targetType: "SHIFT_NOTES" });
+  });
+
+  it("marks an unrouted note's row undecided rather than guessing at it (P34)", () => {
+    render(
+      <ReviewPanel
+        blocks={[block(), block({ id: "blk-2", kind: "UNKNOWN", targetType: undefined })]}
+        handlers={handlers()}
+      />,
+    );
+    // A dashed, unfilled chip — an empty slot, not a value.
+    expect(screen.getByText("Not decided")).toBeTruthy();
+  });
+
+  it("shows the four destinations ONLY inside the focused note", () => {
+    render(<ReviewPanel blocks={BLOCKS} handlers={handlers()} />);
+    // Four permanently-visible lanes cost about half the width to communicate four labels.
+    // There is exactly one set of tiles on screen: the one belonging to the note being decided.
+    expect(screen.getAllByRole("button", { name: TILE.reflection })).toHaveLength(1);
+    expect(screen.queryByText(/Drag a note here/)).toBeNull();
+  });
+});
+
+describe("ReviewPanel — the detail drawer only shows what the destination needs", () => {
+  it("shows the drug-card offer for a medication log, and no NMC picker", () => {
+    render(<ReviewPanel blocks={[block()]} known={KNOWN} handlers={handlers()} />);
+    expect(screen.getByText("Drug card")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add Aciclovir" })).toBeTruthy();
+    // Codes are not this note's question — it isn't going to a proficiency.
+    expect(screen.queryByText("NMC evidence", AS_LABEL)).toBeNull();
+  });
+
+  it("shows the code shortlist and its full statement once it IS proficiency evidence", async () => {
+    const user = userEvent.setup();
+    render(<ReviewPanel blocks={[block()]} handlers={handlers()} />);
+    await user.click(screen.getByRole("button", { name: TILE.proficiency }));
+
+    expect(screen.getByText("NMC evidence", AS_LABEL)).toBeTruthy();
+    // "4.14" alone is meaningless to a student: the platform is the heading it needs, and the
+    // statement is what lets them judge whether the suggestion is right.
+    expect(screen.getByText(/Platform 4 · 4\.14/)).toBeTruthy();
+    expect(screen.getByText(/principles of safe and effective administration/i)).toBeTruthy();
+    // Every code is a pill, and the leading one — the one filing records against — is selected.
+    expect(
+      screen.getByRole("button", { name: /^Evidence 4\.14/ }).getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(
+      screen.getByRole("button", { name: /^Evidence 3\.3/ }).getAttribute("aria-pressed"),
+    ).toBe("false");
+  });
+
+  it("shows the reflection stages it found rather than promising them", async () => {
+    const user = userEvent.setup();
+    render(
+      <ReviewPanel
+        blocks={[block()]}
+        gibbsByRawText={{
+          [block().rawText]: { DESCRIPTION: "First supervised injection.", FEELINGS: "Nervous." },
+        }}
+        handlers={handlers()}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: TILE.reflection }));
+    expect(screen.getByText("Reflection stages we found")).toBeTruthy();
+    expect(screen.getByText("First supervised injection.")).toBeTruthy();
+    expect(screen.getByText("Nervous.")).toBeTruthy();
+  });
+
+  it("asks nothing extra for shift notes, but still offers the tags", async () => {
+    const user = userEvent.setup();
+    render(<ReviewPanel blocks={[block()]} known={KNOWN} handlers={handlers()} />);
+    await user.click(screen.getByRole("button", { name: TILE.shift }));
+    // Tags apply to all four destinations, so they are never the thing that disappears.
+    expect(screen.getByLabelText("Don't apply tag haematology")).toBeTruthy();
+    expect(screen.queryByText("Drug card")).toBeNull();
+    expect(screen.queryByText("NMC evidence", AS_LABEL)).toBeNull();
+  });
+
+  it("lets a suggested code and a suggested tag be removed, and writes the removal back", async () => {
+    const user = userEvent.setup();
+    const h = handlers();
+    render(<ReviewPanel blocks={[block()]} known={KNOWN} handlers={h} />);
+
+    // A suggestion you cannot decline is not a suggestion.
+    await user.click(screen.getByLabelText("Remove tag haematology"));
+    expect(screen.queryByLabelText("Remove tag haematology")).toBeNull();
+    // Persisted — a removal that didn't stick would reappear on the next read.
+    expect(h.onEdit).toHaveBeenCalledWith("blk-1", { suggestedTags: "antiviral,HSV" });
+
+    await user.click(screen.getByRole("button", { name: TILE.proficiency }));
+    await user.click(screen.getByLabelText("Remove proficiency 4.14"));
+    // Gone, and the note now leads with its next-ranked suggestion instead.
+    expect(screen.queryByLabelText("Remove proficiency 4.14")).toBeNull();
+    expect(h.onEdit).toHaveBeenCalledWith("blk-1", { candidateCodes: "4.15,3.3,2.12,B11.6" });
+    expect(screen.getByText(/Platform 4 · 4\.15/)).toBeTruthy();
+  });
+
+  it("promotes the code the student picks above the model's ranking", async () => {
+    const user = userEvent.setup();
+    const h = handlers();
+    render(<ReviewPanel blocks={[block()]} handlers={h} />);
+    await user.click(screen.getByRole("button", { name: TILE.proficiency }));
+    await user.click(screen.getByRole("button", { name: /^Evidence 3\.3/ }));
+
+    expect(h.onEdit).toHaveBeenCalledWith("blk-1", {
+      candidateCodes: "3.3,4.14,4.15,2.12,B11.6",
+    });
+  });
 });
 
 describe("ReviewPanel — the full taxonomy (P28)", () => {
@@ -255,6 +478,7 @@ describe("ReviewPanel — the full taxonomy (P28)", () => {
     const user = userEvent.setup();
     const h = handlers();
     render(<ReviewPanel blocks={[block()]} handlers={h} />);
+    await user.click(screen.getByRole("button", { name: TILE.proficiency }));
 
     await user.click(screen.getByRole("button", { name: "Find a different proficiency" }));
     await user.type(screen.getByLabelText("Search NMC proficiencies"), "hand hygiene");
@@ -269,124 +493,167 @@ describe("ReviewPanel — the full taxonomy (P28)", () => {
     expect(patch.candidateCodes).toContain("4.14"); // the shortlist is kept, not thrown away
   });
 
-  it("stays reachable when the classifier suggested nothing at all", () => {
+  it("stays reachable when the classifier suggested nothing at all", async () => {
+    const user = userEvent.setup();
     render(<ReviewPanel blocks={[block({ candidateCodes: undefined })]} handlers={handlers()} />);
+    await user.click(screen.getByRole("button", { name: TILE.proficiency }));
     // Without this, a note evidencing something the classifier missed has no route in.
     expect(screen.getByRole("button", { name: "Find a different proficiency" })).toBeTruthy();
     expect(screen.getByText(/No proficiency suggested/)).toBeTruthy();
   });
 });
 
-describe("ReviewPanel — wide-screen lanes (P35)", () => {
-  /** Lanes are chosen in JS, not CSS, so the test picks the viewport by stubbing matchMedia. */
-  function wideScreen() {
-    const real = window.matchMedia;
-    window.matchMedia = ((q: string) => ({
-      matches: q.includes("min-width"),
-      media: q,
-      onchange: null,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      addListener: () => {},
-      removeListener: () => {},
-      dispatchEvent: () => false,
-    })) as unknown as typeof window.matchMedia;
-    return () => {
-      window.matchMedia = real;
+describe("ReviewPanel — the meta strip", () => {
+  it("states a stored reading in three words and holds the detail one click away (P41)", async () => {
+    const user = userEvent.setup();
+    const onRerun = vi.fn();
+    render(
+      <ReviewPanel
+        blocks={BLOCKS}
+        cachedFrom={new Date(Date.now() - 2 * 86_400_000).toISOString()}
+        onRerun={onRerun}
+        handlers={handlers()}
+      />,
+    );
+
+    // The fact is never hidden — the chip says it — but the explanation is opt-in.
+    const chip = screen.getByRole("button", { name: /Read 2 days ago/ });
+    expect(chip.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText(/read this page before/i)).toBeNull();
+
+    await user.click(chip);
+    // A stored result that looked live would be worse than a slower one — and P41 says the
+    // re-read is free, which the UI never used to mention.
+    expect(screen.getByText(/read this page before/i)).toBeTruthy();
+    expect(screen.getByText(/no charge against your daily photos/i)).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: /Read it again from scratch/i }));
+    expect(onRerun).toHaveBeenCalledTimes(1);
+  });
+
+  it("says nothing at all when the parse was live", () => {
+    render(<ReviewPanel blocks={BLOCKS} handlers={handlers()} />);
+    expect(screen.queryByRole("button", { name: /^Read / })).toBeNull();
+  });
+
+  it("shows sanitiser corrections and states the boundary they respect (P24)", async () => {
+    const user = userEvent.setup();
+    render(
+      <ReviewPanel
+        blocks={BLOCKS}
+        corrections={["Phenoxyethylpenicillin|Phenoxymethylpenicillin"]}
+        handlers={handlers()}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "1 spelling fixed" }));
+    expect(screen.getByText("Phenoxyethylpenicillin")).toBeTruthy();
+    // The reassuring half of P24: clinical spelling only, never their words.
+    expect(screen.getByText(/wording and abbreviations are untouched/i)).toBeTruthy();
+  });
+
+  it("opens one panel at a time", async () => {
+    const user = userEvent.setup();
+    render(
+      <ReviewPanel
+        blocks={BLOCKS}
+        cachedFrom={new Date().toISOString()}
+        corrections={["a|b"]}
+        handlers={handlers()}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /Read earlier today/ }));
+    await user.click(screen.getByRole("button", { name: "1 spelling fixed" }));
+    // Three stacked banners were the problem. Two open panels would be the same problem.
+    expect(
+      screen.getByRole("button", { name: /Read earlier today/ }).getAttribute("aria-expanded"),
+    ).toBe("false");
+    expect(screen.queryByText(/read this page before/i)).toBeNull();
+  });
+
+  it("shows a page date exactly as written, never normalised (P8)", () => {
+    render(<ReviewPanel blocks={BLOCKS} pageDateRaw="22/7" handlers={handlers()} />);
+    expect(screen.getByText(/22\/7/)).toBeTruthy();
+  });
+});
+
+describe("ReviewPanel — which shift the page belongs to (P9)", () => {
+  function shift(id: string, date: string): Shift {
+    return {
+      id,
+      userId: "u1",
+      date,
+      shiftType: "LONG_DAY",
+      entryMode: "NET",
+      netHours: 11.5,
+      isSimulated: false,
+      status: "COMPLETED",
+      createdAt: "2026-07-23T06:00:00.000Z",
+      updatedAt: "2026-07-23T06:00:00.000Z",
     };
   }
+  const fallback: ShiftResolution = {
+    suggested: { shift: shift("sh-1", "2026-07-23"), confidence: "FALLBACK_RECENT" },
+    candidates: [
+      { shift: shift("sh-1", "2026-07-23"), confidence: "FALLBACK_RECENT" },
+      { shift: shift("sh-2", "2026-07-21"), confidence: "FALLBACK_RECENT" },
+    ],
+    isFallback: true,
+  };
 
-  it("stays a list on a narrow screen — mobile is the primary path", () => {
-    render(<ReviewPanel blocks={BLOCKS} handlers={handlers()} />);
-    expect(screen.queryByLabelText("Medication log column")).toBeNull();
+  it("flags a recency guess as a guess, and never as a date match", async () => {
+    const user = userEvent.setup();
+    render(
+      <ReviewPanel
+        blocks={[block()]}
+        shift={fallback}
+        selectedShiftId="sh-1"
+        handlers={handlers()}
+      />,
+    );
+    // The model invented a year once already. A guess has to stay distinguishable from a match.
+    const chip = screen.getByRole("button", { name: /Thu 23 Jul/ });
+    expect(chip.textContent).toContain("worth a check");
+
+    await user.click(chip);
+    expect(screen.getByText(/just your most recent shift/i)).toBeTruthy();
   });
 
-  it("puts each block in the column for where it will be filed", () => {
-    const restore = wideScreen();
-    try {
-      render(
-        <ReviewPanel
-          blocks={[block(), block({ id: "blk-2", targetType: "REFLECTION" })]}
-          handlers={handlers()}
-        />,
-      );
-      // All four routes are visible at once, which is the whole point of the layout.
-      for (const lane of [
-        "Reflection column",
-        "Medication log column",
-        "Proficiency evidence column",
-        "Shift notes column",
-      ]) {
-        expect(screen.getByLabelText(lane)).toBeTruthy();
-      }
-      const meds = screen.getByLabelText("Medication log column");
-      expect(meds.textContent).toContain("Medication log (1)");
-      expect(screen.getByLabelText("Reflection column").textContent).toContain("Reflection (1)");
-      // Only ONE copy of each card is mounted, or each would hold its own edit state.
-      expect(screen.getAllByRole("textbox")).toHaveLength(2);
-    } finally {
-      restore();
-    }
+  it("re-attaches the page to another shift, and to none", async () => {
+    const user = userEvent.setup();
+    const onSelectShift = vi.fn();
+    render(
+      <ReviewPanel
+        blocks={[block()]}
+        shift={fallback}
+        selectedShiftId="sh-1"
+        onSelectShift={onSelectShift}
+        handlers={handlers()}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /Thu 23 Jul/ }));
+    await user.click(screen.getByRole("button", { name: /Tue 21 Jul/ }));
+    expect(onSelectShift).toHaveBeenCalledWith("sh-2");
+
+    await user.click(screen.getByRole("button", { name: "Don't attach to a shift" }));
+    expect(onSelectShift).toHaveBeenCalledWith(undefined);
   });
 
-  it("gives blocks the classifier wouldn't route their own honest area (P34)", () => {
-    const restore = wideScreen();
-    try {
-      render(
-        <ReviewPanel
-          blocks={[block({ kind: "UNKNOWN", targetType: undefined })]}
-          handlers={handlers()}
-        />,
-      );
-      expect(screen.getByText(/Not decided \(1\)/)).toBeTruthy();
-      // An empty lane reads as a drop target rather than as an empty list.
-      expect(screen.getByLabelText("Shift notes column").textContent).toContain("Drag a note here");
-    } finally {
-      restore();
-    }
-  });
-
-  it("retypes the block when it's dropped in another column", () => {
-    const restore = wideScreen();
-    try {
-      const h = handlers();
-      render(<ReviewPanel blocks={[block()]} handlers={h} />);
-
-      const card = screen.getByLabelText("Medication log column").querySelector("li")!;
-      fireEvent.dragStart(card);
-      const lane = screen.getByLabelText("Reflection column");
-      fireEvent.dragOver(lane);
-      fireEvent.drop(lane);
-
-      // The lane view and the card's own target control write the SAME field, so they agree.
-      expect(h.onEdit).toHaveBeenCalledWith("blk-1", { targetType: "REFLECTION" });
-    } finally {
-      restore();
-    }
-  });
-
-  it("won't let a block that's already filed be dragged somewhere else", () => {
-    const restore = wideScreen();
-    try {
-      const h = handlers();
-      render(<ReviewPanel blocks={[block({ status: "ALLOCATED" })]} handlers={h} />);
-
-      const card = screen.getByLabelText("Medication log column").querySelector("li")!;
-      expect(card.getAttribute("draggable")).toBe("false");
-      fireEvent.dragStart(card);
-      fireEvent.drop(screen.getByLabelText("Reflection column"));
-
-      // The real row already exists; moving the block would leave the two out of step.
-      expect(h.onEdit).not.toHaveBeenCalled();
-    } finally {
-      restore();
-    }
+  it("says so plainly when there are no shifts to attach to", () => {
+    render(
+      <ReviewPanel
+        blocks={[block()]}
+        shift={{ candidates: [], isFallback: true }}
+        handlers={handlers()}
+      />,
+    );
+    expect(screen.getByText(/no shifts logged yet/i)).toBeTruthy();
   });
 });
 
 describe("ReviewPanel — medication cards (P33)", () => {
-  it("links a block to the card the student already has, without asking", () => {
+  it("links a block to the card the student already has, without asking", async () => {
     render(<ReviewPanel blocks={BLOCKS} known={KNOWN} handlers={handlers()} />);
+    await focusNote(2);
     // Same drug, same card — nothing to decide.
     expect(screen.getByText(/Linked to your/)).toBeTruthy();
     expect(screen.getByText("Filgrastim", { selector: "span.font-medium" })).toBeTruthy();
@@ -404,7 +671,7 @@ describe("ReviewPanel — medication cards (P33)", () => {
       "Aciclovir",
       expect.stringContaining("antiviral medication") as unknown as string,
     );
-    await user.click(screen.getByRole("button", { name: /^File as|^File it/ }));
+    await user.click(screen.getByRole("button", { name: /^File as/ }));
     expect((h.onAllocate as ReturnType<typeof vi.fn>).mock.calls[0][1].medicationId).toBe(
       "med-new",
     );
@@ -418,7 +685,7 @@ describe("ReviewPanel — medication cards (P33)", () => {
     await user.click(screen.getByRole("button", { name: "No thanks" }));
     expect(h.onCreateMedication).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("button", { name: /^File as|^File it/ }));
+    await user.click(screen.getByRole("button", { name: /^File as/ }));
     // Declining a card is not declining the note.
     expect(h.onAllocate).toHaveBeenCalled();
     expect(
@@ -433,7 +700,7 @@ describe("ReviewPanel — filing (P4/P19)", () => {
     const h = handlers();
     render(<ReviewPanel blocks={BLOCKS} known={KNOWN} handlers={h} />);
 
-    await user.click(screen.getAllByRole("button", { name: /^File as|^File it/ })[0]);
+    await user.click(screen.getByRole("button", { name: /^File as/ }));
 
     expect(h.onAllocate).toHaveBeenCalledWith("blk-1", {
       targetType: "MED_LOG", // pre-selected from the block, not defaulted
@@ -445,13 +712,26 @@ describe("ReviewPanel — filing (P4/P19)", () => {
     });
   });
 
+  it("files with ⏎ and writes exactly what the button would", async () => {
+    const h = handlers();
+    render(<ReviewPanel blocks={[block()]} known={KNOWN} handlers={h} />);
+    fireEvent.keyDown(window, { key: "Enter" });
+    expect(h.onAllocate).toHaveBeenCalledWith("blk-1", {
+      targetType: "MED_LOG",
+      proficiencyId: "prof_4.14",
+      tags: ["haematology"],
+      gibbs: undefined,
+      medicationId: undefined,
+    });
+  });
+
   it("respects a different target chosen in review", async () => {
     const user = userEvent.setup();
     const h = handlers();
     render(<ReviewPanel blocks={BLOCKS} handlers={h} />);
 
-    await user.selectOptions(screen.getAllByLabelText(/^Where block/)[0], "REFLECTION");
-    await user.click(screen.getAllByRole("button", { name: /^File as|^File it/ })[0]);
+    await user.click(screen.getByRole("button", { name: TILE.reflection }));
+    await user.click(screen.getByRole("button", { name: /^File as/ }));
 
     expect((h.onAllocate as ReturnType<typeof vi.fn>).mock.calls[0][1].targetType).toBe(
       "REFLECTION",
@@ -463,13 +743,12 @@ describe("ReviewPanel — filing (P4/P19)", () => {
     const h = handlers();
     render(<ReviewPanel blocks={[block({ candidateCodes: undefined })]} handlers={h} />);
 
-    await user.selectOptions(screen.getByLabelText("Where block 1 goes"), "PROFICIENCY_EVENT");
+    await user.click(screen.getByRole("button", { name: TILE.proficiency }));
     // Status and part index are the student's judgement, so there is nothing to guess from.
-    expect(screen.getByText("pick a proficiency first")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /^File as|^File it/ })).toHaveProperty(
-      "disabled",
-      true,
-    );
+    expect(screen.getByText("Pick a proficiency first.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^File as/ })).toHaveProperty("disabled", true);
+    fireEvent.keyDown(window, { key: "Enter" });
+    // The shortcut cannot get past a guard the button holds.
     expect(h.onAllocate).not.toHaveBeenCalled();
   });
 
@@ -481,22 +760,16 @@ describe("ReviewPanel — filing (P4/P19)", () => {
     );
 
     // Quietly defaulting is how a reflection ends up appended to a shift as a wall of text.
-    expect(screen.getByRole("button", { name: /^File as|^File it/ })).toHaveProperty(
-      "disabled",
-      true,
-    );
-    expect(screen.getByText("choose where it goes first")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^File it/ })).toHaveProperty("disabled", true);
+    expect(screen.getByText("Choose where it goes first.")).toBeTruthy();
 
-    await user.selectOptions(screen.getByLabelText("Where block 1 goes"), "REFLECTION");
+    await user.click(screen.getByRole("button", { name: TILE.reflection }));
     // UNKNOWN doesn't imply a reflection, so `kind` is brought along.
     expect(h.onEdit).toHaveBeenCalledWith("blk-1", {
       targetType: "REFLECTION",
       kind: "REFLECTION",
     });
-    expect(screen.getByRole("button", { name: /^File as|^File it/ })).toHaveProperty(
-      "disabled",
-      false,
-    );
+    expect(screen.getByRole("button", { name: /^File as/ })).toHaveProperty("disabled", false);
   });
 
   it("surfaces a refusal from allocation instead of failing silently", async () => {
@@ -506,11 +779,11 @@ describe("ReviewPanel — filing (P4/P19)", () => {
     });
     render(<ReviewPanel blocks={[block()]} handlers={h} />);
 
-    await user.click(screen.getByRole("button", { name: /^File as|^File it/ }));
+    await user.click(screen.getByRole("button", { name: /^File as/ }));
     expect(screen.getByText("Attach this to a shift.")).toBeTruthy();
   });
 
-  it("an ALLOCATED block reads as filed, is locked for editing, and offers Undo", async () => {
+  it("collapses a filed block into its own group, locked, with an Undo", async () => {
     const user = userEvent.setup();
     const h = handlers();
     render(
@@ -520,44 +793,24 @@ describe("ReviewPanel — filing (P4/P19)", () => {
       />,
     );
 
-    expect(screen.getByText(/Filed as Medication log/)).toBeTruthy();
-    expect(screen.getByText(/1 filed/)).toBeTruthy();
+    expect(screen.getByText("Filed (1)")).toBeTruthy();
+    // Say plainly that filing created a genuine row (P4).
+    expect(screen.getByText("real entries now")).toBeTruthy();
+    expect(screen.getByText("Filed as Medication log")).toBeTruthy();
+    expect(screen.getByText(/1 of 1 filed/)).toBeTruthy();
     // Editing the text of a block that has already become a real row would leave the two out
-    // of step, so it's locked until the student undoes the filing.
-    expect(screen.getByRole("textbox")).toHaveProperty("disabled", true);
-    // A filed block is settled — its disputes are no longer a question.
-    expect(screen.queryByText("Worth a check")).toBeNull();
+    // of step, so there is no textarea until the student undoes the filing.
+    expect(screen.queryByRole("textbox")).toBeNull();
+    // A filed block is settled — its disputes are no longer a question, and it can't be filed
+    // again or dismissed.
+    expect(screen.queryByText("worth a check")).toBeNull();
     expect(screen.queryByRole("button", { name: /^File as|^File it/ })).toBeNull();
+    expect(screen.queryByLabelText("Remove note 1")).toBeNull();
+    // Nothing is left to do, so there is no "Needs you" group pretending otherwise.
+    expect(screen.queryByText(/Needs you/)).toBeNull();
 
     await user.click(screen.getByRole("button", { name: "Undo" }));
     expect(h.onUnallocate).toHaveBeenCalledWith("blk-1");
-  });
-
-  it("includes a new tag once the student ticks it", async () => {
-    const user = userEvent.setup();
-    const h = handlers();
-    render(<ReviewPanel blocks={[block()]} known={KNOWN} handlers={h} />);
-
-    // A new label is a permanent addition to the vocabulary their index is built on, so it is
-    // opt-in — but opting in has to work.
-    await user.click(screen.getByLabelText("Apply tag antiviral"));
-    await user.click(screen.getByRole("button", { name: /^File as|^File it/ }));
-
-    expect((h.onAllocate as ReturnType<typeof vi.fn>).mock.calls[0][1].tags).toEqual([
-      "haematology",
-      "antiviral",
-    ]);
-  });
-
-  it("un-ticks a tag the student already uses if they don't want it here", async () => {
-    const user = userEvent.setup();
-    const h = handlers();
-    render(<ReviewPanel blocks={[block()]} known={KNOWN} handlers={h} />);
-
-    await user.click(screen.getByLabelText("Don't apply tag haematology"));
-    await user.click(screen.getByRole("button", { name: /^File as|^File it/ }));
-
-    expect((h.onAllocate as ReturnType<typeof vi.fn>).mock.calls[0][1].tags).toEqual([]);
   });
 
   it("tells the student when an undo could not be cleanly reversed", async () => {
@@ -576,15 +829,96 @@ describe("ReviewPanel — filing (P4/P19)", () => {
     // Silently deleting a paragraph the student had rewritten would be worse than saying so.
     expect(screen.getByText("That text has been edited in your notes.")).toBeTruthy();
   });
+
+  it("includes a new tag once the student ticks it", async () => {
+    const user = userEvent.setup();
+    const h = handlers();
+    render(<ReviewPanel blocks={[block()]} known={KNOWN} handlers={h} />);
+
+    // A new label is a permanent addition to the vocabulary their index is built on, so it is
+    // opt-in — but opting in has to work.
+    await user.click(screen.getByLabelText("Apply tag antiviral"));
+    await user.click(screen.getByRole("button", { name: /^File as/ }));
+
+    expect((h.onAllocate as ReturnType<typeof vi.fn>).mock.calls[0][1].tags).toEqual([
+      "haematology",
+      "antiviral",
+    ]);
+  });
+
+  it("un-ticks a tag the student already uses if they don't want it here", async () => {
+    const user = userEvent.setup();
+    const h = handlers();
+    render(<ReviewPanel blocks={[block()]} known={KNOWN} handlers={h} />);
+
+    await user.click(screen.getByLabelText("Don't apply tag haematology"));
+    await user.click(screen.getByRole("button", { name: /^File as/ }));
+
+    expect((h.onAllocate as ReturnType<typeof vi.fn>).mock.calls[0][1].tags).toEqual([]);
+  });
 });
 
-describe("ReviewPanel — dismissing a block", () => {
+describe("ReviewPanel — drag (P35)", () => {
+  it("shows the drop targets only while a drag is in progress", () => {
+    const restore = wideScreen();
+    try {
+      render(<ReviewPanel blocks={[block()]} handlers={handlers()} />);
+      // There is nothing to drop until you pick a note up, so there is no reason for the
+      // targets to exist before then.
+      expect(screen.queryByLabelText("Reflection drop target")).toBeNull();
+
+      fireEvent.dragStart(screen.getByRole("textbox").closest("li")!);
+      expect(screen.getByLabelText("Reflection drop target")).toBeTruthy();
+    } finally {
+      restore();
+    }
+  });
+
+  it("retypes the note when it's dropped on another destination", () => {
+    const restore = wideScreen();
+    try {
+      const h = handlers();
+      render(<ReviewPanel blocks={[block()]} handlers={h} />);
+
+      fireEvent.dragStart(screen.getByRole("textbox").closest("li")!);
+      const lane = screen.getByLabelText("Reflection drop target");
+      fireEvent.dragOver(lane);
+      fireEvent.drop(lane);
+
+      // A drop and the card's own tiles write the SAME field, so they can't disagree.
+      expect(h.onEdit).toHaveBeenCalledWith("blk-1", { targetType: "REFLECTION" });
+      // And the bar goes away again with the drag.
+      expect(screen.queryByLabelText("Reflection drop target")).toBeNull();
+    } finally {
+      restore();
+    }
+  });
+
+  it("won't let a block that's already filed be dragged somewhere else", () => {
+    const restore = wideScreen();
+    try {
+      const h = handlers();
+      render(<ReviewPanel blocks={[block({ status: "ALLOCATED" })]} handlers={h} />);
+
+      const row = screen.getByText("Filed as Medication log").closest("li")!;
+      expect(row.getAttribute("draggable")).toBe("false");
+      fireEvent.dragStart(row);
+      // The real row already exists; moving the block would leave the two out of step.
+      expect(screen.queryByLabelText("Reflection drop target")).toBeNull();
+      expect(h.onEdit).not.toHaveBeenCalled();
+    } finally {
+      restore();
+    }
+  });
+});
+
+describe("ReviewPanel — dismissing a note (P42)", () => {
   it("takes two taps and says the photo is kept", async () => {
     const user = userEvent.setup();
     const h = handlers();
     render(<ReviewPanel blocks={BLOCKS} handlers={h} />);
 
-    await user.click(screen.getByLabelText("Remove block 1"));
+    await user.click(screen.getByLabelText("Remove note 1"));
     // Not a one-tap delete: it removes a row, so it asks.
     expect(h.onDismiss).not.toHaveBeenCalled();
     expect(screen.getByText(/your photo is kept/i)).toBeTruthy();
@@ -598,43 +932,10 @@ describe("ReviewPanel — dismissing a block", () => {
     const h = handlers();
     render(<ReviewPanel blocks={[block()]} handlers={h} />);
 
-    await user.click(screen.getByLabelText("Remove block 1"));
+    await user.click(screen.getByLabelText("Remove note 1"));
     await user.click(screen.getByRole("button", { name: "Keep" }));
 
     expect(h.onDismiss).not.toHaveBeenCalled();
-    expect(screen.getByLabelText("Remove block 1")).toBeTruthy();
-  });
-
-  it("is not offered for a block that has already been filed", () => {
-    render(<ReviewPanel blocks={[block({ status: "ALLOCATED" })]} handlers={handlers()} />);
-    // The real row exists; undo the filing first.
-    expect(screen.queryByLabelText("Remove block 1")).toBeNull();
-  });
-});
-
-describe("ReviewPanel — a stored reading (P41)", () => {
-  it("says the result is from a previous read and offers to redo it", async () => {
-    const user = userEvent.setup();
-    const onRerun = vi.fn();
-    render(
-      <ReviewPanel
-        blocks={BLOCKS}
-        cachedFrom={new Date(Date.now() - 2 * 86_400_000).toISOString()}
-        onRerun={onRerun}
-        handlers={handlers()}
-      />,
-    );
-
-    // A stored result that looked live would be worse than a slower one.
-    expect(screen.getByText(/read this page before/i)).toBeTruthy();
-    expect(screen.getByText(/2 days ago/)).toBeTruthy();
-
-    await user.click(screen.getByRole("button", { name: /Read it again from scratch/i }));
-    expect(onRerun).toHaveBeenCalledTimes(1);
-  });
-
-  it("says nothing at all when the parse was live", () => {
-    render(<ReviewPanel blocks={BLOCKS} handlers={handlers()} />);
-    expect(screen.queryByText(/read this page before/i)).toBeNull();
+    expect(screen.getByLabelText("Remove note 1")).toBeTruthy();
   });
 });

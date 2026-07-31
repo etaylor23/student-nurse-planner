@@ -109,6 +109,15 @@ describe("resolveShift", () => {
 
 describe("formatShiftLabel", () => {
   it("is short and unambiguous", () => {
-    expect(formatShiftLabel(shift("2026-07-22"))).toMatch(/22 Jul · late/);
+    expect(formatShiftLabel(shift("2026-07-22"))).toMatch(/22 Jul · Late/);
+  });
+
+  it("uses the shared shift-type labels, so no enum leaks through", () => {
+    // Lower-casing the enum showed the student "long_day". These are the same names the shift
+    // form, the calendar and the .ics feed use.
+    expect(formatShiftLabel({ ...shift("2026-07-23"), shiftType: "LONG_DAY" })).toContain(
+      "Long day",
+    );
+    expect(formatShiftLabel({ ...shift("2026-07-23"), shiftType: "LONG_DAY" })).not.toContain("_");
   });
 });

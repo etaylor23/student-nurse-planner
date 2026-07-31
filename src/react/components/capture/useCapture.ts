@@ -63,12 +63,18 @@ export interface CaptureState {
   known?: { medications: { id: string; name: string }[]; tagLabels: string[] };
   /** What the pipeline is doing right now, from the stream's stage frames (P40). */
   activity?: string;
+  /** The stage frame's own name — `reading` / `spellchecking` / `classifying`. The message is
+   *  for reading; this is what lets the parsing screen tick the step off (P40). */
+  activityStage?: string;
   /** The verbatim transcription, shown ~30s before the classified blocks arrive. */
   preview?: string;
   progress?: CaptureProgress;
   capture?: NoteCapture;
   /** Photos left today, once known (P17). */
   remaining?: number;
+  /** Signed GET for the capture's FIRST page, so review can show the photo (P1). Undefined
+   *  until it resolves, and left undefined if it can't — the photo pane is an enhancement. */
+  pageImageUrl?: string;
   /** Set when this parse came from the S3 cache rather than the models (P41). */
   cachedFrom?: string;
   resetsAt?: string;
@@ -125,11 +131,16 @@ function messageFor(err: unknown): string {
   return "Something went wrong. Try again.";
 }
 
+/** Re-sign the page URL a quarter of an hour before the server's hour is up. */
+const PAGE_URL_REFRESH_MS = 45 * 60 * 1000;
+
 export function useCapture() {
   const { repo, userId } = useRepository();
   const [state, setState] = useState<CaptureState>({ stage: "idle" });
   /** The downscaled photos of the current capture, kept so a re-read (P41) needs no re-pick. */
   const lastRun = useRef<{ pages: DownscaleResult[]; piiAcknowledged: boolean } | null>(null);
+  /** The last signed page URL and when it was signed, so re-opening review doesn't re-sign. */
+  const pageImage = useRef<{ key: string; url: string; at: number } | null>(null);
 
   const idToken = async () => {
     const tokens = await retrieveTokens();
@@ -143,7 +154,41 @@ export function useCapture() {
     [],
   );
 
-  const reset = useCallback(() => setState({ stage: "idle" }), []);
+  const reset = useCallback(() => {
+    pageImage.current = null;
+    setState({ stage: "idle" });
+  }, []);
+
+  /**
+   * Resolve the capture's first page to a URL the review screen can render (P1).
+   *
+   * Held in a ref as well as in state so re-opening the dialog doesn't re-sign a URL that is
+   * still good. The signed GET lasts an hour (`PAGE_VIEW_EXPIRY_SECONDS`); this refreshes a
+   * little before that, because the capture deliberately outlives the dialog and a student can
+   * come back to an open review much later than they left it.
+   *
+   * Never throws and never sets an error: without a URL `PagePreview` renders nothing and the
+   * cards are untouched, which is the right failure for a pane that grounds trust rather than
+   * carrying the work.
+   */
+  const resolvePageImage = useCallback(
+    async (imageKeys: string | undefined) => {
+      const key = (imageKeys ?? "").split(",").filter(Boolean)[0];
+      if (!key) return;
+      const held = pageImage.current;
+      if (held?.key === key && Date.now() - held.at < PAGE_URL_REFRESH_MS) {
+        // Re-publish rather than return: a re-read of the same page (P41) resets `state` on the
+        // way through `uploading`, and the still-valid URL has to come back with it.
+        setState((s) => (s.pageImageUrl === held.url ? s : { ...s, pageImageUrl: held.url }));
+        return;
+      }
+      const url = await client.presignPageImage(key);
+      if (!url) return;
+      pageImage.current = { key, url, at: Date.now() };
+      setState((s) => ({ ...s, pageImageUrl: url }));
+    },
+    [client],
+  );
 
   /**
    * Write one page's classified blocks as `NoteBlock` rows (P3/P26).
@@ -317,6 +362,9 @@ export function useCapture() {
       }
 
       capture = await repo.updateNoteCapture(capture.id, { imageKeys: keyList(uploaded) });
+      // Sign the page NOW rather than at review: the parsing screen shows the photo too, and it
+      // is the one part of that ~70-second wait that is worth looking at.
+      void resolvePageImage(capture.imageKeys);
 
       // Photos are stored; that part is already durable. Parsing is a separate concern and a
       // failure here must NOT lose the upload — the student can retry the read later.
@@ -369,7 +417,8 @@ export function useCapture() {
                 context: wire,
               },
               {
-                onStage: (_stage, message) => setState((s) => ({ ...s, activity: message })),
+                onStage: (stage, message) =>
+                  setState((s) => ({ ...s, activity: message, activityStage: stage })),
                 // The student's own words, ~30s before the filing suggestions. Showing these
                 // early is the entire reason this endpoint streams.
                 onTranscribed: (p) => setState((s) => ({ ...s, preview: p.pageText })),
@@ -435,9 +484,23 @@ export function useCapture() {
         status: "REVIEW",
         pageDateRaw: parsed[0]?.pageDateRaw ?? undefined,
       });
-      setState((s) => ({ ...s, stage: "review", capture, parsed, activity: undefined }));
+      setState((s) => ({
+        ...s,
+        stage: "review",
+        capture,
+        parsed,
+        activity: undefined,
+        activityStage: undefined,
+      }));
     },
-    [client, parser, repo, userId, localContext, reconcileTags, persistBlocks],
+    [client, parser, repo, userId, localContext, reconcileTags, persistBlocks, resolvePageImage],
+  );
+
+  /** Make sure the page URL is current — called when the dialog opens, since the capture (and
+   *  so an open review) outlives it and a signed URL does not. */
+  const ensurePageImage = useCallback(
+    () => resolvePageImage(state.capture?.imageKeys),
+    [resolvePageImage, state.capture],
   );
 
   /**
@@ -614,6 +677,7 @@ export function useCapture() {
     state,
     startCapture,
     rerunFromScratch,
+    ensurePageImage,
     reset,
     selectShift,
     allocate,
