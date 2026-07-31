@@ -121,13 +121,20 @@ export function CaptureButton() {
         createPortal(
           // No backdrop dismiss, deliberately: a stray tap out here used to bin a 70-second
           // parse. Closing is the close button's job.
-          <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 p-4 backdrop-blur-sm sm:items-center">
+          // Review uses the app's own content box — the same `lg:px-20 xl:px-24` gutters as
+          // `<main>` — so it lines up with the page behind it instead of floating in the middle
+          // of it. Everything else stays a small centred dialog.
+          <div
+            className={`fixed inset-0 z-50 flex items-start justify-center bg-slate-900/40 p-4 backdrop-blur-sm sm:items-center ${
+              state.stage === "review" ? "sm:px-10 lg:px-20 xl:px-24" : ""
+            }`}
+          >
             <div
               role="dialog"
               aria-modal="true"
               aria-label="Photograph your notes"
-              className={`max-h-[85vh] w-full overflow-y-auto rounded-2xl bg-white p-5 shadow-xl ${
-                state.stage === "review" ? "max-w-5xl" : "max-w-lg"
+              className={`max-h-[88vh] w-full overflow-y-auto rounded-2xl bg-white shadow-xl ${
+                state.stage === "review" ? "max-w-none p-5 lg:p-6" : "max-w-lg p-5"
               }`}
             >
               <div className="flex items-start justify-between gap-4">

@@ -11,12 +11,9 @@ import type { GibbsStage, NoteBlock } from "../../../domain/types";
  * pretending.
  */
 
-const TARGETS: NoteBlockTarget[] = ["REFLECTION", "MED_LOG", "PROFICIENCY_EVENT", "SHIFT_NOTES"];
-
 export function AllocateBar({
   block,
   target,
-  onTargetChange,
   proficiencyId,
   tags,
   gibbs,
@@ -24,10 +21,9 @@ export function AllocateBar({
   onUnallocate,
 }: {
   block: NoteBlock;
-  /** Owned by the card, not here: the lane view writes the same field, so both must agree (P35).
+  /** Decided by the card's own control and the lane view, which both write the same field (P35).
    *  `""` means the classifier didn't route this block and the student hasn't either. */
   target: NoteBlockTarget | "";
-  onTargetChange: (target: NoteBlockTarget) => void;
   /** The code the student has selected, needed before proficiency evidence can be filed. */
   proficiencyId?: string;
   tags: string[];
@@ -89,40 +85,25 @@ export function AllocateBar({
   }
 
   return (
-    <section className="mt-3">
-      <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-        File this
-      </h4>
-      <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2">
-        <select
-          value={target}
-          onChange={(e) => onTargetChange(e.target.value as NoteBlockTarget)}
-          className="min-w-0 flex-1 truncate rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700"
-          aria-label="Where to file this block"
-        >
-          {/* No silent default: an unrouted block asks, rather than picking for the student. */}
-          {!target && <option value="">Choose where…</option>}
-          {TARGETS.map((t) => (
-            <option key={t} value={t}>
-              {NOTE_BLOCK_TARGET_LABEL[t]}
-            </option>
-          ))}
-        </select>
+    <section className="mt-3 border-t border-slate-100 pt-2">
+      {/* No destination select here any more — the card's own control at the top is the single
+          place that decision is made. This is only the commit. */}
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
         <button
           type="button"
           onClick={file}
           disabled={busy || blocked}
-          className="shrink-0 rounded-lg bg-primary-600 px-3 py-1 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
+          className="shrink-0 rounded-lg bg-primary-600 px-3 py-1 text-xs font-semibold text-white hover:bg-primary-700 disabled:bg-slate-200 disabled:text-slate-500"
         >
-          {busy ? "Filing…" : "File it"}
+          {busy ? "Filing…" : target ? `File as ${NOTE_BLOCK_TARGET_LABEL[target]}` : "File it"}
         </button>
         {blocked && (
           <span className="text-xs text-slate-500">
-            {target ? "Pick a proficiency above first" : "Pick where it goes first"}
+            {target ? "pick a proficiency first" : "choose where it goes first"}
           </span>
         )}
       </div>
-      {target === "REFLECTION" && (
+      {target === "REFLECTION" && !blocked && (
         <p className="mt-1 text-xs text-slate-400">
           {tags.length > 0 ? `Tagged ${tags.join(", ")}. ` : ""}
           {hasGibbs

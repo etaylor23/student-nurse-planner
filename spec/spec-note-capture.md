@@ -556,11 +556,16 @@ Still open:
 - **Tool-calling over the mantle `openai-compat` route is unverified.** SigV4 signing and
   image content parts are both proven; function calling is not. P29's future agentic
   classifier depends on it, so probe it cheaply before designing around it.
-- **`kind` is now nearly redundant with `targetType`.** They map almost 1:1
-  (`MEDICATION`→`MED_LOG`, `REFLECTION`→`REFLECTION`, `CLINICAL_SKILL`→`PROFICIENCY_EVENT`,
-  the rest→`SHIFT_NOTES`). Both are kept because `kind` is what the vision model can hint
-  at and `targetType` is the classifier's decision, but if that distinction stops earning
-  its keep in the UI, collapse them.
+- ~~**`kind` is now nearly redundant with `targetType`**~~ — **collapsed in the UI, kept in the
+  data.** They map almost 1:1 (`MEDICATION`→`MED_LOG`, `REFLECTION`→`REFLECTION`,
+  `CLINICAL_SKILL`→`PROFICIENCY_EVENT`, the rest→`SHIFT_NOTES`), and the review screen briefly
+  showed a control for each: "what is this?" at the top of the card and "where does it go?" at
+  the bottom. That was the same question asked twice in different words, and it read as two
+  unrelated settings. The student now picks the **destination only**, and `kind` is written
+  underneath it — except when the current `kind` already implies that destination, where it is
+  left alone so a `DATE_HEADER` filed to shift notes doesn't silently become an `OBSERVATION`.
+  Both fields stay on the row: `kind` is what the vision model hints at and what the recall
+  corpus reads (P14); `targetType` is what allocation acts on (P4).
 - **Long-word corruption is the residual risk.** Across 7 runs the structure model
   corrupted `Phenoxymethylpenicillin` — the longest word on the page — in 3 of them, a
   different way each time (`Phenoxyethyl…`, `Phenoxymenthyl…`, and once split across

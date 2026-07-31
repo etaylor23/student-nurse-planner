@@ -112,7 +112,7 @@ describe("ReviewPanel", () => {
     expect(screen.getAllByText(/Platform 4 · 4\.1[45]/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Demonstrate knowledge of pharmacology/i).length).toBeGreaterThan(0);
     // Section heading, so it is obvious what the codes ARE.
-    expect(screen.getAllByText("NMC proficiency evidence").length).toBe(2);
+    expect(screen.getAllByText("NMC evidence").length).toBe(2);
   });
 
   it("lets a suggested code and a suggested tag be removed, and writes the removal back", async () => {
@@ -136,35 +136,52 @@ describe("ReviewPanel", () => {
     expect(h.onEdit).toHaveBeenCalledWith("blk-1", { candidateCodes: "4.15,3.3,2.12,B11.6" });
   });
 
-  it("groups each part of a block under its own labelled section", () => {
+  it("labels each part of a block so it's clear what belongs to what", () => {
     render(<ReviewPanel blocks={BLOCKS} handlers={handlers()} />);
     // The first version stacked target, group, disputes, tags and codes as undifferentiated
-    // chips and read as noise. These headings are what make it scannable.
-    for (const heading of [
-      "Worth a check",
-      "Medication",
-      "Tags",
-      "NMC proficiency evidence",
-      "File this",
-    ]) {
-      expect(screen.getAllByText(heading).length).toBeGreaterThan(0);
+    // chips and read as noise. These labels are what make it scannable.
+    for (const label of ["Worth a check", "Drug", "Tags", "NMC evidence"]) {
+      expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     }
     // The raw group key is NOT surfaced — it meant nothing to a reader.
     expect(screen.queryByText(/med-notes-haematology/)).toBeNull();
   });
 
-  it("lets a block be retyped, including away from UNKNOWN (P34)", async () => {
+  it("decides the block with ONE control, not a type AND a destination", async () => {
     const user = userEvent.setup();
     const h = handlers();
     render(<ReviewPanel blocks={BLOCKS} handlers={h} />);
-    const kinds = screen.getAllByLabelText(/^Type of block/);
-    expect((kinds[0] as HTMLSelectElement).value).toBe("MEDICATION");
-    // Every kind is reachable, so an UNKNOWN block is never a dead end.
-    expect(kinds[0].querySelectorAll("option")).toHaveLength(7);
 
-    await user.selectOptions(kinds[0], "REFLECTION");
-    // Retyping is PERSISTED, not just local state — the row is what allocation reads.
-    expect(h.onEdit).toHaveBeenCalledWith("blk-1", { kind: "REFLECTION" });
+    // `kind` and `targetType` were the same question asked twice. There is one select per card.
+    expect(screen.getAllByRole("combobox")).toHaveLength(2);
+    const where = screen.getAllByLabelText(/^Where block/);
+    expect((where[0] as HTMLSelectElement).value).toBe("MED_LOG");
+    expect(where[0].querySelectorAll("option")).toHaveLength(4);
+    // What it means, not just where it goes.
+    expect(screen.getAllByText("becomes a medication log").length).toBe(2);
+
+    await user.selectOptions(where[0], "REFLECTION");
+    // `kind` follows underneath — it's what the recall corpus reads later (P14).
+    expect(h.onEdit).toHaveBeenCalledWith("blk-1", {
+      targetType: "REFLECTION",
+      kind: "REFLECTION",
+    });
+  });
+
+  it("leaves `kind` alone when it already implies the new destination", async () => {
+    const user = userEvent.setup();
+    const h = handlers();
+    // A date header filed to shift notes: DATE_HEADER already maps to SHIFT_NOTES.
+    render(
+      <ReviewPanel
+        blocks={[block({ kind: "DATE_HEADER", targetType: "REFLECTION" })]}
+        handlers={h}
+      />,
+    );
+
+    await user.selectOptions(screen.getByLabelText("Where block 1 goes"), "SHIFT_NOTES");
+    // No `kind` in the patch — turning it into an OBSERVATION would lose what it actually is.
+    expect(h.onEdit).toHaveBeenCalledWith("blk-1", { targetType: "SHIFT_NOTES" });
   });
 
   it("persists an edit to the text on blur, not on every keystroke", async () => {
@@ -384,7 +401,7 @@ describe("ReviewPanel — medication cards (P33)", () => {
       "Aciclovir",
       expect.stringContaining("antiviral medication") as unknown as string,
     );
-    await user.click(screen.getByRole("button", { name: "File it" }));
+    await user.click(screen.getByRole("button", { name: /^File as|^File it/ }));
     expect((h.onAllocate as ReturnType<typeof vi.fn>).mock.calls[0][1].medicationId).toBe(
       "med-new",
     );
@@ -398,7 +415,7 @@ describe("ReviewPanel — medication cards (P33)", () => {
     await user.click(screen.getByRole("button", { name: "No thanks" }));
     expect(h.onCreateMedication).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("button", { name: "File it" }));
+    await user.click(screen.getByRole("button", { name: /^File as|^File it/ }));
     // Declining a card is not declining the note.
     expect(h.onAllocate).toHaveBeenCalled();
     expect(
@@ -413,7 +430,7 @@ describe("ReviewPanel — filing (P4/P19)", () => {
     const h = handlers();
     render(<ReviewPanel blocks={BLOCKS} known={KNOWN} handlers={h} />);
 
-    await user.click(screen.getAllByRole("button", { name: "File it" })[0]);
+    await user.click(screen.getAllByRole("button", { name: /^File as|^File it/ })[0]);
 
     expect(h.onAllocate).toHaveBeenCalledWith("blk-1", {
       targetType: "MED_LOG", // pre-selected from the block, not defaulted
@@ -430,8 +447,8 @@ describe("ReviewPanel — filing (P4/P19)", () => {
     const h = handlers();
     render(<ReviewPanel blocks={BLOCKS} handlers={h} />);
 
-    await user.selectOptions(screen.getAllByLabelText("Where to file this block")[0], "REFLECTION");
-    await user.click(screen.getAllByRole("button", { name: "File it" })[0]);
+    await user.selectOptions(screen.getAllByLabelText(/^Where block/)[0], "REFLECTION");
+    await user.click(screen.getAllByRole("button", { name: /^File as|^File it/ })[0]);
 
     expect((h.onAllocate as ReturnType<typeof vi.fn>).mock.calls[0][1].targetType).toBe(
       "REFLECTION",
@@ -443,13 +460,13 @@ describe("ReviewPanel — filing (P4/P19)", () => {
     const h = handlers();
     render(<ReviewPanel blocks={[block({ candidateCodes: undefined })]} handlers={h} />);
 
-    await user.selectOptions(
-      screen.getByLabelText("Where to file this block"),
-      "PROFICIENCY_EVENT",
-    );
+    await user.selectOptions(screen.getByLabelText("Where block 1 goes"), "PROFICIENCY_EVENT");
     // Status and part index are the student's judgement, so there is nothing to guess from.
-    expect(screen.getByText("Pick a proficiency above first")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "File it" })).toHaveProperty("disabled", true);
+    expect(screen.getByText("pick a proficiency first")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^File as|^File it/ })).toHaveProperty(
+      "disabled",
+      true,
+    );
     expect(h.onAllocate).not.toHaveBeenCalled();
   });
 
@@ -461,12 +478,22 @@ describe("ReviewPanel — filing (P4/P19)", () => {
     );
 
     // Quietly defaulting is how a reflection ends up appended to a shift as a wall of text.
-    expect(screen.getByRole("button", { name: "File it" })).toHaveProperty("disabled", true);
-    expect(screen.getByText("Pick where it goes first")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^File as|^File it/ })).toHaveProperty(
+      "disabled",
+      true,
+    );
+    expect(screen.getByText("choose where it goes first")).toBeTruthy();
 
-    await user.selectOptions(screen.getByLabelText("Where to file this block"), "REFLECTION");
-    expect(h.onEdit).toHaveBeenCalledWith("blk-1", { targetType: "REFLECTION" });
-    expect(screen.getByRole("button", { name: "File it" })).toHaveProperty("disabled", false);
+    await user.selectOptions(screen.getByLabelText("Where block 1 goes"), "REFLECTION");
+    // UNKNOWN doesn't imply a reflection, so `kind` is brought along.
+    expect(h.onEdit).toHaveBeenCalledWith("blk-1", {
+      targetType: "REFLECTION",
+      kind: "REFLECTION",
+    });
+    expect(screen.getByRole("button", { name: /^File as|^File it/ })).toHaveProperty(
+      "disabled",
+      false,
+    );
   });
 
   it("surfaces a refusal from allocation instead of failing silently", async () => {
@@ -476,7 +503,7 @@ describe("ReviewPanel — filing (P4/P19)", () => {
     });
     render(<ReviewPanel blocks={[block()]} handlers={h} />);
 
-    await user.click(screen.getByRole("button", { name: "File it" }));
+    await user.click(screen.getByRole("button", { name: /^File as|^File it/ }));
     expect(screen.getByText("Attach this to a shift.")).toBeTruthy();
   });
 
@@ -497,7 +524,7 @@ describe("ReviewPanel — filing (P4/P19)", () => {
     expect(screen.getByRole("textbox")).toHaveProperty("disabled", true);
     // A filed block is settled — its disputes are no longer a question.
     expect(screen.queryByText("Worth a check")).toBeNull();
-    expect(screen.queryByRole("button", { name: "File it" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^File as|^File it/ })).toBeNull();
 
     await user.click(screen.getByRole("button", { name: "Undo" }));
     expect(h.onUnallocate).toHaveBeenCalledWith("blk-1");
@@ -511,7 +538,7 @@ describe("ReviewPanel — filing (P4/P19)", () => {
     // A new label is a permanent addition to the vocabulary their index is built on, so it is
     // opt-in — but opting in has to work.
     await user.click(screen.getByLabelText("Apply tag antiviral"));
-    await user.click(screen.getByRole("button", { name: "File it" }));
+    await user.click(screen.getByRole("button", { name: /^File as|^File it/ }));
 
     expect((h.onAllocate as ReturnType<typeof vi.fn>).mock.calls[0][1].tags).toEqual([
       "haematology",
@@ -525,7 +552,7 @@ describe("ReviewPanel — filing (P4/P19)", () => {
     render(<ReviewPanel blocks={[block()]} known={KNOWN} handlers={h} />);
 
     await user.click(screen.getByLabelText("Don't apply tag haematology"));
-    await user.click(screen.getByRole("button", { name: "File it" }));
+    await user.click(screen.getByRole("button", { name: /^File as|^File it/ }));
 
     expect((h.onAllocate as ReturnType<typeof vi.fn>).mock.calls[0][1].tags).toEqual([]);
   });

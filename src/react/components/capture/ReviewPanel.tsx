@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { NOTE_BLOCK_KIND_LABEL, type NoteBlockKind } from "../../../domain/types";
+import { NOTE_BLOCK_TARGET_LABEL, type NoteBlockKind } from "../../../domain/types";
 import type { GibbsStage, NoteBlock, NoteBlockTarget } from "../../../domain/types";
 import { seedProficiencies } from "../../../data/seed/proficiencies";
 import type { ShiftResolution } from "../../../logic/captureShift";
@@ -20,22 +20,54 @@ import { useWideScreen } from "./useWideScreen";
  * **Mobile list is the primary layout, by decision** — students photograph notes on a phone,
  * so the list is the experience that has to be good and wide-screen lanes are the enhancement.
  *
- * Every part of a block is a LABELLED SECTION rather than a row of chips. The first version
- * put the target, the group key, the disputed words, the tags and the proficiency codes in one
+ * Every part of a block is a LABELLED ROW rather than a row of chips. The first version put the
+ * target, the group key, the disputed words, the tags and the proficiency codes in one
  * undifferentiated stack, and it read as noise — you could not tell which text belonged to
- * which idea. Anything suggested is also removable: a suggestion you cannot decline is not a
- * suggestion.
+ * which idea. The labels stay, but short values sit BESIDE their label rather than under it:
+ * five stacked headings per card turned out to be its own kind of noise. Anything suggested is
+ * also removable: a suggestion you cannot decline is not a suggestion.
+ *
+ * **One control decides the block, not two.** `kind` and `targetType` map almost 1:1 and the
+ * spec flagged the redundancy — asking "what is this?" and then "where does it go?" was asking
+ * the same question twice with different words. The student picks the destination; `kind` is
+ * kept up to date underneath it, because that is what the vision model hints at and what the
+ * recall corpus reads (P14), but it is no longer a second question.
  */
 
-const KIND_OPTIONS: NoteBlockKind[] = [
-  "CLINICAL_SKILL",
-  "MEDICATION",
+const TARGET_OPTIONS: NoteBlockTarget[] = [
   "REFLECTION",
-  "OBSERVATION",
-  "TODO",
-  "DATE_HEADER",
-  "UNKNOWN",
+  "MED_LOG",
+  "PROFICIENCY_EVENT",
+  "SHIFT_NOTES",
 ];
+
+/** What each destination means for the student, in the words the lanes use. */
+const TARGET_BLURB: Record<NoteBlockTarget, string> = {
+  REFLECTION: "becomes a Gibbs reflection",
+  MED_LOG: "becomes a medication log",
+  PROFICIENCY_EVENT: "evidence against a proficiency",
+  SHIFT_NOTES: "appended to the shift",
+};
+
+/** The `kind` a destination implies, for keeping the two fields in step. */
+const KIND_FOR_TARGET: Record<NoteBlockTarget, NoteBlockKind> = {
+  REFLECTION: "REFLECTION",
+  MED_LOG: "MEDICATION",
+  PROFICIENCY_EVENT: "CLINICAL_SKILL",
+  SHIFT_NOTES: "OBSERVATION",
+};
+
+/** And the reverse, so a `kind` that already fits the new destination is LEFT ALONE — retyping
+ *  to shift notes shouldn't turn a DATE_HEADER into an OBSERVATION for no reason. */
+const TARGET_FOR_KIND: Record<NoteBlockKind, NoteBlockTarget> = {
+  REFLECTION: "REFLECTION",
+  MEDICATION: "MED_LOG",
+  CLINICAL_SKILL: "PROFICIENCY_EVENT",
+  OBSERVATION: "SHIFT_NOTES",
+  TODO: "SHIFT_NOTES",
+  DATE_HEADER: "SHIFT_NOTES",
+  UNKNOWN: "SHIFT_NOTES",
+};
 
 /** Code → statement, so a shortlist shows what it means rather than "B2.1". */
 const STATEMENTS = new Map(seedProficiencies.map((p) => [p.code, p.statement]));
@@ -89,7 +121,15 @@ export interface ReviewHandlers {
   onCreateMedication: (name: string, notes: string) => Promise<string | undefined>;
 }
 
-function Section({
+/**
+ * One labelled row of a card.
+ *
+ * The label sits BESIDE its content and wraps above it only when the column is too narrow to
+ * hold both — so a wide card reads as a tidy two-column list and a 296px lane still reads as
+ * labelled sections. Five stacked uppercase headings per card was the "busy and congested"
+ * problem: the information was right, the chrome around it wasn't.
+ */
+function Row({
   label,
   tone,
   children,
@@ -99,15 +139,15 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mt-3">
+    <section className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-slate-100 pt-2 first:border-0">
       <h4
-        className={`text-[11px] font-semibold uppercase tracking-wide ${
-          tone === "warn" ? "text-amber-700" : "text-slate-400"
+        className={`w-full shrink-0 text-[10px] font-semibold uppercase tracking-wide sm:w-20 ${
+          tone === "warn" ? "text-amber-600" : "text-slate-400"
         }`}
       >
         {label}
       </h4>
-      <div className="mt-1">{children}</div>
+      <div className="min-w-0 flex-1">{children}</div>
     </section>
   );
 }
@@ -131,12 +171,15 @@ function BlockCard({
   handlers,
   gibbs,
   known,
+  inLane = false,
 }: {
   block: NoteBlock;
   index: number;
   handlers: ReviewHandlers;
   gibbs?: Partial<Record<GibbsStage, string>>;
   known: KnownContext;
+  /** The lane header already says what this destination means — don't say it twice. */
+  inLane?: boolean;
 }) {
   const [text, setText] = useState(block.text);
   const [tags, setTags] = useState(() => list(block.suggestedTags));
@@ -217,9 +260,12 @@ function BlockCard({
     if (!el) return;
     const fit = () => {
       el.style.height = "auto";
+      const needed = el.scrollHeight + 2;
       // Capped: a very long block in a 237px lane would otherwise make the column enormous.
-      // Past the cap it scrolls, which is the one case where scrolling is better than growing.
-      el.style.height = `${Math.min(el.scrollHeight + 2, 384)}px`;
+      // Past the cap it scrolls, which is the one case where scrolling is better than growing —
+      // and only then, so a fitted box doesn't draw a scrollbar gutter it never needs.
+      el.style.height = `${Math.min(needed, 384)}px`;
+      el.style.overflowY = needed > 384 ? "auto" : "hidden";
     };
     fit();
     if (typeof ResizeObserver === "undefined") return;
@@ -234,36 +280,57 @@ function BlockCard({
     void handlers.onEdit(block.id, { text: block.rawText });
   }
 
+  /**
+   * Set where the block goes, and keep `kind` in step underneath it.
+   *
+   * `kind` is left alone when it already implies this destination — retyping a `DATE_HEADER`
+   * into shift notes shouldn't silently make it an `OBSERVATION`, and `kind` is what the recall
+   * corpus reads later (P14).
+   */
+  function setDestination(t: NoteBlockTarget) {
+    setTarget(t);
+    const patch: BlockPatch = { targetType: t };
+    if (TARGET_FOR_KIND[block.kind] !== t) patch.kind = KIND_FOR_TARGET[t];
+    void handlers.onEdit(block.id, patch);
+  }
+
   return (
     // `min-w-0` + `break-words`: this card also lives in a ~13rem lane column, where one long
     // drug name would otherwise push it straight through the lane's border.
     <div
-      className={`min-w-0 break-words rounded-xl border p-3 ${
+      // White cards throughout: state is a RING, not a wash. Three coloured backgrounds
+      // stacked inside a coloured group was the "visual aggression" — the colour now marks
+      // one thing (this card wants attention) instead of the whole region.
+      className={`min-w-0 break-words rounded-xl bg-white p-3 ${
         allocated
-          ? "border-primary-200 bg-primary-50/30"
+          ? "ring-1 ring-primary-300"
           : openDisputes.length > 0
-            ? "border-amber-300 bg-amber-50/30"
-            : "border-slate-200 bg-white"
+            ? "ring-1 ring-amber-300"
+            : "ring-1 ring-slate-200"
       }`}
     >
       <div className="flex min-w-0 items-center gap-2">
         <span className="shrink-0 text-xs font-medium text-slate-400">#{index + 1}</span>
+        {/* ONE control. See the module comment: `kind` and `targetType` were the same question
+            asked twice, so the student picks the destination and `kind` follows underneath. */}
         <select
-          value={block.kind}
-          onChange={(e) =>
-            void handlers.onEdit(block.id, { kind: e.target.value as NoteBlockKind })
-          }
+          value={target}
+          onChange={(e) => setDestination(e.target.value as NoteBlockTarget)}
           disabled={allocated}
           className="min-w-0 flex-1 truncate rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 disabled:opacity-60"
-          aria-label={`Type of block ${index + 1}`}
+          aria-label={`Where block ${index + 1} goes`}
         >
-          {KIND_OPTIONS.map((k) => (
-            <option key={k} value={k}>
-              {NOTE_BLOCK_KIND_LABEL[k]}
+          {!target && <option value="">Choose where this goes…</option>}
+          {TARGET_OPTIONS.map((t) => (
+            <option key={t} value={t}>
+              {NOTE_BLOCK_TARGET_LABEL[t]}
             </option>
           ))}
         </select>
       </div>
+      {target && !inLane && (
+        <p className="mt-1 pl-6 text-[11px] text-slate-400">{TARGET_BLURB[target]}</p>
+      )}
 
       <textarea
         ref={textRef}
@@ -277,7 +344,7 @@ function BlockCard({
         rows={2}
         // `block w-full min-w-0`: a bare textarea has an intrinsic `cols` width that ignores its
         // container, which is what pushed it out of the lane. Height comes from the effect above.
-        className="mt-2 block w-full min-w-0 resize-y overflow-y-auto rounded-lg border border-slate-200 p-2 text-sm leading-relaxed text-ink-900 disabled:bg-slate-50 disabled:text-slate-500"
+        className="mt-2 block w-full min-w-0 resize-y rounded-lg border border-slate-200 p-2 text-sm leading-relaxed text-ink-900 disabled:bg-slate-50 disabled:text-slate-500"
         aria-label={`Text of block ${index + 1}`}
       />
 
@@ -294,7 +361,7 @@ function BlockCard({
       )}
 
       {openDisputes.length > 0 && !allocated && (
-        <Section label="Worth a check" tone="warn">
+        <Row label="Worth a check" tone="warn">
           <p className="text-xs text-amber-900">
             The two readings differ — pick the one that matches your handwriting.
           </p>
@@ -322,11 +389,11 @@ function BlockCard({
               );
             })}
           </ul>
-        </Section>
+        </Row>
       )}
 
       {block.medicationCandidate && (
-        <Section label="Medication">
+        <Row label="Drug">
           <p className="text-sm text-slate-700">{block.medicationCandidate}</p>
           {!allocated && (
             <MedicationOffer
@@ -337,11 +404,11 @@ function BlockCard({
               onCreate={(name) => handlers.onCreateMedication(name, text)}
             />
           )}
-        </Section>
+        </Row>
       )}
 
       {tags.length > 0 && (
-        <Section label="Tags">
+        <Row label="Tags">
           <div className="flex flex-wrap gap-1">
             {tags.map((t) => {
               const on = !!ticked[t];
@@ -373,11 +440,11 @@ function BlockCard({
               );
             })}
           </div>
-        </Section>
+        </Row>
       )}
 
       {(codes.length > 0 || !allocated) && (
-        <Section label="NMC proficiency evidence">
+        <Row label="NMC evidence">
           <ul className="space-y-1.5">
             {(showAllCodes ? codes : codes.slice(0, 1)).map((c) => (
               <li key={c} className="flex items-start gap-1">
@@ -415,16 +482,12 @@ function BlockCard({
           {/* The way past the shortlist (P28) — without it, a note evidencing something the
               classifier missed has no route into the record at all. */}
           {!allocated && <ProficiencyPicker onPick={pickCode} />}
-        </Section>
+        </Row>
       )}
 
       <AllocateBar
         block={block}
         target={target}
-        onTargetChange={(t) => {
-          setTarget(t);
-          void handlers.onEdit(block.id, { targetType: t });
-        }}
         proficiencyId={proficiencyId}
         tags={chosenTags}
         gibbs={gibbs}
@@ -481,6 +544,7 @@ export function ReviewPanel({
       handlers={handlers}
       gibbs={gibbsByRawText?.[b.rawText]}
       known={known}
+      inLane={wide}
     />
   );
 

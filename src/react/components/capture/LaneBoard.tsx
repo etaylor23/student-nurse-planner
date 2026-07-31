@@ -93,12 +93,14 @@ export function LaneBoard({
 
   return (
     <div className="mt-3">
+      {/* No box, no wash: a container around these cards competed with the cards themselves for
+          attention, and it is the cards that are the thing. Just a heading and the cards. */}
       {undecided.length > 0 && (
-        <section className="mb-3 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/40 p-3">
-          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+        <section className="mb-4">
+          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
             Not decided ({undecided.length})
           </h4>
-          <p className="mt-0.5 text-xs text-amber-900">
+          <p className="mt-0.5 text-xs text-slate-400">
             We couldn&apos;t tell where these belong — drag one into a column below, or set it on
             the card.
           </p>
