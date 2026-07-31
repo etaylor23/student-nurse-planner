@@ -128,19 +128,51 @@ export async function classify(
     return { blocks: [], droppedBlocks: 0, droppedCodes: 0, latencyMs: 0, failed: true };
   }
 
+  const failure = (): ClassifyResult => ({
+    blocks: [],
+    droppedBlocks: 0,
+    droppedCodes: 0,
+    latencyMs: res.latencyMs,
+    inputTokens: res.inputTokens,
+    outputTokens: res.outputTokens,
+    failed: true,
+  });
+
+  /**
+   * What the log is allowed to say about a failure.
+   *
+   * Deliberately structural only — length, stop reason, token count, and the opening few
+   * characters, which are the fence or the "Here is the JSON:" preamble and contain no note
+   * content. The tail would be far more useful and is exactly what must not be written:
+   * CloudWatch is not a place to put a student's clinical notes, and P2 already accepts that
+   * those notes may contain more than they should. Everything here answers the only question
+   * worth asking of a broken response — was it cut off, was it wrapped in prose, or was it
+   * empty — without becoming a second copy of the page.
+   */
+  const shape = `chars=${res.text.length} finish=${res.finishReason ?? "?"} outTokens=${res.outputTokens ?? "?"} opens=${JSON.stringify(res.text.slice(0, 24))}`;
+
   const raw = parseModelJson(res.text);
-  const validated = raw === null ? null : classifyResponseSchema.safeParse(raw);
-  if (!validated || !validated.success) {
-    console.warn("classifier returned unusable JSON; falling back to unclassified regions");
-    return {
-      blocks: [],
-      droppedBlocks: 0,
-      droppedCodes: 0,
-      latencyMs: res.latencyMs,
-      inputTokens: res.inputTokens,
-      outputTokens: res.outputTokens,
-      failed: true,
-    };
+  if (raw === null) {
+    // Three different causes, one old message. `finish=length` means raise MAX_TOKENS;
+    // `chars=0` means the model answered somewhere this code isn't reading; anything else is
+    // a model that won't hold to the format and needs a prompt or a model change.
+    console.warn(
+      `classifier: response was not JSON (${shape}); falling back to unclassified regions`,
+    );
+    return failure();
+  }
+  const validated = classifyResponseSchema.safeParse(raw);
+  if (!validated.success) {
+    // Valid JSON of the wrong shape — a different bug from the one above, and the zod issue
+    // paths say precisely which field, so this needs no content in the log at all.
+    const issues = validated.error.issues
+      .slice(0, 4)
+      .map((i) => `${i.path.join(".") || "(root)"}: ${i.code}`)
+      .join("; ");
+    console.warn(
+      `classifier: JSON did not match the contract [${issues}] (${shape}); falling back to unclassified regions`,
+    );
+    return failure();
   }
 
   let droppedBlocks = 0;

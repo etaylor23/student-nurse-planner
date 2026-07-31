@@ -109,6 +109,14 @@ export interface ChatRequest {
 
 export interface ChatResult {
   text: string;
+  /**
+   * Why the model stopped — `stop` if it finished, `length` if it hit `maxTokens`.
+   *
+   * Carried because a caller that gets unparseable JSON otherwise cannot tell a truncated
+   * response from a badly-behaved one, and those need opposite fixes: raise the cap, or change
+   * the prompt or the model. Absent when the provider doesn't report it.
+   */
+  finishReason?: string;
   inputTokens?: number;
   outputTokens?: number;
   latencyMs: number;
@@ -143,7 +151,10 @@ export async function chat(req: ChatRequest): Promise<ChatResult> {
     throw new UpstreamError(res.status, res.status === 429 || res.status === 503, body);
   }
   let envelope: {
-    choices?: Array<{ message?: { content?: string | null } }>;
+    choices?: Array<{
+      message?: { content?: string | null; reasoning_content?: string | null };
+      finish_reason?: string;
+    }>;
     usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
   try {
@@ -151,8 +162,18 @@ export async function chat(req: ChatRequest): Promise<ChatResult> {
   } catch {
     throw new UpstreamError(res.status, false, `non-JSON envelope: ${body.slice(0, 200)}`);
   }
+  const choice = envelope.choices?.[0];
+  // A reasoning-capable model on this endpoint can put its whole answer in
+  // `reasoning_content` and leave `content` null. Reading only `content` turned that into an
+  // empty string, which every caller then reported as "the model returned rubbish" — the same
+  // message it uses for genuinely malformed output, and the reason a real failure was
+  // indistinguishable from a shrug. Prefer `content`, fall back rather than lose the answer.
+  const text = choice?.message?.content?.trim()
+    ? (choice.message.content as string)
+    : (choice?.message?.reasoning_content ?? "");
   return {
-    text: envelope.choices?.[0]?.message?.content ?? "",
+    text,
+    finishReason: choice?.finish_reason,
     inputTokens: envelope.usage?.prompt_tokens,
     outputTokens: envelope.usage?.completion_tokens,
     latencyMs,

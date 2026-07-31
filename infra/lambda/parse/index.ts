@@ -7,6 +7,7 @@ import { UpstreamError } from "../ai/provider";
 import { type StudentContext, classify } from "./classify";
 import { disputedWords, mapDisputesToBlocks } from "./consensus";
 import { ensureRegionsCovered } from "./coverage";
+import { reflow } from "./reflow";
 import { normaliseBbox } from "./schema";
 import { sanitise } from "./sanitise";
 import { readPage } from "./vision";
@@ -239,6 +240,10 @@ async function run(event: FunctionUrlEvent, responseStream: ResponseStream): Pro
         const region = structure.parsed?.blocks[b.fromRegions?.[0] ?? i];
         return {
           ...b,
+          // Whitespace only, and after every guard above has run on the original: the notebook's
+          // line breaks are an artefact of the paper, and the degraded path has no classifier
+          // output to have joined them already.
+          text: reflow(b.text),
           bbox: normaliseBbox(region?.bbox),
           rotationDeg: region?.rotationDeg ?? 0,
           confidence: region?.confidence ?? 0,
