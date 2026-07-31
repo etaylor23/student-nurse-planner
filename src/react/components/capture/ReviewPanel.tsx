@@ -8,6 +8,7 @@ import { LaneBoard } from "./LaneBoard";
 import { MedicationOffer } from "./MedicationOffer";
 import { ProficiencyPicker } from "./ProficiencyPicker";
 import { ShiftBar } from "./ShiftBar";
+import { WorthACheck } from "./WorthACheck";
 import { useWideScreen } from "./useWideScreen";
 
 /**
@@ -142,22 +143,10 @@ export interface ReviewHandlers {
  * labelled sections. Five stacked uppercase headings per card was the "busy and congested"
  * problem: the information was right, the chrome around it wasn't.
  */
-function Row({
-  label,
-  tone,
-  children,
-}: {
-  label: string;
-  tone?: "warn";
-  children: React.ReactNode;
-}) {
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <section className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-slate-100 pt-2 first:border-0">
-      <h4
-        className={`w-full shrink-0 text-[10px] font-semibold uppercase tracking-wide sm:w-20 ${
-          tone === "warn" ? "text-accent-700" : "text-slate-400"
-        }`}
-      >
+      <h4 className="w-full shrink-0 text-[10px] font-semibold uppercase tracking-wide text-slate-400 sm:w-20">
         {label}
       </h4>
       <div className="min-w-0 flex-1">{children}</div>
@@ -421,9 +410,12 @@ function BlockCard({
         </button>
       )}
 
+      {/* The same badge the shift bar uses, on its own line — as a two-word Row label it wrapped
+          to "WORTH A / CHECK" in a lane column and read as a section heading, not a flag. */}
       {openDisputes.length > 0 && !allocated && (
-        <Row label="Worth a check" tone="warn">
-          <p className="text-xs text-slate-600">
+        <section className="mt-2 border-t border-slate-100 pt-2">
+          <WorthACheck />
+          <p className="mt-1 text-xs text-slate-600">
             The two readings differ — pick the one that matches your handwriting.
           </p>
           <ul className="mt-1.5 space-y-1.5">
@@ -450,7 +442,7 @@ function BlockCard({
               );
             })}
           </ul>
-        </Row>
+        </section>
       )}
 
       {block.medicationCandidate && (
@@ -648,7 +640,7 @@ export function ReviewPanel({
       )}
 
       {corrections.length > 0 && (
-        <p className="mt-2 rounded-lg bg-primary-50/50 p-2 text-xs text-slate-600">
+        <p className="mt-2 rounded-lg bg-slate-50 p-2 text-xs text-slate-600">
           <span className="font-medium">Spell-checked:</span>{" "}
           {corrections.map((c) => {
             const [from, to] = c.split("|");

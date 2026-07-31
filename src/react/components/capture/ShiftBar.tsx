@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { formatShiftLabel } from "../../../logic/captureShift";
 import type { ShiftResolution } from "../../../logic/captureShift";
+import { WorthACheck } from "./WorthACheck";
 
 /**
  * Which shift this page belongs to (spec-note-capture.md P9).
@@ -43,11 +44,7 @@ export function ShiftBar({
 
       <p className="mt-1 flex flex-wrap items-baseline gap-x-2 text-sm text-slate-700">
         {selected ? formatShiftLabel(selected.shift) : "Not attached to a shift"}
-        {resolution.isFallback && (
-          <span className="rounded-full bg-accent-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-700">
-            worth a check
-          </span>
-        )}
+        {resolution.isFallback && <WorthACheck />}
       </p>
 
       {/* Never let a recency guess read as a date match (P9). */}

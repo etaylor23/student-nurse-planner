@@ -136,10 +136,10 @@ export function LaneBoard({
               onDrop={() => drop(target)}
               className={`min-w-0 rounded-xl border-2 p-2 transition-colors ${
                 active
-                  ? "border-solid border-primary-500 bg-primary-100/70"
+                  ? "border-solid border-primary-500 bg-primary-50"
                   : dragging
-                    ? "border-dashed border-primary-400 bg-primary-50"
-                    : "border-dashed border-primary-200 bg-primary-50/40"
+                    ? "border-dashed border-primary-400"
+                    : "border-dashed border-primary-200"
               }`}
             >
               <h4 className="px-1 text-[11px] font-semibold uppercase tracking-wide text-primary-800">
@@ -150,7 +150,11 @@ export function LaneBoard({
               {/* The lane's CONTENT scrolls, not the lane. One full medication card is taller
                   than the viewport, and without this a busy column pushed the other three off
                   the bottom — which defeats the point of showing all four routes at once. */}
-              <ul className="mt-2 min-w-0 space-y-3 overflow-y-auto lg:max-h-[26rem]">
+              <ul
+                className={`mt-2 min-w-0 space-y-3 ${
+                  hasUndecided ? "overflow-y-auto lg:max-h-[26rem]" : ""
+                }`}
+              >
                 {mine.map(draggable)}
                 <li
                   className={`rounded-lg border border-dashed px-1 py-3 text-center text-[11px] ${

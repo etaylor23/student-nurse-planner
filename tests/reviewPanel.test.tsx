@@ -141,9 +141,11 @@ describe("ReviewPanel", () => {
     render(<ReviewPanel blocks={BLOCKS} handlers={handlers()} />);
     // The first version stacked target, group, disputes, tags and codes as undifferentiated
     // chips and read as noise. These labels are what make it scannable.
-    for (const label of ["Worth a check", "Drug", "Tags", "NMC evidence"]) {
+    for (const label of ["Drug", "Tags", "NMC evidence"]) {
       expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     }
+    // Uncertainty is a badge, not a section heading, and the SAME badge everywhere (P22/P9).
+    expect(screen.getAllByText("worth a check").length).toBe(2);
     // The raw group key is NOT surfaced — it meant nothing to a reader.
     expect(screen.queryByText(/med-notes-haematology/)).toBeNull();
   });
