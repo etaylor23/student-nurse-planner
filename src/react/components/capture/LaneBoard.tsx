@@ -82,7 +82,7 @@ export function LaneBoard({
         }`}
       >
         {canDrag && (
-          <p className="flex items-center gap-1 pb-1 pl-1 text-[10px] uppercase tracking-wide text-slate-400">
+          <p className="flex items-center gap-1 pb-1 pl-1 text-[11px] text-primary-700/70">
             <span aria-hidden="true">⠿</span> drag me
           </p>
         )}
@@ -103,7 +103,7 @@ export function LaneBoard({
           attention, and it is the cards that are the thing. Just a heading and the cards. */}
       {hasUndecided && (
         <section className="mb-4 min-w-0 lg:mb-0">
-          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-primary-800">
             Not decided ({undecided.length})
           </h4>
           <p className="mt-0.5 text-xs text-slate-400">
@@ -136,17 +136,17 @@ export function LaneBoard({
               onDrop={() => drop(target)}
               className={`min-w-0 rounded-xl border-2 p-2 transition-colors ${
                 active
-                  ? "border-solid border-secondary-500 bg-secondary-50"
+                  ? "border-solid border-primary-500 bg-primary-100/70"
                   : dragging
-                    ? "border-dashed border-secondary-300 bg-secondary-50/30"
-                    : "border-dashed border-slate-300 bg-slate-50/60"
+                    ? "border-dashed border-primary-400 bg-primary-50"
+                    : "border-dashed border-primary-200 bg-primary-50/40"
               }`}
             >
-              <h4 className="px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+              <h4 className="px-1 text-[11px] font-semibold uppercase tracking-wide text-primary-800">
                 {NOTE_BLOCK_TARGET_LABEL[target]}{" "}
-                <span className="font-normal text-slate-400">({mine.length})</span>
+                <span className="font-normal text-primary-600">({mine.length})</span>
               </h4>
-              <p className="px-1 text-[11px] leading-snug text-slate-400">{blurb}</p>
+              <p className="px-1 text-[11px] leading-snug text-primary-700/80">{blurb}</p>
               {/* The lane's CONTENT scrolls, not the lane. One full medication card is taller
                   than the viewport, and without this a busy column pushed the other three off
                   the bottom — which defeats the point of showing all four routes at once. */}
@@ -155,8 +155,8 @@ export function LaneBoard({
                 <li
                   className={`rounded-lg border border-dashed px-1 py-3 text-center text-[11px] ${
                     active
-                      ? "border-secondary-400 text-secondary-700"
-                      : "border-slate-200 text-slate-400"
+                      ? "border-primary-500 text-primary-800"
+                      : "border-primary-300 text-primary-700"
                   } ${mine.length > 0 && !dragging ? "hidden" : ""}`}
                 >
                   {dragging ? "Drop it here" : "Drag a note here"}

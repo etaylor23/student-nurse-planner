@@ -71,7 +71,7 @@ export function AllocateBar({
         <p className="text-xs font-medium text-primary-900">
           Filed as {filed ?? (target ? NOTE_BLOCK_TARGET_LABEL[target] : "a note")} 🌱
         </p>
-        {warning && <p className="mt-1 text-xs text-amber-800">{warning}</p>}
+        {warning && <p className="mt-1 text-xs text-accent-700">{warning}</p>}
         <button
           type="button"
           onClick={undo}

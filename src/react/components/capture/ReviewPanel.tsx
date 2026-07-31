@@ -155,7 +155,7 @@ function Row({
     <section className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-t border-slate-100 pt-2 first:border-0">
       <h4
         className={`w-full shrink-0 text-[10px] font-semibold uppercase tracking-wide sm:w-20 ${
-          tone === "warn" ? "text-amber-600" : "text-slate-400"
+          tone === "warn" ? "text-accent-700" : "text-slate-400"
         }`}
       >
         {label}
@@ -319,7 +319,7 @@ function BlockCard({
         allocated
           ? "ring-1 ring-primary-300"
           : openDisputes.length > 0
-            ? "ring-1 ring-amber-300"
+            ? "ring-1 ring-accent-300"
             : "ring-1 ring-slate-200"
       }`}
     >
@@ -423,7 +423,7 @@ function BlockCard({
 
       {openDisputes.length > 0 && !allocated && (
         <Row label="Worth a check" tone="warn">
-          <p className="text-xs text-amber-900">
+          <p className="text-xs text-slate-600">
             The two readings differ — pick the one that matches your handwriting.
           </p>
           <ul className="mt-1.5 space-y-1.5">
@@ -434,15 +434,15 @@ function BlockCard({
                   <button
                     type="button"
                     onClick={() => chooseReading(pair, structure, check)}
-                    className="rounded-lg border border-amber-300 bg-white px-2 py-0.5 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                    className="rounded-lg border border-accent-300 bg-white px-2 py-0.5 text-xs font-medium text-accent-700 hover:bg-accent-50"
                   >
                     {structure}
                   </button>
-                  <span className="text-xs text-amber-600">or</span>
+                  <span className="text-xs text-slate-400">or</span>
                   <button
                     type="button"
                     onClick={() => chooseReading(pair, check, structure)}
-                    className="rounded-lg border border-amber-300 bg-white px-2 py-0.5 text-xs text-amber-900 hover:bg-amber-100"
+                    className="rounded-lg border border-accent-300 bg-white px-2 py-0.5 text-xs text-accent-700 hover:bg-accent-50"
                   >
                     {check}
                   </button>
@@ -623,12 +623,12 @@ export function ReviewPanel({
         </span>
         {/* Shown exactly as written — the app resolves the year, the model never invents one (P8). */}
         {pageDateRaw && <span>date on page: “{pageDateRaw}”</span>}
-        {toCheck > 0 && <span className="font-medium text-amber-700">{toCheck} to check</span>}
+        {toCheck > 0 && <span className="font-medium text-accent-700">{toCheck} to check</span>}
         {filed > 0 && <span className="font-medium text-primary-700">{filed} filed</span>}
       </div>
 
       {cachedFrom && (
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-secondary-50 px-3 py-2 text-xs text-secondary-900">
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-primary-50 px-3 py-2 text-xs text-primary-900">
           <span>
             {/* Say where it came from. A result that looks live but is months old would be
                 worse than a slower one. */}
@@ -639,7 +639,7 @@ export function ReviewPanel({
             <button
               type="button"
               onClick={onRerun}
-              className="font-medium text-secondary-700 underline hover:text-secondary-900"
+              className="font-medium text-primary-700 underline hover:text-primary-900"
             >
               Read it again from scratch
             </button>
@@ -648,7 +648,7 @@ export function ReviewPanel({
       )}
 
       {corrections.length > 0 && (
-        <p className="mt-2 rounded-lg bg-slate-50 p-2 text-xs text-slate-600">
+        <p className="mt-2 rounded-lg bg-primary-50/50 p-2 text-xs text-slate-600">
           <span className="font-medium">Spell-checked:</span>{" "}
           {corrections.map((c) => {
             const [from, to] = c.split("|");

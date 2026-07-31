@@ -34,21 +34,26 @@ export function ShiftBar({
   }
 
   return (
-    <div
-      className={`rounded-xl border p-3 ${
-        resolution.isFallback ? "border-amber-200 bg-amber-50/40" : "border-slate-200 bg-slate-50"
-      }`}
-    >
-      <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Shift</h4>
+    // One surface for both states. A full coral panel for the fallback made the quietest
+    // decision on the screen the loudest thing on it, and coral is meant to be sparing — so
+    // the caution rides on a small label instead, which still keeps a guess distinguishable
+    // from a match (P9) without shouting.
+    <div className="rounded-xl border border-primary-200 bg-primary-50/50 p-3">
+      <h4 className="text-[11px] font-semibold uppercase tracking-wide text-primary-800">Shift</h4>
 
-      <p className="mt-1 text-sm text-slate-700">
+      <p className="mt-1 flex flex-wrap items-baseline gap-x-2 text-sm text-slate-700">
         {selected ? formatShiftLabel(selected.shift) : "Not attached to a shift"}
+        {resolution.isFallback && (
+          <span className="rounded-full bg-accent-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-700">
+            worth a check
+          </span>
+        )}
       </p>
 
       {/* Never let a recency guess read as a date match (P9). */}
       <p className="mt-0.5 text-xs text-slate-500">
         {resolution.isFallback
-          ? "No date on the page we could match — this is just your most recent shift, so check it."
+          ? "No date on the page we could match — this is just your most recent shift."
           : "Matched to the date written on the page."}
       </p>
 
@@ -89,7 +94,7 @@ export function ShiftBar({
               >
                 {formatShiftLabel(c.shift)}
                 {c.confidence === "DATE_MATCH" && (
-                  <span className="ml-2 text-secondary-600">matches the page</span>
+                  <span className="ml-2 text-primary-700">matches the page</span>
                 )}
               </button>
             </li>

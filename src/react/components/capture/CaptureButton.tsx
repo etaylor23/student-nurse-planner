@@ -166,7 +166,7 @@ export function CaptureButton() {
                 <>
                   {/* The warning is the whole point of this step (P2) — it is not a
                       formality, and it is deliberately the most prominent thing here. */}
-                  <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  <div className="mt-4 rounded-xl border border-accent-200 bg-accent-50 p-3 text-sm text-ink">
                     <p className="font-medium">Before you take the photo</p>
                     <p className="mt-1">
                       Make sure nothing patient-identifiable is in frame — no names, NHS numbers,
@@ -235,7 +235,7 @@ export function CaptureButton() {
                     )}
                   </div>
                   <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                    <div className="h-full w-1/3 animate-pulse rounded-full bg-secondary-400" />
+                    <div className="h-full w-1/3 animate-pulse rounded-full bg-primary-400" />
                   </div>
 
                   {state.preview ? (
@@ -261,7 +261,7 @@ export function CaptureButton() {
               {state.stage === "review" && state.blocks && (
                 <>
                   {state.error && (
-                    <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+                    <p className="mt-3 rounded-lg bg-accent-50 p-3 text-sm text-accent-700">
                       Some pages couldn&apos;t be read, but the ones below worked.
                     </p>
                   )}
