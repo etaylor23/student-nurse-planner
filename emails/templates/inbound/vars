@@ -1,0 +1,9 @@
+# Slots filled into templates/_shell. One key=value per line; --var overrides any of them.
+#
+# For people who got in touch with us asking to use PlaceMate. Access is deliberately
+# gated on the onboarding call, so this email must NOT promise a magic link is imminent
+# the way welcome-beta does: the sign-in link follows the chat, not the email. Replying is
+# the single call to action, so nothing else in the template is styled to compete with it.
+title=We'd love to have you in the PlaceMate beta
+preheader=A quick chat first, then we'll get you set up. Here's what we're building.
+footer_reason=You're receiving this because you got in touch with us about PlaceMate.
