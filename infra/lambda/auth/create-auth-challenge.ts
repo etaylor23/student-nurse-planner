@@ -56,18 +56,18 @@ const p = (s: string) => `<p style="margin:12px 0 0;font-size:15px;line-height:1
 function html(secretLoginLink: string, invite: boolean): string {
   const heading = invite ? "Your invite is here" : "Your sign-in link";
   const intro = invite
-    ? p("A few days ago we sent you a welcome note — this is the part we promised. Your invite to PlaceMate has arrived.") +
+    ? p("A few days ago we sent you a welcome note, and this is the part we promised. Your invite to PlaceMate has arrived.") +
       p(
-        "It's the one place to keep everything that matters on your nursing journey — the clinical skills you've been signed off on, your placement hours, your progress against the NMC proficiencies, and the shifts you fit around uni and life — all recorded in one place, so nothing slips away.",
+        "It's the one place to keep everything that matters on your nursing journey: the clinical skills you've been signed off on, your placement hours, your progress against the NMC proficiencies, and the shifts you fit around uni and life, all recorded in one place, so nothing slips away.",
       ) +
       p(
-        `Tap below to sign in and make it yours. The link works once and stays valid for ${EXPIRY_LABEL} — open it on the phone or laptop you'd like to use PlaceMate on.`,
+        `Tap below to sign in and make it yours. The link works once and stays valid for ${EXPIRY_LABEL}. Open it on the phone or laptop you'd like to use PlaceMate on.`,
       )
     : p(
         `Tap the button below to sign in to PlaceMate. It works once and expires in ${EXPIRY_LABEL}, and must be opened on the device that requested it.`,
       );
   const footer = invite
-    ? `Trouble signing in? Just reply, or email <a href="mailto:hello@placemate.uk" style="color:${muted};">hello@placemate.uk</a> — we read every message.`
+    ? `Trouble signing in? Just reply, or email <a href="mailto:hello@placemate.uk" style="color:${muted};">hello@placemate.uk</a>. We read every message.`
     : `Didn't request this? You can safely ignore this email. Need a hand? Just reply, or email <a href="mailto:hello@placemate.uk" style="color:${muted};">hello@placemate.uk</a>.`;
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -98,17 +98,17 @@ function text(secretLoginLink: string, invite: boolean): string {
     return [
       "Your PlaceMate invite is here",
       "",
-      "A few days ago we sent you a welcome note — this is the part we promised. Your invite to PlaceMate has arrived.",
+      "A few days ago we sent you a welcome note, and this is the part we promised. Your invite to PlaceMate has arrived.",
       "",
-      "It's the one place to keep everything that matters on your nursing journey: the clinical skills you've been signed off on, your placement hours, your progress against the NMC proficiencies, and the shifts you fit around uni and life — all recorded in one place.",
+      "It's the one place to keep everything that matters on your nursing journey: the clinical skills you've been signed off on, your placement hours, your progress against the NMC proficiencies, and the shifts you fit around uni and life, all recorded in one place.",
       "",
       "Tap the link below to sign in and make it yours. It works once and stays valid for " +
         EXPIRY_LABEL +
-        " — open it on the phone or laptop you'd like to use PlaceMate on:",
+        ". Open it on the phone or laptop you'd like to use PlaceMate on:",
       "",
       secretLoginLink,
       "",
-      "Trouble signing in? Just reply, or email hello@placemate.uk — we read every message.",
+      "Trouble signing in? Just reply, or email hello@placemate.uk. We read every message.",
     ].join("\n");
   }
   return [
