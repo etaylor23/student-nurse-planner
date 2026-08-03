@@ -10,20 +10,45 @@ digging through old session transcripts. Don't make future-us do that.
 
 Update it whenever you run a [beta lifecycle script](./beta-invites.md):
 
-- **pre-welcome** sent (`send-pre-welcome-email.ts --execute`) → add a row, set _Pre-welcome_.
-- **invite** sent (`invite-user.ts --execute`) → set _Invited_ and status `invited`.
+- **any email sent** → append `` `template` date `` to that person's _Emails sent_ cell.
+  That cell is the whole point of this file; if you only update one thing, update it.
+- **invite** sent (`invite-user.ts --execute`) → also set _Invited_ and status `invited`,
+  and append `magic-link` to _Emails sent_ (the script sends that email as well as
+  provisioning the account).
 - **removed** (`delete-user.ts --execute`) → set status `removed` (keep the row for history).
 
-Dates are the day the email went out (Europe/London). Status: `pre-welcomed` → `invited` →
-(`removed`).
+Dates are the day the email went out (Europe/London). Status: `inbound` (asked us for
+access, awaiting their onboarding call) or `pre-welcomed` → `invited` → (`removed`).
+
+**Provisioned ≠ active.** A Cognito account only becomes a row in DynamoDB once the person
+signs in and the app syncs. Cross-check both (see below) before treating anyone as a live
+user — an invite that was never opened looks identical to an active student in Cognito.
 
 ## Beta students
 
-| Name      | Email                       | Pre-welcome | Invited    | Status  | Notes   |
-| --------- | --------------------------- | ----------- | ---------- | ------- | ------- |
-| Francesca | `frxnyi@gmail.com`          | 2026-07-22  | 2026-07-24 | invited | Gmail   |
-| Ruby      | `Rubyajames@live.co.uk`     | 2026-07-22  | 2026-07-24 | invited | Live    |
-| Nicole    | `nicolewane@hotmail.co.uk`  | 2026-07-22  | 2026-07-24 | invited | Hotmail |
+**Emails sent** is the per-person record: every email that address has received, oldest
+first, named by the template that produced it. `magic-link` is the sign-in email from the
+auth Lambda (sent by `invite-user.ts`, invite-copy variant), not one of the `emails/`
+templates. **Invited** is the day they were provisioned in Cognito, which is a different
+fact from an email landing.
+
+| Name      | Email                        | Emails sent                                                                          | Invited    | Status  | Notes |
+| --------- | ---------------------------- | ------------------------------------------------------------------------------------ | ---------- | ------- | ----- |
+| Francesca | `frxnyi@gmail.com`           | `welcome-beta` 2026-07-22 · `magic-link` 2026-07-24 · `intelligence-recall` 2026-08-03 | 2026-07-24 | invited | Gmail |
+| Ruby      | `Rubyajames@live.co.uk`      | `welcome-beta` 2026-07-22 · `magic-link` 2026-07-24 · `intelligence-recall` 2026-08-03 | 2026-07-24 | invited | Live |
+| Nicole    | `nicolewane@hotmail.co.uk`   | `welcome-beta` 2026-07-22 · `magic-link` 2026-07-24 · `intelligence-recall` 2026-08-03 | 2026-07-24 | invited | Hotmail |
+| Darlene   | `Darlene.auguis@nhs.net`     | `welcome-beta` 2026-08-03 · `magic-link` 2026-08-03 · `intelligence-recall` 2026-08-03 | 2026-08-03 | invited | NHSmail. Three emails in one day, and Defender Safe Links rewrites URLs — if the sign-in link or the images misbehave, ask for a personal address |
+| Regine    | `reginefouda@hotmail.com`    | `magic-link` 2026-08-03 · `intelligence-recall` 2026-08-03                             | 2026-08-03 | invited | Hotmail. Warmed up outside the scripts, so no `welcome-beta` — went straight to the magic link |
+| Kyra      | `kyranicolesingh@icloud.com` | `inbound` 2026-08-03                                                                   | —          | inbound | iCloud. Got in touch asking for access, so `inbound` rather than `welcome-beta`. Awaiting reply with call times — **provision only after the call** |
+
+## Announcements sent
+
+Feature launches go to students, not to the team (who are BCC'd). Log them here: SES keeps
+no per-recipient record, so this is the only durable answer to "did they already get this?"
+
+| Date       | Template              | Sent to                                          |
+| ---------- | --------------------- | ------------------------------------------------ |
+| 2026-08-03 | `intelligence-recall` | Francesca, Ruby, Nicole, Darlene, Regine (bcc Ellis). Not Kyra, who has no account yet. |
 
 ## Team / test accounts
 

@@ -1,6 +1,6 @@
 # Runbook: beta user lifecycle (invite / remove)
 
-Three scripts, run per email, all **dry-run by default** (add `--execute` to act). Run with
+Four scripts, run per email, all **dry-run by default** (add `--execute` to act). Run with
 the `personal` AWS profile. They resolve the live table + Cognito pool from the
 `NursePlanner-dev` stack automatically.
 
@@ -48,6 +48,32 @@ AWS_PROFILE=personal npx tsx scripts/delete-user.ts sam@example.com --execute  #
 ```
 Manual tail (printed by the script): remove the user's Sentry data + any hello@ emails.
 PITR backups roll off within ~35 days.
+
+## 4. Inbound enquiries (someone asked *us* for access)
+
+Different door, different email. `inbound` thanks them for getting in touch and asks for a
+short onboarding call — access is deliberately gated on that call, so unlike the
+pre-welcome it makes **no** promise of an imminent magic link. Send it with `send.sh`
+directly, then run steps 2 above once you've spoken.
+
+```bash
+./emails/send.sh inbound --to sam@example.com --name Sam --bcc nicolanightingale97@hotmail.co.uk,ellis@placemate.uk --dry-run
+```
+
+## 5. Announcements (a launch, to everyone)
+
+```bash
+AWS_PROFILE=personal npx tsx scripts/send-announcement.ts --template intelligence-recall            # dry-run
+AWS_PROFILE=personal npx tsx scripts/send-announcement.ts --template intelligence-recall --execute  # send
+```
+
+Resolves recipients itself: every active user in the table with an email address, minus an
+explicit team/test skip list (they're BCC'd anyway). Prints the list before sending. Use
+`--to me@example.com --name Ellis --execute` first to post yourself a real copy.
+
+Note the resolver's deletion filter uses `attribute_not_exists(deleted)`, **not**
+`deleted <> :true` — DynamoDB treats a comparison against a missing attribute as false, so
+the latter silently matches nobody. The predecessor script had exactly that bug.
 
 ## Notes
 
