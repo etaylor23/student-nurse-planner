@@ -1,0 +1,73 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="color-scheme" content="light only" />
+  <meta name="supported-color-schemes" content="light" />
+  <title>{{title}}</title>
+  <!--[if mso]>
+  <style type="text/css">
+    body, table, td { font-family: Arial, Helvetica, sans-serif !important; }
+  </style>
+  <![endif]-->
+</head>
+<body style="margin:0; padding:0; background-color:#eef2f1; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%;">
+  <!-- Preheader: shown in inbox preview, hidden in the body. The entity run pads it out so
+       the client doesn't spill body copy into the preview line. -->
+  <div style="display:none; font-size:1px; color:#eef2f1; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden; mso-hide:all;">
+    {{preheader}}
+    &#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#eef2f1;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+
+        <!-- Card -->
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px; background-color:#ffffff; border-radius:16px; overflow:hidden; border:1px solid #e4eae8;">
+
+          <!-- Header: the app logo lockup, full-colour pin mark (hosted PNG) + two-tone
+               wordmark (place = ink, mate = emerald), on white to match the app. Degrades
+               to the two-tone wordmark text if the recipient blocks images. -->
+          <tr>
+            <td style="background-color:#f0fdf9; padding:26px 32px; border-bottom:1px solid #d1fae5;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="vertical-align:middle;">
+                    <img src="https://placemate.uk/email-logo-mark.png" width="32" height="32" alt="" style="display:block; border:0;" />
+                  </td>
+                  <td style="vertical-align:middle; padding-left:9px; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:27px; font-weight:800; letter-spacing:-0.5px; line-height:1;">
+                    <span style="color:#16212f;">place</span><span style="color:#059669;">mate</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body: the per-email content.html goes here verbatim. -->
+          <tr>
+            <td style="padding:36px 32px 8px 32px; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#16212f; font-size:16px; line-height:1.6;">
+{{content}}
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px 32px 28px 32px; border-top:1px solid #eef2f1; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#8a97a3; font-size:12px; line-height:1.6;">
+              {{footer_reason}}<br />
+              <a href="https://placemate.uk" target="_blank" style="color:#005eb8; text-decoration:none;">placemate.uk</a>
+              &nbsp;&bull;&nbsp;
+              <a href="mailto:hello@placemate.uk" style="color:#005eb8; text-decoration:none;">hello@placemate.uk</a>
+            </td>
+          </tr>
+
+        </table>
+        <!-- /Card -->
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

@@ -1,0 +1,4 @@
+# Slots filled into templates/_shell. One key=value per line; --var overrides any of them.
+title=Welcome to the PlaceMate beta
+preheader=You're in. Here's what PlaceMate can do, and how you'll help shape what comes next.
+footer_reason=You're receiving this because you joined the PlaceMate beta programme.

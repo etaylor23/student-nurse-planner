@@ -1,22 +1,34 @@
 #!/usr/bin/env bash
 # PlaceMate transactional email sender.
 #
-# Renders a template (subject.txt / body.html / body.txt) with {{variable}}
-# substitution and sends it via Amazon SES v2 (aws sesv2 send-email).
+# Composes a template into the shared brand shell, substitutes {{variables}}, and
+# sends it via Amazon SES v2 (aws sesv2 send-email).
+#
+# Each email is content only — the card, logo lockup and footer live once in
+# templates/_shell and are wrapped around it at send time, so there are no generated
+# files to rebuild and a change to the chrome lands in every email at once:
+#
+#   templates/_shell/body.html   the HTML chrome; slots {{title}} {{preheader}}
+#   templates/_shell/body.txt    the text chrome;  slot  {{content}} {{footer_reason}}
+#   templates/<name>/subject.txt subject line (one line)
+#   templates/<name>/content.html the HTML body copy — no <html>, no card, no footer
+#   templates/<name>/content.txt  the plain-text body copy (hand-written, not derived)
+#   templates/<name>/vars         key=value lines filling the shell's slots
 #
 # Usage:
 #   ./send.sh <template> --to <email> [--name <first name>] [--bcc <email[,email]>] \
 #             [--var KEY=VALUE ...] [--from "<name> <addr>"] [--dry-run]
 #
 # Examples:
-#   # Preview only — writes rendered HTML to emails/.preview-<template>.html, sends nothing:
+#   # Preview only — writes rendered HTML to templates/<name>/preview.html, sends nothing:
 #   ./send.sh welcome-beta --to sarah@example.com --name Sarah --dry-run
 #
 #   # Actually send:
 #   ./send.sh welcome-beta --to sarah@example.com --name Sarah
 #
-# Every {{key}} in the template files is replaced. --name sets {{first_name}}
-# (defaults to "there" if omitted); --var name=value sets any other placeholder.
+# Every {{key}} is replaced from, in precedence order: --name (sets {{first_name}},
+# defaults to "there"), then --var KEY=VALUE, then the template's `vars` file. Any
+# placeholder left unfilled is a hard error — template syntax must never reach an inbox.
 #
 # Config via env vars (defaults in brackets):
 #   PLACEMATE_AWS_PROFILE  AWS CLI profile          [personal]
@@ -24,13 +36,14 @@
 #   PLACEMATE_FROM         From identity            [PlaceMate <hello@placemate.uk>]
 #   PLACEMATE_REPLY_TO     Reply-To address         [hello@placemate.uk]
 #
-# NOTE: SES for this account is still in the sandbox (prod-access pending), so
-# real sends only succeed to *verified* recipient addresses. Use --dry-run freely.
+# NOTE: SES production access is live (2026-07-18) — mail reaches any recipient, no
+# per-address verification needed. Use --dry-run freely for content review.
 
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATES_DIR="$HERE/templates"
+SHELL_DIR="$TEMPLATES_DIR/_shell"
 
 PROFILE="${PLACEMATE_AWS_PROFILE:-personal}"
 REGION="${PLACEMATE_SES_REGION:-eu-west-2}"
@@ -70,16 +83,29 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# _shell holds the shared chrome, not a sendable email — the underscore marks it as such.
+[[ "$TEMPLATE" == _* ]] && { echo "error: '$TEMPLATE' is a shared part, not a template" >&2; exit 2; }
+
 TDIR="$TEMPLATES_DIR/$TEMPLATE"
 [[ -d "$TDIR" ]] || { echo "error: no template directory at $TDIR" >&2; exit 2; }
-for f in subject.txt body.html body.txt; do
+for f in subject.txt content.html content.txt vars; do
   [[ -f "$TDIR/$f" ]] || { echo "error: template '$TEMPLATE' is missing $f" >&2; exit 2; }
+done
+for f in body.html body.txt; do
+  [[ -f "$SHELL_DIR/$f" ]] || { echo "error: the shared shell is missing $f" >&2; exit 2; }
 done
 [[ -n "$TO" ]] || { echo "error: --to is required" >&2; exit 2; }
 
-# first_name has a friendly default; explicit --var first_name=... would win below.
+# Precedence is render order — the loop below replaces on first match, so whatever is
+# listed earliest wins. --name first, then --var, then the template's own vars file.
 [[ -n "$FIRST_NAME" ]] || FIRST_NAME="there"
 VAR_PAIRS=("first_name=$FIRST_NAME" "${VAR_PAIRS[@]:-}")
+
+while IFS= read -r line || [[ -n "$line" ]]; do
+  [[ -z "${line//[[:space:]]/}" || "$line" == \#* ]] && continue
+  [[ "$line" == *=* ]] || { echo "error: $TDIR/vars: not a key=value line: $line" >&2; exit 2; }
+  VAR_PAIRS+=("$line")
+done < "$TDIR/vars"
 
 render() {
   # render <file>  ->  file contents with every {{key}} replaced from VAR_PAIRS
@@ -94,10 +120,29 @@ render() {
   printf '%s' "$content"
 }
 
+compose() {
+  # compose <shell file> <already-rendered content>  ->  content wrapped in the shell.
+  # {{content}} is substituted LAST and never re-scanned, so body copy containing
+  # something that looks like a placeholder can't be mangled by the renderer.
+  local shell
+  shell="$(render "$1")"
+  printf '%s' "${shell//"{{content}}"/$2}"
+}
+
 SUBJECT="$(render "$TDIR/subject.txt")"
 SUBJECT="${SUBJECT%$'\n'}"                       # drop the trailing newline
-HTML_BODY="$(render "$TDIR/body.html")"
-TEXT_BODY="$(render "$TDIR/body.txt")"
+HTML_BODY="$(compose "$SHELL_DIR/body.html" "$(render "$TDIR/content.html")")"
+TEXT_BODY="$(compose "$SHELL_DIR/body.txt" "$(render "$TDIR/content.txt")")"
+
+# A surviving {{placeholder}} means a var the template needs was never supplied. Fail
+# loudly: shipping literal template syntax to a real recipient is worse than not sending.
+for part in "$SUBJECT" "$HTML_BODY" "$TEXT_BODY"; do
+  if [[ "$part" == *'{{'* ]]; then
+    echo "error: unfilled placeholder(s) — add them to $TDIR/vars or pass --var:" >&2
+    printf '%s\n' "$part" | grep -o '{{[a-z_]\{1,\}}}' | sort -u >&2
+    exit 2
+  fi
+done
 
 # Build the SES v2 --content payload safely (jq handles all escaping).
 CONTENT="$(jq -n \
@@ -123,7 +168,9 @@ DEST="$(jq -n --arg to "$TO" --arg bcc "$BCC" \
   '{ToAddresses:[$to]} + (if $bcc == "" then {} else {BccAddresses:($bcc | split(","))} end)')"
 
 if [[ "$DRY_RUN" == 1 ]]; then
-  PREVIEW="$HERE/.preview-$TEMPLATE.html"
+  # Lives beside the template it renders, not loose in emails/. Generated on every dry
+  # run and gitignored — it's a viewer, never a source of truth.
+  PREVIEW="$TDIR/preview.html"
   printf '%s' "$HTML_BODY" > "$PREVIEW"
   echo "DRY RUN — nothing sent."
   echo "  Template : $TEMPLATE"
