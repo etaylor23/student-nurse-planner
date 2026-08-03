@@ -23,7 +23,7 @@ export interface OnboardingStep {
   done: boolean;
 }
 
-/** Booleans derived from the user's real data — see `ExampleFlow`. */
+/** Booleans derived from the user's real data — see `react/useOnboardingSteps`. */
 export interface OnboardingSignals {
   hasPlacement: boolean;
   hasShift: boolean;

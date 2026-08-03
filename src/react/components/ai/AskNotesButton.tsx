@@ -37,11 +37,16 @@ export function AskNotesButton() {
       {/* A real-looking search field, not an icon: at ~40% of the header it reads as the
           primary way in, which a subtle sparkle icon did not. It is a BUTTON styled as an
           input (never a real input) — one click hands focus straight to the panel's own
-          field, so there is no second box to retype into and no duplicated state. */}
+          field, so there is no second box to retype into and no duplicated state.
+
+          Emerald-tinted with a NEW badge (spec-home-redesign.md decision 3). Home used to
+          carry a whole teaser panel selling this feature; removing that panel put the
+          entire job of being discovered on the field itself, and a slate-on-slate field
+          reads as furniture. The tint is the compensation, not decoration. */}
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="group hidden h-9 w-full min-w-[14rem] max-w-lg items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/80 px-3 text-left transition-colors hover:border-primary-300 hover:bg-white sm:flex"
+        className="group hidden h-9 w-full min-w-[14rem] max-w-lg items-center gap-2 rounded-xl border border-primary-300 bg-primary-50/60 px-3 text-left shadow-sm transition-colors hover:border-primary-400 hover:bg-white sm:flex"
         aria-label="Ask your notes"
       >
         <svg
@@ -51,13 +56,16 @@ export function AskNotesButton() {
           strokeWidth={1.6}
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="h-4 w-4 shrink-0 text-secondary-500"
+          className="h-4 w-4 shrink-0 text-primary-600"
           aria-hidden="true"
         >
           <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3Z" />
         </svg>
-        <span className="min-w-0 flex-1 truncate text-sm text-slate-400 group-hover:text-slate-500">
+        <span className="min-w-0 flex-1 truncate text-sm text-slate-500 group-hover:text-slate-600">
           Ask your notes anything…
+        </span>
+        <span className="shrink-0 rounded-full bg-primary-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">
+          New
         </span>
         <span className="shrink-0 rounded-md bg-white px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary-600 ring-1 ring-primary-100">
           AI

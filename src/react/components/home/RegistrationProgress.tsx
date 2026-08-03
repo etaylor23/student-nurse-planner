@@ -1,60 +1,30 @@
 import { Link } from "react-router-dom";
 import { formatHumanDate } from "../../../logic/calendar";
-import { progressByProficiency, statusOf, surfaceGaps } from "../../../logic/proficiencies";
+import { progressByProficiency, statusOf } from "../../../logic/proficiencies";
 import { summariseSkills } from "../../../logic/skills";
 import { useProficiencies, useShifts, useSkills } from "../../hooks";
 import { useRepository } from "../../RepositoryContext";
-import { card } from "../ui";
+import { MetricTile, SectionHeading, card } from "../ui";
 
 /**
- * "Toward registration" — the one momentum-framed narrative of how far the student
- * is (ethos D6: Home answers "how far to registration?" alongside "what now?", with
- * no separate screen). Three real dimensions — practice hours, NMC competencies and
- * clinical skills — set against the programme part and target date, with a gentle
- * pace estimate. Tone is momentum, never deficit (D7): no red "behind", progress is
- * framed as what's building and what you could do next.
+ * "YOUR PROGRESS" — the page's single progress story (spec-home-redesign.md decision 4,
+ * and ethos D6: Home answers "how far to registration?" alongside "what now?", with no
+ * separate screen). Three real dimensions — practice hours, NMC competencies and
+ * clinical skills — set against the programme part, with a gentle pace estimate.
+ * Tone is momentum, never deficit (D7): no red "behind", progress is framed as what's
+ * building.
+ *
+ * Practice hours live here and nowhere else on the page. They used to appear twice —
+ * a pace tile in the hero and again in this section — which split one story in two and
+ * pushed the actual next action off the top of the screen. The pace bar and the
+ * shifts-to-go estimate came with them into the hours tile.
+ *
+ * The "ready to take to your assessor" pill is this section's CTA: it's the one thing
+ * on the page that turns progress into an action, so it rides with the progress rather
+ * than floating among the tiles.
  *
  * Everything is derived from existing records; nothing is stored here.
  */
-function Meter({
-  label,
-  value,
-  caption,
-  pct,
-  to,
-}: {
-  label: string;
-  value: string;
-  caption: string;
-  pct: number;
-  to: string;
-}) {
-  return (
-    <Link
-      to={to}
-      className="group block rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/60 transition hover:ring-primary-200"
-    >
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="text-xs font-medium text-slate-500">{label}</span>
-        <span
-          aria-hidden="true"
-          className="text-xs text-slate-300 transition group-hover:text-primary-500"
-        >
-          →
-        </span>
-      </div>
-      <div className="mt-1 text-xl font-semibold tabular-nums text-ink">{value}</div>
-      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-200/70">
-        <div
-          className="h-full rounded-full bg-emerald-500"
-          style={{ width: `${Math.max(0, Math.min(100, pct))}%` }}
-        />
-      </div>
-      <div className="mt-1.5 text-xs text-slate-400">{caption}</div>
-    </Link>
-  );
-}
-
 export function RegistrationProgress() {
   const { user } = useRepository();
   const { summary, projection } = useShifts();
@@ -86,46 +56,47 @@ export function RegistrationProgress() {
       ? 0
       : Math.round((skillsSummary.signedOff / skillsSummary.total) * 100);
 
-  // The most useful next move, framed as an offer (never a deficit alarm).
-  const gaps = surfaceGaps(proficiencies, profProgress, user);
-  const topGap = gaps[0];
-
   const targetDate = user.targetRegistrationDate
     ? formatHumanDate(user.targetRegistrationDate)
     : null;
 
+  // The hours tile absorbs what the hero's pace tile used to say.
+  const hoursCaption =
+    projection.shiftsToGo != null
+      ? `${hoursPct}% of the way there · ≈ ${projection.shiftsToGo.toLocaleString()} shifts to go`
+      : `${hoursPct}% of the way there`;
+
   return (
-    <section className={card} aria-label="Toward registration">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-secondary-600">
-            Toward registration
-          </p>
-          <h2 className="mt-1 text-lg font-semibold tracking-tight text-ink">
-            You're in part {user.currentPart} of {user.totalParts}
-          </h2>
-          <p className="mt-0.5 text-sm text-slate-500">
-            Every shift you capture builds your hours, competency evidence and skills record — all
-            heading for the NMC register.
-          </p>
-        </div>
-        {targetDate && (
-          <div className="text-right">
-            <div className="text-xs font-medium text-slate-500">Aiming for</div>
-            <div className="text-sm font-semibold text-ink">{targetDate}</div>
-          </div>
-        )}
-      </div>
+    <section className={card} aria-label="Your progress">
+      <SectionHeading
+        eyebrow="Your progress"
+        eyebrowTone="secondary"
+        title={`You're in part ${user.currentPart} of ${user.totalParts}`}
+        subtitle="Every shift you capture builds your hours, competency evidence and skills record — all heading for the NMC register."
+        action={
+          readyToSignOff > 0 && (
+            <Link
+              to="/competencies/ready"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 ring-1 ring-emerald-100 transition hover:bg-emerald-100/70"
+            >
+              {readyToSignOff === 1
+                ? "1 competency ready to take to your assessor"
+                : `${readyToSignOff} competencies ready to take to your assessor`}
+              <span aria-hidden="true">→</span>
+            </Link>
+          )
+        }
+      />
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Meter
+        <MetricTile
           label="Practice hours"
           value={`${summary.practiceHours} / ${summary.targetHours.toLocaleString()} h`}
-          caption={`${hoursPct}% of the way there`}
+          caption={hoursCaption}
           pct={hoursPct}
           to="/placement-hours"
         />
-        <Meter
+        <MetricTile
           label="NMC competencies"
           value={`${profAchieved} / ${profTotal} achieved`}
           caption={
@@ -136,7 +107,7 @@ export function RegistrationProgress() {
           pct={profPct}
           to="/competencies"
         />
-        <Meter
+        <MetricTile
           label="Clinical skills"
           value={`${skillsSummary.signedOff} / ${skillsSummary.total} signed off`}
           caption={
@@ -149,36 +120,27 @@ export function RegistrationProgress() {
         />
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-        {projection.finishDate && (
-          <p className="text-sm text-slate-500">
-            At your recent pace, that's around{" "}
-            <span className="font-medium text-ink">{formatHumanDate(projection.finishDate)}</span>.
-          </p>
-        )}
-        {readyToSignOff > 0 && (
-          <Link
-            to="/competencies/ready"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 ring-1 ring-emerald-100 transition hover:bg-emerald-100/70"
-          >
-            {readyToSignOff === 1
-              ? "1 competency ready to take to your assessor"
-              : `${readyToSignOff} competencies ready to take to your assessor`}
-            <span aria-hidden="true">→</span>
-          </Link>
-        )}
-        {topGap && (
-          <Link
-            to="/competencies/gaps"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-secondary-50 px-3 py-1.5 text-sm font-medium text-secondary-700 ring-1 ring-secondary-100 transition hover:bg-secondary-100/70"
-          >
-            {gaps.length === 1
-              ? `1 competency you could evidence next: ${topGap.proficiency.code}`
-              : `${gaps.length} competencies you could evidence next`}
-            <span aria-hidden="true">→</span>
-          </Link>
-        )}
-      </div>
+      {/* The long view, kept quiet: a footnote under the tiles rather than a second
+          block competing with the assessor CTA for the top-right of the section. */}
+      {(targetDate || projection.finishDate) && (
+        <p className="mt-3 text-xs text-slate-400">
+          {targetDate && (
+            <>
+              Aiming for <span className="font-medium text-slate-500">{targetDate}</span>.
+            </>
+          )}
+          {targetDate && projection.finishDate && " "}
+          {projection.finishDate && (
+            <>
+              At your recent pace, that&apos;s around{" "}
+              <span className="font-medium text-slate-500">
+                {formatHumanDate(projection.finishDate)}
+              </span>
+              .
+            </>
+          )}
+        </p>
+      )}
     </section>
   );
 }

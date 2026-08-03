@@ -5,6 +5,7 @@ import { AppErrorFallback } from "./react/components/AppError";
 import { ShiftsProvider } from "./react/ShiftsContext";
 import { CapturePayoffProvider } from "./react/components/CapturePayoff";
 import { AppLayout } from "./react/components/AppLayout";
+import { AuditLogPage } from "./react/components/AuditLogPage";
 import { HomePage } from "./react/components/HomePage";
 import { HoursLogPage } from "./react/components/HoursLogPage";
 import { PlannerPage } from "./react/components/PlannerPage";
@@ -35,6 +36,7 @@ export function App() {
               <AppLayout>
                 <Routes>
                   <Route path="/home" element={<HomePage />} />
+                  <Route path="/activity" element={<AuditLogPage />} />
                   <Route path="/placement-hours" element={<HoursLogPage />} />
                   <Route path="/planner" element={<PlannerPage />} />
                   <Route path="/planner/new" element={<PlannerPage />} />

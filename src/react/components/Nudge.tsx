@@ -74,20 +74,88 @@ function NudgeCard({ nudge, onDismiss }: { nudge: Nudge; onDismiss: () => void }
   );
 }
 
-/** Renders the top `max` non-dismissed nudges (or nothing if there are none). */
-export function NudgeList({ nudges, max = 2 }: { nudges: Nudge[]; max?: number }) {
+/**
+ * Renders the top `max` non-dismissed nudges (or nothing if there are none).
+ *
+ * `collapseAfter` turns the list into a queue: that many nudges stay visible and the
+ * rest hide behind an "N more" toggle, collapsed by default. A stack of suggestions
+ * reads as a to-do list — which is the one thing a nudge must never be — so on a
+ * busy page show one and let the student open the rest if they want them.
+ *
+ * `demoteIds` pushes nudges to the back of the queue without hiding them. Use it
+ * when another surface is already saying the same thing (the first-steps checklist
+ * and the nudges overlap by design): the duplicate keeps its place in the collapsed
+ * set rather than occupying the one visible slot.
+ */
+export function NudgeList({
+  nudges,
+  max = 2,
+  collapseAfter,
+  demoteIds,
+}: {
+  nudges: Nudge[];
+  max?: number;
+  collapseAfter?: number;
+  demoteIds?: readonly string[];
+}) {
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(() => new Set());
-  const shown = nudges.filter((n) => !dismissed.has(n.id)).slice(0, max);
+  const [expanded, setExpanded] = useState(false);
+
+  const demoted = new Set(demoteIds ?? []);
+  const live = nudges.filter((n) => !dismissed.has(n.id));
+  // Stable partition: priority order (logic/nudges.ts) is preserved within each half.
+  const shown = [
+    ...live.filter((n) => !demoted.has(n.id)),
+    ...live.filter((n) => demoted.has(n.id)),
+  ].slice(0, max);
   if (shown.length === 0) return null;
+
+  const onDismiss = (id: string) => setDismissed((prev) => new Set(prev).add(id));
+  const visible = collapseAfter == null ? shown : shown.slice(0, collapseAfter);
+  const rest = collapseAfter == null ? [] : shown.slice(collapseAfter);
+
   return (
-    <section className="space-y-2" aria-label="Suggested next steps">
-      {shown.map((n) => (
-        <NudgeCard
-          key={n.id}
-          nudge={n}
-          onDismiss={() => setDismissed((prev) => new Set(prev).add(n.id))}
-        />
-      ))}
+    <section aria-label="Suggested next steps">
+      <div className="space-y-2">
+        {visible.map((n) => (
+          <NudgeCard key={n.id} nudge={n} onDismiss={() => onDismiss(n.id)} />
+        ))}
+      </div>
+
+      {rest.length > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
+            className="mt-1.5 inline-flex items-center gap-1 px-1 text-xs font-medium text-slate-400 transition hover:text-slate-600"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-3 w-3 transition-transform duration-150"
+              style={{ transform: expanded ? "rotate(180deg)" : undefined }}
+              aria-hidden="true"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+            {expanded
+              ? "Show less"
+              : `${rest.length} more suggestion${rest.length === 1 ? "" : "s"}`}
+          </button>
+          {expanded && (
+            <div className="mt-1.5 space-y-2">
+              {rest.map((n) => (
+                <NudgeCard key={n.id} nudge={n} onDismiss={() => onDismiss(n.id)} />
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </section>
   );
 }

@@ -3,7 +3,8 @@ import { createPortal } from "react-dom";
 import { Camera, Clock, TriangleAlert, X } from "lucide-react";
 import { useRepository } from "../../RepositoryContext";
 import type { GibbsStage } from "../../../domain/types";
-import { DAILY_PHOTO_LIMIT, MAX_IMAGES_PER_CAPTURE } from "./config";
+import { DAILY_PHOTO_LIMIT, MAX_IMAGES_PER_CAPTURE, photoCaptureAvailable } from "./config";
+import { pillBase, pillNeutral } from "../ui";
 import { PagePreview } from "./PagePreview";
 import { ReviewPanel } from "./ReviewPanel";
 import { useCapture } from "./useCapture";
@@ -17,9 +18,10 @@ import { useCapture } from "./useCapture";
  * — so the only honest mitigation is to say so before the camera opens, and to record that
  * it was said (`piiAcknowledged` on the capture row).
  *
- * Hidden for guests only — they have no ID token, so the presign can't be authorised.
- * There is no build-time flag: if the backend isn't deployed the upload reports an error,
- * which tells you more than an invisible feature would.
+ * Hidden for guests — they have no ID token, so the presign can't be authorised — and, per
+ * spec-home-redesign.md decision 12, hidden entirely off localhost while capture is still a
+ * beta (see `photoCaptureAvailable`). This is the only entry point, so hiding it closes the
+ * feature rather than just tidying the header.
  *
  * Portalled to `document.body` for the same reason the ask overlay is: the header carries
  * `backdrop-blur-md`, and a `backdrop-filter` ancestor becomes the containing block for
@@ -107,8 +109,9 @@ export function CaptureButton() {
     return out;
   }, [state.parsed]);
 
-  // Guests only: no ID token means the presign can't be authorised (P17).
-  if (isGuest) return null;
+  // Guests: no ID token means the presign can't be authorised (P17). Off localhost:
+  // capture is still a beta and its PII warning hasn't been through review (decision 12).
+  if (isGuest || !photoCaptureAvailable()) return null;
 
   /**
    * Close the dialog but KEEP the capture.
@@ -153,7 +156,7 @@ export function CaptureButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition-colors hover:border-primary-300 hover:text-slate-900"
+        className={`${pillBase} ${pillNeutral}`}
         aria-label="Photograph your notes"
       >
         <Camera className="h-4 w-4 shrink-0 text-secondary-500" aria-hidden="true" />

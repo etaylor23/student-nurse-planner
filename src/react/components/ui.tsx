@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
 
 /**
  * Shared design system for every feature page.
@@ -24,8 +25,9 @@ import type { ReactNode } from "react";
  * the widget. Always start the layout grid with `grid-cols-1` and give multi-
  * column wrappers `min-w-0` so a wide child (e.g. a table) can't force overflow.
  *
- * Tokens (card / inputCls / btn*) and primitives (PageHero / Panel / StatTile)
- * are shared so a new feature drops straight into this look.
+ * Tokens (card / inputCls / btn* / pill*) and primitives (PageHero /
+ * SectionHeading / Panel / StatTile / MetricTile) are shared so a new feature
+ * drops straight into this look.
  */
 
 // `min-w-0` lets the box shrink inside a grid/flex parent so wide content
@@ -50,42 +52,152 @@ export const btnGhost =
 export const btnGhostSm =
   "inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 active:scale-[.99]";
 
+/**
+ * Header pill geometry — one shape for every control in the app-bar's right
+ * cluster (Photo, Synced, Feedback). They used to be three different heights and
+ * radii, which read as three unrelated widgets crowding the corner; sharing the
+ * geometry lets tone alone carry the difference in rank.
+ *
+ * Compose as `${pillBase} ${pillNeutral}` (status/secondary) or
+ * `${pillBase} ${pillPrimary}` (the emerald one that wants to be found).
+ */
+export const pillBase =
+  "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40";
+
+export const pillNeutral =
+  "border border-slate-200 bg-white text-slate-600 hover:border-primary-300 hover:text-slate-900";
+
+export const pillPrimary =
+  "border border-primary-200 bg-primary-50 text-primary-700 hover:bg-primary-100 hover:text-primary-800";
+
 // Inline text link — NHS blue, the conventional link colour. Use for links
 // that sit inside body copy (not for buttons or nav).
 export const link =
   "font-medium text-secondary-700 underline-offset-2 transition-colors hover:text-secondary-800 hover:underline";
 
 /**
+ * Which brand ramp the eyebrow is tinted with. Emerald is the default; NHS blue
+ * marks a section about the long arc (progress toward registration) rather than
+ * about today.
+ */
+export type EyebrowTone = "primary" | "secondary";
+
+/**
+ * How loud the heading is. `page` is the screen's single h1, `section` a chapter
+ * within it, `panel` the heading on one widget.
+ */
+export type HeadingSize = "page" | "section" | "panel";
+
+const EYEBROW: Record<EyebrowTone, string> = {
+  primary: "text-[11px] font-semibold uppercase tracking-wider text-primary-600",
+  secondary: "text-[11px] font-semibold uppercase tracking-wider text-secondary-600",
+};
+
+const TITLE: Record<HeadingSize, string> = {
+  page: "text-2xl font-semibold tracking-tight text-ink",
+  section: "text-lg font-semibold tracking-tight text-ink",
+  panel: "text-sm font-semibold text-slate-800",
+};
+
+const SUBTITLE: Record<HeadingSize, string> = {
+  page: "mt-1 max-w-md text-sm text-slate-500",
+  section: "mt-1 max-w-xl text-sm text-slate-500",
+  panel: "mt-0.5 text-xs text-slate-400",
+};
+
+const ALIGN = { start: "items-start", center: "items-center", end: "items-end" } as const;
+
+// Literal classes, not interpolated: Tailwind only emits utilities it can see as
+// whole strings in the source.
+const GAP = { sm: "gap-3", md: "gap-4", lg: "gap-6" } as const;
+
+/**
+ * The one heading row: an optional eyebrow, a title, an optional subtitle, and an
+ * optional action on the right.
+ *
+ * Every chapter on a page wears the same eyebrow + title voice through this, so a
+ * screen reads as an ordered set of chapters rather than a pile of sibling cards.
+ * `leading` takes a marker that sits beside the text (a step badge, an icon).
+ */
+export function SectionHeading({
+  eyebrow,
+  eyebrowTone = "primary",
+  title,
+  subtitle,
+  size = "section",
+  as,
+  align = "end",
+  gap = "sm",
+  leading,
+  action,
+  className = "",
+}: {
+  eyebrow?: string;
+  eyebrowTone?: EyebrowTone;
+  title: string;
+  subtitle?: ReactNode;
+  size?: HeadingSize;
+  /** Heading level. Defaults to `h1` at `page` size, `h2` otherwise. */
+  as?: "h1" | "h2" | "h3";
+  align?: keyof typeof ALIGN;
+  gap?: keyof typeof GAP;
+  leading?: ReactNode;
+  action?: ReactNode;
+  className?: string;
+}) {
+  const Heading = as ?? (size === "page" ? "h1" : "h2");
+  return (
+    <div className={`flex flex-wrap justify-between ${ALIGN[align]} ${GAP[gap]} ${className}`}>
+      <div className="flex min-w-0 items-start gap-3">
+        {leading}
+        <div className="min-w-0">
+          {eyebrow && <p className={EYEBROW[eyebrowTone]}>{eyebrow}</p>}
+          <Heading className={`${eyebrow ? "mt-1 " : ""}${TITLE[size]}`}>{title}</Heading>
+          {subtitle && <p className={SUBTITLE[size]}>{subtitle}</p>}
+        </div>
+      </div>
+      {action && <div className="shrink-0">{action}</div>}
+    </div>
+  );
+}
+
+/**
  * The page hero: an eyebrow, title and subtitle on the left, an optional metric
  * block on the right, and optional content underneath (progress bar, stats…).
+ *
+ * `aside` is right-aligned text by default (a headline number). Pass `asideBlock`
+ * when the aside is a card or panel of its own instead — the row then centres the
+ * two sides and leaves the aside's own alignment alone.
  */
 export function PageHero({
   eyebrow,
+  eyebrowTone = "primary",
   title,
   subtitle,
   aside,
+  asideBlock = false,
   children,
 }: {
   eyebrow?: string;
+  eyebrowTone?: EyebrowTone;
   title: string;
   subtitle?: string;
   aside?: ReactNode;
+  asideBlock?: boolean;
   children?: ReactNode;
 }) {
   return (
     <section className={card} aria-label={title}>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          {eyebrow && (
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-primary-600">
-              {eyebrow}
-            </p>
-          )}
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">{title}</h1>
-          {subtitle && <p className="mt-1 max-w-md text-sm text-slate-500">{subtitle}</p>}
-        </div>
-        {aside && <div className="text-right">{aside}</div>}
-      </div>
+      <SectionHeading
+        eyebrow={eyebrow}
+        eyebrowTone={eyebrowTone}
+        title={title}
+        subtitle={subtitle}
+        size="page"
+        align={asideBlock ? "center" : "end"}
+        gap={asideBlock ? "lg" : "md"}
+        action={aside && (asideBlock ? aside : <div className="text-right">{aside}</div>)}
+      />
       {children && <div className="mt-5">{children}</div>}
     </section>
   );
@@ -95,9 +207,15 @@ export function PageHero({
  * A titled card with an optional numbered step badge, short hint, and an
  * action slot on the right. The step badges turn a page into an obvious
  * 1 → 2 → 3 flow without extra copy.
+ *
+ * `eyebrow` promotes a panel to a named chapter of the page — the same eyebrow
+ * voice the bigger `SectionHeading` sizes use, so a panel can head a section
+ * without growing a second heading style.
  */
 export function Panel({
   step,
+  eyebrow,
+  eyebrowTone,
   title,
   hint,
   action,
@@ -105,28 +223,32 @@ export function Panel({
   children,
 }: {
   step?: string | number;
+  eyebrow?: string;
+  eyebrowTone?: EyebrowTone;
   title: string;
-  hint?: string;
+  hint?: ReactNode;
   action?: ReactNode;
   className?: string;
   children: ReactNode;
 }) {
   return (
     <section className={`${card} ${className}`}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          {step != null && (
+      <SectionHeading
+        eyebrow={eyebrow}
+        eyebrowTone={eyebrowTone}
+        title={title}
+        subtitle={hint}
+        size="panel"
+        align="start"
+        leading={
+          step != null && (
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-50 text-xs font-semibold text-primary-700 ring-1 ring-primary-100">
               {step}
             </span>
-          )}
-          <div>
-            <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
-            {hint && <p className="mt-0.5 text-xs text-slate-400">{hint}</p>}
-          </div>
-        </div>
-        {action && <div className="shrink-0">{action}</div>}
-      </div>
+          )
+        }
+        action={action}
+      />
       <div className="mt-5">{children}</div>
     </section>
   );
@@ -155,5 +277,64 @@ export function StatTile({
       </div>
       {sub && <div className="mt-0.5 text-xs text-slate-400">{sub}</div>}
     </div>
+  );
+}
+
+/**
+ * A stat that is going somewhere: label, value, a thin progress bar and a caption.
+ * `StatTile` states a number; this one states a number's position on a journey, so
+ * it's the tile for anything with a target — hours toward 2,300, competencies
+ * achieved, skills signed off.
+ *
+ * With `to` the whole tile is the link to the detail screen (and needs a router
+ * ancestor); without it, it's a plain tile.
+ */
+export function MetricTile({
+  label,
+  value,
+  caption,
+  pct,
+  to,
+}: {
+  label: string;
+  value: string;
+  caption?: ReactNode;
+  /** 0–100; clamped. Omit for a tile with no bar. */
+  pct?: number;
+  to?: string;
+}) {
+  const body = (
+    <>
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-xs font-medium text-slate-500">{label}</span>
+        {to && (
+          <span
+            aria-hidden="true"
+            className="text-xs text-slate-300 transition group-hover:text-primary-500"
+          >
+            →
+          </span>
+        )}
+      </div>
+      <div className="mt-1 text-xl font-semibold tabular-nums text-ink">{value}</div>
+      {pct != null && (
+        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-200/70">
+          <div
+            className="h-full rounded-full bg-emerald-500"
+            style={{ width: `${Math.max(0, Math.min(100, pct))}%` }}
+          />
+        </div>
+      )}
+      {caption && <div className="mt-1.5 text-xs text-slate-400">{caption}</div>}
+    </>
+  );
+
+  const shell = "group block rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/60";
+  return to ? (
+    <Link to={to} className={`${shell} transition hover:ring-primary-200`}>
+      {body}
+    </Link>
+  ) : (
+    <div className={shell}>{body}</div>
   );
 }

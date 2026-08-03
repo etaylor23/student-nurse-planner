@@ -1,0 +1,18 @@
+{
+  // Declaration-only build for the design-sync converter. PlaceMate is an app,
+  // so it ships no .d.ts tree; without one the converter can't resolve prop
+  // types and every <Name>Props degrades to `[key: string]: unknown`, leaving
+  // the design agent with no API to code against. Emitting real declarations
+  // from the barrel keeps the contracts true to the source on every re-sync.
+  // Output is gitignored build output (dist/), not a published artifact.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "noEmit": false,
+    "outDir": "../dist/types",
+    "rootDir": "..",
+    "skipLibCheck": true
+  },
+  "include": ["entry.tsx"]
+}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as Sentry from "@sentry/react";
+import { pillBase, pillPrimary } from "./ui";
 
 /**
  * Brand-styled trigger for the Sentry user-feedback dialog (screenshots on).
@@ -9,6 +10,9 @@ import * as Sentry from "@sentry/react";
  *
  * On first load in a session it plays a one-time attention pulse so it can't be
  * missed — gated behind prefers-reduced-motion.
+ *
+ * Shares the header pill geometry with Photo and Synced (spec-home-redesign.md decision
+ * 13); only the tone differs, which is what marks it as the one worth pressing.
  */
 export function FeedbackButton() {
   const ref = useRef<HTMLButtonElement>(null);
@@ -43,10 +47,7 @@ export function FeedbackButton() {
       ref={ref}
       type="button"
       aria-label="Send feedback"
-      className={
-        "relative inline-flex items-center gap-1.5 rounded-full border border-primary-200 bg-primary-50 px-3.5 py-1.5 text-sm font-medium text-primary-700 shadow-sm transition hover:bg-primary-100 hover:text-primary-800 active:scale-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 " +
-        (attention ? "pm-attention" : "")
-      }
+      className={`relative ${pillBase} ${pillPrimary} active:scale-[.98] ${attention ? "pm-attention" : ""}`}
     >
       <svg
         viewBox="0 0 24 24"

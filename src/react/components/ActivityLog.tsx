@@ -43,8 +43,20 @@ const FEED_CATEGORY: Record<string, FeedFilter> = {
  * shift list changes (a proxy for "an action happened"), so it stays live. Deleted
  * shifts keep their entries here even though they're gone from the calendar. Entries
  * are clickable (see `LogList`) and filterable by area.
+ *
+ * Lives on `/activity` (`AuditLogPage`). Home shows a short digest instead
+ * (`home/ActivityDigest`) — the filter tabs made the last chapter of the landing page
+ * the biggest thing on it, and filtering is a "find one specific change" job, which is
+ * what this page is for.
  */
-export function ActivityLog() {
+export function ActivityLog({
+  title = "Activity",
+  hint = "A running history of what you've done",
+}: {
+  /** Overridden on `/activity`, where the page hero already says "Activity log". */
+  title?: string;
+  hint?: string;
+} = {}) {
   const { repo, user } = useRepository();
   const { shifts } = useShifts();
   const [items, setItems] = useState<LogItem[]>([]);
@@ -69,7 +81,7 @@ export function ActivityLog() {
   );
 
   return (
-    <Panel title="Activity" hint="A running history of what you've done">
+    <Panel title={title} hint={hint}>
       {items.length === 0 ? (
         <p className="text-sm text-slate-400">
           Nothing yet — log a med, or create, complete or edit a shift, and it'll show here.

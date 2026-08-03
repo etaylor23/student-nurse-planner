@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { SyncStatus } from "../../data/sync/syncRepository";
 import { useSyncStatus } from "../useSyncStatus";
-import { Panel, btnGhostSm } from "./ui";
+import { Panel, btnGhostSm, pillBase, pillNeutral } from "./ui";
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -45,6 +45,9 @@ const DOT: Record<Tone, string> = {
  * Compact header indicator. Quiet green when synced; amber when changes are waiting or
  * offline; red when sync is failing. Links to the Profile sync panel for detail. Renders
  * nothing for guests (no server to sync to).
+ *
+ * Wears the shared header pill geometry (decision 13) so it matches Photo and Feedback
+ * instead of being a third slightly-different shape in the same corner.
  */
 export function SyncIndicator() {
   const { status } = useSyncStatus();
@@ -53,7 +56,7 @@ export function SyncIndicator() {
   return (
     <Link
       to="/profile"
-      className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/70 px-2.5 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
+      className={`${pillBase} ${pillNeutral}`}
       title={`Last synced ${relativeTime(status.lastSyncAt)}`}
       aria-label={`Sync status: ${label}. Last synced ${relativeTime(status.lastSyncAt)}.`}
     >

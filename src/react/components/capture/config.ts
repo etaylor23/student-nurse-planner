@@ -1,10 +1,7 @@
 /**
  * Note-capture client config (spec-note-capture.md).
  *
- * There is no feature flag here — the button shows to any signed-in user, and guests are
- * excluded only because they have no ID token to presign with.
- *
- * The parse endpoint DOES need a build-time value, for the same reason AI recall's ask URL
+ * The parse endpoint needs a build-time value, for the same reason AI recall's ask URL
  * does: it's a Lambda Function URL on its own origin (four model calls take ~70s, well past
  * API Gateway's 29s ceiling), so its absolute URL has to reach the bundle. Unset means
  * uploads still work and simply aren't parsed — the photo is stored either way, so a missing
@@ -28,3 +25,19 @@ export const MAX_IMAGES_PER_CAPTURE = 10;
  * moved.
  */
 export const DAILY_PHOTO_LIMIT = 10;
+
+/**
+ * Note capture is a localhost-only beta (spec-home-redesign.md decision 12).
+ *
+ * The pipeline works, but a photo of a real notebook page is the one place where a
+ * student can leak patient-identifiable data into our storage, and the warning copy is
+ * the only thing standing between them and that. Until it has been through review with
+ * real beta students, the entry point stays off the deployed app — so `CaptureButton`
+ * renders nothing in production. It is deliberately a hostname/dev check rather than a
+ * `VITE_` variable: an env flag is one careless deploy away from being on.
+ */
+export function photoCaptureAvailable(): boolean {
+  if (import.meta.env.DEV) return true;
+  if (typeof window === "undefined") return false;
+  return /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
+}

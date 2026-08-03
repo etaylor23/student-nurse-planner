@@ -1,0 +1,25 @@
+/*
+ * Design-system stylesheet for the claude.ai/design sync.
+ *
+ * Why this exists rather than reusing the app's compiled CSS: Tailwind only
+ * emits the utilities it finds in the sources it scans, so `dist/assets/*.css`
+ * contains exactly the classes PlaceMate happens to use today. A design agent
+ * composing new screens reaches for the rest of the brand ramp — `bg-accent-500`
+ * was missing, for instance — and any class absent from this file renders
+ * unstyled in every design built from this system.
+ *
+ * So: the app's real stylesheet verbatim (tokens, base layer, animations, the
+ * FullCalendar theme), plus the preview sources, plus the full brand utility
+ * surface safelisted. Nothing here overrides the app's look — it only widens
+ * which brand classes resolve.
+ */
+@import "../src/index.css";
+
+/* Scan the components being synced and the preview cards that compose them. */
+@source "../src";
+@source "./previews";
+
+/* The complete brand ramp, whether or not the app uses each step today. */
+@source inline("{bg,text,border,ring,divide,outline,fill,stroke,from,to}-{primary,secondary,accent}-{50,100,200,300,400,500,600,700,800,900}");
+@source inline("hover:{bg,text,border,ring}-{primary,secondary,accent}-{50,100,200,300,400,500,600,700,800,900}");
+@source inline("{bg,text,border,ring,fill,stroke}-ink");
