@@ -1,0 +1,12 @@
+# Slots filled into templates/_shell. One key=value per line; --var overrides any of them.
+#
+# Email 1 of 2 for PlaceMate Intelligence: recall is live, photo import is teased. Goes to
+# every active beta user, NOT the old aiRecallInterestAt "notify me" list, which never had
+# anyone on it (the teaser that set the flag only renders while the feature is unavailable,
+# so it stopped being reachable the moment recall shipped).
+#
+# The two screenshots are referenced as absolute placemate.uk URLs and must be deployed to
+# the marketing site (site/public/) BEFORE this sends, or they render as broken images.
+title=PlaceMate Intelligence: Make your notes work harder than a notebook ever could
+preheader=Half-remember something you logged? Just ask, and your own note comes back word for word.
+footer_reason=You're receiving this because you're part of the PlaceMate beta programme.

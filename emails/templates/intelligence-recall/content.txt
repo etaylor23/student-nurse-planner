@@ -1,0 +1,56 @@
+Hey {{first_name}},
+
+It's Nicola. There's something new in PlaceMate, and it's the start of
+something we've been calling PlaceMate Intelligence. Two features, built
+on one simple idea: your notes should work harder for you than a
+notebook ever could. The first one is live today.
+
+You can now ask your own notes.
+
+You know the feeling. Someone shows you how to do something on
+placement, you write it down, and three weeks later you're asked to do
+it again and the order has gone completely. Instead of scrolling back
+through everything, you can just ask, in plain English, the way you'd
+ask a friend:
+
+  "I remember logging how to take a manual blood pressure, but I've
+   forgotten the order of the steps"
+
+and your own note comes straight back, word for word, exactly as you
+wrote it. Not a summary, not someone else's version. Yours.
+
+You'll find it in the Ask box at the top of any page, or on your Home
+screen.
+
+Try it now: https://app.placemate.uk/
+
+Two honest things, because this is new.
+
+It only knows what you've written. If you haven't logged something,
+it'll say so rather than make something up, and it'll nudge you to
+capture it next time you're on placement.
+
+It's study support, not clinical guidance. It'll help you remember and
+double-check your own learning, but your placement's local policy
+always wins. Please treat it that way.
+
+While it's in beta: your questions and the answers are stored, and we
+may read them to make it better. Nothing else about your notes changes;
+they're still yours.
+
+It will get things wrong sometimes. There's a thumbs up and thumbs down
+under every answer, and those come straight to us. Honestly the fastest
+way to make it better. Or just hit reply, as always.
+
+COMING NEXT, and I'm genuinely excited about this one
+
+The other half of PlaceMate Intelligence. Take a photo of your
+handwritten notes and PlaceMate turns them into real entries (skills,
+hours, reflections) without you retyping a word of it. All the scribbles
+from a long shift, captured in the time it takes to snap a picture.
+We're aiming to have it with you in the next week or two.
+
+Hope it saves you a bit of scrolling.
+
+Nicola
+PlaceMate
