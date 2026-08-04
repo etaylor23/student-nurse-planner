@@ -1,0 +1,5 @@
+uploaded tests/pages/real-shift-and-junk.png (271497 bytes downscaled)
+
+parsing s3://nurse-planner-captures-dev-641364901830/u/560282d4-8091-7064-f765-35536765829b/h/fe18f92cae68feadcf619b425844bc502da4b8fef5232063d111ddd407fb1795/page.jpg
+
+parse-capture failed: No ID token — the magic-link flow needs the emailed secret. Sign in in the browser and paste the token via PARSE_ID_TOKEN=... instead.
