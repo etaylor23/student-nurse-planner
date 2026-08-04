@@ -304,9 +304,9 @@ export const breakRuleSchema = entitySchema.extend({
 
 export const noteCaptureStatusSchema = z.union([z.literal("PARSING"), z.literal("REVIEW"), z.literal("DONE")]);
 
-export const noteBlockKindSchema = z.union([z.literal("CLINICAL_SKILL"), z.literal("MEDICATION"), z.literal("REFLECTION"), z.literal("OBSERVATION"), z.literal("TODO"), z.literal("DATE_HEADER"), z.literal("UNKNOWN")]);
+export const noteBlockKindSchema = z.union([z.literal("CLINICAL_SKILL"), z.literal("MEDICATION"), z.literal("REFLECTION"), z.literal("OBSERVATION"), z.literal("TODO"), z.literal("DATE_HEADER"), z.literal("DIAGRAM"), z.literal("UNKNOWN")]);
 
-export const noteBlockStatusSchema = z.union([z.literal("PENDING"), z.literal("ALLOCATED"), z.literal("DISMISSED")]);
+export const noteBlockStatusSchema = z.union([z.literal("PENDING"), z.literal("ALLOCATED"), z.literal("DISMISSED"), z.literal("KEPT")]);
 
 export const noteBlockTargetSchema = z.union([z.literal("REFLECTION"), z.literal("MED_LOG"), z.literal("PROFICIENCY_EVENT"), z.literal("SHIFT_NOTES")]);
 

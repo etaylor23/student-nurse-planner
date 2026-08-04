@@ -8,6 +8,7 @@ import { resolveShift, type ShiftResolution } from "../../../logic/captureShift"
 import {
   AllocateError,
   allocateBlock,
+  keepBlock,
   unallocateBlock,
   type AllocateInput,
 } from "../../../logic/allocateBlock";
@@ -569,6 +570,20 @@ export function useCapture() {
     [repo, userId, state.blocks, state.capture, state.shift],
   );
 
+  /** Keep a DIAGRAM block with its page (P43) — no row is created, the photo is the record. */
+  const keep = useCallback(
+    async (blockId: string) => {
+      const block = state.blocks?.find((b) => b.id === blockId);
+      if (!block) return;
+      const updated = await keepBlock(repo, block);
+      setState((s) => ({
+        ...s,
+        blocks: (s.blocks ?? []).map((b) => (b.id === blockId ? updated : b)),
+      }));
+    },
+    [repo, state.blocks],
+  );
+
   /** Reverse an allocation (P19). The warning is shown when text couldn't be cleanly removed. */
   const unallocate = useCallback(
     async (blockId: string): Promise<{ warning?: string }> => {
@@ -681,6 +696,7 @@ export function useCapture() {
     reset,
     selectShift,
     allocate,
+    keep,
     unallocate,
     editBlock,
     dismissBlock,

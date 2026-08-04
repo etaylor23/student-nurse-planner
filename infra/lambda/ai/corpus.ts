@@ -8,7 +8,10 @@ import { seedProficiencies } from "../../../src/data/seed/proficiencies";
  *
  * Included: Shift.notes · Reflection + ReflectionSections (incl. LOCKED — D5) + tags ·
  * MedicationLog.notes · ProficiencyStatusEvent.note (PAD sign-off notes, surfaced under
- * the parent proficiency so the ref is navigable).
+ * the parent proficiency so the ref is navigable) · kept DIAGRAM NoteBlocks (P43 — a
+ * drawing kept with its page never becomes a domain row, so this is its only route into
+ * recall; filed blocks are NOT read here because their text already arrives through the
+ * row filing created, and reading both would double-count the same words).
  *
  * HARD-EXCLUDED (D4): SelfCareCheckin — never read here. The exclusion is structural:
  * this module simply has no code path that touches self-care data; a unit test asserts
@@ -41,6 +44,7 @@ export async function assembleCorpus(repo: Repository, userId: string): Promise<
     medLogs,
     medications,
     profProgress,
+    noteBlocks,
   ] = await Promise.all([
     repo.listShifts(userId),
     repo.listReflections(userId),
@@ -50,6 +54,7 @@ export async function assembleCorpus(repo: Repository, userId: string): Promise<
     repo.listMedicationLogs(userId),
     repo.listMedications(userId),
     repo.listProficiencyProgress(userId),
+    repo.listNoteBlocks(userId),
   ]);
   // The proficiency master list is global seed data (DynamoRepository.listProficiencies
   // is a Phase-2 stub) — imported statically, same rows every client seeds.
@@ -102,6 +107,17 @@ export async function assembleCorpus(repo: Repository, userId: string): Promise<
     blocks.push({
       date: log.date,
       text: `[MED_LOG:${log.id} · ${log.date} · ${log.type} · ${name}]\n${log.notes.trim()}`,
+    });
+  }
+
+  // Kept diagrams only (P43). `KEPT` is the filter that matters: PENDING blocks are
+  // undecided, filed blocks arrive via their created row, dismissed ones were declined.
+  for (const b of noteBlocks) {
+    if (b.status !== "KEPT" || !b.text.trim()) continue;
+    const date = b.createdAt.slice(0, 10);
+    blocks.push({
+      date,
+      text: `[DIAGRAM:${b.id} · ${date} · a drawing kept with a photographed page of notes]\n${b.text.trim()}`,
     });
   }
 

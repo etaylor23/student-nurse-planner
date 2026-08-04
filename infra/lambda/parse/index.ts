@@ -236,15 +236,28 @@ async function run(event: FunctionUrlEvent, responseStream: ResponseStream): Pro
       blocks: blocks.map((b, i) => {
         // Geometry comes from the FIRST vision region the block drew from. A semantic block
         // may span several (P26), so this is the anchor for the review overlay, not a tight
-        // box — and geometry plays no part in classification at all.
+        // box — and geometry plays no part in classification at all. The exception is a
+        // DIAGRAM, whose whole point is spanning the drawing: it gets the union of every
+        // region it drew from, so the overlay outlines the map rather than one spoke.
         const region = structure.parsed?.blocks[b.fromRegions?.[0] ?? i];
+        const bbox =
+          b.kind === "DIAGRAM" && (b.fromRegions?.length ?? 0) > 1
+            ? (b.fromRegions ?? [])
+                .map((r) => normaliseBbox(structure.parsed?.blocks[r]?.bbox))
+                .reduce((a, c) => ({
+                  x0: Math.min(a.x0, c.x0),
+                  y0: Math.min(a.y0, c.y0),
+                  x1: Math.max(a.x1, c.x1),
+                  y1: Math.max(a.y1, c.y1),
+                }))
+            : normaliseBbox(region?.bbox);
         return {
           ...b,
           // Whitespace only, and after every guard above has run on the original: the notebook's
           // line breaks are an artefact of the paper, and the degraded path has no classifier
           // output to have joined them already.
           text: reflow(b.text),
-          bbox: normaliseBbox(region?.bbox),
+          bbox,
           rotationDeg: region?.rotationDeg ?? 0,
           confidence: region?.confidence ?? 0,
           disputedWords: (disputeMap.get(i) ?? []).map((d) => `${d.structure}|${d.check}`),

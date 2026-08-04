@@ -76,6 +76,7 @@ function handlers(over: Partial<ReviewHandlers> = {}): ReviewHandlers {
     onUnallocate: vi.fn(async () => ({})),
     onCreateMedication: vi.fn(async () => "med-new"),
     onDismiss: vi.fn(async () => {}),
+    onKeep: vi.fn(async () => {}),
     ...over,
   };
 }
@@ -383,6 +384,54 @@ describe("ReviewPanel — where a note goes", () => {
     // There is exactly one set of tiles on screen: the one belonging to the note being decided.
     expect(screen.getAllByRole("button", { name: TILE.reflection })).toHaveLength(1);
     expect(screen.queryByText(/Drag a note here/)).toBeNull();
+  });
+
+  it("offers keep-or-dismiss on a DIAGRAM, never the four destinations (P43)", async () => {
+    const user = userEvent.setup();
+    const h = handlers();
+    render(
+      <ReviewPanel
+        blocks={[
+          block({
+            kind: "DIAGRAM",
+            targetType: undefined,
+            disputedWords: "",
+            text: "SEPSIS SIX within 1 hour: O2, cultures, antibiotics, fluids, lactate, urine",
+          }),
+        ]}
+        handlers={h}
+      />,
+    );
+
+    expect(screen.queryByText("Where does this go?")).toBeNull();
+    // The destination keys mean nothing on a drawing.
+    fireEvent.keyDown(window, { key: "2" });
+    expect(h.onEdit).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Keep with this page" }));
+    expect(h.onKeep).toHaveBeenCalledWith("blk-1");
+  });
+
+  it("shows a KEPT diagram as settled — out of the pending walk, labelled as kept", () => {
+    render(
+      <ReviewPanel
+        blocks={[
+          block({
+            id: "blk-kept",
+            kind: "DIAGRAM",
+            status: "KEPT",
+            targetType: undefined,
+            disputedWords: "",
+          }),
+          block({ id: "blk-2" }),
+        ]}
+        handlers={handlers()}
+      />,
+    );
+
+    expect(screen.getByText("Kept with the page")).toBeTruthy();
+    // The spine counts it with the settled notes.
+    expect(screen.getByText("1 of 2 filed")).toBeTruthy();
   });
 });
 

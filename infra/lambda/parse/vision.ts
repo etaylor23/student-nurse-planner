@@ -32,8 +32,10 @@ Transcribe EXACTLY what is written. Do not correct, expand, Americanise or guess
 
 Only report wardHint if a ward or unit name is actually written on the page — never infer it from the prose.
 
+If some of the text is part of a drawn structure — a mind map, flowchart or sketch — still transcribe each written label as its own block, and give those blocks a shared groupKey and the kind DIAGRAM.
+
 Return ONLY JSON:
-{"pageDateRaw":"<date exactly as written, or null>","wardHint":"<ward name written on the page, or null>","blocks":[{"rawText":"<verbatim>","kind":"CLINICAL_SKILL|MEDICATION|REFLECTION|OBSERVATION|TODO|DATE_HEADER","confidence":0-1,"bbox":[x0,y0,x1,y1],"rotationDeg":<n>,"groupKey":"<shared by related blocks>","tags":["<subject>"]}]}`;
+{"pageDateRaw":"<date exactly as written, or null>","wardHint":"<ward name written on the page, or null>","blocks":[{"rawText":"<verbatim>","kind":"CLINICAL_SKILL|MEDICATION|REFLECTION|OBSERVATION|TODO|DATE_HEADER|DIAGRAM","confidence":0-1,"bbox":[x0,y0,x1,y1],"rotationDeg":<n>,"groupKey":"<shared by related blocks>","tags":["<subject>"]}]}`;
 
 export interface VisionCallResult {
   model: string;

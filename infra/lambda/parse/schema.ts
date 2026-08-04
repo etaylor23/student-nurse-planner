@@ -74,6 +74,7 @@ export const NOTE_BLOCK_KINDS = [
   "OBSERVATION",
   "TODO",
   "DATE_HEADER",
+  "DIAGRAM",
   "UNKNOWN",
 ] as const;
 
@@ -84,6 +85,17 @@ export const NOTE_BLOCK_TARGETS = [
   "SHIFT_NOTES",
 ] as const;
 
+/**
+ * `null` means "absent" to the classifier model — it writes `"groupKey": null` and
+ * `"gibbs": {"FEELINGS": null}` as a matter of idiom, and both are equivalent to omitting
+ * the field. The first corpus baseline lost 2 of 5 pages' entire classifications to
+ * treating that idiom as a contract breach. Absent and null are the same fact; accept both.
+ */
+const optionalString = z
+  .string()
+  .nullish()
+  .transform((v) => v ?? undefined);
+
 export const classifiedBlockSchema = z
   .object({
     /** Which vision regions this drew from — a semantic block may span several (P26). */
@@ -91,24 +103,65 @@ export const classifiedBlockSchema = z
     text: z.string().min(1),
     /** An unrecognised kind becomes UNKNOWN rather than failing: honest, and retypeable (P34). */
     kind: z.enum(NOTE_BLOCK_KINDS).catch("UNKNOWN"),
-    groupKey: z.string().optional(),
-    targetType: z.enum(NOTE_BLOCK_TARGETS).optional(),
+    groupKey: optionalString,
+    targetType: z
+      .enum(NOTE_BLOCK_TARGETS)
+      .nullish()
+      .transform((v) => v ?? undefined),
     /** Ranked, best first. Validated against the real taxonomy by the caller (P28). */
     candidateCodes: z.array(z.string()).default([]),
     tags: z.array(z.string()).default([]),
-    medicationCandidate: z.string().optional(),
-    /** Reflection blocks only (P30) — meaningless elsewhere, so optional not required. */
-    gibbs: z.record(z.enum(GIBBS_STAGES), z.string()).optional(),
+    medicationCandidate: optionalString,
+    /** Reflection blocks only (P30) — meaningless elsewhere, so optional not required.
+     *  A null stage value means the model had nothing for that stage: drop the stage. */
+    gibbs: z
+      .record(z.enum(GIBBS_STAGES), z.string().nullish())
+      .nullish()
+      .transform((g) => {
+        if (!g) return undefined;
+        const entries = Object.entries(g).filter(
+          (e): e is [string, string] => typeof e[1] === "string" && e[1].length > 0,
+        );
+        return entries.length ? (Object.fromEntries(entries) as Record<string, string>) : undefined;
+      }),
   })
   .strip();
 
+/** Declared as an interface (optional fields stay optional) rather than inferred — the
+ *  nullish transforms above would otherwise type every optional as required-but-undefined,
+ *  which every constructor of a fallback block would then have to spell out. */
+export interface ClassifiedBlock {
+  fromRegions: number[];
+  text: string;
+  kind: (typeof NOTE_BLOCK_KINDS)[number];
+  groupKey?: string;
+  targetType?: (typeof NOTE_BLOCK_TARGETS)[number];
+  candidateCodes: string[];
+  tags: string[];
+  medicationCandidate?: string;
+  gibbs?: Record<string, string>;
+}
+
+/**
+ * One malformed block must cost that block, not the page (the module promise above).
+ * Each entry is parsed independently; failures are dropped, with the count surfaced so
+ * the caller can log it.
+ */
 export const classifyResponseSchema = z
   .object({
-    blocks: z.array(classifiedBlockSchema),
+    blocks: z.array(z.unknown()).default([]),
   })
-  .strip();
-
-export type ClassifiedBlock = z.infer<typeof classifiedBlockSchema>;
+  .strip()
+  .transform(({ blocks }) => {
+    const parsed: ClassifiedBlock[] = [];
+    let malformed = 0;
+    for (const raw of blocks) {
+      const result = classifiedBlockSchema.safeParse(raw);
+      if (result.success) parsed.push(result.data);
+      else malformed++;
+    }
+    return { blocks: parsed, malformed };
+  });
 
 /**
  * Parse a model's text output as JSON, tolerating the two malformations actually observed:

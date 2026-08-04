@@ -1,5 +1,5 @@
 import type { NoteBlock } from "../../../domain/types";
-import { blockUiState } from "./blockState";
+import { blockUiState, isSettled } from "./blockState";
 
 /**
  * One pip per note, in the review header.
@@ -20,7 +20,7 @@ export function ProgressSpine({
   focusId?: string;
   onFocus: (blockId: string) => void;
 }) {
-  const filed = blocks.filter((b) => b.status === "ALLOCATED").length;
+  const filed = blocks.filter(isSettled).length;
 
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-x-3.5 gap-y-2">

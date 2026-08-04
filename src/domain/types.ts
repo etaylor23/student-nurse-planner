@@ -552,6 +552,7 @@ export type NoteBlockKind =
   | "OBSERVATION"
   | "TODO"
   | "DATE_HEADER"
+  | "DIAGRAM"
   | "UNKNOWN";
 export const NOTE_BLOCK_KIND_LABEL: Record<NoteBlockKind, string> = {
   CLINICAL_SKILL: "Clinical skill",
@@ -560,10 +561,16 @@ export const NOTE_BLOCK_KIND_LABEL: Record<NoteBlockKind, string> = {
   OBSERVATION: "Observation",
   TODO: "To do",
   DATE_HEADER: "Date",
+  DIAGRAM: "Diagram",
   UNKNOWN: "Not sure yet",
 };
 
-export type NoteBlockStatus = "PENDING" | "ALLOCATED" | "DISMISSED";
+/**
+ * `KEPT` exists for blocks that have no filing target — a `DIAGRAM` is kept with its page
+ * (the retained photo is the artefact) rather than materialised into a domain row. Kept
+ * blocks leave the review's pending walk like filed ones, but claim nothing was created.
+ */
+export type NoteBlockStatus = "PENDING" | "ALLOCATED" | "DISMISSED" | "KEPT";
 
 /** Where allocating a block writes to (P4). `SHIFT_NOTES` appends rather than creating. */
 export type NoteBlockTarget = "REFLECTION" | "MED_LOG" | "PROFICIENCY_EVENT" | "SHIFT_NOTES";

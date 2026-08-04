@@ -16,8 +16,9 @@ import { SHIFT_TYPE_LABEL } from "../../../domain/types";
 interface Resolved {
   heading: string;
   body: string;
-  to: string;
-  cta: string;
+  /** Absent for entities with no in-app route yet (a kept DIAGRAM) — the card still quotes. */
+  to?: string;
+  cta?: string;
 }
 
 export function NoteCard({ type, id }: { type: string; id: string }) {
@@ -54,13 +55,15 @@ export function NoteCard({ type, id }: { type: string; id: string }) {
       <p className="mt-2 whitespace-pre-wrap border-l-2 border-primary-200 pl-3 text-sm text-slate-700">
         {note.body}
       </p>
-      <Link
-        to={note.to}
-        className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary-700 hover:underline"
-      >
-        {note.cta}
-        <span aria-hidden="true">→</span>
-      </Link>
+      {note.to && (
+        <Link
+          to={note.to}
+          className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary-700 hover:underline"
+        >
+          {note.cta}
+          <span aria-hidden="true">→</span>
+        </Link>
+      )}
     </div>
   );
 }
@@ -137,6 +140,16 @@ async function resolveNote(
         body,
         to: `/competencies/proficiency/${prof.id}`,
         cta: "Open this proficiency",
+      };
+    }
+    case "DIAGRAM": {
+      // A kept drawing (P43). There is no captures browser yet, so the card quotes the
+      // transcription without a link — the words are the useful part.
+      const block = (await repo.listNoteBlocks(userId)).find((b) => b.id === id);
+      if (!block || block.status !== "KEPT" || !block.text.trim()) return null;
+      return {
+        heading: `Drawing · ${formatDate(block.createdAt)} · kept with a photographed page`,
+        body: block.text.trim(),
       };
     }
     default:

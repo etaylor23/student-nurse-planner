@@ -23,14 +23,20 @@ export function hasOpenDispute(block: NoteBlock): boolean {
   return list(block.disputedWords).length > 0;
 }
 
+/** Filed-or-kept: both have had their question answered, so the UI treats them alike. */
+export function isSettled(block: NoteBlock): boolean {
+  return block.status === "ALLOCATED" || block.status === "KEPT";
+}
+
 /**
  * Focus wins over everything: the student is looking at this one, and that is the most
  * useful thing the UI can say about it. Filed beats a dispute because a filed block's
- * question has already been answered.
+ * question has already been answered — and a KEPT block (a diagram kept with its page)
+ * reads as filed for the same reason.
  */
 export function blockUiState(block: NoteBlock, focusId?: string): BlockUiState {
-  if (block.id === focusId && block.status !== "ALLOCATED") return "FOCUSED";
-  if (block.status === "ALLOCATED") return "FILED";
+  if (block.id === focusId && !isSettled(block)) return "FOCUSED";
+  if (isSettled(block)) return "FILED";
   if (hasOpenDispute(block)) return "CHECK";
   return "PENDING";
 }

@@ -273,12 +273,41 @@ describe("corpus assembly (D4)", () => {
       listMedications: async () => [],
       listProficiencyProgress: async () => [],
       listProficiencyStatusEvents: async () => [],
+      listNoteBlocks: async () => [
+        // Kept diagram → included, labelled DIAGRAM (P43).
+        {
+          id: "nb1",
+          status: "KEPT",
+          kind: "DIAGRAM",
+          text: "SEPSIS SIX within 1 hour: O2, cultures, antibiotics",
+          createdAt: "2026-03-05T09:00:00.000Z",
+        },
+        // Pending and filed blocks stay out — undecided, or already read via their row.
+        {
+          id: "nb2",
+          status: "PENDING",
+          kind: "DIAGRAM",
+          text: "not yet decided",
+          createdAt: "2026-03-05T09:00:00.000Z",
+        },
+        {
+          id: "nb3",
+          status: "ALLOCATED",
+          kind: "MEDICATION",
+          text: "filed elsewhere",
+          createdAt: "2026-03-05T09:00:00.000Z",
+        },
+      ],
     } as unknown as Repository;
 
     const result = await assembleCorpus(repo, "sub-1");
-    expect(result.blocks).toBe(1);
+    expect(result.blocks).toBe(2);
     expect(result.text).toContain("[SHIFT:s1 · 2026-03-02 · EARLY shift]");
     expect(result.text).toContain("manual BP steps");
+    expect(result.text).toContain("[DIAGRAM:nb1 · 2026-03-05 ·");
+    expect(result.text).toContain("SEPSIS SIX within 1 hour");
+    expect(result.text).not.toContain("not yet decided");
+    expect(result.text).not.toContain("filed elsewhere");
     expect(result.truncated).toBe(false);
   });
 });

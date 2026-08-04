@@ -17,7 +17,7 @@ import { ProficiencyPicker } from "./ProficiencyPicker";
 import { ProgressSpine } from "./ProgressSpine";
 import { ShiftChip } from "./ShiftBar";
 import { WorthACheck } from "./WorthACheck";
-import { hasOpenDispute, isTypingTarget, list, pendingBlocks } from "./blockState";
+import { hasOpenDispute, isSettled, isTypingTarget, list, pendingBlocks } from "./blockState";
 import { useWideScreen } from "./useWideScreen";
 
 /**
@@ -72,6 +72,9 @@ const TARGET_FOR_KIND: Record<NoteBlockKind, NoteBlockTarget> = {
   OBSERVATION: "SHIFT_NOTES",
   TODO: "SHIFT_NOTES",
   DATE_HEADER: "SHIFT_NOTES",
+  // A diagram's card offers keep/dismiss, not destinations — but if a student RETYPES one via
+  // a destination it stops being a diagram, so the mapping still needs a sane answer.
+  DIAGRAM: "SHIFT_NOTES",
   UNKNOWN: "SHIFT_NOTES",
 };
 
@@ -150,6 +153,8 @@ export interface ReviewHandlers {
   onCreateMedication: (name: string, notes: string) => Promise<string | undefined>;
   /** Drops a block that isn't worth keeping. The photo is untouched (P13/P34). */
   onDismiss: (blockId: string) => Promise<void>;
+  /** Keeps a DIAGRAM block with its page (P43) — the drawing's home is the photo, not a row. */
+  onKeep: (blockId: string) => Promise<void>;
 }
 
 function RemoveButton({
@@ -202,7 +207,8 @@ function BlockRow({
   onFocus: (blockId: string) => void;
   onUnallocate: () => Promise<{ warning?: string }>;
 }) {
-  const filed = block.status === "ALLOCATED";
+  const kept = block.status === "KEPT";
+  const filed = block.status === "ALLOCATED" || kept;
   const check = !filed && hasOpenDispute(block);
   const target = block.targetType;
 
@@ -257,11 +263,13 @@ function BlockRow({
             : "border border-dashed border-slate-300 text-slate-400"
       }`}
     >
-      {filed
-        ? `Filed as ${target ? NOTE_BLOCK_TARGET_LABEL[target] : "a note"}`
-        : target
-          ? NOTE_BLOCK_TARGET_LABEL[target]
-          : "Not decided"}
+      {kept
+        ? "Kept with the page"
+        : filed
+          ? `Filed as ${target ? NOTE_BLOCK_TARGET_LABEL[target] : "a note"}`
+          : target
+            ? NOTE_BLOCK_TARGET_LABEL[target]
+            : "Not decided"}
     </span>
   );
 
@@ -337,6 +345,9 @@ function BlockCard({
   const proficiencyId = codes[0] ? ID_FOR_CODE.get(codes[0]) : undefined;
   const chosenTags = tags.filter((t) => ticked[t]);
   const edited = text.trim() !== block.rawText.trim();
+  // A drawing has no filing target (P43): its home is the photographed page, so the card
+  // offers keep-or-dismiss instead of the four destinations.
+  const isDiagram = block.kind === "DIAGRAM";
 
   function chooseReading(pair: string, chosen: string, other: string) {
     setResolved((r) => ({ ...r, [pair]: true }));
@@ -426,10 +437,14 @@ function BlockCard({
    *  sitting, and ignored while the student is typing — "4.15" is a search, not a shortcut. */
   const setDest = useRef(setDestination);
   setDest.current = setDestination;
+  const noDest = useRef(isDiagram);
+  noDest.current = isDiagram;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Never steal a modified key: ⌘1 switches browser tab and always should.
       if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
+      // A diagram has no destinations, so the keys mean nothing on it.
+      if (noDest.current) return;
       const n = Number(e.key);
       if (!Number.isInteger(n) || n < 1 || n > DESTINATION_KEYS.length) return;
       e.preventDefault();
@@ -574,7 +589,24 @@ function BlockCard({
           </div>
         )}
 
-        <DestinationTiles value={target} onChange={setDestination} />
+        {isDiagram ? (
+          <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-slate-50 p-3.5 ring-1 ring-slate-200">
+            <p className="min-w-0 flex-1 text-[12.5px] leading-snug text-slate-600">
+              This is a drawing, so its home is the photo itself — keeping it holds the drawing (and
+              its words, for search) with this page. The notes it contains are their own cards
+              above, and they file wherever they belong.
+            </p>
+            <button
+              type="button"
+              onClick={() => void handlers.onKeep(block.id)}
+              className="shrink-0 rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700"
+            >
+              Keep with this page
+            </button>
+          </div>
+        ) : (
+          <DestinationTiles value={target} onChange={setDestination} />
+        )}
 
         {showDrawer && (
           <div className="mt-3 min-w-0 rounded-xl bg-slate-50 p-3.5 ring-1 ring-slate-200 motion-safe:animate-[pm-panel-in_220ms_ease-out_both]">
@@ -709,22 +741,24 @@ function BlockCard({
         )}
       </div>
 
-      <AllocateBar
-        target={target}
-        proficiencyId={proficiencyId}
-        tags={chosenTags}
-        gibbs={gibbs}
-        onSkip={onSkip}
-        onAllocate={(targetType) =>
-          handlers.onAllocate(block.id, {
-            targetType,
-            proficiencyId,
-            tags: chosenTags,
-            gibbs,
-            medicationId,
-          })
-        }
-      />
+      {!isDiagram && (
+        <AllocateBar
+          target={target}
+          proficiencyId={proficiencyId}
+          tags={chosenTags}
+          gibbs={gibbs}
+          onSkip={onSkip}
+          onAllocate={(targetType) =>
+            handlers.onAllocate(block.id, {
+              targetType,
+              proficiencyId,
+              tags: chosenTags,
+              gibbs,
+              medicationId,
+            })
+          }
+        />
+      )}
     </article>
   );
 }
@@ -768,7 +802,7 @@ export function ReviewPanel({
   handlers: ReviewHandlers;
 }) {
   const pending = useMemo(() => pendingBlocks(blocks), [blocks]);
-  const filed = useMemo(() => blocks.filter((b) => b.status === "ALLOCATED"), [blocks]);
+  const filed = useMemo(() => blocks.filter(isSettled), [blocks]);
   const toCheck = useMemo(() => pending.filter(hasOpenDispute).length, [pending]);
 
   const [focusId, setFocusId] = useState<string | undefined>(() => pendingBlocks(blocks)[0]?.id);
@@ -845,21 +879,22 @@ export function ReviewPanel({
             className="min-w-0"
             // Drag is never the only route — the tiles in the card and the keys `1`–`4` both do
             // the same thing. A filed note doesn't drag: the real row exists, and moving the
-            // note would leave the two out of step.
-            draggable={b.status !== "ALLOCATED"}
+            // note would leave the two out of step. A kept diagram doesn't either — it has no
+            // destination to be dragged to.
+            draggable={b.status === "PENDING"}
             // Checked again in the handler, not just declared in the attribute: `draggable` is
             // a hint the browser honours and any synthetic drag ignores, and the reason a filed
             // note can't move is that the real row already exists — too load-bearing to leave
             // resting on a hint.
             onDragStart={() => {
-              if (b.status !== "ALLOCATED") setDragging(b.id);
+              if (b.status === "PENDING") setDragging(b.id);
             }}
             onDragEnd={() => {
               setDragging(undefined);
               setOver(undefined);
             }}
           >
-            {b.id === focusId && b.status !== "ALLOCATED" ? (
+            {b.id === focusId && b.status === "PENDING" ? (
               <BlockCard
                 block={b}
                 index={blocks.indexOf(b)}

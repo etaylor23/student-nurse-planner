@@ -70,6 +70,7 @@ export function CaptureButton() {
     reset,
     selectShift,
     allocate,
+    keep,
     unallocate,
     editBlock,
     dismissBlock,
@@ -436,6 +437,7 @@ export function CaptureButton() {
                       onUnallocate: unallocate,
                       onCreateMedication: createMedication,
                       onDismiss: dismissBlock,
+                      onKeep: keep,
                     }}
                   />
                 </>

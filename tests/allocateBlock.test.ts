@@ -7,6 +7,7 @@ import {
   AllocateError,
   allocateBlock,
   gibbsSections,
+  keepBlock,
   titleFrom,
   unallocateBlock,
 } from "../src/logic/allocateBlock";
@@ -294,5 +295,37 @@ describe("unallocateBlock (P19)", () => {
     const block = await makeBlock();
     const { block: after } = await unallocateBlock(repo, block);
     expect(after.status).toBe("PENDING");
+  });
+});
+
+describe("keepBlock (P43 — a diagram kept with its page)", () => {
+  it("marks the block KEPT without creating any domain row", async () => {
+    const block = await makeBlock({ kind: "DIAGRAM" });
+
+    const kept = await keepBlock(repo, block);
+
+    expect(kept.status).toBe("KEPT");
+    expect(kept.targetType).toBeUndefined();
+    expect(kept.targetId).toBeUndefined();
+    // Nothing materialised anywhere — the photo is the artefact.
+    expect(await repo.listReflections(USER)).toHaveLength(0);
+    expect(await repo.listMedicationLogs(USER)).toHaveLength(0);
+  });
+
+  it("is idempotent, like allocate", async () => {
+    const block = await makeBlock({ kind: "DIAGRAM" });
+    const once = await keepBlock(repo, block);
+    const twice = await keepBlock(repo, once);
+    expect(twice.status).toBe("KEPT");
+  });
+
+  it("un-keeping is just a status reset — there is no row to delete", async () => {
+    const block = await makeBlock({ kind: "DIAGRAM" });
+    const kept = await keepBlock(repo, block);
+
+    const { block: after, warning } = await unallocateBlock(repo, kept);
+
+    expect(after.status).toBe("PENDING");
+    expect(warning).toBeUndefined();
   });
 });

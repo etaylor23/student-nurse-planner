@@ -63,7 +63,7 @@ const SYSTEM = `You are filing a student nurse's handwritten placement notes int
 You are given the page's text, split into numbered regions by a vision model. Those regions are GUIDANCE about where the subject changes — often right, not always. The real blocks are semantic: a single block may span two or three regions, or one region may contain two different notes. Decide the real boundaries yourself.
 
 For each block, decide:
-- "kind": CLINICAL_SKILL | MEDICATION | REFLECTION | OBSERVATION | TODO | DATE_HEADER | UNKNOWN. Use UNKNOWN honestly when it is none of these (a phone number, a shopping list, an illegible fragment) — do not guess a kind to look decisive.
+- "kind": CLINICAL_SKILL | MEDICATION | REFLECTION | OBSERVATION | TODO | DATE_HEADER | DIAGRAM | UNKNOWN. Use UNKNOWN honestly when it is none of these (a phone number, a shopping list, an illegible fragment) — do not guess a kind to look decisive.
 - "targetType": where it should be filed — REFLECTION | MED_LOG | PROFICIENCY_EVENT | SHIFT_NOTES.
 - "candidateCodes": for clinical-skill or proficiency-evidence blocks, the 3–5 NMC statement codes it best evidences, RANKED best first. Use only codes from the list given. A medication note CAN evidence a platform statement about medicines management — do not restrict yourself by kind.
 - "tags": short subject labels. Strongly prefer labels the student already uses.
@@ -71,6 +71,8 @@ For each block, decide:
 - "gibbs": REFLECTION blocks ONLY — split the text across DESCRIPTION, FEELINGS, EVALUATION, ANALYSIS, CONCLUSION, ACTION_PLAN. Omit stages the text does not cover. Do not invent content to fill a stage.
 - "fromRegions": which region numbers this block drew from.
 - "groupKey": shared by blocks that belong together.
+
+DIAGRAM is for drawn structure: a mind map, flowchart, sketch or hand-drawn table. When part of the page is one, emit ONE DIAGRAM block covering the whole drawing — its "text" transcribes the diagram's words in reading order (centre first for a mind map, then each branch), its "fromRegions" lists every region the drawing spans, and it takes NO targetType: it is kept with the photographed page rather than filed. THEN ALSO emit normal blocks for the diagram's content so the notes themselves can be filed — that duplication is wanted, not a mistake. Tag the DIAGRAM block with its form (e.g. "mind map"). Text that merely sits near a drawing (margin notes, a to-do underneath) is NOT part of the diagram.
 
 CRITICAL: "text" must use the SAME WORDS as the page text given to you, in the same order. You may split it, regroup it, and JOIN HARD-WRAPPED LINES back into flowing sentences and paragraphs so it reads naturally — handwritten notes wrap mid-sentence and that line structure is an artefact of the paper, not the meaning. You may NOT reword it, substitute synonyms, summarise it, or add to it.
 
@@ -92,6 +94,24 @@ export interface ClassifyResult {
 function isFromPage(text: string, page: string): boolean {
   const squash = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
   return squash(page).includes(squash(text));
+}
+
+/**
+ * The DIAGRAM relaxation of the same guard. A mind map's labels are scattered around the
+ * page, so the vision model emits them in one order and a faithful diagram transcription
+ * reads them in another — substring containment can never hold. Word-level containment
+ * still holds the line that matters: every word must exist on the page, so the model can
+ * reorder the student's words but not introduce any.
+ */
+function isTokensFromPage(text: string, page: string): boolean {
+  const tokens = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .split(/\s+/)
+      .filter(Boolean);
+  const pageWords = new Set(tokens(page));
+  return tokens(text).every((t) => pageWords.has(t));
 }
 
 export async function classify(
@@ -175,13 +195,22 @@ export async function classify(
     return failure();
   }
 
+  if (validated.data.malformed > 0) {
+    console.warn(`classifier: dropped ${validated.data.malformed} malformed block(s)`);
+  }
+
   let droppedBlocks = 0;
   let droppedCodes = 0;
   const blocks: ClassifiedBlock[] = [];
   for (const b of validated.data.blocks) {
     // The structural guard (P26/P27): the classifier may re-split and regroup the student's
-    // words, never introduce any. Same rule as the sanitiser's `from`-must-match.
-    if (!isFromPage(b.text, sanitisedText)) {
+    // words, never introduce any. Same rule as the sanitiser's `from`-must-match. DIAGRAM
+    // blocks legitimately reorder scattered labels, so they get the word-level form.
+    const fromPage =
+      b.kind === "DIAGRAM"
+        ? isTokensFromPage(b.text, sanitisedText)
+        : isFromPage(b.text, sanitisedText);
+    if (!fromPage) {
       droppedBlocks++;
       continue;
     }

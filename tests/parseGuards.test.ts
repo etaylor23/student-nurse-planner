@@ -222,6 +222,74 @@ describe("classify — a block's text must come from the page (P26/P27)", () => 
     expect(r.blocks[0].kind).toBe("UNKNOWN");
   });
 
+  it("tolerates the model's null-for-absent idiom instead of discarding the page", async () => {
+    // The exact shapes the first corpus baseline lost whole classifications to:
+    // `groupKey: null` and `gibbs: {FEELINGS: null}` (2026-08-04 CloudWatch).
+    respondWith({
+      blocks: [
+        {
+          text: "Aciclovir - antiviral medication.",
+          kind: "MEDICATION",
+          candidateCodes: [],
+          groupKey: null,
+          medicationCandidate: null,
+          targetType: null,
+        },
+        {
+          text: "Felt out of my depth when family asked.",
+          kind: "REFLECTION",
+          candidateCodes: [],
+          gibbs: { DESCRIPTION: "Felt out of my depth when family asked.", FEELINGS: null },
+        },
+      ],
+    });
+    const r = await classify(page, [page], {});
+    expect(r.failed).toBe(false);
+    expect(r.blocks).toHaveLength(2);
+    expect(r.blocks[0].groupKey).toBeUndefined();
+    expect(r.blocks[1].gibbs).toEqual({
+      DESCRIPTION: "Felt out of my depth when family asked.",
+    });
+  });
+
+  it("salvages the good blocks when one block is malformed, not the whole page", async () => {
+    respondWith({
+      blocks: [
+        { text: "Aciclovir - antiviral medication.", kind: "MEDICATION", candidateCodes: [] },
+        { kind: "MEDICATION" }, // no text at all — truly malformed
+      ],
+    });
+    const r = await classify(page, [page], {});
+    expect(r.failed).toBe(false);
+    expect(r.blocks).toHaveLength(1);
+  });
+
+  it("lets a DIAGRAM block reorder the page's words, but not introduce any", async () => {
+    const mapPage =
+      "SEPSIS SIX within 1 hour\n1. O2 keep sats 94-98%\n2. blood cultures BEFORE abx";
+    respondWith({
+      blocks: [
+        {
+          // Reading order differs from region order — substring containment can never hold.
+          text: "SEPSIS SIX within 1 hour: blood cultures BEFORE abx; O2 keep sats 94-98%",
+          kind: "DIAGRAM",
+          candidateCodes: [],
+          tags: ["mind map"],
+        },
+        {
+          // Same reordering freedom must NOT allow invention.
+          text: "SEPSIS SIX: give adrenaline immediately",
+          kind: "DIAGRAM",
+          candidateCodes: [],
+        },
+      ],
+    });
+    const r = await classify(mapPage, [mapPage], {});
+    expect(r.blocks).toHaveLength(1);
+    expect(r.blocks[0].kind).toBe("DIAGRAM");
+    expect(r.droppedBlocks).toBe(1);
+  });
+
   it("degrades to no blocks when the model fails, so the parse still returns", async () => {
     chatImpl = async () => {
       throw new Error("upstream 500");

@@ -232,10 +232,23 @@ export interface UnallocateResult {
   warning?: string;
 }
 
+/**
+ * Keep a block with its page (DIAGRAM blocks, P43): no domain row is created — the retained
+ * photo is the artefact — but the block leaves the pending walk. Idempotent like allocate.
+ */
+export async function keepBlock(repo: Repository, block: NoteBlock): Promise<NoteBlock> {
+  if (block.status === "KEPT") return block;
+  return repo.updateNoteBlock(block.id, { status: "KEPT" });
+}
+
 export async function unallocateBlock(
   repo: Repository,
   block: NoteBlock,
 ): Promise<UnallocateResult> {
+  // A kept block created nothing, so un-keeping is just a status change.
+  if (block.status === "KEPT") {
+    return { block: await repo.updateNoteBlock(block.id, { status: "PENDING" }) };
+  }
   if (block.status !== "ALLOCATED") return { block };
 
   let warning: string | undefined;
