@@ -7,7 +7,12 @@ import { UpstreamError } from "../ai/provider";
 import { type StudentContext, classify } from "./classify";
 import { disputedWords, mapDisputesToBlocks } from "./consensus";
 import { ensureRegionsCovered } from "./coverage";
-import { guardMermaid, synthesiseDiagramBlock, visionDiagramRegions } from "./diagram";
+import {
+  guardMermaid,
+  mergeNomination,
+  synthesiseDiagramBlock,
+  visionDiagramClusters,
+} from "./diagram";
 import { reflow } from "./reflow";
 import { normaliseBbox } from "./schema";
 import { sanitise } from "./sanitise";
@@ -206,29 +211,33 @@ async function run(event: FunctionUrlEvent, responseStream: ResponseStream): Pro
     // ---- 4: classify ----
     const classified = await classify(cleaned.text, regions, req.context ?? {});
 
-    // The DIAGRAM block is SYNTHESISED from a region nomination (P43, diagram.ts) —
-    // model-emitted DIAGRAM blocks are dropped when a nomination exists, or they'd double
-    // up with the synthesised one. Vision is the primary nominator (it saw the drawing;
-    // the text-only classifier can't), unioned with whatever the classifier adds.
-    const nominated = [
-      ...new Set([...visionDiagramRegions(structure.parsed.blocks), ...classified.diagramRegions]),
-    ];
-    const synthesised = synthesiseDiagramBlock(
-      nominated,
-      regions,
-      cleaned.corrections,
-      classified.diagramForm,
+    // DIAGRAM blocks are SYNTHESISED from region nominations (P43/P45, diagram.ts) — one
+    // per drawing; a page can hold several. Vision is the primary nominator (it saw the
+    // drawings; the text-only classifier can't), with the classifier's flat nomination
+    // folded in by overlap. Each drawing's Mermaid rebuild rides the structure call's
+    // response (P44), matched by groupKey and admitted only word-guarded — checked against
+    // the WHOLE page rather than the cluster, because the two models draw a drawing's
+    // boundary independently and a label the cluster missed is still the student's own
+    // word, not an invention.
+    const clusters = mergeNomination(
+      visionDiagramClusters(structure.parsed.blocks),
+      classified.diagramRegions,
     );
-    if (synthesised) {
-      // The Mermaid rebuild rides the structure call's response (P44) and is admitted only
-      // word-guarded — checked against the WHOLE page rather than the nominated regions,
-      // because the two models draw the drawing's boundary independently and a label the
-      // nomination missed is still the student's own word, not an invention.
-      synthesised.diagramSource = guardMermaid(structure.parsed.diagramMermaid, pageText);
-    }
-    const classifiedBlocks = synthesised
-      ? classified.blocks.filter((b) => b.kind !== "DIAGRAM")
-      : classified.blocks;
+    const visionDiagrams = structure.parsed.diagrams;
+    const synthesised = clusters.flatMap((cluster) => {
+      const meta = cluster.groupKey
+        ? visionDiagrams.find((d) => d.groupKey === cluster.groupKey)
+        : undefined;
+      const form = meta?.form ?? (clusters.length === 1 ? classified.diagramForm : undefined);
+      const block = synthesiseDiagramBlock(cluster.regions, regions, cleaned.corrections, form);
+      if (!block) return [];
+      block.diagramSource = guardMermaid(meta?.mermaid, pageText);
+      return [block];
+    });
+    const classifiedBlocks =
+      synthesised.length > 0
+        ? classified.blocks.filter((b) => b.kind !== "DIAGRAM")
+        : classified.blocks;
 
     // Degraded path (P27): no classifier output → fall back to the vision regions as
     // UNKNOWN blocks so the student can route them by hand. Still a transcription tool.
@@ -254,7 +263,7 @@ async function run(event: FunctionUrlEvent, responseStream: ResponseStream): Pro
     // Appended LAST, after coverage: the diagram deliberately duplicates pass-1 words, so it
     // must never satisfy coverage on their behalf — and disputes map to the first block
     // containing the word, which keeps them on the fileable block, not the drawing.
-    const blocks = synthesised ? [...covered, synthesised] : covered;
+    const blocks = synthesised.length > 0 ? [...covered, ...synthesised] : covered;
 
     const disputeMap = mapDisputesToBlocks(blocks, disputes);
 

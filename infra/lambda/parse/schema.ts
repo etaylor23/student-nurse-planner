@@ -35,14 +35,34 @@ export const visionBlockSchema = z
   })
   .strip();
 
+/** One drawing's rebuild (P44/P45): keyed to the groupKey its label blocks share. */
+export const visionDiagramSchema = z
+  .object({
+    groupKey: z.string().min(1),
+    form: nullishTo(z.string()),
+    mermaid: nullishTo(z.string()),
+  })
+  .strip();
+
 export const visionResponseSchema = z
   .object({
     /** Never normalised — the model must return the date AS WRITTEN (P8). */
     pageDateRaw: z.string().nullable().optional(),
     wardHint: z.string().nullable().optional(),
-    /** Mermaid source rebuilding the page's drawn structure, when there is one (P44).
-     *  Guarded downstream — never trusted to contain only the page's words. */
-    diagramMermaid: nullishTo(z.string()),
+    /** One entry per drawing on the page (P45 — a page can hold several). Guarded
+     *  downstream — never trusted to contain only the page's words. Malformed entries
+     *  are dropped individually, same promise as blocks. */
+    diagrams: z
+      .array(z.unknown())
+      .nullish()
+      .transform((entries) => {
+        const out: VisionDiagram[] = [];
+        for (const raw of entries ?? []) {
+          const parsed = visionDiagramSchema.safeParse(raw);
+          if (parsed.success) out.push(parsed.data);
+        }
+        return out;
+      }),
     blocks: z.array(visionBlockSchema),
   })
   .strip();
@@ -58,10 +78,15 @@ export interface VisionBlock {
   groupKey?: string;
   tags?: string[];
 }
+export interface VisionDiagram {
+  groupKey: string;
+  form?: string;
+  mermaid?: string;
+}
 export interface VisionResponse {
   pageDateRaw?: string | null;
   wardHint?: string | null;
-  diagramMermaid?: string;
+  diagrams: VisionDiagram[];
   blocks: VisionBlock[];
 }
 

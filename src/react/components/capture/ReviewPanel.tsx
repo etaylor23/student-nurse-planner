@@ -882,16 +882,37 @@ export function ReviewPanel({
   /** The drawing the focused note is part of, if any (P43/P44) — pinned under the photo so
    *  it stays on screen while its branches are being filed, active branch highlighted. */
   const focusedBlock = blocks.find((b) => b.id === focusId);
-  // The drawing to pin: the focused block's own drawing when the DIAGRAM block itself is
-  // open, or the one it belongs to when a branch is. Either way the map stays in the left
-  // column — its only in-card render is on narrow screens, where there IS no left column.
+  // A page can hold SEVERAL drawings (P45). The left column pins ONE — the "selected
+  // diagram" — chosen by tabs when there are two or more, and auto-following focus: opening
+  // a drawing's card or any of its branches selects that drawing, while focusing an
+  // unrelated block keeps the current selection rather than blanking the pane.
+  const pageDiagrams = useMemo(
+    () => blocks.filter((b) => b.kind === "DIAGRAM" && b.status !== "DISMISSED" && b.diagramSource),
+    [blocks],
+  );
   const focusedIsDiagram = focusedBlock?.kind === "DIAGRAM";
-  const memberDiagram = focusedBlock
+  const focusDiagram = focusedBlock
     ? focusedIsDiagram
       ? focusedBlock
       : diagramContaining(focusedBlock, blocks)
     : undefined;
-  const pinnedSource = memberDiagram?.diagramSource;
+  const [selectedDiagramId, setSelectedDiagramId] = useState<string>();
+  const focusDiagramId = focusDiagram?.diagramSource ? focusDiagram.id : undefined;
+  useEffect(() => {
+    if (focusDiagramId) setSelectedDiagramId(focusDiagramId);
+  }, [focusDiagramId]);
+  const pinnedDiagram = pageDiagrams.find((d) => d.id === selectedDiagramId) ?? pageDiagrams[0];
+  const pinnedSource = pinnedDiagram?.diagramSource;
+  /** Highlight only when the focused note is a branch OF THE PINNED drawing. */
+  const focusedInPinned =
+    !!focusedBlock && !focusedIsDiagram && focusDiagram?.id === pinnedDiagram?.id;
+  /** Tab label: the drawing's form tag ("mind map", "flowchart"), numbered on collision. */
+  const diagramLabel = (d: NoteBlock) => {
+    const form = list(d.suggestedTags)[0] || "drawing";
+    const name = form.charAt(0).toUpperCase() + form.slice(1);
+    const sameForm = pageDiagrams.filter((x) => (list(x.suggestedTags)[0] || "drawing") === form);
+    return sameForm.length > 1 ? `${name} ${sameForm.indexOf(d) + 1}` : name;
+  };
   const [diagramZoom, setDiagramZoom] = useState(false);
   useEffect(() => {
     if (!diagramZoom) return;
@@ -1158,11 +1179,11 @@ export function ReviewPanel({
                   focusId={focusId}
                   onFocus={focus}
                 />
-                {pinnedSource && memberDiagram && (
+                {pinnedSource && pinnedDiagram && (
                   <div className="mt-5">
                     <div className="mb-2 flex items-baseline justify-between">
                       <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                        {focusedIsDiagram ? "Rebuilt from your drawing" : "From your drawing"}
+                        {pageDiagrams.length > 1 ? "Selected drawing" : "From your drawing"}
                       </p>
                       <button
                         type="button"
@@ -1172,20 +1193,45 @@ export function ReviewPanel({
                         Enlarge
                       </button>
                     </div>
+                    {/* Two or more drawings → tabs. Auto-follow keeps them honest (focusing
+                        a branch flips to its drawing), the tabs make the others reachable
+                        without hunting for one of their blocks. */}
+                    {pageDiagrams.length > 1 && (
+                      <div className="mb-2 flex flex-wrap gap-1.5">
+                        {pageDiagrams.map((d) => {
+                          const on = d.id === pinnedDiagram.id;
+                          return (
+                            <button
+                              key={d.id}
+                              type="button"
+                              onClick={() => setSelectedDiagramId(d.id)}
+                              aria-pressed={on}
+                              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                                on
+                                  ? "bg-ink text-white"
+                                  : "bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-slate-300"
+                              }`}
+                            >
+                              {diagramLabel(d)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                     {/* A landscape drawing in a thin column is a mini-map, not the artwork:
                         it scales to fit, the active branch glows, and Enlarge (or dragging
-                        the divider) is the route to full size. No highlight when the drawing
-                        ITSELF is focused — its text contains every label, which would ring
-                        every node at once. */}
+                        the divider) is the route to full size. Highlight only when the
+                        focused note is a branch of THIS drawing — the drawing's own text
+                        contains every label and would ring every node at once. */}
                     <MermaidDiagram
                       source={pinnedSource}
-                      highlight={focusedIsDiagram ? undefined : focusedBlock?.text}
+                      highlight={focusedInPinned ? focusedBlock?.text : undefined}
                       label="The drawing, rebuilt as a diagram"
                     />
                     <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
-                      {focusedIsDiagram
-                        ? "The whole drawing, kept with this page — its notes file as their own cards."
-                        : "This note is one branch of the drawing — the outlined node is the one you're on."}
+                      {focusedInPinned
+                        ? "This note is one branch of the drawing — the outlined node is the one you're on."
+                        : "Kept with this page — the notes it contains file as their own cards."}
                     </p>
                   </div>
                 )}
@@ -1215,12 +1261,13 @@ export function ReviewPanel({
                   </div>
                 )}
                 {/* Narrow screens have no pinned column, so the drawing rides with the
-                    focused branch here instead — same mini-map, same highlight. Not when
-                    the diagram ITSELF is focused: its own card renders it (inlineDiagram). */}
-                {pinnedSource && !focusedIsDiagram && (
+                    focused branch here instead — always the FOCUSED note's own drawing, no
+                    tabs. Not when the diagram ITSELF is focused: its own card renders it
+                    (inlineDiagram). */}
+                {focusDiagram?.diagramSource && !focusedIsDiagram && (
                   <div className="mt-3">
                     <MermaidDiagram
-                      source={pinnedSource}
+                      source={focusDiagram.diagramSource}
                       highlight={focusedBlock?.text}
                       label="The drawing this note is part of, rebuilt as a diagram"
                     />
@@ -1328,8 +1375,8 @@ export function ReviewPanel({
             </div>
             <MermaidDiagram
               source={pinnedSource}
-              highlight={focusedBlock?.text}
-              label="The drawing this note is part of, rebuilt as a diagram"
+              highlight={focusedInPinned ? focusedBlock?.text : undefined}
+              label="The drawing, rebuilt as a diagram"
             />
           </div>
         </div>

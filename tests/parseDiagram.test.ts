@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   guardMermaid,
+  mergeNomination,
   synthesiseDiagramBlock,
-  visionDiagramRegions,
+  visionDiagramClusters,
 } from "../infra/lambda/parse/diagram";
 import type { VisionBlock } from "../infra/lambda/parse/schema";
 
@@ -64,7 +65,7 @@ describe("synthesiseDiagramBlock (P43)", () => {
   });
 });
 
-describe("visionDiagramRegions — the primary nomination (P43)", () => {
+describe("visionDiagramClusters — the primary nomination, one per drawing (P43/P45)", () => {
   const vb = (kind?: string, groupKey?: string): VisionBlock => ({
     rawText: "x",
     ...(kind ? { kind } : {}),
@@ -73,21 +74,53 @@ describe("visionDiagramRegions — the primary nomination (P43)", () => {
 
   it("collects the regions vision hinted DIAGRAM, keyed by their shared group", () => {
     const blocks = [vb("DATE_HEADER"), vb("DIAGRAM", "map"), vb("DIAGRAM", "map"), vb("TODO")];
-    expect(visionDiagramRegions(blocks)).toEqual([1, 2]);
+    expect(visionDiagramClusters(blocks)).toEqual([{ groupKey: "map", regions: [1, 2] }]);
   });
 
-  it("takes the largest drawing when hints split across groups", () => {
+  it("returns EVERY drawing on the page, in page order — a page can hold several", () => {
     const blocks = [
-      vb("DIAGRAM", "small"),
-      vb("DIAGRAM", "big"),
-      vb("DIAGRAM", "big"),
-      vb("DIAGRAM", "big"),
+      vb("DIAGRAM", "map"),
+      vb("DIAGRAM", "map"),
+      vb("OBSERVATION"),
+      vb("DIAGRAM", "flow"),
+      vb("DIAGRAM", "flow"),
+      vb("DIAGRAM", "flow"),
     ];
-    expect(visionDiagramRegions(blocks)).toEqual([1, 2, 3]);
+    expect(visionDiagramClusters(blocks)).toEqual([
+      { groupKey: "map", regions: [0, 1] },
+      { groupKey: "flow", regions: [3, 4, 5] },
+    ]);
+  });
+
+  it("drops single-label groups — one label is not a drawing", () => {
+    const blocks = [vb("DIAGRAM", "lonely"), vb("DIAGRAM", "map"), vb("DIAGRAM", "map")];
+    expect(visionDiagramClusters(blocks)).toEqual([{ groupKey: "map", regions: [1, 2] }]);
   });
 
   it("returns nothing when vision hinted no drawing", () => {
-    expect(visionDiagramRegions([vb("OBSERVATION"), vb()])).toEqual([]);
+    expect(visionDiagramClusters([vb("OBSERVATION"), vb()])).toEqual([]);
+  });
+});
+
+describe("mergeNomination — the classifier's flat nomination folds into the clusters", () => {
+  const clusters = [
+    { groupKey: "map", regions: [1, 2, 3] },
+    { groupKey: "flow", regions: [7, 8] },
+  ];
+
+  it("unions into the cluster it overlaps most", () => {
+    expect(mergeNomination(clusters, [3, 4])).toEqual([
+      { groupKey: "map", regions: [1, 2, 3, 4] },
+      { groupKey: "flow", regions: [7, 8] },
+    ]);
+  });
+
+  it("stands alone as an extra drawing when it overlaps none", () => {
+    expect(mergeNomination(clusters, [11, 12])).toEqual([...clusters, { regions: [11, 12] }]);
+  });
+
+  it("changes nothing when the classifier nominated nothing", () => {
+    expect(mergeNomination(clusters, [])).toEqual(clusters);
   });
 });
 

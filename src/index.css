@@ -320,16 +320,27 @@
    opaque card fills are also what stops connectors showing through the shapes. All
    overrides are !important because mermaid inlines its theme into the SVG. Highlighting
    stays class-toggling only — never a re-render. */
-.pm-mermaid path.edge {
+.pm-mermaid path.edge,
+.pm-mermaid g.edgePaths path {
   stroke: #cbd5e1 !important; /* slate-300 */
   stroke-width: 2px !important;
 }
-.pm-mermaid g.mindmap-node rect,
-.pm-mermaid g.mindmap-node polygon,
-.pm-mermaid g.mindmap-node path:not(.edge) {
+.pm-mermaid marker path {
+  fill: #cbd5e1 !important; /* arrowheads match their edges */
+}
+/* Flowchart nodes are g.node; mind-map nodes carry both classes. Same card treatment. */
+.pm-mermaid g.node rect,
+.pm-mermaid g.node polygon,
+.pm-mermaid g.node path:not(.edge) {
   fill: #ffffff !important;
   stroke: #e2e8f0 !important; /* slate-200 */
   stroke-width: 1.5px !important;
+}
+/* Edge labels (a flowchart's YES/NO) sit on the connector: quiet chip, ink text. */
+.pm-mermaid .edgeLabel,
+.pm-mermaid .edgeLabel p {
+  color: var(--color-ink) !important;
+  background: #ffffff !important;
 }
 .pm-mermaid g.mindmap-node circle,
 .pm-mermaid g.section-root rect,
