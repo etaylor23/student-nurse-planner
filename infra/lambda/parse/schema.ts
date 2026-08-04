@@ -17,15 +17,21 @@ export const BBOX_SCALE = 1000;
 
 const bboxTuple = z.array(z.number()).length(4);
 
+/** Vision models use `null` for "absent" exactly like the classifier does — qwen started
+ *  emitting `"groupKey": null` the moment the prompt mentioned groupKey explicitly, and a
+ *  null-intolerant schema turned every such page into PARSE_FAILED. */
+const nullishTo = <T extends z.ZodTypeAny>(schema: T) =>
+  schema.nullish().transform((v) => v ?? undefined);
+
 export const visionBlockSchema = z
   .object({
     rawText: z.string().min(1),
-    kind: z.string().optional(),
-    confidence: z.number().optional(),
-    bbox: bboxTuple.optional(),
-    rotationDeg: z.number().optional(),
-    groupKey: z.string().optional(),
-    tags: z.array(z.string()).optional(),
+    kind: nullishTo(z.string()),
+    confidence: nullishTo(z.number()),
+    bbox: nullishTo(bboxTuple),
+    rotationDeg: nullishTo(z.number()),
+    groupKey: nullishTo(z.string()),
+    tags: nullishTo(z.array(z.string())),
   })
   .strip();
 
@@ -38,8 +44,22 @@ export const visionResponseSchema = z
   })
   .strip();
 
-export type VisionResponse = z.infer<typeof visionResponseSchema>;
-export type VisionBlock = z.infer<typeof visionBlockSchema>;
+/** Declared as interfaces (optional fields stay optional) — the nullish transforms would
+ *  otherwise infer every optional as required-but-undefined. Same idiom as ClassifiedBlock. */
+export interface VisionBlock {
+  rawText: string;
+  kind?: string;
+  confidence?: number;
+  bbox?: number[];
+  rotationDeg?: number;
+  groupKey?: string;
+  tags?: string[];
+}
+export interface VisionResponse {
+  pageDateRaw?: string | null;
+  wardHint?: string | null;
+  blocks: VisionBlock[];
+}
 
 export const correctionSchema = z
   .object({

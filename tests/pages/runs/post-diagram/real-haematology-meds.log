@@ -2,61 +2,68 @@ uploaded tests/pages/real-haematology-meds.jpg (713216 bytes downscaled)
 
 parsing s3://nurse-planner-captures-dev-641364901830/u/764262e4-e031-70be-0e16-72b6ddb9f89e/h/4ca23817013450930d4361dbe1882ca3ca640136986af4a5055fae7e25771734/page.jpg
 
-HTTP 200 in 58637ms
+HTTP 200 in 39557ms
 
 · stage: reading
 · stage: spellchecking
 · stage: classifying
 
 pageDateRaw: null   wardHint: null
-corrections: prevention|prophylaxis  ·  pneumonia|Pneumocystis pneumonia
 
 ── BLOCK 1  DATE_HEADER → SHIFT_NOTES  selfConf=1
    Medication notes
 
 ── BLOCK 2  MEDICATION → MED_LOG  selfConf=1
-   Phenoxymethylpenicillin - antibiotic, treats pneumococcal (Penicillin V) and bacterial infections. e.g. streptococcus pneumoniae preventative medication given to haematology patients.
-   codes: 4.15, 4.14, 3.3, 2.12, 3.2  (first is pre-selected)
-   tags: haematology, antibiotic, prevention, penicillin
+   Aciclovir - antiviral medication. e.g. HSV (Herpes simplex virus) viral prevention medication in haematology patients.
+   codes: 4.15, 3.3, 2.12  (first is pre-selected)
+   tags: haematology, antiviral, HSV
+   medication: Aciclovir
+   ⚠ confirm: Aciclovir|Acyclovir
 
 ── BLOCK 3  MEDICATION → MED_LOG  selfConf=1
-   Filgrastim (GCSF) - man made protein used to treat neutropenia. Caused by chemo, bone marrow transplants and radiation. It stimulates the bone marrow to produce white blood cells. side effects - lower back pain.
-   codes: 4.15, 3.3, 3.2, 4.5, 4.14  (first is pre-selected)
-   tags: haematology, chemotherapy, neutropenia, GCSF
+   Co-trimoxazole - antibiotic, treats bacterial and fungal infections. e.g. PCP (pneumonia) Haematology patients taking methotrexate should not take co-trimox - strongly contraindicated. It can block methotrexate clearance in kidneys.
+   codes: 4.15, 2.12, 3.3  (first is pre-selected)
+   tags: haematology, antibiotic, contraindication, methotrexate
+   medication: Co-trimoxazole
 
-── BLOCK 4  UNKNOWN  selfConf=1
-   Aciclovir - antiviral medication.
-   e.g. HSV (Herpes simplex virus) viral prevention medication in haematology patients.
+── BLOCK 4  MEDICATION → MED_LOG  selfConf=1
+   Phenoxymethylpenicillin - antibiotic, treats pneumococcal and bacterial infections. e.g. Streptococcus pneumoniae preventative medication given to haematology patients. (Penicillin V)
+   codes: 4.15, 2.12, 3.3  (first is pre-selected)
+   tags: haematology, antibiotic, penicillin
+   medication: Phenoxymethylpenicillin
 
-── BLOCK 5  UNKNOWN  selfConf=1
-   Co-trimoxazole - antibiotic, treats bacterial and fungal infections.
-   e.g. PCP (pneumonia) Haematology patients taking methotrexate should not take co-trimox - strongly contraindicated. It can block methotrexate clearance in kidneys.
+── BLOCK 5  MEDICATION → MED_LOG  selfConf=1
+   Filgrastim (GCSF) - man made protein used to treat neutropenia. Caused by chemo, bone marrow transplants and radiation. It stimulates the bone marrow to produce white blood cells. Side effects - lower back pain.
+   codes: 4.15, 3.2, 3.3  (first is pre-selected)
+   tags: haematology, GCSF, neutropenia, chemotherapy
+   medication: Filgrastim
+   ⚠ confirm: Filgrastim|Filgastim  ·  transplants|transplant
 
 diagnostics: {
-  "totalMs": 58451,
+  "totalMs": 39331,
   "structure": {
     "model": "qwen.qwen3-vl-235b-a22b-instruct",
-    "ms": 26976,
-    "in": 4489,
-    "out": 519
+    "ms": 10513,
+    "in": 4560,
+    "out": 649
   },
   "check": {
     "model": "google.gemma-3-27b-it",
-    "ms": 43551,
-    "missing": true
+    "ms": 23206,
+    "missing": false
   },
   "sanitiser": {
-    "ms": 6563,
+    "ms": 6205,
     "failed": false,
-    "applied": 2,
+    "applied": 0,
     "rejected": 0
   },
   "classifier": {
-    "ms": 8112,
+    "ms": 9660,
     "failed": false,
-    "droppedBlocks": 2,
+    "droppedBlocks": 0,
     "droppedCodes": 0
   },
-  "disputes": 0,
-  "recoveredRegions": 2
+  "disputes": 3,
+  "recoveredRegions": 0
 }

@@ -64,6 +64,20 @@ async function callVision(model: string, dataUri: string): Promise<VisionCallRes
   const raw = parseModelJson(res.text);
   const validated = raw === null ? null : visionResponseSchema.safeParse(raw);
   const parsed = validated && validated.success ? validated.data : null;
+  if (!parsed) {
+    // Structural detail only, never content (same rule as the classifier's failure log).
+    // Without this line a schema rejection was indistinguishable from a blurry photo.
+    const issues =
+      validated && !validated.success
+        ? validated.error.issues
+            .slice(0, 4)
+            .map((i) => `${i.path.join(".") || "(root)"}: ${i.code}`)
+            .join("; ")
+        : "not JSON";
+    console.warn(
+      `vision ${model}: response rejected [${issues}] chars=${res.text.length} finish=${res.finishReason ?? "?"}`,
+    );
+  }
   return {
     model,
     parsed,
