@@ -1281,18 +1281,21 @@ export function ReviewPanel({
         className="grid grid-cols-1 items-start"
         // The photo column and the drawing shelf are student-sized (dragged, remembered);
         // the 10px tracks are the handles. Inline because Tailwind can't express runtime
-        // fractions. The shelf's columns exist only while the focus is in a drawing.
-        style={
-          wide
-            ? {
-                gridTemplateColumns: [
-                  ...(imageUrl ? [`${paneFrac}%`, "10px"] : []),
-                  "1fr",
-                  ...(shelfOpen ? ["10px", `${diagFrac}%`] : []),
-                ].join(" "),
-              }
-            : undefined
-        }
+        // fractions. The shelf's columns exist only while the focus is in a drawing —
+        // and when both side panes are open their remembered widths are scaled down
+        // proportionally so the cards always keep at least a third of the body.
+        style={(() => {
+          if (!wide) return undefined;
+          const both = imageUrl && shelfOpen;
+          const scale = both && paneFrac + diagFrac > 66 ? 66 / (paneFrac + diagFrac) : 1;
+          return {
+            gridTemplateColumns: [
+              ...(imageUrl ? [`${Math.round(paneFrac * scale)}%`, "10px"] : []),
+              "1fr",
+              ...(shelfOpen ? ["10px", `${Math.round(diagFrac * scale)}%`] : []),
+            ].join(" "),
+          };
+        })()}
       >
         {imageUrl && (
           <aside className="min-w-0 border-b border-slate-100 bg-slate-50 p-5 lg:border-b-0">
