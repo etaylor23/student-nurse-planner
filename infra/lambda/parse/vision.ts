@@ -95,12 +95,26 @@ export interface VisionPairResult {
   /** `null` when the check model failed — the parse continues, treating everything as
    *  disputed so nothing is pre-selected (fail safe, not fail closed). */
   check: VisionCallResult | null;
+  /** True when the structure read was degenerate and a retry replaced it (observability). */
+  structureRetried: boolean;
 }
+
+/** The check model must have read this many times more text before a structure read is
+ *  called degenerate — generous, because reflow/phrasing differences are normal. */
+const DEGENERATE_RATIO = 2;
 
 /**
  * Run both models on the same image. A check-model failure is swallowed on purpose: losing
  * the second opinion degrades review quality, but failing the whole parse over it would
  * throw away a perfectly good transcription.
+ *
+ * **Degenerate-read retry.** The structure model intermittently returns a tiny partial
+ * read on dense pages — 2 regions from a 25-region page, output collapsing to ~700 tokens
+ * — 3 of 6 runs on the first two-drawing corpus page (2026-08-04). Everything downstream
+ * starves: coverage can't recover regions vision never emitted. The check model's
+ * whole-page text is an independent VOLUME signal, so when it read far more than the
+ * structure model (or the structure response didn't parse at all), the roll was bad:
+ * retry the structure call once and keep whichever read more.
  */
 export async function readPage(imageBase64: string, contentType: string): Promise<VisionPairResult> {
   const dataUri = `data:${contentType};base64,${imageBase64}`;
@@ -111,5 +125,20 @@ export async function readPage(imageBase64: string, contentType: string): Promis
       return null;
     }),
   ]);
-  return { structure, check };
+
+  const degenerate =
+    !!check?.pageText &&
+    (structure.parsed === null ||
+      check.pageText.length > structure.pageText.length * DEGENERATE_RATIO);
+  if (degenerate) {
+    console.warn(
+      `vision: degenerate structure read (structure=${structure.pageText.length} chars, ` +
+        `check=${check?.pageText.length ?? 0}); retrying the structure call once`,
+    );
+    const retry = await callVision(STRUCTURE_MODEL, dataUri).catch(() => null);
+    if (retry?.parsed && retry.pageText.length > structure.pageText.length) {
+      return { structure: retry, check, structureRetried: true };
+    }
+  }
+  return { structure, check, structureRetried: false };
 }

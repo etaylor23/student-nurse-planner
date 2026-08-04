@@ -2,7 +2,7 @@ uploaded tests/pages/real-heart-failure.png (249141 bytes downscaled)
 
 parsing s3://nurse-planner-captures-dev-641364901830/u/764262e4-e031-70be-0e16-72b6ddb9f89e/h/a2ef0687551dcd803ac0477060451989c87d349fa5392d472695779aa66ef5cb/page.jpg
 
-HTTP 200 in 51825ms
+HTTP 200 in 83022ms
 
 · stage: reading
 · stage: spellchecking
@@ -11,9 +11,16 @@ HTTP 200 in 51825ms
 pageDateRaw: null   wardHint: null
 
 ── BLOCK 1  CLINICAL_SKILL → PROFICIENCY_EVENT  selfConf=1
-   HEART FAILURE nursing checks 1. daily weight — same time each day 2. fluid balance — strict input/output 3. oedema + breathlessness — watch worsening symptoms 4. obs — HR, BP, RR, sats 5. meds — diuretics, monitor U&Es 6. position upright if SOB red flag: acute pulmonary oedema think fluid overload • listen for crackles • ask about orthopnoea
-   codes: 3.3, B8.1, B5.4, 4.10, B2.1  (first is pre-selected)
-   tags: heart failure, cardiac, observations, fluid balance, oedema
+   1. daily weight — same time each day
+   2. fluid balance — strict input/output
+   3. oedema + breathlessness — watch worsening symptoms
+   4. obs — HR, BP, RR, sats
+   5. meds — diuretics, monitor U&Es
+   6. position upright if SOB HEART FAILURE nursing checks red flag: acute pulmonary oedema think fluid overload
+   • listen for crackles
+   • ask about orthopnoea
+   codes: 3.3, 3.2, 4.5, B5.4, B2.13  (first is pre-selected)
+   tags: heart failure, fluid balance, observations
 
 ── BLOCK 2  UNKNOWN  selfConf=1
    Hypoglycaemia management
@@ -55,13 +62,12 @@ pageDateRaw: null   wardHint: null
    never leave them alone
 
 ── BLOCK 15  DIAGRAM  selfConf=1
-   HEART FAILURE nursing checks
    1. daily weight — same time each day
    2. fluid balance — strict input/output
    3. oedema + breathlessness — watch worsening symptoms
    4. obs — HR, BP, RR, sats
    5. meds — diuretics, monitor U&Es
-   6. position upright if SOB red flag: acute pulmonary oedema
+   6. position upright if SOB HEART FAILURE nursing checks red flag: acute pulmonary oedema
    tags: mind map
    mermaid:
       mindmap
@@ -75,30 +81,42 @@ pageDateRaw: null   wardHint: null
 
 ── BLOCK 16  DIAGRAM  selfConf=1
    Patient looks hypo / BM low Check blood glucose Conscious and able to swallow?
-   YES NO Give quick-acting carbs recheck BM in 10-15 min then longer-acting snack if due escalate / call for help follow local policy / IV glucose or IM glucagon recheck BM document + identify cause
+   YES NO Give quick-acting carbs recheck BM in 10-15 min then longer-acting snack if due escalate / call for help follow local policy / IV glucose or IM glucagon recheck BM document + identify cause never leave them alone
    tags: flowchart
+   mermaid:
+      flowchart TD
+        A[Patient looks hypo / BM low]
+        A --> B[Check blood glucose]
+        B --> C[Conscious and able to swallow?]
+        C -- YES --> D[Give quick-acting carbs]
+        D --> E[recheck BM in 10-15 min]
+        E --> F[then longer-acting snack if due]
+        C -- NO --> G[escalate / call for help]
+        G --> H[follow local policy / IV glucose or IM glucagon]
+        H --> I[recheck BM]
+        I --> J[document + identify cause]
 
 diagnostics: {
-  "totalMs": 51519,
+  "totalMs": 82781,
   "structure": {
     "model": "qwen.qwen3-vl-235b-a22b-instruct",
-    "ms": 39943,
+    "ms": 69248,
     "in": 2052,
-    "out": 2564
+    "out": 2607
   },
   "check": {
     "model": "google.gemma-3-27b-it",
-    "ms": 17691,
+    "ms": 22850,
     "missing": false
   },
   "sanitiser": {
-    "ms": 5347,
+    "ms": 6899,
     "failed": false,
     "applied": 0,
     "rejected": 0
   },
   "classifier": {
-    "ms": 6035,
+    "ms": 6503,
     "failed": false,
     "droppedBlocks": 1,
     "droppedCodes": 0

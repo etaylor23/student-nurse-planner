@@ -172,7 +172,7 @@ async function run(event: FunctionUrlEvent, responseStream: ResponseStream): Pro
     stage(out, "reading", { message: "Reading your handwriting" });
 
     // ---- 1 + 2: the vision pair, in parallel ----
-    const { structure, check } = await readPage(imageBase64, contentType);
+    const { structure, check, structureRetried } = await readPage(imageBase64, contentType);
     if (!structure.parsed) {
       frame(out, "error", { code: "PARSE_FAILED", message: "Could not read that photo." });
       out.end();
@@ -315,7 +315,7 @@ async function run(event: FunctionUrlEvent, responseStream: ResponseStream): Pro
       // Everything a Gate-2 eyeball (and later, metrics) needs to judge the run.
       diagnostics: {
         totalMs: Date.now() - startedAt,
-        structure: { model: structure.model, ms: structure.latencyMs, in: structure.inputTokens, out: structure.outputTokens },
+        structure: { model: structure.model, ms: structure.latencyMs, in: structure.inputTokens, out: structure.outputTokens, retried: structureRetried },
         check: check ? { model: check.model, ms: check.latencyMs, missing: checkMissing } : { missing: true },
         sanitiser: { ms: cleaned.latencyMs, failed: cleaned.failed, applied: cleaned.corrections.length, rejected: cleaned.rejected.length },
         classifier: { ms: classified.latencyMs, failed: classified.failed, droppedBlocks: classified.droppedBlocks, droppedCodes: classified.droppedCodes },
