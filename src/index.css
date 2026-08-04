@@ -312,24 +312,47 @@
 }
 
 /* Mermaid rebuilds of drawn diagrams (note capture P44, MermaidDiagram.tsx).
-   The active node mirrors the photo overlay's focus treatment: ink outline on the one
-   being worked on, the rest stepped back. Class toggles only — never a re-render. */
-.pm-mermaid .pm-mm-active > rect,
-.pm-mermaid .pm-mm-active > path,
-.pm-mermaid .pm-mm-active > circle,
-.pm-mermaid .pm-mm-active > polygon {
-  stroke: var(--color-ink);
-  stroke-width: 3px;
-}
-.pm-mermaid.pm-has-active g.mindmap-node:not(.pm-mm-active),
-.pm-mermaid.pm-has-active g.node:not(.pm-mm-active) {
-  opacity: 0.45;
-  transition: opacity 150ms ease-out;
-}
-.pm-mermaid g.mindmap-node,
-.pm-mermaid g.node {
-  transition: opacity 150ms ease-out;
-}
+
+   Deliberately quiet: white card nodes with a slate ring, thin neutral connectors, and
+   colour only where it means something — the emerald hub anchors the topic, the ink ring
+   marks the node being worked on (same focus colour as the photo overlay). Mermaid's own
+   look (11px section-coloured edges, rainbow fills) read as clutter on real notes, and
+   opaque card fills are also what stops connectors showing through the shapes. All
+   overrides are !important because mermaid inlines its theme into the SVG. Highlighting
+   stays class-toggling only — never a re-render. */
 .pm-mermaid path.edge {
-  opacity: 0.3;
+  stroke: #cbd5e1 !important; /* slate-300 */
+  stroke-width: 2px !important;
+}
+.pm-mermaid g.mindmap-node rect,
+.pm-mermaid g.mindmap-node polygon,
+.pm-mermaid g.mindmap-node path:not(.edge) {
+  fill: #ffffff !important;
+  stroke: #e2e8f0 !important; /* slate-200 */
+  stroke-width: 1.5px !important;
+}
+.pm-mermaid g.mindmap-node circle,
+.pm-mermaid g.section-root rect,
+.pm-mermaid g.section-root circle,
+.pm-mermaid g.section-root path:not(.edge) {
+  fill: var(--color-primary-100) !important;
+  stroke: var(--color-primary-600) !important;
+  stroke-width: 1.5px !important;
+}
+.pm-mermaid .nodeLabel,
+.pm-mermaid .nodeLabel p,
+.pm-mermaid foreignObject div {
+  color: var(--color-ink) !important;
+}
+.pm-mermaid g.mindmap-node text,
+.pm-mermaid g.node text {
+  fill: var(--color-ink) !important;
+}
+/* Last, so it wins the tie against the shape rules above at equal importance. */
+.pm-mermaid g.pm-mm-active > rect,
+.pm-mermaid g.pm-mm-active > path:not(.edge),
+.pm-mermaid g.pm-mm-active > circle,
+.pm-mermaid g.pm-mm-active > polygon {
+  stroke: var(--color-ink) !important;
+  stroke-width: 2.5px !important;
 }

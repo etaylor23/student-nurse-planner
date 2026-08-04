@@ -1134,7 +1134,9 @@ export function ReviewPanel({
         {imageUrl && (
           <aside className="min-w-0 border-b border-slate-100 bg-slate-50 p-5 lg:border-b-0">
             {wide ? (
-              <>
+              // One sticky unit: the photo and the pinned drawing scroll together, or the
+              // pinned photo slides over the in-flow diagram.
+              <div className="lg:sticky lg:top-5">
                 <PagePreview
                   imageUrl={imageUrl}
                   blocks={blocks}
@@ -1169,7 +1171,7 @@ export function ReviewPanel({
                     </p>
                   </div>
                 )}
-              </>
+              </div>
             ) : (
               <>
                 <button

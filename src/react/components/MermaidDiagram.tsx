@@ -10,8 +10,8 @@ import { useEffect, useRef, useState } from "react";
  *
  * `mermaid` is ~1.5 MB, so it is imported lazily on first use rather than riding the app
  * bundle; the library is a singleton, so initialise runs once (strict security level:
- * no script/click payloads from the source, exactly because a model wrote it). The theme
- * is the brand palette (`brand-palette.css` is the source of truth for these hexes).
+ * no script/click payloads from the source, exactly because a model wrote it). The look
+ * lives in index.css (`.pm-mermaid`): quiet white cards, an emerald hub, neutral edges.
  *
  * `highlight` marks the node matching a piece of text — the review screen passes the
  * focused block's text so the drawing lights up the branch being worked on. Deliberately
@@ -20,19 +20,9 @@ import { useEffect, useRef, useState } from "react";
  * through the blocks costs a DOM walk, not a layout engine run.
  */
 
-/** Brand tokens, mirrored from brand-palette.css (SVGs can't read CSS variables at
- *  mermaid's render time — it measures text in a detached DOM). */
-const BRAND = {
-  ink: "#16212f",
-  cScale0: "#047857", // primary-600 emerald
-  cScale1: "#005eb8", // secondary-600 NHS blue
-  cScale2: "#e11d48", // accent-600 coral
-  cScale3: "#10b981", // primary-500
-  cScale4: "#0072ce", // secondary-500
-  cScale5: "#f43f5e", // accent-500
-  cScale6: "#6ee7b7", // primary-300
-  cScale7: "#6badde", // secondary-300
-};
+/** The app's font stack, as a literal — mermaid measures text in a detached DOM where
+ *  CSS variables don't resolve. Colour is NOT set here: the quiet card look lives in
+ *  index.css (`.pm-mermaid` overrides), one source of truth for how a rebuild renders. */
 const FONT = "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
 
 let mermaidReady: Promise<typeof import("mermaid").default> | undefined;
@@ -41,32 +31,8 @@ function loadMermaid() {
     mermaid.initialize({
       startOnLoad: false,
       securityLevel: "strict",
-      theme: "base",
-      themeVariables: {
-        fontFamily: FONT,
-        primaryColor: BRAND.cScale6,
-        primaryBorderColor: BRAND.cScale0,
-        primaryTextColor: BRAND.ink,
-        lineColor: BRAND.cScale0,
-        // Mind-map sections cycle through the scale — brand colours, darkest first,
-        // with label colours picked for contrast on each fill.
-        cScale0: BRAND.cScale0,
-        cScale1: BRAND.cScale1,
-        cScale2: BRAND.cScale2,
-        cScale3: BRAND.cScale6,
-        cScale4: BRAND.cScale7,
-        cScale5: BRAND.cScale3,
-        cScale6: BRAND.cScale4,
-        cScale7: BRAND.cScale5,
-        cScaleLabel0: "#ffffff",
-        cScaleLabel1: "#ffffff",
-        cScaleLabel2: "#ffffff",
-        cScaleLabel3: BRAND.ink,
-        cScaleLabel4: BRAND.ink,
-        cScaleLabel5: "#ffffff",
-        cScaleLabel6: "#ffffff",
-        cScaleLabel7: "#ffffff",
-      },
+      theme: "neutral",
+      themeVariables: { fontFamily: FONT },
       mindmap: { useMaxWidth: true },
       flowchart: { useMaxWidth: true },
     });
@@ -123,7 +89,6 @@ export function MermaidDiagram({
     const root = host.current;
     if (!root || !svg) return;
     const wanted = norm(highlight ?? "");
-    let any = false;
     for (const g of root.querySelectorAll<SVGGElement>("g.mindmap-node, g.node")) {
       // Labels wrap — as tspans or as HTML-label <br>s — and textContent fuses the pieces
       // without spaces ("SIXwithin"), so multi-line labels could never match. Walk the text
@@ -135,9 +100,7 @@ export function MermaidDiagram({
       const active =
         wanted.length > 0 && text.length > 0 && (wanted.includes(text) || text.includes(wanted));
       g.classList.toggle("pm-mm-active", active);
-      any = any || active;
     }
-    root.classList.toggle("pm-has-active", any);
   }, [svg, highlight]);
 
   if (!svg) return null;

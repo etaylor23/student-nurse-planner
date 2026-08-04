@@ -35,7 +35,9 @@ export function PagePreview({
   if (!imageUrl) return null;
 
   return (
-    <div className="lg:sticky lg:top-5">
+    // Stickiness is the CALLER's decision: the review pane pins this together with the
+    // pinned diagram beneath it — a sticky photo above an in-flow diagram slid over it.
+    <div>
       <div className="relative overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
         <img
           src={imageUrl}
