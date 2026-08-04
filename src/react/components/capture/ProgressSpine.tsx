@@ -44,7 +44,11 @@ export function ProgressSpine({
                       ? "bg-ink text-white ring-[3px] ring-ink/12"
                       : state === "CHECK"
                         ? "bg-accent-100 text-accent-700 ring-1 ring-accent-300 hover:bg-accent-200"
-                        : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                        : b.kind === "DIAGRAM"
+                          ? // A drawing with notes inside it (P45) — tinted so the parent
+                            // stands out from its sub-blocks in the walk.
+                            "bg-secondary-50 text-secondary-700 ring-1 ring-secondary-300 hover:bg-secondary-100"
+                          : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                 }`}
               >
                 {isFiled ? (

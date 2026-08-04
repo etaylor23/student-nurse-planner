@@ -7,11 +7,14 @@ import { useRepository } from "../../RepositoryContext";
 import { resolveShift, type ShiftResolution } from "../../../logic/captureShift";
 import {
   AllocateError,
+  absorbSubBlocks,
   allocateBlock,
   keepBlock,
+  restoreSubBlocks,
   unallocateBlock,
   type AllocateInput,
 } from "../../../logic/allocateBlock";
+import { subBlocksOf } from "./blockState";
 import { PARSE_URL, parseAvailable } from "./config";
 import { CaptureImageError, downscaleForUpload, type DownscaleResult } from "./downscale";
 import type { BlockPatch } from "./ReviewPanel";
@@ -542,13 +545,24 @@ export function useCapture() {
    * Errors are returned rather than thrown: "pick a proficiency first" is a normal thing for
    * the UI to say next to the block, not an exception for it to catch.
    */
+  /** Store a drawing's still-pending sub-blocks inside it (P45), returning updated rows. */
+  const absorbRest = useCallback(
+    async (parent: NoteBlock, blocks: NoteBlock[]): Promise<Map<string, NoteBlock>> => {
+      const pendingSubs = subBlocksOf(parent, blocks).filter((b) => b.status === "PENDING");
+      const absorbed = await absorbSubBlocks(repo, pendingSubs);
+      return new Map(absorbed.map((b) => [b.id, b]));
+    },
+    [repo],
+  );
+
   const allocate = useCallback(
     async (
       blockId: string,
-      opts: Omit<AllocateInput, "block"> = {},
+      opts: Omit<AllocateInput, "block"> & { absorbRest?: boolean } = {},
     ): Promise<{ ok: true; label: string } | { ok: false; message: string }> => {
       const block = state.blocks?.find((b) => b.id === blockId);
       if (!block) return { ok: false, message: "That block is no longer here." };
+      const { absorbRest: wantAbsorb, ...allocateOpts } = opts;
       try {
         const res = await allocateBlock(repo, userId, {
           block,
@@ -556,11 +570,19 @@ export function useCapture() {
           shiftFallbackShift: state.shift?.candidates.find(
             (c) => c.shift.id === state.capture?.shiftId,
           )?.shift,
-          ...opts,
+          ...allocateOpts,
         });
+        // Filing a drawing whole means its remaining notes ride with it (P45) —
+        // absorbed, not filed twice.
+        const absorbed =
+          wantAbsorb && block.kind === "DIAGRAM"
+            ? await absorbRest(block, state.blocks ?? [])
+            : new Map<string, NoteBlock>();
         setState((s) => ({
           ...s,
-          blocks: (s.blocks ?? []).map((b) => (b.id === blockId ? res.block : b)),
+          blocks: (s.blocks ?? []).map((b) =>
+            b.id === blockId ? res.block : (absorbed.get(b.id) ?? b),
+          ),
         }));
         return { ok: true, label: res.created.label };
       } catch (err) {
@@ -568,32 +590,52 @@ export function useCapture() {
         return { ok: false, message: "Couldn't file that — try again." };
       }
     },
-    [repo, userId, state.blocks, state.capture, state.shift],
+    [repo, userId, state.blocks, state.capture, state.shift, absorbRest],
   );
 
   /** Keep a DIAGRAM block with its page (P43) — no row is created, the photo is the record. */
   const keep = useCallback(
-    async (blockId: string) => {
+    async (blockId: string, opts: { absorbRest?: boolean } = {}) => {
       const block = state.blocks?.find((b) => b.id === blockId);
       if (!block) return;
       const updated = await keepBlock(repo, block);
+      const absorbed = opts.absorbRest
+        ? await absorbRest(block, state.blocks ?? [])
+        : new Map<string, NoteBlock>();
       setState((s) => ({
         ...s,
-        blocks: (s.blocks ?? []).map((b) => (b.id === blockId ? updated : b)),
+        blocks: (s.blocks ?? []).map((b) =>
+          b.id === blockId ? updated : (absorbed.get(b.id) ?? b),
+        ),
       }));
     },
-    [repo, state.blocks],
+    [repo, state.blocks, absorbRest],
   );
 
-  /** Reverse an allocation (P19). The warning is shown when text couldn't be cleanly removed. */
+  /** Reverse an allocation (P19). The warning is shown when text couldn't be cleanly removed.
+   *  Undoing a DRAWING also restores the sub-blocks it had absorbed (P45) — they were only
+   *  stored inside it on the strength of the filing being undone. */
   const unallocate = useCallback(
     async (blockId: string): Promise<{ warning?: string }> => {
       const block = state.blocks?.find((b) => b.id === blockId);
       if (!block) return {};
       const res = await unallocateBlock(repo, block);
+      const restored =
+        block.kind === "DIAGRAM"
+          ? new Map(
+              (
+                await restoreSubBlocks(
+                  repo,
+                  subBlocksOf(block, state.blocks ?? []).filter((b) => b.status === "ABSORBED"),
+                )
+              ).map((b) => [b.id, b]),
+            )
+          : new Map<string, NoteBlock>();
       setState((s) => ({
         ...s,
-        blocks: (s.blocks ?? []).map((b) => (b.id === blockId ? res.block : b)),
+        blocks: (s.blocks ?? []).map((b) =>
+          b.id === blockId ? res.block : (restored.get(b.id) ?? b),
+        ),
       }));
       return { warning: res.warning };
     },

@@ -569,8 +569,13 @@ export const NOTE_BLOCK_KIND_LABEL: Record<NoteBlockKind, string> = {
  * `KEPT` exists for blocks that have no filing target — a `DIAGRAM` is kept with its page
  * (the retained photo is the artefact) rather than materialised into a domain row. Kept
  * blocks leave the review's pending walk like filed ones, but claim nothing was created.
+ *
+ * `ABSORBED` is for a SUB-block — a note inside a drawing — stored within its parent
+ * DIAGRAM block instead of filed on its own (P45): the parent's text already carries its
+ * words, so filing it separately would double-count. Settled like `KEPT`, undoable back
+ * to `PENDING`, and restored automatically when the parent's own filing is undone.
  */
-export type NoteBlockStatus = "PENDING" | "ALLOCATED" | "DISMISSED" | "KEPT";
+export type NoteBlockStatus = "PENDING" | "ALLOCATED" | "DISMISSED" | "KEPT" | "ABSORBED";
 
 /** Where allocating a block writes to (P4). `SHIFT_NOTES` appends rather than creating. */
 export type NoteBlockTarget = "REFLECTION" | "MED_LOG" | "PROFICIENCY_EVENT" | "SHIFT_NOTES";

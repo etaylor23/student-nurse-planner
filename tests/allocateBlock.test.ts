@@ -5,9 +5,11 @@ import { PlannerDb } from "../src/data/dexie/db";
 import type { Repository } from "../src/data/repository";
 import {
   AllocateError,
+  absorbSubBlocks,
   allocateBlock,
   gibbsSections,
   keepBlock,
+  restoreSubBlocks,
   titleFrom,
   unallocateBlock,
 } from "../src/logic/allocateBlock";
@@ -325,6 +327,34 @@ describe("keepBlock (P43 — a diagram kept with its page)", () => {
 
     const { block: after, warning } = await unallocateBlock(repo, kept);
 
+    expect(after.status).toBe("PENDING");
+    expect(warning).toBeUndefined();
+  });
+});
+
+describe("absorb / restore sub-blocks (P45 — notes stored inside their drawing)", () => {
+  it("absorbs only PENDING sub-blocks; filed ones stay exactly as they are", async () => {
+    const pending = await makeBlock({ kind: "TODO" });
+    const filed = { ...(await makeBlock({ kind: "MEDICATION" })), status: "ALLOCATED" as const };
+
+    const out = await absorbSubBlocks(repo, [pending, filed]);
+
+    expect(out[0].status).toBe("ABSORBED");
+    expect(out[1].status).toBe("ALLOCATED");
+  });
+
+  it("restores only ABSORBED sub-blocks, back to questions", async () => {
+    const b = await makeBlock({ kind: "TODO" });
+    const [absorbed] = await absorbSubBlocks(repo, [b]);
+
+    const out = await restoreSubBlocks(repo, [absorbed]);
+    expect(out[0].status).toBe("PENDING");
+  });
+
+  it("un-doing an ABSORBED block directly is just a status reset", async () => {
+    const b = await makeBlock();
+    const [absorbed] = await absorbSubBlocks(repo, [b]);
+    const { block: after, warning } = await unallocateBlock(repo, absorbed);
     expect(after.status).toBe("PENDING");
     expect(warning).toBeUndefined();
   });

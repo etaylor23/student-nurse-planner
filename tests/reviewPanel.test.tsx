@@ -386,7 +386,7 @@ describe("ReviewPanel — where a note goes", () => {
     expect(screen.queryByText(/Drag a note here/)).toBeNull();
   });
 
-  it("offers keep-or-dismiss on a DIAGRAM, never the four destinations (P43)", async () => {
+  it("a DIAGRAM files whole OR keeps with the page, and never loses its kind (P43/P45)", async () => {
     const user = userEvent.setup();
     const h = handlers();
     render(
@@ -403,13 +403,66 @@ describe("ReviewPanel — where a note goes", () => {
       />,
     );
 
-    expect(screen.queryByText("Where does this go?")).toBeNull();
-    // The destination keys mean nothing on a drawing.
-    fireEvent.keyDown(window, { key: "2" });
-    expect(h.onEdit).not.toHaveBeenCalled();
+    // Destinations are on the drawing's card now — it can file whole (P45)…
+    expect(screen.getByText("Where does this go?")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: TILE.shift }));
+    // …but a drawing never stops being a DIAGRAM: no kind in the patch.
+    expect(h.onEdit).toHaveBeenCalledWith("blk-1", { targetType: "SHIFT_NOTES" });
 
+    // …and keeping it with the page is still one button away.
     await user.click(screen.getByRole("button", { name: "Keep with this page" }));
-    expect(h.onKeep).toHaveBeenCalledWith("blk-1");
+    expect(h.onKeep).toHaveBeenCalledWith("blk-1", { absorbRest: true });
+  });
+
+  it("filing a drawing offers to store its still-pending sub-notes inside it (P45)", async () => {
+    const user = userEvent.setup();
+    const h = handlers();
+    const parent = block({
+      id: "blk-diagram",
+      kind: "DIAGRAM",
+      fromRegions: "1,2,3",
+      targetType: undefined,
+      disputedWords: "",
+      text: "Patient looks hypo YES NO",
+    });
+    const subYes = block({ id: "blk-yes", fromRegions: "2", text: "YES", disputedWords: "" });
+    render(<ReviewPanel blocks={[parent, subYes]} handlers={h} />);
+
+    // The parent is focused (first pending in page order after the region sort) and shows
+    // the absorb control naming its one pending sub-note.
+    expect(screen.getByText(/Store the remaining 1 note/)).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: TILE.shift }));
+    await user.click(screen.getByRole("button", { name: "File as Shift notes" }));
+    expect(h.onAllocate).toHaveBeenCalledWith(
+      "blk-diagram",
+      expect.objectContaining({ targetType: "SHIFT_NOTES", absorbRest: true }),
+    );
+  });
+
+  it("nests sub-blocks under their drawing, absorbed ones greyed with an undo (P45)", async () => {
+    const user = userEvent.setup();
+    const h = handlers();
+    const parent = block({
+      id: "blk-diagram",
+      kind: "DIAGRAM",
+      fromRegions: "1,2,3",
+      targetType: undefined,
+      disputedWords: "",
+      text: "Patient looks hypo YES NO",
+    });
+    const absorbed = block({
+      id: "blk-yes",
+      fromRegions: "2",
+      text: "YES",
+      disputedWords: "",
+      status: "ABSORBED",
+    });
+    render(<ReviewPanel blocks={[parent, absorbed]} handlers={h} />);
+
+    expect(screen.getByText("Stored in the drawing")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    expect(h.onUnallocate).toHaveBeenCalledWith("blk-yes");
   });
 
   it("shows a KEPT diagram as settled — out of the pending walk, labelled as kept", () => {
@@ -758,6 +811,7 @@ describe("ReviewPanel — filing (P4/P19)", () => {
       tags: ["haematology"],
       gibbs: undefined,
       medicationId: undefined, // they haven't linked a card, so the log files unlinked (P33)
+      absorbRest: false, // not a drawing, so nothing to store inside it (P45)
     });
   });
 
@@ -771,6 +825,7 @@ describe("ReviewPanel — filing (P4/P19)", () => {
       tags: ["haematology"],
       gibbs: undefined,
       medicationId: undefined,
+      absorbRest: false,
     });
   });
 

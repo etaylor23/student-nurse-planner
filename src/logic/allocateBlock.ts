@@ -241,12 +241,42 @@ export async function keepBlock(repo: Repository, block: NoteBlock): Promise<Not
   return repo.updateNoteBlock(block.id, { status: "KEPT" });
 }
 
+/**
+ * Store a drawing's still-pending sub-blocks inside it (P45). The parent's text already
+ * carries their words, so filing them separately would double-count — `ABSORBED` marks
+ * them handled-by-parent without creating anything. Only PENDING blocks are touched: a
+ * sub-block the student already filed is a real row and stays exactly as it is.
+ */
+export async function absorbSubBlocks(
+  repo: Repository,
+  subBlocks: NoteBlock[],
+): Promise<NoteBlock[]> {
+  const out: NoteBlock[] = [];
+  for (const b of subBlocks) {
+    out.push(b.status === "PENDING" ? await repo.updateNoteBlock(b.id, { status: "ABSORBED" }) : b);
+  }
+  return out;
+}
+
+/** The reverse, for when the parent's own filing is undone: absorbed children come back
+ *  as questions. Blocks in any other state are left alone. */
+export async function restoreSubBlocks(
+  repo: Repository,
+  subBlocks: NoteBlock[],
+): Promise<NoteBlock[]> {
+  const out: NoteBlock[] = [];
+  for (const b of subBlocks) {
+    out.push(b.status === "ABSORBED" ? await repo.updateNoteBlock(b.id, { status: "PENDING" }) : b);
+  }
+  return out;
+}
+
 export async function unallocateBlock(
   repo: Repository,
   block: NoteBlock,
 ): Promise<UnallocateResult> {
-  // A kept block created nothing, so un-keeping is just a status change.
-  if (block.status === "KEPT") {
+  // A kept or absorbed block created nothing, so undoing is just a status change.
+  if (block.status === "KEPT" || block.status === "ABSORBED") {
     return { block: await repo.updateNoteBlock(block.id, { status: "PENDING" }) };
   }
   if (block.status !== "ALLOCATED") return { block };

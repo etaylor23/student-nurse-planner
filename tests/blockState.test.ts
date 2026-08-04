@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { diagramContaining } from "../src/react/components/capture/blockState";
+import { diagramContaining, subBlocksOf } from "../src/react/components/capture/blockState";
 import type { NoteBlock } from "../src/domain/types";
 
 /**
@@ -58,5 +58,23 @@ describe("diagramContaining", () => {
     const spoke = block({ id: "spoke", fromRegions: "4" });
     const dismissed = { ...diagram, status: "DISMISSED" as const };
     expect(diagramContaining(spoke, [spoke, dismissed])).toBeUndefined();
+  });
+});
+
+describe("subBlocksOf", () => {
+  it("finds the notes living inside a drawing's regions, same page only", () => {
+    const spoke = block({ id: "spoke", fromRegions: "4" });
+    const margin = block({ id: "margin", fromRegions: "9" });
+    const otherPage = block({ id: "other", fromRegions: "4", imageIndex: 1 });
+    expect(subBlocksOf(diagram, [spoke, margin, otherPage, diagram]).map((b) => b.id)).toEqual([
+      "spoke",
+    ]);
+  });
+
+  it("is empty for non-diagram parents and never includes another drawing", () => {
+    const notADiagram = block({ id: "plain", fromRegions: "1,2" });
+    const nestedDiagram = { ...diagram, id: "d2", fromRegions: "4,5" };
+    expect(subBlocksOf(notADiagram, [diagram])).toEqual([]);
+    expect(subBlocksOf(diagram, [nestedDiagram]).map((b) => b.id)).toEqual([]);
   });
 });

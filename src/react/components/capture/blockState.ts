@@ -23,9 +23,29 @@ export function hasOpenDispute(block: NoteBlock): boolean {
   return list(block.disputedWords).length > 0;
 }
 
-/** Filed-or-kept: both have had their question answered, so the UI treats them alike. */
+/** Filed, kept or absorbed: all have had their question answered, so the UI treats them
+ *  alike — out of the pending walk, counted in "n of m filed", ticked in the spine. */
 export function isSettled(block: NoteBlock): boolean {
-  return block.status === "ALLOCATED" || block.status === "KEPT";
+  return block.status === "ALLOCATED" || block.status === "KEPT" || block.status === "ABSORBED";
+}
+
+/**
+ * The sub-blocks of a drawing (P45): the non-diagram blocks whose regions sit inside the
+ * parent DIAGRAM block's region set, on the same page. These are the notes the drawing
+ * already carries in its own text — the review nests them under the parent, and "store the
+ * rest inside the drawing" absorbs whichever are still pending.
+ */
+export function subBlocksOf(parent: NoteBlock, blocks: NoteBlock[]): NoteBlock[] {
+  if (parent.kind !== "DIAGRAM") return [];
+  const mine = new Set(list(parent.fromRegions));
+  if (mine.size === 0) return [];
+  return blocks.filter(
+    (b) =>
+      b.id !== parent.id &&
+      b.kind !== "DIAGRAM" &&
+      b.imageIndex === parent.imageIndex &&
+      list(b.fromRegions).some((r) => mine.has(r)),
+  );
 }
 
 /**

@@ -25,6 +25,7 @@ import {
   isTypingTarget,
   list,
   pendingBlocks,
+  subBlocksOf,
 } from "./blockState";
 import { useWideScreen } from "./useWideScreen";
 
@@ -111,11 +112,13 @@ function relativeDay(iso: string): string {
 
 const PREVIEW_CHARS = 78;
 
-/** Photo-pane width bounds (% of the review body) and where the preference lives. */
+/** Photo-pane / drawing-shelf width bounds (% of the review body) and their preferences. */
 const PANE_MIN = 20;
 const PANE_MAX = 60;
 const PANE_DEFAULT = 30;
 const PANE_FRAC_KEY = "pm-review-pane-frac";
+const DIAG_DEFAULT = 26;
+const DIAG_FRAC_KEY = "pm-review-diagram-frac";
 
 /**
  * The one-line version of a note, for a collapsed row.
@@ -160,6 +163,8 @@ export interface ReviewHandlers {
       medicationId?: string;
       tags?: string[];
       gibbs?: Partial<Record<GibbsStage, string>>;
+      /** Filing a drawing whole: store its still-pending sub-blocks inside it (P45). */
+      absorbRest?: boolean;
     },
   ) => Promise<{ ok: true; label: string } | { ok: false; message: string }>;
   onUnallocate: (blockId: string) => Promise<{ warning?: string }>;
@@ -168,7 +173,7 @@ export interface ReviewHandlers {
   /** Drops a block that isn't worth keeping. The photo is untouched (P13/P34). */
   onDismiss: (blockId: string) => Promise<void>;
   /** Keeps a DIAGRAM block with its page (P43) — the drawing's home is the photo, not a row. */
-  onKeep: (blockId: string) => Promise<void>;
+  onKeep: (blockId: string, opts?: { absorbRest?: boolean }) => Promise<void>;
 }
 
 function RemoveButton({
@@ -324,7 +329,7 @@ function BlockCard({
   gibbs,
   known,
   onSkip,
-  inlineDiagram = true,
+  pendingSubCount = 0,
 }: {
   block: NoteBlock;
   index: number;
@@ -332,9 +337,9 @@ function BlockCard({
   gibbs?: Partial<Record<GibbsStage, string>>;
   known: KnownContext;
   onSkip: () => void;
-  /** Render a DIAGRAM block's rebuild inside the card. Off on wide screens, where the
-   *  photo column pins the same drawing and a second copy beside it is clutter. */
-  inlineDiagram?: boolean;
+  /** For a DIAGRAM: how many of its sub-blocks are still pending — drives the
+   *  "store the rest inside this drawing" control (P45). */
+  pendingSubCount?: number;
 }) {
   const [text, setText] = useState(block.text);
   const [tags, setTags] = useState(() => list(block.suggestedTags));
@@ -447,7 +452,9 @@ function BlockCard({
   function setDestination(t: NoteBlockTarget) {
     setTarget(t);
     const patch: BlockPatch = { targetType: t };
-    if (TARGET_FOR_KIND[block.kind] !== t) patch.kind = KIND_FOR_TARGET[t];
+    // A DIAGRAM stays a diagram wherever it files — its kind is what makes the drawing
+    // shelf, the mermaid and the recall label work (P45).
+    if (!isDiagram && TARGET_FOR_KIND[block.kind] !== t) patch.kind = KIND_FOR_TARGET[t];
     void handlers.onEdit(block.id, patch);
   }
 
@@ -455,14 +462,10 @@ function BlockCard({
    *  sitting, and ignored while the student is typing — "4.15" is a search, not a shortcut. */
   const setDest = useRef(setDestination);
   setDest.current = setDestination;
-  const noDest = useRef(isDiagram);
-  noDest.current = isDiagram;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Never steal a modified key: ⌘1 switches browser tab and always should.
       if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
-      // A diagram has no destinations, so the keys mean nothing on it.
-      if (noDest.current) return;
       const n = Number(e.key);
       if (!Number.isInteger(n) || n < 1 || n > DESTINATION_KEYS.length) return;
       e.preventDefault();
@@ -471,6 +474,11 @@ function BlockCard({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  /** "Store the remaining sub-notes inside this drawing" (P45) — pre-ticked because most
+   *  fragments ("YES", "NO") mean nothing outside their drawing; unticking preserves them
+   *  as individual questions. Applies to BOTH filing and keeping the drawing. */
+  const [absorbRest, setAbsorbRest] = useState(true);
 
   // The detail drawer is conditional on the destination, and shows only the parts that
   // destination needs. Tags are the exception — they apply to all four, so they are always
@@ -607,38 +615,40 @@ function BlockCard({
           </div>
         )}
 
-        {isDiagram ? (
-          <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-slate-50 p-3.5 ring-1 ring-slate-200">
-            {/* Only where there is no photo column to pin it in (narrow screens) — on wide
-                the rebuild lives in the left column, and twice side by side is clutter.
-                Fail-closed either way: an unrenderable rebuild shows nothing, and the
-                transcription above stays — a bad picture never costs content (P44). */}
-            {inlineDiagram && block.diagramSource && (
-              <div className="w-full basis-full">
-                <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                  Rebuilt from your drawing
-                </p>
-                <MermaidDiagram
-                  source={block.diagramSource}
-                  label="Your drawing, rebuilt as a diagram"
+        <DestinationTiles value={target} onChange={setDestination} />
+
+        {/* A drawing can file WHOLE — its text already carries every sub-note — or be kept
+            with the page (P43/P45). Either way, "store the rest inside" absorbs whichever
+            sub-notes are still pending: most fragments (YES, NO) mean nothing alone. */}
+        {isDiagram && (
+          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl bg-slate-50 p-3.5 ring-1 ring-slate-200">
+            {pendingSubCount > 0 && (
+              <label className="flex w-full min-w-0 cursor-pointer items-start gap-2 text-[12.5px] leading-snug text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={absorbRest}
+                  onChange={(e) => setAbsorbRest(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-primary-600 focus:ring-primary-400"
                 />
-              </div>
+                <span>
+                  Store the remaining {pendingSubCount} note{pendingSubCount === 1 ? "" : "s"}{" "}
+                  inside this drawing — they ride with it instead of filing separately. Notes
+                  you&apos;ve already filed stay where you put them.
+                </span>
+              </label>
             )}
             <p className="min-w-0 flex-1 text-[12.5px] leading-snug text-slate-600">
-              This is a drawing, so its home is the photo itself — keeping it holds the drawing (and
-              its words, for search) with this page. The notes it contains are their own cards
-              above, and they file wherever they belong.
+              File the whole drawing somewhere above — its full text goes with it — or keep it with
+              the photographed page.
             </p>
             <button
               type="button"
-              onClick={() => void handlers.onKeep(block.id)}
+              onClick={() => void handlers.onKeep(block.id, { absorbRest })}
               className="shrink-0 rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700"
             >
               Keep with this page
             </button>
           </div>
-        ) : (
-          <DestinationTiles value={target} onChange={setDestination} />
         )}
 
         {showDrawer && (
@@ -774,24 +784,25 @@ function BlockCard({
         )}
       </div>
 
-      {!isDiagram && (
-        <AllocateBar
-          target={target}
-          proficiencyId={proficiencyId}
-          tags={chosenTags}
-          gibbs={gibbs}
-          onSkip={onSkip}
-          onAllocate={(targetType) =>
-            handlers.onAllocate(block.id, {
-              targetType,
-              proficiencyId,
-              tags: chosenTags,
-              gibbs,
-              medicationId,
-            })
-          }
-        />
-      )}
+      <AllocateBar
+        target={target}
+        proficiencyId={proficiencyId}
+        tags={chosenTags}
+        gibbs={gibbs}
+        onSkip={onSkip}
+        onAllocate={(targetType) =>
+          handlers.onAllocate(block.id, {
+            targetType,
+            proficiencyId,
+            tags: chosenTags,
+            gibbs,
+            medicationId,
+            // Filing a drawing whole stores its remaining sub-notes inside it (P45),
+            // unless the student unticked the box.
+            absorbRest: isDiagram && absorbRest,
+          })
+        }
+      />
     </article>
   );
 }
@@ -835,7 +846,12 @@ export function ReviewPanel({
   handlers: ReviewHandlers;
 }) {
   const pending = useMemo(() => pendingBlocks(blocks), [blocks]);
-  const filed = useMemo(() => blocks.filter(isSettled), [blocks]);
+  // Absorbed sub-blocks are settled but not LISTED as filed — they ride inside their
+  // drawing, and show greyed under it while the drawing is still being decided (P45).
+  const filed = useMemo(
+    () => blocks.filter((b) => isSettled(b) && b.status !== "ABSORBED"),
+    [blocks],
+  );
   const toCheck = useMemo(() => pending.filter(hasOpenDispute).length, [pending]);
 
   const [focusId, setFocusId] = useState<string | undefined>(() => pendingBlocks(blocks)[0]?.id);
@@ -859,25 +875,44 @@ export function ReviewPanel({
       ? stored
       : PANE_DEFAULT;
   });
+  /** The drawing shelf's width, the photo pane's mirror image (P45). */
+  const [diagFrac, setDiagFrac] = useState<number>(() => {
+    const stored = Number(localStorage.getItem(DIAG_FRAC_KEY));
+    return Number.isFinite(stored) && stored >= PANE_MIN && stored <= PANE_MAX
+      ? stored
+      : DIAG_DEFAULT;
+  });
   const bodyRef = useRef<HTMLDivElement>(null);
   const setFrac = (next: number) => {
     const clamped = Math.min(PANE_MAX, Math.max(PANE_MIN, Math.round(next)));
     setPaneFrac(clamped);
     localStorage.setItem(PANE_FRAC_KEY, String(clamped));
   };
-  const startPaneDrag = (e: React.PointerEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const body = bodyRef.current;
-    if (!body) return;
-    const rect = body.getBoundingClientRect();
-    const move = (ev: PointerEvent) => setFrac(((ev.clientX - rect.left) / rect.width) * 100);
-    const stop = () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", stop);
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", stop);
+  const setShelfFrac = (next: number) => {
+    const clamped = Math.min(PANE_MAX, Math.max(PANE_MIN, Math.round(next)));
+    setDiagFrac(clamped);
+    localStorage.setItem(DIAG_FRAC_KEY, String(clamped));
   };
+  /** One drag routine, two edges: the photo pane measures from the left, the shelf from
+   *  the right — the same interaction, mirrored. */
+  const startEdgeDrag = (apply: (frac: number) => void, fromRight: boolean) => {
+    return (e: React.PointerEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      const body = bodyRef.current;
+      if (!body) return;
+      const rect = body.getBoundingClientRect();
+      const move = (ev: PointerEvent) =>
+        apply(((fromRight ? rect.right - ev.clientX : ev.clientX - rect.left) / rect.width) * 100);
+      const stop = () => {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", stop);
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", stop);
+    };
+  };
+  const startPaneDrag = startEdgeDrag(setFrac, false);
+  const startShelfDrag = startEdgeDrag(setShelfFrac, true);
 
   /** The drawing the focused note is part of, if any (P43/P44) — pinned under the photo so
    *  it stays on screen while its branches are being filed, active branch highlighted. */
@@ -913,6 +948,25 @@ export function ReviewPanel({
     const sameForm = pageDiagrams.filter((x) => (list(x.suggestedTags)[0] || "drawing") === form);
     return sameForm.length > 1 ? `${name} ${sameForm.indexOf(d) + 1}` : name;
   };
+
+  /** Sub-block → its parent drawing (P45): drives the nesting, the pip tint and the
+   *  absorb count. A block belongs to at most one drawing in practice; first match wins. */
+  const parentOf = useMemo(() => {
+    const map = new Map<string, NoteBlock>();
+    for (const d of blocks.filter((b) => b.kind === "DIAGRAM" && b.status !== "DISMISSED")) {
+      for (const sub of subBlocksOf(d, blocks)) {
+        if (!map.has(sub.id)) map.set(sub.id, d);
+      }
+    }
+    return map;
+  }, [blocks]);
+  const pendingSubCountOf = (d: NoteBlock) =>
+    subBlocksOf(d, blocks).filter((b) => b.status === "PENDING").length;
+
+  /** The drawing shelf exists only while the focus is IN a drawing — the drawing itself or
+   *  one of its sub-blocks (Ellis's rule). Within that context the tabs still switch. */
+  const shelfOpen = !!focusDiagram?.diagramSource && !!pinnedSource;
+  const [drawingOpen, setDrawingOpen] = useState(false);
   const [diagramZoom, setDiagramZoom] = useState(false);
   useEffect(() => {
     if (!diagramZoom) return;
@@ -972,66 +1026,128 @@ export function ReviewPanel({
 
   const hasMeta = !!cachedFrom || corrections.length > 0 || !!shift || !!pageDateRaw;
 
-  const group = (title: string, hint: string, rows: NoteBlock[], tone: "pending" | "filed") => (
-    <section className="mb-6 min-w-0">
-      <div className="mb-2.5 flex items-baseline gap-2.5">
-        <h3
-          className={`text-xs font-bold uppercase tracking-[0.12em] ${
-            tone === "filed" ? "text-primary-800" : "text-ink"
-          }`}
-        >
-          {title}
-        </h3>
-        <span className="text-xs text-slate-400">{hint}</span>
-      </div>
-      <ul className="min-w-0 space-y-2.5">
-        {rows.map((b) => (
-          <li
-            key={b.id}
-            className="min-w-0"
-            // Drag is never the only route — the tiles in the card and the keys `1`–`4` both do
-            // the same thing. A filed note doesn't drag: the real row exists, and moving the
-            // note would leave the two out of step. A kept diagram doesn't either — it has no
-            // destination to be dragged to.
-            draggable={b.status === "PENDING"}
-            // Checked again in the handler, not just declared in the attribute: `draggable` is
-            // a hint the browser honours and any synthetic drag ignores, and the reason a filed
-            // note can't move is that the real row already exists — too load-bearing to leave
-            // resting on a hint.
-            onDragStart={() => {
-              if (b.status === "PENDING") setDragging(b.id);
-            }}
-            onDragEnd={() => {
-              setDragging(undefined);
-              setOver(undefined);
-            }}
-          >
-            {b.id === focusId && b.status === "PENDING" ? (
-              <BlockCard
-                block={b}
-                index={blocks.indexOf(b)}
-                handlers={handlers}
-                gibbs={gibbsByRawText?.[b.rawText]}
-                known={known}
-                inlineDiagram={!wide}
-                onSkip={() => {
-                  const at = pending.findIndex((p) => p.id === b.id);
-                  setFocusId(pending[Math.min(pending.length - 1, at + 1)]?.id);
-                }}
-              />
-            ) : (
-              <BlockRow
-                block={b}
-                index={blocks.indexOf(b)}
-                onFocus={focus}
-                onUnallocate={() => handlers.onUnallocate(b.id)}
-              />
-            )}
-          </li>
-        ))}
-      </ul>
-    </section>
+  /** First region index, for placing a drawing at its page position — synthesised DIAGRAM
+   *  blocks are appended after everything, but their drawing sits mid-page. */
+  const firstRegion = (b: NoteBlock) => {
+    const first = Number(list(b.fromRegions)[0]);
+    return Number.isFinite(first) ? first : Number.MAX_SAFE_INTEGER;
+  };
+
+  /** Drag props for a row's <li>. Drag is never the only route — the tiles in the card and
+   *  the keys `1`–`4` both do the same thing. A filed note doesn't drag: the real row
+   *  exists, and moving the note would leave the two out of step. The status is checked
+   *  again in the handler, not just declared in the attribute: `draggable` is a hint the
+   *  browser honours and any synthetic drag ignores — too load-bearing to rest on a hint. */
+  const dragProps = (b: NoteBlock) => ({
+    draggable: b.status === "PENDING",
+    onDragStart: () => {
+      if (b.status === "PENDING") setDragging(b.id);
+    },
+    onDragEnd: () => {
+      setDragging(undefined);
+      setOver(undefined);
+    },
+  });
+
+  const renderBlock = (b: NoteBlock) => (
+    <div className="min-w-0">
+      {b.id === focusId && b.status === "PENDING" ? (
+        <BlockCard
+          block={b}
+          index={blocks.indexOf(b)}
+          handlers={handlers}
+          gibbs={gibbsByRawText?.[b.rawText]}
+          known={known}
+          pendingSubCount={b.kind === "DIAGRAM" ? pendingSubCountOf(b) : 0}
+          onSkip={() => {
+            const at = pending.findIndex((p) => p.id === b.id);
+            setFocusId(pending[Math.min(pending.length - 1, at + 1)]?.id);
+          }}
+        />
+      ) : (
+        <BlockRow
+          block={b}
+          index={blocks.indexOf(b)}
+          onFocus={focus}
+          onUnallocate={() => handlers.onUnallocate(b.id)}
+        />
+      )}
+    </div>
   );
+
+  /** A sub-block stored inside its drawing (P45): greyed, undoable, no card to open. */
+  const renderAbsorbed = (b: NoteBlock) => (
+    <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5 rounded-xl bg-slate-50 px-3.5 py-2 opacity-70 ring-1 ring-slate-200">
+      <span className="flex h-[21px] w-[21px] shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-bold text-slate-500">
+        {blocks.indexOf(b) + 1}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-left text-[13px] text-slate-500">
+        {previewOf(b.text)}
+      </span>
+      <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+        Stored in the drawing
+      </span>
+      <button
+        type="button"
+        onClick={() => void handlers.onUnallocate(b.id)}
+        className="shrink-0 text-[11px] font-semibold text-slate-400 hover:text-ink hover:underline"
+      >
+        Undo
+      </button>
+    </div>
+  );
+
+  const group = (title: string, hint: string, rows: NoteBlock[], tone: "pending" | "filed") => {
+    // Sub-blocks of a still-pending drawing nest under it (P45); the drawing itself is
+    // placed at its page position rather than the end where synthesis appended it.
+    const nested =
+      tone === "pending" ? rows.filter((b) => parentOf.get(b.id)?.status === "PENDING") : [];
+    const nestedIds = new Set(nested.map((b) => b.id));
+    const topLevel = [...rows.filter((b) => !nestedIds.has(b.id))].sort(
+      (a, b) => firstRegion(a) - firstRegion(b),
+    );
+
+    return (
+      <section className="mb-6 min-w-0">
+        <div className="mb-2.5 flex items-baseline gap-2.5">
+          <h3
+            className={`text-xs font-bold uppercase tracking-[0.12em] ${
+              tone === "filed" ? "text-primary-800" : "text-ink"
+            }`}
+          >
+            {title}
+          </h3>
+          <span className="text-xs text-slate-400">{hint}</span>
+        </div>
+        <ul className="min-w-0 space-y-2.5">
+          {topLevel.map((b) => {
+            const children =
+              tone === "pending" && b.kind === "DIAGRAM"
+                ? subBlocksOf(b, blocks)
+                    .filter((c) => c.status === "PENDING" || c.status === "ABSORBED")
+                    .sort((x, y) => firstRegion(x) - firstRegion(y))
+                : [];
+            return (
+              <li key={b.id} className="min-w-0" {...dragProps(b)}>
+                {renderBlock(b)}
+                {children.length > 0 && (
+                  // Bound to their drawing: indented, with the connecting rule saying WHY
+                  // they're grouped — these notes live inside the drawing above.
+                  <ul className="ml-5 mt-2 min-w-0 space-y-2 border-l-2 border-secondary-100 pl-3">
+                    {children.map((c) => (
+                      <li key={c.id} className="min-w-0" {...dragProps(c)}>
+                        {c.status === "ABSORBED" ? renderAbsorbed(c) : renderBlock(c)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    );
+  };
 
   return (
     <div className="min-w-0">
@@ -1163,15 +1279,24 @@ export function ReviewPanel({
       <div
         ref={bodyRef}
         className="grid grid-cols-1 items-start"
-        // The photo column is student-sized (dragged, remembered); the 10px track is the
-        // handle. Inline because Tailwind can't express a runtime fraction.
-        style={wide && imageUrl ? { gridTemplateColumns: `${paneFrac}% 10px 1fr` } : undefined}
+        // The photo column and the drawing shelf are student-sized (dragged, remembered);
+        // the 10px tracks are the handles. Inline because Tailwind can't express runtime
+        // fractions. The shelf's columns exist only while the focus is in a drawing.
+        style={
+          wide
+            ? {
+                gridTemplateColumns: [
+                  ...(imageUrl ? [`${paneFrac}%`, "10px"] : []),
+                  "1fr",
+                  ...(shelfOpen ? ["10px", `${diagFrac}%`] : []),
+                ].join(" "),
+              }
+            : undefined
+        }
       >
         {imageUrl && (
           <aside className="min-w-0 border-b border-slate-100 bg-slate-50 p-5 lg:border-b-0">
             {wide ? (
-              // One sticky unit: the photo and the pinned drawing scroll together, or the
-              // pinned photo slides over the in-flow diagram.
               <div className="lg:sticky lg:top-5">
                 <PagePreview
                   imageUrl={imageUrl}
@@ -1179,62 +1304,6 @@ export function ReviewPanel({
                   focusId={focusId}
                   onFocus={focus}
                 />
-                {pinnedSource && pinnedDiagram && (
-                  <div className="mt-5">
-                    <div className="mb-2 flex items-baseline justify-between">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                        {pageDiagrams.length > 1 ? "Selected drawing" : "From your drawing"}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => setDiagramZoom(true)}
-                        className="text-[11px] font-semibold text-secondary-700 hover:underline"
-                      >
-                        Enlarge
-                      </button>
-                    </div>
-                    {/* Two or more drawings → tabs. Auto-follow keeps them honest (focusing
-                        a branch flips to its drawing), the tabs make the others reachable
-                        without hunting for one of their blocks. */}
-                    {pageDiagrams.length > 1 && (
-                      <div className="mb-2 flex flex-wrap gap-1.5">
-                        {pageDiagrams.map((d) => {
-                          const on = d.id === pinnedDiagram.id;
-                          return (
-                            <button
-                              key={d.id}
-                              type="button"
-                              onClick={() => setSelectedDiagramId(d.id)}
-                              aria-pressed={on}
-                              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors ${
-                                on
-                                  ? "bg-ink text-white"
-                                  : "bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-slate-300"
-                              }`}
-                            >
-                              {diagramLabel(d)}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {/* A landscape drawing in a thin column is a mini-map, not the artwork:
-                        it scales to fit, the active branch glows, and Enlarge (or dragging
-                        the divider) is the route to full size. Highlight only when the
-                        focused note is a branch of THIS drawing — the drawing's own text
-                        contains every label and would ring every node at once. */}
-                    <MermaidDiagram
-                      source={pinnedSource}
-                      highlight={focusedInPinned ? focusedBlock?.text : undefined}
-                      label="The drawing, rebuilt as a diagram"
-                    />
-                    <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
-                      {focusedInPinned
-                        ? "This note is one branch of the drawing — the outlined node is the one you're on."
-                        : "Kept with this page — the notes it contains file as their own cards."}
-                    </p>
-                  </div>
-                )}
               </div>
             ) : (
               <>
@@ -1260,18 +1329,32 @@ export function ReviewPanel({
                     />
                   </div>
                 )}
-                {/* Narrow screens have no pinned column, so the drawing rides with the
-                    focused branch here instead — always the FOCUSED note's own drawing, no
-                    tabs. Not when the diagram ITSELF is focused: its own card renders it
-                    (inlineDiagram). */}
-                {focusDiagram?.diagramSource && !focusedIsDiagram && (
-                  <div className="mt-3">
-                    <MermaidDiagram
-                      source={focusDiagram.diagramSource}
-                      highlight={focusedBlock?.text}
-                      label="The drawing this note is part of, rebuilt as a diagram"
-                    />
-                  </div>
+                {/* The drawing behaves exactly like the photo on a phone: a strip you tap
+                    open, shown only while the focus is in a drawing (P45). */}
+                {shelfOpen && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setDrawingOpen((v) => !v)}
+                      aria-expanded={drawingOpen}
+                      className="mt-3 flex w-full items-center gap-2 rounded-xl bg-white px-3.5 py-2.5 text-[13px] font-semibold text-slate-600 ring-1 ring-slate-200"
+                    >
+                      <ChevronDown
+                        aria-hidden="true"
+                        className={`h-4 w-4 text-slate-400 transition-transform ${drawingOpen ? "rotate-180" : ""}`}
+                      />
+                      {drawingOpen ? "Hide the drawing" : "See the drawing"}
+                    </button>
+                    {drawingOpen && pinnedSource && (
+                      <div className="mt-3">
+                        <MermaidDiagram
+                          source={pinnedSource}
+                          highlight={focusedInPinned ? focusedBlock?.text : undefined}
+                          label="The drawing, rebuilt as a diagram"
+                        />
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -1342,6 +1425,91 @@ export function ReviewPanel({
             </div>
           )}
         </div>
+
+        {wide && shelfOpen && (
+          /* The shelf's handle — the photo divider, mirrored. */
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize the drawing shelf"
+            aria-valuenow={diagFrac}
+            aria-valuemin={PANE_MIN}
+            aria-valuemax={PANE_MAX}
+            tabIndex={0}
+            onPointerDown={startShelfDrag}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowRight") setShelfFrac(diagFrac - 3);
+              if (e.key === "ArrowLeft") setShelfFrac(diagFrac + 3);
+            }}
+            className="group flex h-full cursor-col-resize items-stretch justify-center border-l border-slate-100 bg-slate-50 focus:outline-none focus-visible:bg-primary-100"
+          >
+            <span
+              aria-hidden="true"
+              className="my-6 w-[3px] rounded-full bg-slate-200 transition-colors group-hover:bg-slate-400"
+            />
+          </div>
+        )}
+
+        {wide && shelfOpen && pinnedSource && pinnedDiagram && (
+          /* The drawing shelf (P45): the photo panel's mirror — sticky, resizable, and
+             only present while the focus is IN a drawing, sliding in when it appears. */
+          <aside className="min-w-0 bg-slate-50 p-5 motion-safe:animate-[pm-shelf-in_240ms_ease-out_both]">
+            <div className="lg:sticky lg:top-5">
+              <div className="mb-2 flex items-baseline justify-between">
+                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                  Selected drawing
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setDiagramZoom(true)}
+                  className="text-[11px] font-semibold text-secondary-700 hover:underline"
+                >
+                  Enlarge
+                </button>
+              </div>
+              {/* Two or more drawings → tabs. Auto-follow keeps them honest (focusing a
+                  branch flips to its drawing), the tabs make the others reachable without
+                  hunting for one of their blocks. */}
+              {pageDiagrams.length > 1 && (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {pageDiagrams.map((d) => {
+                    const on = d.id === pinnedDiagram.id;
+                    return (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => setSelectedDiagramId(d.id)}
+                        aria-pressed={on}
+                        className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                          on
+                            ? "bg-ink text-white"
+                            : "bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-slate-300"
+                        }`}
+                      >
+                        {diagramLabel(d)}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {/* A landscape drawing in a thin shelf is a mini-map, not the artwork: it
+                  scales to fit, the active branch glows, and Enlarge (or dragging the
+                  handle) is the route to full size. Highlight only when the focused note
+                  is a branch of THIS drawing — the drawing's own text contains every
+                  label and would ring every node at once. */}
+              <MermaidDiagram
+                source={pinnedSource}
+                highlight={focusedInPinned ? focusedBlock?.text : undefined}
+                label="The drawing, rebuilt as a diagram"
+              />
+              <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+                {focusedInPinned
+                  ? "This note is one branch of the drawing — the outlined node is the one you're on."
+                  : "The drawing you're on — file it whole, or keep it with the page."}
+              </p>
+            </div>
+          </aside>
+        )}
       </div>
 
       {/* Lanes were right that dragging needs somewhere to drop, and wrong about everything
