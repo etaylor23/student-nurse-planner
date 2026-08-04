@@ -143,6 +143,27 @@ describe("guardMermaid — the rebuild may add structure, never words (P44)", ()
     expect(guardMermaid(src, page)).toBe(src);
   });
 
+  it("admits BARE id references in edges — the shape every real flowchart has", () => {
+    // `C -- YES --> D`: C and D are declared elsewhere with brackets, referenced bare here.
+    // Rejecting these killed the first real flowchart page.
+    const flowPage =
+      "Patient looks hypo / BM low\nCheck blood glucose\nConscious and able to swallow?\nYES\nNO\nGive quick-acting carbs\nescalate / call for help";
+    const src = [
+      "flowchart TD",
+      '  A["Patient looks hypo / BM low"] --> B["Check blood glucose"]',
+      '  B --> C{"Conscious and able to swallow?"}',
+      '  C -- YES --> D["Give quick-acting carbs"]',
+      '  C -- NO --> E["escalate / call for help"]',
+    ].join("\n");
+    expect(guardMermaid(src, flowPage)).toBe(src);
+  });
+
+  it("still refuses invented words even when ids are in play", () => {
+    const flowPage = "Check blood glucose\nYES";
+    const src = 'flowchart TD\n  A["Check blood glucose"] -- YES --> B["give adrenaline"]';
+    expect(guardMermaid(src, flowPage)).toBeUndefined();
+  });
+
   it("refuses a rebuild containing a word the page does not have", () => {
     const src = "mindmap\n  root((SEPSIS SIX))\n    give adrenaline immediately";
     expect(guardMermaid(src, page)).toBeUndefined();

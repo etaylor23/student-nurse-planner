@@ -1,0 +1,108 @@
+uploaded tests/pages/real-heart-failure.png (249141 bytes downscaled)
+
+parsing s3://nurse-planner-captures-dev-641364901830/u/764262e4-e031-70be-0e16-72b6ddb9f89e/h/a2ef0687551dcd803ac0477060451989c87d349fa5392d472695779aa66ef5cb/page.jpg
+
+HTTP 200 in 51825ms
+
+· stage: reading
+· stage: spellchecking
+· stage: classifying
+
+pageDateRaw: null   wardHint: null
+
+── BLOCK 1  CLINICAL_SKILL → PROFICIENCY_EVENT  selfConf=1
+   HEART FAILURE nursing checks 1. daily weight — same time each day 2. fluid balance — strict input/output 3. oedema + breathlessness — watch worsening symptoms 4. obs — HR, BP, RR, sats 5. meds — diuretics, monitor U&Es 6. position upright if SOB red flag: acute pulmonary oedema think fluid overload • listen for crackles • ask about orthopnoea
+   codes: 3.3, B8.1, B5.4, 4.10, B2.1  (first is pre-selected)
+   tags: heart failure, cardiac, observations, fluid balance, oedema
+
+── BLOCK 2  UNKNOWN  selfConf=1
+   Hypoglycaemia management
+
+── BLOCK 3  UNKNOWN  selfConf=1
+   Patient looks hypo / BM low
+
+── BLOCK 4  UNKNOWN  selfConf=1
+   Check blood glucose
+
+── BLOCK 5  UNKNOWN  selfConf=1
+   Conscious and able to swallow?
+
+── BLOCK 6  UNKNOWN  selfConf=1
+   YES
+
+── BLOCK 7  UNKNOWN  selfConf=1
+   Give quick-acting carbs
+
+── BLOCK 8  UNKNOWN  selfConf=1
+   recheck BM in 10-15 min
+
+── BLOCK 9  UNKNOWN  selfConf=1
+   then longer-acting snack if due
+
+── BLOCK 10  UNKNOWN  selfConf=1
+   escalate / call for help
+
+── BLOCK 11  UNKNOWN  selfConf=1
+   follow local policy / IV glucose or IM glucagon
+
+── BLOCK 12  UNKNOWN  selfConf=1
+   recheck BM
+
+── BLOCK 13  UNKNOWN  selfConf=1
+   document + identify cause
+
+── BLOCK 14  UNKNOWN  selfConf=1
+   never leave them alone
+
+── BLOCK 15  DIAGRAM  selfConf=1
+   HEART FAILURE nursing checks
+   1. daily weight — same time each day
+   2. fluid balance — strict input/output
+   3. oedema + breathlessness — watch worsening symptoms
+   4. obs — HR, BP, RR, sats
+   5. meds — diuretics, monitor U&Es
+   6. position upright if SOB red flag: acute pulmonary oedema
+   tags: mind map
+   mermaid:
+      mindmap
+        root((HEART FAILURE nursing checks))
+          1. daily weight — same time each day
+          2. fluid balance — strict input/output
+          3. oedema + breathlessness — watch worsening symptoms
+          4. obs — HR, BP, RR, sats
+          5. meds — diuretics, monitor U&Es
+          6. position upright if SOB
+
+── BLOCK 16  DIAGRAM  selfConf=1
+   Patient looks hypo / BM low Check blood glucose Conscious and able to swallow?
+   YES NO Give quick-acting carbs recheck BM in 10-15 min then longer-acting snack if due escalate / call for help follow local policy / IV glucose or IM glucagon recheck BM document + identify cause
+   tags: flowchart
+
+diagnostics: {
+  "totalMs": 51519,
+  "structure": {
+    "model": "qwen.qwen3-vl-235b-a22b-instruct",
+    "ms": 39943,
+    "in": 2052,
+    "out": 2564
+  },
+  "check": {
+    "model": "google.gemma-3-27b-it",
+    "ms": 17691,
+    "missing": false
+  },
+  "sanitiser": {
+    "ms": 5347,
+    "failed": false,
+    "applied": 0,
+    "rejected": 0
+  },
+  "classifier": {
+    "ms": 6035,
+    "failed": false,
+    "droppedBlocks": 1,
+    "droppedCodes": 0
+  },
+  "disputes": 0,
+  "recoveredRegions": 13
+}

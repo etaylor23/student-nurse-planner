@@ -107,10 +107,17 @@ export function guardMermaid(mermaid: string | undefined, pageText: string): str
       .split(/\s+/)
       .filter(Boolean);
   const pageWords = new Set(words(pageText));
-  // Strip flowchart node ids: `A[...]`, `B2(...)`, `C{...}` — the id is model-invented and
-  // legitimate; the label inside is what must come from the page.
-  const withoutIds = source.replace(/(^|[\s>-])[A-Za-z][A-Za-z0-9_]*(?=[[({])/g, "$1");
-  const foreign = words(withoutIds).filter((w) => !pageWords.has(w) && !MERMAID_SYNTAX.has(w));
+  // Flowchart node ids (`A[...]`, `B2(...)`, `C{...}`) are model-invented and legitimate.
+  // Collect every id declared before a bracket, then allow it ANYWHERE — edges reference
+  // ids bare (`C -- YES --> D`), and treating those as invented words rejected every real
+  // flowchart on first contact (the heart-failure page).
+  const ids = new Set<string>();
+  for (const m of source.matchAll(/(?:^|[\s>-])([A-Za-z][A-Za-z0-9_]*)(?=[[({])/g)) {
+    ids.add(m[1].toLowerCase());
+  }
+  const foreign = words(source).filter(
+    (w) => !pageWords.has(w) && !MERMAID_SYNTAX.has(w) && !ids.has(w),
+  );
   return foreign.length === 0 ? source : undefined;
 }
 
