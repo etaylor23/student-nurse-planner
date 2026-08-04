@@ -1,6 +1,29 @@
-import type { Correction } from "./schema";
-import type { ClassifiedBlock } from "./schema";
+import type { ClassifiedBlock, Correction, VisionBlock } from "./schema";
 import { applyCorrections } from "./sanitise";
+
+/**
+ * The vision model's DIAGRAM nomination — the PRIMARY one (P43).
+ *
+ * The classifier runs on text alone (P12) and so cannot know a drawing exists: probed with
+ * the real mind-map page it returned `"diagramRegions": []` while merging every label into
+ * one block, because nothing in plain text says "these are joined by arrows". The vision
+ * model saw the pixels, so its per-region kind hints are the signal. Where several drawings
+ * share a page they arrive with different groupKeys; the largest cluster wins in v1 (one
+ * DIAGRAM block per page, matching the review UI's expectations).
+ */
+export function visionDiagramRegions(blocks: VisionBlock[]): number[] {
+  const byGroup = new Map<string, number[]>();
+  blocks.forEach((b, i) => {
+    if (b.kind !== "DIAGRAM") return;
+    const key = b.groupKey ?? "(ungrouped)";
+    byGroup.set(key, [...(byGroup.get(key) ?? []), i]);
+  });
+  let best: number[] = [];
+  for (const members of byGroup.values()) {
+    if (members.length > best.length) best = members;
+  }
+  return best;
+}
 
 /**
  * Synthesise the DIAGRAM block (spec-note-capture.md P43) from the classifier's nomination.

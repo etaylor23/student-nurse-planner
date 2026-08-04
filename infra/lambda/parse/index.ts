@@ -7,7 +7,7 @@ import { UpstreamError } from "../ai/provider";
 import { type StudentContext, classify } from "./classify";
 import { disputedWords, mapDisputesToBlocks } from "./consensus";
 import { ensureRegionsCovered } from "./coverage";
-import { synthesiseDiagramBlock } from "./diagram";
+import { synthesiseDiagramBlock, visionDiagramRegions } from "./diagram";
 import { reflow } from "./reflow";
 import { normaliseBbox } from "./schema";
 import { sanitise } from "./sanitise";
@@ -206,11 +206,15 @@ async function run(event: FunctionUrlEvent, responseStream: ResponseStream): Pro
     // ---- 4: classify ----
     const classified = await classify(cleaned.text, regions, req.context ?? {});
 
-    // The DIAGRAM block is SYNTHESISED from the classifier's region nomination (P43,
-    // diagram.ts) — model-emitted DIAGRAM blocks are dropped when a nomination exists,
-    // or they'd double up with the synthesised one.
+    // The DIAGRAM block is SYNTHESISED from a region nomination (P43, diagram.ts) —
+    // model-emitted DIAGRAM blocks are dropped when a nomination exists, or they'd double
+    // up with the synthesised one. Vision is the primary nominator (it saw the drawing;
+    // the text-only classifier can't), unioned with whatever the classifier adds.
+    const nominated = [
+      ...new Set([...visionDiagramRegions(structure.parsed.blocks), ...classified.diagramRegions]),
+    ];
     const synthesised = synthesiseDiagramBlock(
-      classified.diagramRegions,
+      nominated,
       regions,
       cleaned.corrections,
       classified.diagramForm,

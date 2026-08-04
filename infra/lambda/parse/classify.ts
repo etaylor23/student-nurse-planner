@@ -78,7 +78,7 @@ If part of the page is a drawn structure — a mind map, flowchart, sketch or ha
 
 CRITICAL: "text" must use the SAME WORDS as the page text given to you, in the same order. You may split it, regroup it, and JOIN HARD-WRAPPED LINES back into flowing sentences and paragraphs so it reads naturally — handwritten notes wrap mid-sentence and that line structure is an artefact of the paper, not the meaning. You may NOT reword it, substitute synonyms, summarise it, or add to it.
 
-Return ONLY JSON: {"blocks":[{...}],"diagramRegions":[],"diagramForm":null}`;
+Return ONLY JSON: {"blocks":[{...}],"diagramRegions":[<the drawing's region numbers, else empty>],"diagramForm":"<mind map|flowchart|sketch, else null>"}`;
 
 export interface ClassifyResult {
   blocks: ClassifiedBlock[];

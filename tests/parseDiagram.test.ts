@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { synthesiseDiagramBlock } from "../infra/lambda/parse/diagram";
+import { synthesiseDiagramBlock, visionDiagramRegions } from "../infra/lambda/parse/diagram";
+import type { VisionBlock } from "../infra/lambda/parse/schema";
 
 /**
  * The DIAGRAM synthesiser (spec-note-capture.md P43).
@@ -56,5 +57,32 @@ describe("synthesiseDiagramBlock (P43)", () => {
   it("falls back to a plain 'diagram' tag when no form is given", () => {
     expect(synthesiseDiagramBlock([1, 2], REGIONS, [])?.tags).toEqual(["diagram"]);
     expect(synthesiseDiagramBlock([1, 2], REGIONS, [], "  ")?.tags).toEqual(["diagram"]);
+  });
+});
+
+describe("visionDiagramRegions — the primary nomination (P43)", () => {
+  const vb = (kind?: string, groupKey?: string): VisionBlock => ({
+    rawText: "x",
+    ...(kind ? { kind } : {}),
+    ...(groupKey ? { groupKey } : {}),
+  });
+
+  it("collects the regions vision hinted DIAGRAM, keyed by their shared group", () => {
+    const blocks = [vb("DATE_HEADER"), vb("DIAGRAM", "map"), vb("DIAGRAM", "map"), vb("TODO")];
+    expect(visionDiagramRegions(blocks)).toEqual([1, 2]);
+  });
+
+  it("takes the largest drawing when hints split across groups", () => {
+    const blocks = [
+      vb("DIAGRAM", "small"),
+      vb("DIAGRAM", "big"),
+      vb("DIAGRAM", "big"),
+      vb("DIAGRAM", "big"),
+    ];
+    expect(visionDiagramRegions(blocks)).toEqual([1, 2, 3]);
+  });
+
+  it("returns nothing when vision hinted no drawing", () => {
+    expect(visionDiagramRegions([vb("OBSERVATION"), vb()])).toEqual([]);
   });
 });

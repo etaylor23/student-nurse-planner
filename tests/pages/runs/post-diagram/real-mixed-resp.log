@@ -1,0 +1,69 @@
+uploaded tests/pages/real-mixed-resp.png (221343 bytes downscaled)
+
+parsing s3://nurse-planner-captures-dev-641364901830/u/764262e4-e031-70be-0e16-72b6ddb9f89e/h/0f8745a69247d881b362251453e6b1512ba3d555dc55cb3bceb46e6e3c318566/page.jpg
+
+HTTP 200 in 23599ms
+
+· stage: reading
+· stage: spellchecking
+· stage: classifying
+
+pageDateRaw: "Wed 20/8"   wardHint: "resp ward"
+
+── BLOCK 1  DATE_HEADER → SHIFT_NOTES  selfConf=1
+   Wed 20/8 - resp ward
+
+── BLOCK 2  MEDICATION → MED_LOG  selfConf=1
+   Salbutamol neb 5mg PRN - short acting beta agonist, opens the airways. Watch for tremor and tachycardia, it's not a sign anything is wrong. Mrs in bed 5 was shaky after two back to back and got upset because she thought it meant her heart was failing. I sat with her and explained it and she settled. I should have warned her BEFORE the second neb.
+   codes: 4.15, 4.14, A2.8, 1.11, B8.5  (first is pre-selected)
+   tags: respiratory, salbutamol, patient-education
+   medication: Salbutamol
+
+── BLOCK 3  CLINICAL_SKILL → PROFICIENCY_EVENT  selfConf=1
+   Peak flow technique - sit up, full breath in, tight seal, hard fast blow. Best of 3. I coached bed 5 through it and her numbers went up 60 L/min once she stopped puffing her cheeks. Recorded on the chart.
+   codes: B8.3, 1.16, 3.11, A1.8, A2.8  (first is pre-selected)
+   tags: respiratory, peak-flow, coaching
+
+── BLOCK 4  MEDICATION → MED_LOG  selfConf=1
+   Prednisolone 30mg OD for 5 days - steroid, reduces airway inflammation. Take it in the morning with food. Don't stop suddenly if the course is long.
+   codes: 4.15, 4.14, A2.8, B11.8  (first is pre-selected)
+   tags: respiratory, prednisolone, steroids
+   medication: Prednisolone
+
+── BLOCK 5  CLINICAL_SKILL → PROFICIENCY_EVENT  selfConf=1
+   Oxygen - target range written on the chart, 88-92% for the COPD patients. Never just crank it up.
+   codes: B8.2, 4.5, 3.3, 4.10  (first is pre-selected)
+   tags: respiratory, oxygen, COPD
+
+── BLOCK 6  TODO → SHIFT_NOTES  selfConf=1
+   ask about a spirometry study day
+   tags: learning-opportunity, respiratory
+
+diagnostics: {
+  "totalMs": 23454,
+  "structure": {
+    "model": "qwen.qwen3-vl-235b-a22b-instruct",
+    "ms": 9347,
+    "in": 1819,
+    "out": 725
+  },
+  "check": {
+    "model": "google.gemma-3-27b-it",
+    "ms": 8769,
+    "missing": true
+  },
+  "sanitiser": {
+    "ms": 4479,
+    "failed": false,
+    "applied": 0,
+    "rejected": 0
+  },
+  "classifier": {
+    "ms": 9552,
+    "failed": false,
+    "droppedBlocks": 0,
+    "droppedCodes": 0
+  },
+  "disputes": 0,
+  "recoveredRegions": 0
+}

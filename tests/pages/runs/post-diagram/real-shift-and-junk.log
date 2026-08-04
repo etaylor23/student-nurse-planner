@@ -1,0 +1,69 @@
+uploaded tests/pages/real-shift-and-junk.png (271497 bytes downscaled)
+
+parsing s3://nurse-planner-captures-dev-641364901830/u/764262e4-e031-70be-0e16-72b6ddb9f89e/h/fe18f92cae68feadcf619b425844bc502da4b8fef5232063d111ddd407fb1795/page.jpg
+
+HTTP 200 in 25054ms
+
+· stage: reading
+· stage: spellchecking
+· stage: classifying
+
+pageDateRaw: "Thurs 14/8"   wardHint: "Ward 12"
+
+── BLOCK 1  DATE_HEADER → SHIFT_NOTES  selfConf=1
+   Thurs 14/8 — long day — Ward 12
+
+── BLOCK 2  OBSERVATION → SHIFT_NOTES  selfConf=1
+   Handover: Bay 3 — 4 pts, 2 for discharge, TTOs pending pharmacy. Bed 1 NBM for endoscopy at 11. Bay 4 — bed 3 confused overnight. Not 1:1 but eyes on. Waterlow 18.
+   codes: 1.16, 1.11, A1.8  (first is pre-selected)
+   tags: handover, discharge, NBM, endoscopy
+
+── BLOCK 3  OBSERVATION → SHIFT_NOTES  selfConf=1
+   Physio coming for bed 2 at 2pm. Falls risk — bed rails up, checked it with the patient first.
+   codes: B7.1, B7.4, 4.1  (first is pre-selected)
+   tags: falls risk, safety
+
+── BLOCK 4  TODO → SHIFT_NOTES  selfConf=1
+   ASK PA TO SIGN MY MED CALC BEFORE FRIDAY!!
+   codes: B11.4, 4.14  (first is pre-selected)
+   tags: med calc
+
+── BLOCK 5  UNKNOWN → SHIFT_NOTES  selfConf=1
+   Mum's mobile 07700 900123
+
+── BLOCK 6  UNKNOWN → SHIFT_NOTES  selfConf=1
+   milk bread teabags
+
+── BLOCK 7  OBSERVATION → SHIFT_NOTES  selfConf=1
+   Bed 4 discharged 16:10, took own TTOs. Bed 1 back from endoscopy 12:40, obs stable, ate a sandwich.
+   codes: 4.18, 1.16, A1.8  (first is pre-selected)
+   tags: discharge, endoscopy
+
+diagnostics: {
+  "totalMs": 24918,
+  "structure": {
+    "model": "qwen.qwen3-vl-235b-a22b-instruct",
+    "ms": 8884,
+    "in": 1819,
+    "out": 620
+  },
+  "check": {
+    "model": "google.gemma-3-27b-it",
+    "ms": 13144,
+    "missing": true
+  },
+  "sanitiser": {
+    "ms": 3802,
+    "failed": false,
+    "applied": 0,
+    "rejected": 0
+  },
+  "classifier": {
+    "ms": 7860,
+    "failed": false,
+    "droppedBlocks": 0,
+    "droppedCodes": 0
+  },
+  "disputes": 0,
+  "recoveredRegions": 0
+}

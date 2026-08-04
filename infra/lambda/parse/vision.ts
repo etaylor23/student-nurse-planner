@@ -32,7 +32,7 @@ Transcribe EXACTLY what is written. Do not correct, expand, Americanise or guess
 
 Only report wardHint if a ward or unit name is actually written on the page — never infer it from the prose.
 
-If some of the text is part of a drawn structure — a mind map, flowchart or sketch — still transcribe each written label as its own block, and give those blocks a shared groupKey and the kind DIAGRAM.
+If some of the text is part of a drawn structure — labels joined by arrows, lines or branches to a central node (a mind map), boxes in a flowchart, a labelled sketch — still transcribe each written label as its own block, and give EVERY label belonging to that drawing the kind DIAGRAM and one shared groupKey (a mind map's central node and all of its branch labels are ALL part of the drawing). Text that is merely near the drawing but not joined to it — a margin note, a to-do, a heading — is NOT part of it.
 
 Return ONLY JSON:
 {"pageDateRaw":"<date exactly as written, or null>","wardHint":"<ward name written on the page, or null>","blocks":[{"rawText":"<verbatim>","kind":"CLINICAL_SKILL|MEDICATION|REFLECTION|OBSERVATION|TODO|DATE_HEADER|DIAGRAM","confidence":0-1,"bbox":[x0,y0,x1,y1],"rotationDeg":<n>,"groupKey":"<shared by related blocks>","tags":["<subject>"]}]}`;
