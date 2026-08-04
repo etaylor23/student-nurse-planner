@@ -2,7 +2,7 @@ uploaded tests/pages/real-mindmap-sepsis.png (173751 bytes downscaled)
 
 parsing s3://nurse-planner-captures-dev-641364901830/u/764262e4-e031-70be-0e16-72b6ddb9f89e/h/f36154a4db6d32aaae134a4e406256a0625e821dccba104fac5a2f953514eed3/page.jpg
 
-HTTP 200 in 30695ms
+HTTP 200 in 86859ms
 
 · stage: reading
 · stage: spellchecking
@@ -14,79 +14,83 @@ pageDateRaw: null   wardHint: null
    Sepsis lecture — wk 4
    tags: sepsis
 
-── BLOCK 2  CLINICAL_SKILL → PROFICIENCY_EVENT  selfConf=1
-   NEWS2. 5 or more → think sepsis
-   codes: B2.13, B1.2, 4.10, 3.12, B2.1  (first is pre-selected)
-   tags: sepsis, NEWS2
-
-── BLOCK 3  OBSERVATION → SHIFT_NOTES  selfConf=1
-   red flag: lactate over 2
-   codes: B2.13, 4.10, 3.12  (first is pre-selected)
-   tags: sepsis, lactate
-
-── BLOCK 4  CLINICAL_SKILL → PROFICIENCY_EVENT  selfConf=1
-   ask about immunosuppression — chemo? steroids? splenectomy?
-   codes: 3.3, B1.2, A1.4, 1.11  (first is pre-selected)
-   tags: sepsis, immunosuppression, haematology
-
-── BLOCK 5  UNKNOWN → SHIFT_NOTES  selfConf=1
-   BUFFALO — the old mnemonic
-   tags: sepsis
-
-── BLOCK 6  UNKNOWN  selfConf=1
+── BLOCK 2  UNKNOWN  selfConf=1
    1. O2 — keep sats 94-98%
 
-── BLOCK 7  UNKNOWN  selfConf=1
+── BLOCK 3  UNKNOWN  selfConf=1
    2. blood cultures BEFORE abx
 
-── BLOCK 8  UNKNOWN  selfConf=1
+── BLOCK 4  UNKNOWN  selfConf=1
    SEPSIS SIX within 1 hour
 
-── BLOCK 9  UNKNOWN  selfConf=1
+── BLOCK 5  UNKNOWN  selfConf=1
    3. IV antibiotics — per trust guideline
 
-── BLOCK 10  UNKNOWN  selfConf=1
+── BLOCK 6  UNKNOWN  selfConf=1
    4. IV fluids — 500ml bolus, reassess
 
-── BLOCK 11  UNKNOWN  selfConf=1
+── BLOCK 7  UNKNOWN  selfConf=1
    5. lactate + FBC + cultures
 
-── BLOCK 12  UNKNOWN  selfConf=1
+── BLOCK 8  UNKNOWN  selfConf=1
    6. urine output — catheter + fluid balance
 
+── BLOCK 9  UNKNOWN  selfConf=1
+   red flag: lactate over 2
+
+── BLOCK 10  UNKNOWN  selfConf=1
+   NEWS2 5 or more → think sepsis
+
+── BLOCK 11  UNKNOWN  selfConf=1
+   ask about immunosuppression — chemo? steroids? splenectomy?
+
+── BLOCK 12  UNKNOWN  selfConf=1
+   BUFFALO — the old mnemonic
+
 ── BLOCK 13  DIAGRAM  selfConf=1
-   SEPSIS SIX within 1 hour
+   1. O2 — keep sats 94-98%
+   2. blood cultures BEFORE abx SEPSIS SIX within 1 hour
    3. IV antibiotics — per trust guideline
    4. IV fluids — 500ml bolus, reassess
    5. lactate + FBC + cultures
    6. urine output — catheter + fluid balance red flag: lactate over 2
    tags: diagram
+   mermaid:
+      mindmap
+        root((SEPSIS SIX
+      within 1 hour))
+          1. O2 — keep sats 94-98%
+          2. blood cultures BEFORE abx
+          3. IV antibiotics — per trust guideline
+          4. IV fluids — 500ml bolus, reassess
+          5. lactate + FBC + cultures
+          6. urine output — catheter + fluid balance
 
 diagnostics: {
-  "totalMs": 29398,
+  "totalMs": 86532,
   "structure": {
     "model": "qwen.qwen3-vl-235b-a22b-instruct",
-    "ms": 17118,
-    "in": 1890,
-    "out": 968
+    "ms": 67998,
+    "in": 1982,
+    "out": 1327
   },
   "check": {
     "model": "google.gemma-3-27b-it",
-    "ms": 11267,
+    "ms": 11352,
     "missing": false
   },
   "sanitiser": {
-    "ms": 4128,
+    "ms": 8678,
     "failed": false,
     "applied": 0,
-    "rejected": 1
+    "rejected": 4
   },
   "classifier": {
-    "ms": 8022,
+    "ms": 9660,
     "failed": false,
     "droppedBlocks": 1,
     "droppedCodes": 0
   },
   "disputes": 0,
-  "recoveredRegions": 7
+  "recoveredRegions": 11
 }
