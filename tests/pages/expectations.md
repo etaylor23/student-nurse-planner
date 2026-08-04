@@ -91,6 +91,22 @@ All of the above, **plus**:
 | Enoxaparin 40mg SC nocte + side-effects list | **MEDICATION** | candidate ≈ Enoxaparin; the bulleted side-effects list is NOT flattened into one sentence by reflow. |
 | `ALL of these need a second checker on the round` (red box) | TODO, OBSERVATION | — |
 
+## real-heart-failure.png (added 2026-08-04 — the first TWO-drawing page, P45)
+
+A mind map (HEART FAILURE nursing checks, 6 spokes) on the top half and a branching
+flowchart (Hypoglycaemia management, YES/NO decision) on the bottom, plus red margin boxes
+and a sideways note. **This page found the degenerate-read failure mode:** 3 of its first
+6 runs collapsed to ~2 regions / ~700 output tokens at the vision layer — hence the
+check-model-volume retry in `vision.ts`.
+
+| Content region | Acceptable kinds | Must-hits |
+|---|---|---|
+| Mind map (hub + 6 spokes) | — | **One DIAGRAM block** tagged mind map, mermaid rebuild with the hub as root and all six spokes as children. Content also present as normal blocks. |
+| Flowchart (10 boxes + YES/NO) | — | **A second DIAGRAM block** tagged flowchart, mermaid `flowchart` rebuild with the full decision tree and **YES/NO as edge labels**. |
+| `red flag: acute pulmonary oedema` / `think fluid overload` / `never leave them alone` (red margin) | OBSERVATION, CLINICAL_SKILL, UNKNOWN | Not swallowed into either mermaid (cluster membership may still catch them in the block TEXT — recorded wart). |
+| `Hypoglycaemia management` (heading) | any | — |
+| Bullets (`listen for crackles`, `ask about orthopnoea`) | OBSERVATION, CLINICAL_SKILL | Present. |
+
 ## real-haematology-meds.jpg (the original Gate-2 page, IMG_8619)
 
 The page every Appendix-2 number was measured on. Baseline behaviour is already recorded in

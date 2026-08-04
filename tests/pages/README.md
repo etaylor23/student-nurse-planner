@@ -13,6 +13,7 @@ not (`scripts/README-note-pages.md`).
 | `real-mindmap-sepsis.png` | page-5 | The chaos page: mind-map (**DIAGRAM** block), sideways + upside-down text |
 | `real-medications.png` | page-1 | MED_LOG routing, drug-card candidates, list-survives-reflow |
 | `real-haematology-meds.jpg` | — | The original Gate-2 page (Appendix 2's numbers) — Aciclovir / Phenoxymethylpenicillin |
+| `real-heart-failure.png` | — | The first TWO-drawing page (P45): a mind map AND a branching flowchart — per-drawing DIAGRAM blocks, YES/NO edge labels, and the page that exposed the degenerate-read retry |
 
 The four `.png` pages are 1086×1448 — **below** the 2400px long-edge the client targets, so
 transcription here is a harder test than a phone photo, not an easier one.
