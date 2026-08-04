@@ -72,7 +72,11 @@ For each block, decide:
 - "fromRegions": which region numbers this block drew from.
 - "groupKey": shared by blocks that belong together.
 
-DIAGRAM is for drawn structure: a mind map, flowchart, sketch or hand-drawn table. When part of the page is one, emit ONE DIAGRAM block covering the whole drawing — its "text" transcribes the diagram's words in reading order (centre first for a mind map, then each branch), its "fromRegions" lists every region the drawing spans, and it takes NO targetType: it is kept with the photographed page rather than filed. THEN ALSO emit normal blocks for the diagram's content so the notes themselves can be filed — that duplication is wanted, not a mistake. Tag the DIAGRAM block with its form (e.g. "mind map"). Text that merely sits near a drawing (margin notes, a to-do underneath) is NOT part of the diagram.
+Work in TWO PASSES when the page contains a drawn structure (a mind map, flowchart, sketch or hand-drawn table):
+
+PASS 1 — the normal blocks, for EVERYTHING on the page including the drawing's own labels. Decide these exactly as usual: the drawing's content may become one block or several by subject, and text that merely sits NEAR the drawing — a margin note, a header, a to-do line — is its own block with its own kind, never folded in. A to-do is a TODO wherever it sits on the page.
+
+PASS 2 — ADD one extra block of kind DIAGRAM for the drawing itself. Its "text" transcribes the drawing's words in reading order (centre first for a mind map, then each branch); its "fromRegions" lists every region the drawing spans; it takes NO targetType — it is kept with the photographed page rather than filed; tag it with its form (e.g. "mind map"). The same words appearing in both passes is REQUIRED, not a mistake: the pass-1 blocks are how the notes get filed, the DIAGRAM block is how the drawing is kept whole. Use DIAGRAM for no other purpose.
 
 CRITICAL: "text" must use the SAME WORDS as the page text given to you, in the same order. You may split it, regroup it, and JOIN HARD-WRAPPED LINES back into flowing sentences and paragraphs so it reads naturally — handwritten notes wrap mid-sentence and that line structure is an artefact of the paper, not the meaning. You may NOT reword it, substitute synonyms, summarise it, or add to it.
 

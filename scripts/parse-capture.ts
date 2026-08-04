@@ -239,7 +239,9 @@ async function main() {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
     body: JSON.stringify({
-      captureId: key.split("/")[2] ?? "cap-unknown0000",
+      // The content-addressed key (P41) carries no capture id, so send a harness marker —
+      // the endpoint only checks the SAFE_ID shape, and the parse itself never reads it.
+      captureId: "cap-harness0000",
       imageKey: key,
       imageIndex: 0,
       // Stand-in for what the client sends from Dexie (P32).
