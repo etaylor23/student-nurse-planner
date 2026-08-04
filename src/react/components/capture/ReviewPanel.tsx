@@ -324,6 +324,7 @@ function BlockCard({
   gibbs,
   known,
   onSkip,
+  inlineDiagram = true,
 }: {
   block: NoteBlock;
   index: number;
@@ -331,6 +332,9 @@ function BlockCard({
   gibbs?: Partial<Record<GibbsStage, string>>;
   known: KnownContext;
   onSkip: () => void;
+  /** Render a DIAGRAM block's rebuild inside the card. Off on wide screens, where the
+   *  photo column pins the same drawing and a second copy beside it is clutter. */
+  inlineDiagram?: boolean;
 }) {
   const [text, setText] = useState(block.text);
   const [tags, setTags] = useState(() => list(block.suggestedTags));
@@ -605,13 +609,15 @@ function BlockCard({
 
         {isDiagram ? (
           <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-slate-50 p-3.5 ring-1 ring-slate-200">
-            {block.diagramSource && (
+            {/* Only where there is no photo column to pin it in (narrow screens) — on wide
+                the rebuild lives in the left column, and twice side by side is clutter.
+                Fail-closed either way: an unrenderable rebuild shows nothing, and the
+                transcription above stays — a bad picture never costs content (P44). */}
+            {inlineDiagram && block.diagramSource && (
               <div className="w-full basis-full">
                 <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">
                   Rebuilt from your drawing
                 </p>
-                {/* Fail-closed: an unrenderable rebuild shows nothing, and the transcription
-                    above stays either way — a bad picture never costs content (P44). */}
                 <MermaidDiagram
                   source={block.diagramSource}
                   label="Your drawing, rebuilt as a diagram"
@@ -876,7 +882,15 @@ export function ReviewPanel({
   /** The drawing the focused note is part of, if any (P43/P44) — pinned under the photo so
    *  it stays on screen while its branches are being filed, active branch highlighted. */
   const focusedBlock = blocks.find((b) => b.id === focusId);
-  const memberDiagram = focusedBlock ? diagramContaining(focusedBlock, blocks) : undefined;
+  // The drawing to pin: the focused block's own drawing when the DIAGRAM block itself is
+  // open, or the one it belongs to when a branch is. Either way the map stays in the left
+  // column — its only in-card render is on narrow screens, where there IS no left column.
+  const focusedIsDiagram = focusedBlock?.kind === "DIAGRAM";
+  const memberDiagram = focusedBlock
+    ? focusedIsDiagram
+      ? focusedBlock
+      : diagramContaining(focusedBlock, blocks)
+    : undefined;
   const pinnedSource = memberDiagram?.diagramSource;
   const [diagramZoom, setDiagramZoom] = useState(false);
   useEffect(() => {
@@ -978,6 +992,7 @@ export function ReviewPanel({
                 handlers={handlers}
                 gibbs={gibbsByRawText?.[b.rawText]}
                 known={known}
+                inlineDiagram={!wide}
                 onSkip={() => {
                   const at = pending.findIndex((p) => p.id === b.id);
                   setFocusId(pending[Math.min(pending.length - 1, at + 1)]?.id);
@@ -1147,7 +1162,7 @@ export function ReviewPanel({
                   <div className="mt-5">
                     <div className="mb-2 flex items-baseline justify-between">
                       <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                        From your drawing
+                        {focusedIsDiagram ? "Rebuilt from your drawing" : "From your drawing"}
                       </p>
                       <button
                         type="button"
@@ -1159,15 +1174,18 @@ export function ReviewPanel({
                     </div>
                     {/* A landscape drawing in a thin column is a mini-map, not the artwork:
                         it scales to fit, the active branch glows, and Enlarge (or dragging
-                        the divider) is the route to full size. */}
+                        the divider) is the route to full size. No highlight when the drawing
+                        ITSELF is focused — its text contains every label, which would ring
+                        every node at once. */}
                     <MermaidDiagram
                       source={pinnedSource}
-                      highlight={focusedBlock?.text}
-                      label="The drawing this note is part of, rebuilt as a diagram"
+                      highlight={focusedIsDiagram ? undefined : focusedBlock?.text}
+                      label="The drawing, rebuilt as a diagram"
                     />
                     <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
-                      This note is one branch of the drawing — the outlined node is the one
-                      you&apos;re on.
+                      {focusedIsDiagram
+                        ? "The whole drawing, kept with this page — its notes file as their own cards."
+                        : "This note is one branch of the drawing — the outlined node is the one you're on."}
                     </p>
                   </div>
                 )}
@@ -1197,8 +1215,9 @@ export function ReviewPanel({
                   </div>
                 )}
                 {/* Narrow screens have no pinned column, so the drawing rides with the
-                    focused branch here instead — same mini-map, same highlight. */}
-                {pinnedSource && (
+                    focused branch here instead — same mini-map, same highlight. Not when
+                    the diagram ITSELF is focused: its own card renders it (inlineDiagram). */}
+                {pinnedSource && !focusedIsDiagram && (
                   <div className="mt-3">
                     <MermaidDiagram
                       source={pinnedSource}
