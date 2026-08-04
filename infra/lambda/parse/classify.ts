@@ -72,15 +72,13 @@ For each block, decide:
 - "fromRegions": which region numbers this block drew from.
 - "groupKey": shared by blocks that belong together.
 
-Work in TWO PASSES when the page contains a drawn structure (a mind map, flowchart, sketch or hand-drawn table):
+Never merge separate notes into one block merely because they sit near each other or share a subject — a to-do line is always its own TODO block, wherever it is on the page.
 
-PASS 1 — the normal blocks, for EVERYTHING on the page including the drawing's own labels. Decide these exactly as usual: the drawing's content may become one block or several by subject, and text that merely sits NEAR the drawing — a margin note, a header, a to-do line — is its own block with its own kind, never folded in. A to-do is a TODO wherever it sits on the page.
-
-PASS 2 — ADD one extra block of kind DIAGRAM for the drawing itself. Its "text" transcribes the drawing's words in reading order (centre first for a mind map, then each branch); its "fromRegions" lists every region the drawing spans; it takes NO targetType — it is kept with the photographed page rather than filed; tag it with its form (e.g. "mind map"). The same words appearing in both passes is REQUIRED, not a mistake: the pass-1 blocks are how the notes get filed, the DIAGRAM block is how the drawing is kept whole. Use DIAGRAM for no other purpose.
+If part of the page is a drawn structure — a mind map, flowchart, sketch or hand-drawn table — still classify its written labels as normal blocks like everything else, and ALSO name the drawing in two top-level fields beside "blocks": "diagramRegions" = the region numbers that form the drawing (the labels inside it only — never a margin note, header or to-do that merely sits nearby), and "diagramForm" = what it is (e.g. "mind map"). The app keeps the drawing itself with the photographed page. No drawing → "diagramRegions": [].
 
 CRITICAL: "text" must use the SAME WORDS as the page text given to you, in the same order. You may split it, regroup it, and JOIN HARD-WRAPPED LINES back into flowing sentences and paragraphs so it reads naturally — handwritten notes wrap mid-sentence and that line structure is an artefact of the paper, not the meaning. You may NOT reword it, substitute synonyms, summarise it, or add to it.
 
-Return ONLY JSON: {"blocks":[{...}]}`;
+Return ONLY JSON: {"blocks":[{...}],"diagramRegions":[],"diagramForm":null}`;
 
 export interface ClassifyResult {
   blocks: ClassifiedBlock[];
@@ -88,6 +86,9 @@ export interface ClassifyResult {
   droppedBlocks: number;
   /** Codes dropped because they aren't real NMC codes. */
   droppedCodes: number;
+  /** The drawing nomination (P43) — region numbers, for `diagram.ts` to synthesise from. */
+  diagramRegions: number[];
+  diagramForm?: string;
   latencyMs: number;
   inputTokens?: number;
   outputTokens?: number;
@@ -149,13 +150,21 @@ export async function classify(
     // Degrades to a transcription tool: blocks fall back to the vision regions with no
     // targets, and the student routes them by hand (P35). Still useful.
     console.warn("classifier failed; falling back to unclassified regions", err);
-    return { blocks: [], droppedBlocks: 0, droppedCodes: 0, latencyMs: 0, failed: true };
+    return {
+      blocks: [],
+      droppedBlocks: 0,
+      droppedCodes: 0,
+      diagramRegions: [],
+      latencyMs: 0,
+      failed: true,
+    };
   }
 
   const failure = (): ClassifyResult => ({
     blocks: [],
     droppedBlocks: 0,
     droppedCodes: 0,
+    diagramRegions: [],
     latencyMs: res.latencyMs,
     inputTokens: res.inputTokens,
     outputTokens: res.outputTokens,
@@ -230,6 +239,8 @@ export async function classify(
     blocks,
     droppedBlocks,
     droppedCodes,
+    diagramRegions: validated.data.diagramRegions,
+    diagramForm: validated.data.diagramForm,
     latencyMs: res.latencyMs,
     inputTokens: res.inputTokens,
     outputTokens: res.outputTokens,

@@ -7,6 +7,7 @@ import { UpstreamError } from "../ai/provider";
 import { type StudentContext, classify } from "./classify";
 import { disputedWords, mapDisputesToBlocks } from "./consensus";
 import { ensureRegionsCovered } from "./coverage";
+import { synthesiseDiagramBlock } from "./diagram";
 import { reflow } from "./reflow";
 import { normaliseBbox } from "./schema";
 import { sanitise } from "./sanitise";
@@ -205,11 +206,24 @@ async function run(event: FunctionUrlEvent, responseStream: ResponseStream): Pro
     // ---- 4: classify ----
     const classified = await classify(cleaned.text, regions, req.context ?? {});
 
+    // The DIAGRAM block is SYNTHESISED from the classifier's region nomination (P43,
+    // diagram.ts) — model-emitted DIAGRAM blocks are dropped when a nomination exists,
+    // or they'd double up with the synthesised one.
+    const synthesised = synthesiseDiagramBlock(
+      classified.diagramRegions,
+      regions,
+      cleaned.corrections,
+      classified.diagramForm,
+    );
+    const classifiedBlocks = synthesised
+      ? classified.blocks.filter((b) => b.kind !== "DIAGRAM")
+      : classified.blocks;
+
     // Degraded path (P27): no classifier output → fall back to the vision regions as
     // UNKNOWN blocks so the student can route them by hand. Still a transcription tool.
     const classifiedOrRaw =
-      classified.blocks.length > 0
-        ? classified.blocks
+      classifiedBlocks.length > 0
+        ? classifiedBlocks
         : structure.parsed.blocks.map((b, i) => ({
             fromRegions: [i],
             text: b.rawText,
@@ -221,10 +235,15 @@ async function run(event: FunctionUrlEvent, responseStream: ResponseStream): Pro
     // Coverage guard: the classifier measurably loses whole regions (3 blocks from 5 on the
     // real test page, a whole drug missing). Anything it didn't account for comes back as
     // UNKNOWN rather than disappearing.
-    const { blocks, recovered } = ensureRegionsCovered(classifiedOrRaw, regions);
+    const { blocks: covered, recovered } = ensureRegionsCovered(classifiedOrRaw, regions);
     if (recovered.length > 0) {
       console.warn(`coverage: recovered ${recovered.length} region(s) the classifier dropped`);
     }
+
+    // Appended LAST, after coverage: the diagram deliberately duplicates pass-1 words, so it
+    // must never satisfy coverage on their behalf — and disputes map to the first block
+    // containing the word, which keeps them on the fileable block, not the drawing.
+    const blocks = synthesised ? [...covered, synthesised] : covered;
 
     const disputeMap = mapDisputesToBlocks(blocks, disputes);
 

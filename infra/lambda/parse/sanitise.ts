@@ -60,8 +60,9 @@ export interface SanitiseResult {
  * Apply the surviving corrections to the input ourselves rather than trusting
  * `correctedText`. The model's own rewrite is the thing that smuggled in invented content in
  * testing; replaying validated token swaps cannot introduce anything that wasn't approved.
+ * Exported for the diagram synthesiser, which replays the same swaps onto region text.
  */
-function applyCorrections(input: string, corrections: Correction[]): string {
+export function applyCorrections(input: string, corrections: Correction[]): string {
   let out = input;
   for (const c of corrections) {
     // Whole-word, all occurrences. A drug name misread once is usually misread throughout.

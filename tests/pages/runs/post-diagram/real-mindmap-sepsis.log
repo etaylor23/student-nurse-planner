@@ -1,0 +1,78 @@
+uploaded tests/pages/real-mindmap-sepsis.png (173751 bytes downscaled)
+
+parsing s3://nurse-planner-captures-dev-641364901830/u/764262e4-e031-70be-0e16-72b6ddb9f89e/h/f36154a4db6d32aaae134a4e406256a0625e821dccba104fac5a2f953514eed3/page.jpg
+
+HTTP 200 in 23115ms
+
+· stage: reading
+· stage: spellchecking
+· stage: classifying
+
+pageDateRaw: null   wardHint: null
+
+── BLOCK 1  DATE_HEADER → SHIFT_NOTES  selfConf=1
+   Sepsis lecture — wk 4
+   tags: sepsis, haematology
+
+── BLOCK 2  UNKNOWN  selfConf=1
+   1. O2 — keep sats 94-98%
+
+── BLOCK 3  UNKNOWN  selfConf=1
+   2. blood cultures BEFORE abx
+
+── BLOCK 4  UNKNOWN  selfConf=1
+   SEPSIS SIX within 1 hour
+
+── BLOCK 5  UNKNOWN  selfConf=1
+   NEWS2 5 or more → think sepsis
+
+── BLOCK 6  UNKNOWN  selfConf=1
+   3. IV antibiotics — per trust guideline
+
+── BLOCK 7  UNKNOWN  selfConf=1
+   4. IV fluids — 500ml bolus, reassess
+
+── BLOCK 8  UNKNOWN  selfConf=1
+   5. lactate + FBC + cultures
+
+── BLOCK 9  UNKNOWN  selfConf=1
+   6. urine output — catheter + fluid balance
+
+── BLOCK 10  UNKNOWN  selfConf=1
+   red flag: lactate over 2
+
+── BLOCK 11  UNKNOWN  selfConf=1
+   ask about immunosuppression — chemo? steroids?
+   splenectomy?
+
+── BLOCK 12  UNKNOWN  selfConf=1
+   BUFA LO — the old mnemonic
+
+diagnostics: {
+  "totalMs": 21836,
+  "structure": {
+    "model": "qwen.qwen3-vl-235b-a22b-instruct",
+    "ms": 11974,
+    "in": 1819,
+    "out": 904
+  },
+  "check": {
+    "model": "google.gemma-3-27b-it",
+    "ms": 11509,
+    "missing": true
+  },
+  "sanitiser": {
+    "ms": 5075,
+    "failed": false,
+    "applied": 0,
+    "rejected": 1
+  },
+  "classifier": {
+    "ms": 4626,
+    "failed": false,
+    "droppedBlocks": 1,
+    "droppedCodes": 0
+  },
+  "disputes": 0,
+  "recoveredRegions": 11
+}

@@ -146,13 +146,22 @@ export interface ClassifiedBlock {
  * One malformed block must cost that block, not the page (the module promise above).
  * Each entry is parsed independently; failures are dropped, with the count surfaced so
  * the caller can log it.
+ *
+ * `diagramRegions`/`diagramForm` are the drawing nomination (P43): the classifier names
+ * which regions form a drawn structure and the lambda synthesises the DIAGRAM block itself
+ * (`diagram.ts`) — asking the model to transcribe the drawing was tried and failed.
  */
 export const classifyResponseSchema = z
   .object({
     blocks: z.array(z.unknown()).default([]),
+    diagramRegions: z
+      .array(z.number().int().nonnegative())
+      .nullish()
+      .transform((v) => v ?? []),
+    diagramForm: optionalString,
   })
   .strip()
-  .transform(({ blocks }) => {
+  .transform(({ blocks, diagramRegions, diagramForm }) => {
     const parsed: ClassifiedBlock[] = [];
     let malformed = 0;
     for (const raw of blocks) {
@@ -160,7 +169,7 @@ export const classifyResponseSchema = z
       if (result.success) parsed.push(result.data);
       else malformed++;
     }
-    return { blocks: parsed, malformed };
+    return { blocks: parsed, malformed, diagramRegions, diagramForm };
   });
 
 /**
