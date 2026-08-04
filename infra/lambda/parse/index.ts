@@ -7,7 +7,7 @@ import { UpstreamError } from "../ai/provider";
 import { type StudentContext, classify } from "./classify";
 import { disputedWords, mapDisputesToBlocks } from "./consensus";
 import { ensureRegionsCovered } from "./coverage";
-import { synthesiseDiagramBlock, visionDiagramRegions } from "./diagram";
+import { guardMermaid, synthesiseDiagramBlock, visionDiagramRegions } from "./diagram";
 import { reflow } from "./reflow";
 import { normaliseBbox } from "./schema";
 import { sanitise } from "./sanitise";
@@ -219,6 +219,13 @@ async function run(event: FunctionUrlEvent, responseStream: ResponseStream): Pro
       cleaned.corrections,
       classified.diagramForm,
     );
+    if (synthesised) {
+      // The Mermaid rebuild rides the structure call's response (P44) and is admitted only
+      // word-guarded — checked against the WHOLE page rather than the nominated regions,
+      // because the two models draw the drawing's boundary independently and a label the
+      // nomination missed is still the student's own word, not an invention.
+      synthesised.diagramSource = guardMermaid(structure.parsed.diagramMermaid, pageText);
+    }
     const classifiedBlocks = synthesised
       ? classified.blocks.filter((b) => b.kind !== "DIAGRAM")
       : classified.blocks;

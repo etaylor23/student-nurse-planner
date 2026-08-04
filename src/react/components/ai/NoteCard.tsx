@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useRepository } from "../../RepositoryContext";
 import { SHIFT_TYPE_LABEL } from "../../../domain/types";
+import { MermaidDiagram } from "../MermaidDiagram";
 
 /**
  * Renders the student's own note, **read from the local database by id** — never from the
@@ -19,6 +20,8 @@ interface Resolved {
   /** Absent for entities with no in-app route yet (a kept DIAGRAM) — the card still quotes. */
   to?: string;
   cta?: string;
+  /** A kept DIAGRAM's guarded Mermaid rebuild (P44), rendered fail-closed above the words. */
+  diagramSource?: string;
 }
 
 export function NoteCard({ type, id }: { type: string; id: string }) {
@@ -52,6 +55,11 @@ export function NoteCard({ type, id }: { type: string; id: string }) {
         From your notes
       </p>
       <p className="mt-1 text-xs font-medium text-slate-400">{note.heading}</p>
+      {note.diagramSource && (
+        <div className="mt-2">
+          <MermaidDiagram source={note.diagramSource} label="The drawing, rebuilt as a diagram" />
+        </div>
+      )}
       <p className="mt-2 whitespace-pre-wrap border-l-2 border-primary-200 pl-3 text-sm text-slate-700">
         {note.body}
       </p>
@@ -150,6 +158,7 @@ async function resolveNote(
       return {
         heading: `Drawing · ${formatDate(block.createdAt)} · kept with a photographed page`,
         body: block.text.trim(),
+        diagramSource: block.diagramSource,
       };
     }
     default:

@@ -281,6 +281,7 @@ async function main() {
     medicationCandidate?: string;
     disputedWords: string[];
     gibbs?: Record<string, string>;
+    diagramSource?: string;
     confidence: number;
     bbox?: Record<string, number>;
   }
@@ -317,6 +318,8 @@ async function main() {
     if (b.tags.length) console.log(`   tags: ${b.tags.join(", ")}`);
     if (b.medicationCandidate) console.log(`   medication: ${b.medicationCandidate}`);
     if (b.gibbs) console.log(`   gibbs: ${Object.keys(b.gibbs).join(", ")}`);
+    if (b.diagramSource)
+      console.log(`   mermaid:\n      ${b.diagramSource.replace(/\n/g, "\n      ")}`);
     if (b.disputedWords.length) console.log(`   ⚠ confirm: ${b.disputedWords.join("  ·  ")}`);
     console.log("");
   });

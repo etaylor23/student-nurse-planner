@@ -2,7 +2,7 @@ uploaded tests/pages/real-medications.png (256332 bytes downscaled)
 
 parsing s3://nurse-planner-captures-dev-641364901830/u/764262e4-e031-70be-0e16-72b6ddb9f89e/h/1d1015806b6cf51bb95eefb34da8a955a62abf647065cfab55b310b386f68fbd/page.jpg
 
-HTTP 200 in 66825ms
+HTTP 200 in 43916ms
 
 · stage: reading
 · stage: spellchecking
@@ -11,66 +11,65 @@ HTTP 200 in 66825ms
 pageDateRaw: null   wardHint: "Bay 4"
 corrections: H1T|HIT
 
-── BLOCK 1  MEDICATION → MED_LOG  selfConf=1
-   Furosemide 40mg OD — loop diuretic. Given for fluid overload / oedema in heart failure. Watch U&Es, it can drop potassium. Give it in the morning so they aren't up all night for the loo.
-   codes: 4.14, 4.15, B11.6, 1.8, 3.3  (first is pre-selected)
-   tags: drug round, heart failure, fluid overload
-   medication: Furosemide
+── BLOCK 1  DATE_HEADER → SHIFT_NOTES  selfConf=1
+   Meds - Bay 4 drug round
+   tags: drug round
 
 ── BLOCK 2  MEDICATION → MED_LOG  selfConf=1
-   Co-amoxiclav 625mg TDS — broad spectrum antibiotic (amoxicillin + clavulanic acid). For chest infections. Check penicillin allergy FIRST — ask every time, don't trust the chart.
-   codes: 4.15, 4.14, B11.6, 1.1, 2.12  (first is pre-selected)
-   tags: antibiotic, allergy check, chest infection
-   medication: Co-amoxiclav
+   Furosemide 40mg OD - loop diuretic. Given for fluid overload / oedema in heart failure. Watch U&Es, it can drop potassium. Give it in the morning so they aren't up all night for the loo.
+   codes: 4.14, 4.15, 3.3, B5.4  (first is pre-selected)
+   tags: heart failure, fluid balance
+   medication: Furosemide
 
 ── BLOCK 3  MEDICATION → MED_LOG  selfConf=1
-   Bisoprolol 2.5mg OD — beta blocker, slows the heart rate. Hold if HR under 50 or systolic under 100 and escalate. Don't stop it abruptly.
-   codes: 4.15, 4.14, B11.10, 4.10, 3.3  (first is pre-selected)
-   tags: beta blocker, heart rate, escalation
+   Co-amoxiclav 625mg TDS - broad spectrum antibiotic (amoxicillin + clavulanic acid). For chest infections. Check penicillin allergy FIRST - ask every time, don't trust the chart.
+   codes: 4.14, 4.15, 2.12, B11.6  (first is pre-selected)
+   tags: antibiotics, infection
+   medication: Co-amoxiclav
+
+── BLOCK 4  MEDICATION → MED_LOG  selfConf=1
+   Bisoprolol 2.5mg OD - beta blocker, slows the heart rate. Hold if HR under 50 or systolic under 100 and escalate. Don't stop it abruptly.
+   codes: 4.14, 4.15, 3.3, 4.10  (first is pre-selected)
+   tags: cardiac, heart failure
    medication: Bisoprolol
 
-── BLOCK 4  CLINICAL_SKILL → PROFICIENCY_EVENT  selfConf=1
+── BLOCK 5  CLINICAL_SKILL → PROFICIENCY_EVENT  selfConf=1
    ALL of these need a second checker on the round
-   codes: B11.6, 4.14, 1.1, 1.16  (first is pre-selected)
-   tags: second checker, drug round, safety
-
-── BLOCK 5  UNKNOWN  selfConf=1
-   Meds — Bay 4 drug round
+   codes: B11.6, 4.14, 1.1  (first is pre-selected)
+   tags: drug round, safety
 
 ── BLOCK 6  UNKNOWN  selfConf=1
-   Enoxaparin 40mg SC nocte — LMWH, VTE prophylaxis. Check the weight band and renal function.
-
-── BLOCK 7  UNKNOWN  selfConf=1
+   Enoxaparin 40mg SC nocte - LMWH, VTE prophylaxis. Check the weight band and renal function.
    Side effects:
    - bruising at the site
    - bleeding risk
    - rare: H1T (platelets drop) Rotate the injection sites.
 
 diagnostics: {
-  "totalMs": 66632,
+  "totalMs": 43723,
   "structure": {
     "model": "qwen.qwen3-vl-235b-a22b-instruct",
-    "ms": 8806,
+    "ms": 11883,
     "in": 1890,
-    "out": 659
+    "out": 705
   },
   "check": {
     "model": "google.gemma-3-27b-it",
-    "ms": 11662,
+    "ms": 12228,
     "missing": false
   },
   "sanitiser": {
-    "ms": 5908,
+    "ms": 22157,
     "failed": false,
     "applied": 1,
     "rejected": 0
   },
   "classifier": {
-    "ms": 48903,
+    "ms": 9219,
     "failed": false,
     "droppedBlocks": 1,
     "droppedCodes": 0
   },
   "disputes": 0,
-  "recoveredRegions": 3
+  "recoveredRegions": 1
 }

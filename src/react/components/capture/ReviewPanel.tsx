@@ -8,6 +8,7 @@ import {
 import type { GibbsStage, NoteBlock, NoteBlockTarget } from "../../../domain/types";
 import { seedProficiencies } from "../../../data/seed/proficiencies";
 import type { ShiftResolution } from "../../../logic/captureShift";
+import { MermaidDiagram } from "../MermaidDiagram";
 import { AllocateBar, UndoFiling } from "./AllocateBar";
 import { DESTINATION_KEYS, DestinationDropBar, DestinationTiles } from "./DestinationTiles";
 import { MedicationOffer } from "./MedicationOffer";
@@ -591,6 +592,19 @@ function BlockCard({
 
         {isDiagram ? (
           <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-slate-50 p-3.5 ring-1 ring-slate-200">
+            {block.diagramSource && (
+              <div className="w-full basis-full">
+                <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                  Rebuilt from your drawing
+                </p>
+                {/* Fail-closed: an unrenderable rebuild shows nothing, and the transcription
+                    above stays either way — a bad picture never costs content (P44). */}
+                <MermaidDiagram
+                  source={block.diagramSource}
+                  label="Your drawing, rebuilt as a diagram"
+                />
+              </div>
+            )}
             <p className="min-w-0 flex-1 text-[12.5px] leading-snug text-slate-600">
               This is a drawing, so its home is the photo itself — keeping it holds the drawing (and
               its words, for search) with this page. The notes it contains are their own cards

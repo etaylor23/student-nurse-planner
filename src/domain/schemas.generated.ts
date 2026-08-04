@@ -338,6 +338,7 @@ export const noteBlockSchema = entitySchema.extend(userOwnedSchema.shape).extend
     candidateCodes: z.string().optional(),
     suggestedTags: z.string().optional(),
     medicationCandidate: z.string().optional(),
+    diagramSource: z.string().optional(),
     groupId: z.string().optional(),
     shiftId: z.string().optional(),
     status: noteBlockStatusSchema,

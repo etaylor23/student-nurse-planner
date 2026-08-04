@@ -2,7 +2,7 @@ uploaded tests/pages/real-mixed-resp.png (221343 bytes downscaled)
 
 parsing s3://nurse-planner-captures-dev-641364901830/u/764262e4-e031-70be-0e16-72b6ddb9f89e/h/0f8745a69247d881b362251453e6b1512ba3d555dc55cb3bceb46e6e3c318566/page.jpg
 
-HTTP 200 in 46579ms
+HTTP 200 in 37037ms
 
 · stage: reading
 · stage: spellchecking
@@ -15,51 +15,51 @@ pageDateRaw: "Wed 20/8"   wardHint: "resp ward"
 
 ── BLOCK 2  MEDICATION → MED_LOG  selfConf=1
    Salbutamol neb 5mg PRN - short acting beta agonist, opens the airways. Watch for tremor and tachycardia, it's not a sign anything is wrong. Mrs in bed 5 was shaky after two back to back and got upset because she thought it meant her heart was failing. I sat with her and explained it and she settled. I should have warned her BEFORE the second neb.
-   codes: 4.15, 1.11, 4.3, 1.17, 2.9  (first is pre-selected)
+   codes: 4.15, 4.14, B8.5, 1.11, B11.10  (first is pre-selected)
    tags: respiratory
    medication: Salbutamol
+   gibbs: DESCRIPTION, FEELINGS, EVALUATION, ANALYSIS, ACTION_PLAN
 
 ── BLOCK 3  CLINICAL_SKILL → PROFICIENCY_EVENT  selfConf=1
    Peak flow technique - sit up, full breath in, tight seal, hard fast blow. Best of 3. I coached bed 5 through it and her numbers went up 60 L/min once she stopped puffing her cheeks. Recorded on the chart.
-   codes: B8.3, 3.11, 1.16, A1.8, 4.5  (first is pre-selected)
+   codes: B8.3, 1.16, B2.1, A1.8  (first is pre-selected)
    tags: respiratory
 
 ── BLOCK 4  MEDICATION → MED_LOG  selfConf=1
    Prednisolone 30mg OD for 5 days - steroid, reduces airway inflammation. Take it in the morning with food. Don't stop suddenly if the course is long.
-   codes: 4.15, 4.14, 2.10  (first is pre-selected)
+   codes: 4.15, 4.14, B11.2, B11.6  (first is pre-selected)
    tags: respiratory
    medication: Prednisolone
 
 ── BLOCK 5  CLINICAL_SKILL → PROFICIENCY_EVENT  selfConf=1
    Oxygen - target range written on the chart, 88-92% for the COPD patients. Never just crank it up.
-   codes: B8.2, 4.5, 3.3, 4.10  (first is pre-selected)
+   codes: B8.2, 4.5, 3.3, B2.1  (first is pre-selected)
    tags: respiratory
 
 ── BLOCK 6  TODO → SHIFT_NOTES  selfConf=1
    ask about a spirometry study day
-   tags: respiratory
 
 diagnostics: {
-  "totalMs": 46408,
+  "totalMs": 36825,
   "structure": {
     "model": "qwen.qwen3-vl-235b-a22b-instruct",
-    "ms": 9964,
+    "ms": 10108,
     "in": 1890,
-    "out": 617
+    "out": 779
   },
   "check": {
     "model": "google.gemma-3-27b-it",
-    "ms": 9086,
+    "ms": 9209,
     "missing": false
   },
   "sanitiser": {
-    "ms": 6329,
+    "ms": 15147,
     "failed": false,
     "applied": 0,
     "rejected": 0
   },
   "classifier": {
-    "ms": 29966,
+    "ms": 11429,
     "failed": false,
     "droppedBlocks": 0,
     "droppedCodes": 0

@@ -225,6 +225,7 @@ export function useCapture() {
             candidateCodes: b.candidateCodes.join(","),
             suggestedTags: b.tags.join(","),
             medicationCandidate: b.medicationCandidate,
+            diagramSource: b.diagramSource,
             groupId: b.groupKey,
             status: "PENDING",
             targetType: b.targetType as NoteBlockTarget | undefined,

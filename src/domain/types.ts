@@ -641,6 +641,10 @@ export interface NoteBlock extends Entity, UserOwned, Created, Updated {
   suggestedTags?: string;
   /** A matched `Medication.id`, or a name to offer creating a card for (P33). */
   medicationCandidate?: string;
+  /** DIAGRAM blocks only (P44): Mermaid source rebuilding the drawing's structure, generated
+   *  by the vision model from the photo and guarded so it can't carry invented labels. The
+   *  UI renders it fail-closed — an unrenderable source falls back to the transcription. */
+  diagramSource?: string;
   groupId?: string; // blocks that belong together share this (P10)
   shiftId?: string; // defaults to the capture's, individually overridable (P6)
   status: NoteBlockStatus;

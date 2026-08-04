@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { synthesiseDiagramBlock, visionDiagramRegions } from "../infra/lambda/parse/diagram";
+import {
+  guardMermaid,
+  synthesiseDiagramBlock,
+  visionDiagramRegions,
+} from "../infra/lambda/parse/diagram";
 import type { VisionBlock } from "../infra/lambda/parse/schema";
 
 /**
@@ -84,5 +88,35 @@ describe("visionDiagramRegions — the primary nomination (P43)", () => {
 
   it("returns nothing when vision hinted no drawing", () => {
     expect(visionDiagramRegions([vb("OBSERVATION"), vb()])).toEqual([]);
+  });
+});
+
+describe("guardMermaid — the rebuild may add structure, never words (P44)", () => {
+  const page =
+    "SEPSIS SIX within 1 hour\n1. O2 — keep sats 94-98%\n2. blood cultures BEFORE abx\nred flag: lactate over 2";
+
+  it("admits a mindmap built from the page's own words", () => {
+    const src = [
+      "mindmap",
+      "  root((SEPSIS SIX within 1 hour))",
+      "    1. O2 — keep sats 94-98%",
+      "    2. blood cultures BEFORE abx",
+    ].join("\n");
+    expect(guardMermaid(src, page)).toBe(src);
+  });
+
+  it("admits flowchart syntax and node ids, which are legitimately model-invented", () => {
+    const src = 'flowchart TD\n  A["SEPSIS SIX"] --> B["blood cultures BEFORE abx"]';
+    expect(guardMermaid(src, page)).toBe(src);
+  });
+
+  it("refuses a rebuild containing a word the page does not have", () => {
+    const src = "mindmap\n  root((SEPSIS SIX))\n    give adrenaline immediately";
+    expect(guardMermaid(src, page)).toBeUndefined();
+  });
+
+  it("refuses empty or absent sources", () => {
+    expect(guardMermaid(undefined, page)).toBeUndefined();
+    expect(guardMermaid("   ", page)).toBeUndefined();
   });
 });

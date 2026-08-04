@@ -37,6 +37,46 @@ export function visionDiagramRegions(blocks: VisionBlock[]): number[] {
  * rightly dropped by the invention guard. Synthesis has neither failure mode: the text is
  * the regions' own words in page order, with the sanitiser's validated swaps replayed.
  */
+/** Mermaid structural vocabulary — words the source needs that are never on the page. */
+const MERMAID_SYNTAX = new Set([
+  "mindmap",
+  "flowchart",
+  "graph",
+  "subgraph",
+  "end",
+  "td",
+  "lr",
+  "tb",
+  "rl",
+  "bt",
+  "root",
+]);
+
+/**
+ * Admit the vision model's Mermaid rebuild (P44) only if every word in it was written on
+ * the page. The model rebuilds STRUCTURE — nesting, arrows — which is exactly what the
+ * transcription guards can't see, so this is the same invention boundary applied to the
+ * one thing it is allowed to add: syntax. Node ids in `flowchart` (`A[label]`) and quoting
+ * are stripped before checking; a failure returns undefined and the UI falls back to the
+ * transcription. Fail closed, never fail wrong.
+ */
+export function guardMermaid(mermaid: string | undefined, pageText: string): string | undefined {
+  const source = mermaid?.trim();
+  if (!source) return undefined;
+  const words = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .split(/\s+/)
+      .filter(Boolean);
+  const pageWords = new Set(words(pageText));
+  // Strip flowchart node ids: `A[...]`, `B2(...)`, `C{...}` — the id is model-invented and
+  // legitimate; the label inside is what must come from the page.
+  const withoutIds = source.replace(/(^|[\s>-])[A-Za-z][A-Za-z0-9_]*(?=[[({])/g, "$1");
+  const foreign = words(withoutIds).filter((w) => !pageWords.has(w) && !MERMAID_SYNTAX.has(w));
+  return foreign.length === 0 ? source : undefined;
+}
+
 export function synthesiseDiagramBlock(
   diagramRegions: number[],
   regions: string[],

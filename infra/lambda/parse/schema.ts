@@ -40,6 +40,9 @@ export const visionResponseSchema = z
     /** Never normalised — the model must return the date AS WRITTEN (P8). */
     pageDateRaw: z.string().nullable().optional(),
     wardHint: z.string().nullable().optional(),
+    /** Mermaid source rebuilding the page's drawn structure, when there is one (P44).
+     *  Guarded downstream — never trusted to contain only the page's words. */
+    diagramMermaid: nullishTo(z.string()),
     blocks: z.array(visionBlockSchema),
   })
   .strip();
@@ -58,6 +61,7 @@ export interface VisionBlock {
 export interface VisionResponse {
   pageDateRaw?: string | null;
   wardHint?: string | null;
+  diagramMermaid?: string;
   blocks: VisionBlock[];
 }
 
@@ -160,6 +164,8 @@ export interface ClassifiedBlock {
   tags: string[];
   medicationCandidate?: string;
   gibbs?: Record<string, string>;
+  /** DIAGRAM blocks only (P44): guarded Mermaid source, attached at synthesis. */
+  diagramSource?: string;
 }
 
 /**

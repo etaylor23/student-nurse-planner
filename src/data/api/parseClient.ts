@@ -23,6 +23,8 @@ export interface ParsedBlockView {
   tags: string[];
   medicationCandidate?: string;
   gibbs?: Record<string, string>;
+  /** DIAGRAM blocks only (P44): guarded Mermaid source rebuilding the drawing. */
+  diagramSource?: string;
   bbox: { x0: number; y0: number; x1: number; y1: number };
   rotationDeg: number;
   /** Self-reported. Stored for observability, gates nothing (P22). */
