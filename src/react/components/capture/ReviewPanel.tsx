@@ -18,7 +18,14 @@ import { ProficiencyPicker } from "./ProficiencyPicker";
 import { ProgressSpine } from "./ProgressSpine";
 import { ShiftChip } from "./ShiftBar";
 import { WorthACheck } from "./WorthACheck";
-import { hasOpenDispute, isSettled, isTypingTarget, list, pendingBlocks } from "./blockState";
+import {
+  diagramContaining,
+  hasOpenDispute,
+  isSettled,
+  isTypingTarget,
+  list,
+  pendingBlocks,
+} from "./blockState";
 import { useWideScreen } from "./useWideScreen";
 
 /**
@@ -103,6 +110,12 @@ function relativeDay(iso: string): string {
 }
 
 const PREVIEW_CHARS = 78;
+
+/** Photo-pane width bounds (% of the review body) and where the preference lives. */
+const PANE_MIN = 20;
+const PANE_MAX = 60;
+const PANE_DEFAULT = 30;
+const PANE_FRAC_KEY = "pm-review-pane-frac";
 
 /**
  * The one-line version of a note, for a collapsed row.
@@ -830,6 +843,56 @@ export function ReviewPanel({
   const [pageOpen, setPageOpen] = useState(false);
 
   /**
+   * The photo pane's width as a % of the body, draggable (and remembered) because pages and
+   * drawings vary: a dense page wants a big map, a familiar one wants more card. Clamped to
+   * [20, 60] — below 20 the photo stops being legible, above 60 the cards do.
+   */
+  const [paneFrac, setPaneFrac] = useState<number>(() => {
+    const stored = Number(localStorage.getItem(PANE_FRAC_KEY));
+    return Number.isFinite(stored) && stored >= PANE_MIN && stored <= PANE_MAX
+      ? stored
+      : PANE_DEFAULT;
+  });
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const setFrac = (next: number) => {
+    const clamped = Math.min(PANE_MAX, Math.max(PANE_MIN, Math.round(next)));
+    setPaneFrac(clamped);
+    localStorage.setItem(PANE_FRAC_KEY, String(clamped));
+  };
+  const startPaneDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const body = bodyRef.current;
+    if (!body) return;
+    const rect = body.getBoundingClientRect();
+    const move = (ev: PointerEvent) => setFrac(((ev.clientX - rect.left) / rect.width) * 100);
+    const stop = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", stop);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", stop);
+  };
+
+  /** The drawing the focused note is part of, if any (P43/P44) — pinned under the photo so
+   *  it stays on screen while its branches are being filed, active branch highlighted. */
+  const focusedBlock = blocks.find((b) => b.id === focusId);
+  const memberDiagram = focusedBlock ? diagramContaining(focusedBlock, blocks) : undefined;
+  const pinnedSource = memberDiagram?.diagramSource;
+  const [diagramZoom, setDiagramZoom] = useState(false);
+  useEffect(() => {
+    if (!diagramZoom) return;
+    // Capture phase + stopPropagation: Escape puts the OVERLAY away, and must not fall
+    // through to the capture modal's own Escape handler and close the whole window.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      setDiagramZoom(false);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [diagramZoom]);
+
+  /**
    * Focus always names a note the student can still act on.
    *
    * Restored here rather than inside each handler: filing, dismissing, undoing and a second
@@ -1062,12 +1125,51 @@ export function ReviewPanel({
       )}
 
       <div
-        className={`grid items-start ${imageUrl ? "grid-cols-1 lg:grid-cols-[340px_1fr]" : "grid-cols-1"}`}
+        ref={bodyRef}
+        className="grid grid-cols-1 items-start"
+        // The photo column is student-sized (dragged, remembered); the 10px track is the
+        // handle. Inline because Tailwind can't express a runtime fraction.
+        style={wide && imageUrl ? { gridTemplateColumns: `${paneFrac}% 10px 1fr` } : undefined}
       >
         {imageUrl && (
-          <aside className="min-w-0 border-b border-slate-100 bg-slate-50 p-5 lg:border-b-0 lg:border-r">
+          <aside className="min-w-0 border-b border-slate-100 bg-slate-50 p-5 lg:border-b-0">
             {wide ? (
-              <PagePreview imageUrl={imageUrl} blocks={blocks} focusId={focusId} onFocus={focus} />
+              <>
+                <PagePreview
+                  imageUrl={imageUrl}
+                  blocks={blocks}
+                  focusId={focusId}
+                  onFocus={focus}
+                />
+                {pinnedSource && memberDiagram && (
+                  <div className="mt-5">
+                    <div className="mb-2 flex items-baseline justify-between">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                        From your drawing
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setDiagramZoom(true)}
+                        className="text-[11px] font-semibold text-secondary-700 hover:underline"
+                      >
+                        Enlarge
+                      </button>
+                    </div>
+                    {/* A landscape drawing in a thin column is a mini-map, not the artwork:
+                        it scales to fit, the active branch glows, and Enlarge (or dragging
+                        the divider) is the route to full size. */}
+                    <MermaidDiagram
+                      source={pinnedSource}
+                      highlight={focusedBlock?.text}
+                      label="The drawing this note is part of, rebuilt as a diagram"
+                    />
+                    <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+                      This note is one branch of the drawing — the outlined node is the one
+                      you&apos;re on.
+                    </p>
+                  </div>
+                )}
+              </>
             ) : (
               <>
                 <button
@@ -1092,9 +1194,45 @@ export function ReviewPanel({
                     />
                   </div>
                 )}
+                {/* Narrow screens have no pinned column, so the drawing rides with the
+                    focused branch here instead — same mini-map, same highlight. */}
+                {pinnedSource && (
+                  <div className="mt-3">
+                    <MermaidDiagram
+                      source={pinnedSource}
+                      highlight={focusedBlock?.text}
+                      label="The drawing this note is part of, rebuilt as a diagram"
+                    />
+                  </div>
+                )}
               </>
             )}
           </aside>
+        )}
+
+        {wide && imageUrl && (
+          /* The divider IS the width control: pointer-drag or arrow keys, remembered per
+             device. A separator role because that is literally what it is. */
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize the photo pane"
+            aria-valuenow={paneFrac}
+            aria-valuemin={PANE_MIN}
+            aria-valuemax={PANE_MAX}
+            tabIndex={0}
+            onPointerDown={startPaneDrag}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowLeft") setFrac(paneFrac - 3);
+              if (e.key === "ArrowRight") setFrac(paneFrac + 3);
+            }}
+            className="group flex h-full cursor-col-resize items-stretch justify-center border-r border-slate-100 bg-slate-50 focus:outline-none focus-visible:bg-primary-100"
+          >
+            <span
+              aria-hidden="true"
+              className="my-6 w-[3px] rounded-full bg-slate-200 transition-colors group-hover:bg-slate-400"
+            />
+          </div>
         )}
 
         <div className="min-w-0 p-6">
@@ -1141,6 +1279,41 @@ export function ReviewPanel({
       {/* Lanes were right that dragging needs somewhere to drop, and wrong about everything
           else: there is nothing to drop until you pick a note up. Not rendered below `lg` —
           touch drag is unreliable and the tiles already do the job (P35). */}
+      {/* The mini-map, at size — for when a landscape drawing deserves more than a thin
+          column. Esc, the ✕ or clicking the backdrop put it away. */}
+      {diagramZoom && pinnedSource && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-6"
+          onClick={() => setDiagramZoom(false)}
+        >
+          <div
+            role="dialog"
+            aria-label="Your drawing, enlarged"
+            className="max-h-full w-full max-w-4xl overflow-auto rounded-2xl bg-white p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                Rebuilt from your drawing
+              </p>
+              <button
+                type="button"
+                onClick={() => setDiagramZoom(false)}
+                aria-label="Close"
+                className="flex h-8 w-8 items-center justify-center rounded-[9px] text-slate-400 hover:bg-slate-100 hover:text-ink"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+            <MermaidDiagram
+              source={pinnedSource}
+              highlight={focusedBlock?.text}
+              label="The drawing this note is part of, rebuilt as a diagram"
+            />
+          </div>
+        </div>
+      )}
+
       {dragging && wide && (
         <DestinationDropBar
           over={over}

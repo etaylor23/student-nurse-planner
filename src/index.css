@@ -310,3 +310,26 @@
     transform: none;
   }
 }
+
+/* Mermaid rebuilds of drawn diagrams (note capture P44, MermaidDiagram.tsx).
+   The active node mirrors the photo overlay's focus treatment: ink outline on the one
+   being worked on, the rest stepped back. Class toggles only — never a re-render. */
+.pm-mermaid .pm-mm-active > rect,
+.pm-mermaid .pm-mm-active > path,
+.pm-mermaid .pm-mm-active > circle,
+.pm-mermaid .pm-mm-active > polygon {
+  stroke: var(--color-ink);
+  stroke-width: 3px;
+}
+.pm-mermaid.pm-has-active g.mindmap-node:not(.pm-mm-active),
+.pm-mermaid.pm-has-active g.node:not(.pm-mm-active) {
+  opacity: 0.45;
+  transition: opacity 150ms ease-out;
+}
+.pm-mermaid g.mindmap-node,
+.pm-mermaid g.node {
+  transition: opacity 150ms ease-out;
+}
+.pm-mermaid path.edge {
+  opacity: 0.3;
+}

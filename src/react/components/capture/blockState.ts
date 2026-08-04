@@ -47,6 +47,28 @@ export function pendingBlocks(blocks: NoteBlock[]): NoteBlock[] {
 }
 
 /**
+ * The DIAGRAM block whose drawing this block is part of, if any (P43/P44).
+ *
+ * Membership is decided by REGIONS, not geometry: every block records which vision regions
+ * it drew from, and the diagram's `fromRegions` is exactly the drawing's member set — so
+ * "spoke 6 sits inside the map" is a set intersection. A bbox-containment check was
+ * considered and rejected: the union box can straddle a rotated margin note that was never
+ * part of the drawing. Same page only — a capture can hold several photos.
+ */
+export function diagramContaining(block: NoteBlock, blocks: NoteBlock[]): NoteBlock | undefined {
+  if (block.kind === "DIAGRAM") return undefined;
+  const mine = list(block.fromRegions);
+  if (mine.length === 0) return undefined;
+  return blocks.find(
+    (d) =>
+      d.kind === "DIAGRAM" &&
+      d.status !== "DISMISSED" &&
+      d.imageIndex === block.imageIndex &&
+      list(d.fromRegions).some((r) => mine.includes(r)),
+  );
+}
+
+/**
  * True when a key press is the student typing rather than reaching for a shortcut.
  *
  * The review shortcuts are bound on `window`, because the thing they act on is the focused
