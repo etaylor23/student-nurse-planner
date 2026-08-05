@@ -20,6 +20,7 @@ import { ShiftChip } from "./ShiftBar";
 import { WorthACheck } from "./WorthACheck";
 import {
   diagramContaining,
+  firstRegion,
   hasOpenDispute,
   isSettled,
   isTypingTarget,
@@ -1025,13 +1026,6 @@ export function ReviewPanel({
   }
 
   const hasMeta = !!cachedFrom || corrections.length > 0 || !!shift || !!pageDateRaw;
-
-  /** First region index, for placing a drawing at its page position — synthesised DIAGRAM
-   *  blocks are appended after everything, but their drawing sits mid-page. */
-  const firstRegion = (b: NoteBlock) => {
-    const first = Number(list(b.fromRegions)[0]);
-    return Number.isFinite(first) ? first : Number.MAX_SAFE_INTEGER;
-  };
 
   /** Drag props for a row's <li>. Drag is never the only route — the tiles in the card and
    *  the keys `1`–`4` both do the same thing. A filed note doesn't drag: the real row

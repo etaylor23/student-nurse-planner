@@ -9,6 +9,7 @@ import { ShiftMedicationsTab } from "./shift/ShiftMedicationsTab";
 import { ShiftSkillsTab } from "./shift/ShiftSkillsTab";
 import { ShiftReflectionsTab } from "./shift/ShiftReflectionsTab";
 import { ShiftEvidenceTab } from "./shift/ShiftEvidenceTab";
+import { ShiftDrawingsTab, useShiftDrawings } from "./shift/ShiftDrawingsTab";
 import { ShiftProgressBanner } from "./shift/ShiftProgressBanner";
 
 type NewShift = { date: string; startTime?: string; endTime?: string };
@@ -74,6 +75,9 @@ export function ShiftModal({
   const [bannerDismissed, setBannerDismissed] = useState(false);
   // The "Shift" tab's form reports unsaved edits here; only true while that tab is mounted.
   const [formDirty, setFormDirty] = useState(false);
+  // Kept drawings decide whether the Drawings tab exists at all (H1), so they're loaded here
+  // and handed to the tab — one read per modal, not one per tab visit.
+  const drawings = useShiftDrawings(shift?.id);
 
   // Confirm before throwing away unsaved core-field edits. Returns true to proceed.
   const confirmDiscard = useCallback(
@@ -147,6 +151,9 @@ export function ShiftModal({
     { to: `${base}/skills`, label: "Skills" },
     { to: `${base}/reflection`, label: "Reflections" },
     { to: `${base}/competencies`, label: "Competency evidence" },
+    // Drawings kept with a photographed page (H1) — a tab only when there are some, since
+    // most shifts have none and an always-empty tab reads as a feature that's broken.
+    ...(drawings.length > 0 ? [{ to: `${base}/drawings`, label: "Drawings" }] : []),
   ];
 
   // The shift's core fields — the "Shift" tab (index route), and the whole body in
@@ -305,6 +312,9 @@ export function ShiftModal({
               <Route path="skills/*" element={<ShiftSkillsTab shift={shift} />} />
               <Route path="reflection/*" element={<ShiftReflectionsTab shift={shift} />} />
               <Route path="competencies" element={<ShiftEvidenceTab shift={shift} />} />
+              {/* Registered whatever the count, so a link that arrives before the drawings
+                  have loaded lands on the tab (empty for a moment) instead of bouncing. */}
+              <Route path="drawings" element={<ShiftDrawingsTab drawings={drawings} />} />
               <Route path="*" element={<Navigate to={base} replace />} />
             </Routes>
           ) : (

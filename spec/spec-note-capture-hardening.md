@@ -1,4 +1,4 @@
-# Note capture — wrap-up & hardening spec
+# Note capture — wrap-up & hardening spec  (Status: PHASE 2 (H1–H3) BUILT + verified; H4/H5 in flight elsewhere; H6–H12 next)
 
 Locked with Ellis 2026-08-05, after P43–P45 (diagrams, mermaid rebuilds, sub-blocks)
 shipped. Two jobs: **round off** what the diagram work opened, then **harden and speed up
@@ -50,7 +50,7 @@ pulling a margin note into a drawing's block text (the mermaid rebuilds exclude 
 ## Build order
 
 1. **Defects first** (H4, H5) — *running in their own sessions; here we only verify.* Gate: corpus page `real-haematology-meds` shows disputes again on a run where gemma succeeds, AND shows the unchecked chip on a run where it fails (forced via env); sanitiser guard regression tests green.
-2. **Kept-drawing home** (H1–H3) — domain read paths only, no parse changes. Gate: keep the heart-failure flowchart against a shift → it renders in the shift's Drawings tab with sub-block states; recall quote links to it.
+2. **Kept-drawing home** (H1–H3) — domain read paths only, no parse changes. Gate: keep the heart-failure flowchart against a shift → it renders in the shift's Drawings tab with sub-block states; recall quote links to it. **DONE 2026-08-05** — gate met in the browser on the real corpus (sepsis mindmap kept against Fri 7 Aug: rebuild + transcription + one sub-note `Filed as Shift notes` beside six `Stored in the drawing`; the recall card's "Open this shift's drawings" lands on the tab). It also surfaced a live defect: `subBlocksOf` compared region indices without scoping to the capture — invisible while review (one capture at a time) was the only caller, and enough to make a drawing swallow every other page's notes the moment a shift surface handed it the student's whole block list.
 3. **Hardening** (H7, H8, H9). Gate: kill the network mid-upload and mid-parse in the browser → both recover; parse counter visible in DynamoDB and enforced.
 4. **Performance** (H10–H12). Gate: a two-page capture's wall-clock beats sequential by roughly one upload+downscale; main thread stays responsive during downscale (no long tasks > 100ms from the encode).
 5. **Tooling** (H6), any time — it's independent.

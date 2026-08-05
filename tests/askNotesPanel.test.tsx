@@ -59,13 +59,43 @@ const shift = {
   updatedAt: "2026-03-02T08:00:00.000Z",
 };
 
+/** A kept drawing (P43) with its Mermaid rebuild, as `persistBlocks` writes one. */
+const keptDrawing = {
+  id: "d1",
+  userId: "u1",
+  captureId: "c1",
+  imageIndex: 0,
+  fromRegions: "3,4,5",
+  rawText: "Sepsis six — bloods, cultures, lactate",
+  text: "Sepsis six — bloods, cultures, lactate",
+  kind: "DIAGRAM" as const,
+  confidence: 1,
+  bboxX0: 0.1,
+  bboxY0: 0.1,
+  bboxX1: 0.9,
+  bboxY1: 0.6,
+  rotationDeg: 0,
+  diagramSource: "mindmap\n  root((Sepsis six))",
+  status: "KEPT" as const,
+  createdAt: "2026-08-04T10:00:00.000Z",
+  updatedAt: "2026-08-04T10:00:00.000Z",
+};
+
+// The rebuild's renderer is stubbed — mermaid is a 1.5 MB lazy import whose own fail-closed
+// contract (P44) isn't what these tests are about.
+vi.mock("../src/react/components/MermaidDiagram", () => ({
+  MermaidDiagram: ({ label }: { label: string }) => <div aria-label={label} />,
+}));
+
 let user: Record<string, unknown> | null = { id: "u1", aiFirstUsedAt: "2026-01-01T00:00:00Z" };
 const getShift = vi.fn().mockResolvedValue(shift);
+const listNoteBlocks = vi.fn().mockResolvedValue([keptDrawing]);
+const listNoteCaptures = vi.fn().mockResolvedValue([{ id: "c1", shiftId: "s1" }]);
 // STABLE identity, deliberately: `NoteCard` lists `repo` in its effect deps, so a mock
 // that rebuilt this object per render would re-fetch → setState → re-render forever.
 // The real provider memoises the repository, so this mirrors production rather than
 // papering over it. (Found the hard way: the first version OOM'd the test worker.)
-const repo = { getShift };
+const repo = { getShift, listNoteBlocks, listNoteCaptures };
 const reloadUser = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("../src/react/RepositoryContext", () => ({
@@ -104,6 +134,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   listThreads.mockResolvedValue([]);
   getShift.mockResolvedValue(shift);
+  listNoteBlocks.mockResolvedValue([keptDrawing]);
+  listNoteCaptures.mockResolvedValue([{ id: "c1", shiftId: "s1" }]);
 });
 
 // ---- Tests ------------------------------------------------------------------------
@@ -155,6 +187,38 @@ describe("AskNotesPanel — asking and streaming", () => {
 
     await waitFor(() => expect(screen.getByText(/Ghost:/)).toBeInTheDocument());
     expect(screen.queryByText("From your notes")).not.toBeInTheDocument();
+  });
+
+  it("links a kept drawing to its shift's Drawings tab (H1/H3)", async () => {
+    askImpl = (_q, _t, h) => {
+      h.onMeta({ threadId: "t1", messageId: "m1" });
+      h.onDelta('You drew: <note ref="DIAGRAM:d1"/>');
+      h.onDone({ stopReason: "end_turn" });
+    };
+    renderPanel();
+    await ask("sepsis?");
+
+    expect(await screen.findByText(/bloods, cultures, lactate/)).toBeInTheDocument();
+    expect(screen.getByLabelText("The drawing, rebuilt as a diagram")).toBeInTheDocument();
+    // The capture is attached to s1, so the drawing has a home to open.
+    expect(screen.getByRole("link", { name: /Open this shift's drawings/ })).toHaveAttribute(
+      "href",
+      "/planner/s1/drawings",
+    );
+  });
+
+  it("quotes an unanchored drawing without a link — a lecture page has no shift (H2)", async () => {
+    listNoteCaptures.mockResolvedValue([{ id: "c1" }]);
+    askImpl = (_q, _t, h) => {
+      h.onMeta({ threadId: "t1", messageId: "m1" });
+      h.onDelta('You drew: <note ref="DIAGRAM:d1"/>');
+      h.onDone({ stopReason: "end_turn" });
+    };
+    renderPanel();
+    await ask("sepsis?");
+
+    expect(await screen.findByText(/bloods, cultures, lactate/)).toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
   it("turns a <more/> tag into a search link on the authority's own site", async () => {

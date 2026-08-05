@@ -17,7 +17,8 @@ import { MermaidDiagram } from "../MermaidDiagram";
 interface Resolved {
   heading: string;
   body: string;
-  /** Absent for entities with no in-app route yet (a kept DIAGRAM) — the card still quotes. */
+  /** Absent when the note has nowhere to go — an unanchored drawing (H2) — and the card
+   *  quotes anyway: the words are the useful part either way. */
   to?: string;
   cta?: string;
   /** A kept DIAGRAM's guarded Mermaid rebuild (P44), rendered fail-closed above the words. */
@@ -151,14 +152,22 @@ async function resolveNote(
       };
     }
     case "DIAGRAM": {
-      // A kept drawing (P43). There is no captures browser yet, so the card quotes the
-      // transcription without a link — the words are the useful part.
       const block = (await repo.listNoteBlocks(userId)).find((b) => b.id === id);
       if (!block || block.status !== "KEPT" || !block.text.trim()) return null;
+      // A kept drawing lives on its shift's Drawings tab (H1/H3) — membership is the block's
+      // own shift, else its capture's (P6). A lecture page has no shift and stays linkless
+      // (H2); so does a drawing whose shift has since been deleted — the link is only offered
+      // once the destination is known to exist.
+      const captures = await repo.listNoteCaptures(userId);
+      const shiftId = block.shiftId || captures.find((c) => c.id === block.captureId)?.shiftId;
+      const shift = shiftId ? await repo.getShift(shiftId).catch(() => undefined) : undefined;
       return {
         heading: `Drawing · ${formatDate(block.createdAt)} · kept with a photographed page`,
         body: block.text.trim(),
         diagramSource: block.diagramSource,
+        ...(shift
+          ? { to: `/planner/${shift.id}/drawings`, cta: "Open this shift's drawings" }
+          : {}),
       };
     }
     default:
