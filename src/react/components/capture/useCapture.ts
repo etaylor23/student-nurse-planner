@@ -30,15 +30,18 @@ import type { NoteBlock, NoteBlockKind, NoteBlockTarget, NoteCapture } from "../
  *   3. each is presigned (which counts it against the daily cap, P17) then PUT direct to S3;
  *   4. the `NoteCapture` row records the keys, in upload order (P20).
  *
- * Photos upload **sequentially**, one at a time. A capture is a notebook session, so several
- * pages is normal, but a ward connection handles one 700 KB PUT far better than five at once
- * — and a mid-run failure then leaves a capture with the pages that did land rather than an
- * indeterminate mess.
+ * Photos upload **one at a time**. A capture is a notebook session, so several pages is normal,
+ * but a ward connection handles one 700 KB PUT far better than five at once — and a mid-run
+ * failure then leaves a capture with the pages that did land rather than an indeterminate mess.
  *
- * After the uploads, each photo is parsed (P12) and the capture moves to REVIEW. Parsing is
- * kept strictly separate from uploading: the photos are already durable by then, so a parse
- * failure must never lose them — a two-page capture whose second page failed still has a
- * first page worth reviewing.
+ * Each photo is then parsed (P12) and the capture moves to REVIEW. Parsing is kept strictly
+ * separate from uploading: the photos are already durable by then, so a parse failure must never
+ * lose them — a two-page capture whose second page failed still has a first page worth reviewing.
+ *
+ * **The two sides overlap** (hardening H10/H12): page N+1's downscale, hash, presign and upload
+ * run while page N is being read, so a multi-page capture costs one upload plus the parses rather
+ * than every upload plus every parse. Parses themselves stay sequential and in page order — the
+ * progress UI is per-page, and two at once would double the exposure to a Bedrock throttle.
  */
 
 export type CaptureStage =
@@ -144,6 +147,28 @@ function messageFor(err: unknown): string {
 
 /** Re-sign the page URL a quarter of an hour before the server's hour is up. */
 const PAGE_URL_REFRESH_MS = 45 * 60 * 1000;
+
+/**
+ * One uploaded page, ready to read. `capture` rides along because each upload updates the row's
+ * `imageKeys` as it lands (so an interrupted run keeps what did upload, H9) and the parse loop
+ * needs the current version of the row it is about to write against.
+ */
+interface PageToParse {
+  key: string;
+  imageIndex: number;
+  cached?: ParseResponse;
+  parsedAt?: string;
+  capture?: NoteCapture;
+}
+
+/**
+ * One page the pipeline hasn't touched yet. A thunk rather than a blob so the decode + encode
+ * happens inside the pipeline step (H12) — a fresh photo downscales there, and a re-read (P41)
+ * hands back the bytes it already has.
+ */
+interface PageSource {
+  get: () => Promise<DownscaleResult>;
+}
 
 /** What a retry is retrying, in the student's terms (H7). Never the hop's internal name. */
 const RETRY_WHAT: Record<string, string> = {
@@ -317,11 +342,17 @@ export function useCapture() {
    * relies on: a page that can't be read is a page that can be read again later, never a lost
    * photo. `alreadyRead` counts pages recovery is skipping, so the progress line and the page
    * count still describe the whole capture.
+   *
+   * Pages arrive as PROMISES, one per page, so this can start reading page one while page two
+   * is still uploading (H10). Parses stay strictly sequential and in order — the progress UI is
+   * per-page and two parses at once would double our exposure to a Bedrock throttle. A page
+   * that resolves to `undefined` means the upload side stopped (a cap, a failure): everything
+   * read so far is kept and the loop ends.
    */
   const runParses = useCallback(
     async (
       start: NoteCapture,
-      pages: { key: string; cached?: ParseResponse; parsedAt?: string; imageIndex: number }[],
+      pages: Promise<PageToParse | undefined>[],
       opts: { alreadyRead?: ParseResponse[] } = {},
     ) => {
       let capture = start;
@@ -339,9 +370,13 @@ export function useCapture() {
       }));
 
       for (let i = 0; i < pages.length; i++) {
-        const { key, imageIndex } = pages[i];
         setState((s) => ({ ...s, stage: "parsing", progress: { current: i + 1, total } }));
         try {
+          // Usually already resolved — the upload ran during the previous page's parse.
+          const uploaded = await pages[i];
+          if (!uploaded) break;
+          const { key, imageIndex } = uploaded;
+          capture = uploaded.capture ?? capture;
           const { wire, known } = await localContext();
           setState((s) => ({ ...s, known }));
           const held: { page: ParseResponse | null; error: { message: string } | null } = {
@@ -351,7 +386,7 @@ export function useCapture() {
 
           // A page we've read before skips all four model calls (P41). The cached parse is
           // what was FIRST presented — before any editing or filing, which live on the rows.
-          const fromCache = pages[i].cached;
+          const fromCache = uploaded.cached;
           if (fromCache) {
             held.page = {
               ...fromCache,
@@ -360,7 +395,7 @@ export function useCapture() {
                 tags: reconcileTags(b.tags, wire.tagLabels ?? []),
               })),
             };
-            setState((s) => ({ ...s, cachedFrom: pages[i].parsedAt ?? "earlier" }));
+            setState((s) => ({ ...s, cachedFrom: uploaded.parsedAt ?? "earlier" }));
           } else if (parser)
             await parser.parse(
               {
@@ -473,9 +508,9 @@ export function useCapture() {
    * from the UI that actually showed it.
    */
   const runCapture = useCallback(
-    async (pages: DownscaleResult[], opts: { piiAcknowledged: boolean; refresh?: boolean }) => {
-      if (pages.length === 0) return;
-      setState({ stage: "uploading", progress: { current: 1, total: pages.length } });
+    async (sources: PageSource[], opts: { piiAcknowledged: boolean; refresh?: boolean }) => {
+      if (sources.length === 0) return;
+      setState({ stage: "uploading", progress: { current: 1, total: sources.length } });
 
       // The row is created FIRST so the capture id is the one the object keys are built
       // from — that keeps the S3 prefix and the row in step even if an upload fails
@@ -493,17 +528,33 @@ export function useCapture() {
         return;
       }
 
-      // One entry per page, in upload order (P20). `cached` is set when this exact page has
-      // been read before (P41) — nothing was uploaded and no model will run for it.
-      const uploaded: { key: string; cached?: ParseResponse; parsedAt?: string }[] = [];
-      for (let i = 0; i < pages.length; i++) {
-        setState({ stage: "uploading", progress: { current: i + 1, total: pages.length } });
+      /**
+       * The upload side of the pipeline (H10/H12).
+       *
+       * Each page is downscaled, hashed, presigned and PUT — one page at a time, because a
+       * ward connection handles a single 700 KB PUT far better than five at once, and because
+       * the presign key is the hash of the downscaled bytes, so the two cannot be reordered
+       * (H12: presigning "while downscaling" is arithmetically impossible, not merely awkward).
+       *
+       * What DOES overlap is the next page and the current parse: the chain keeps running while
+       * `runParses` waits on model calls, so page two's decode, encode and upload are already
+       * done by the time page one's ~70 seconds are up. A multi-page capture costs one upload
+       * plus the parses, instead of every upload plus every parse.
+       */
+      const keys: { key: string }[] = [];
+      let stopped = false;
+      /** Set when the upload side stops early, so the parse loop can end honestly. */
+      let stopState: Partial<CaptureState> | undefined;
+
+      const uploadOne = async (i: number): Promise<PageToParse | undefined> => {
+        if (stopped) return undefined;
         try {
+          const page = await sources[i].get();
           const res = await client.uploadPhoto({
             captureId: capture.id,
             imageIndex: i,
-            blob: pages[i].blob,
-            contentType: pages[i].contentType,
+            blob: page.blob,
+            contentType: page.contentType,
             refresh: opts.refresh,
             onRetry: (n) =>
               setState((s) => ({
@@ -514,57 +565,81 @@ export function useCapture() {
           setState((s) => (s.retrying ? { ...s, retrying: undefined } : s));
           if (!res.ok) {
             // Cap hit mid-run: keep whatever landed rather than discarding it, and say so.
-            if (uploaded.length > 0) {
-              capture = await repo.updateNoteCapture(capture.id, { imageKeys: keyList(uploaded) });
-            }
-            setState({
+            stopped = true;
+            stopState = {
               stage: "capped",
               cappedReason: "PHOTO",
-              capture: uploaded.length > 0 ? capture : undefined,
               remaining: 0,
               resetsAt: res.resetsAt,
-            });
-            return;
+            };
+            return undefined;
+          }
+          keys.push({ key: res.key });
+          // Written per page: an interrupted run keeps the pages that did upload (H9).
+          capture = await repo.updateNoteCapture(capture.id, { imageKeys: keyList(keys) });
+          if (i === 0) {
+            // Sign the page NOW rather than at review: the parsing screen shows the photo too,
+            // and it is the one part of that ~70-second wait that is worth looking at.
+            void resolvePageImage(capture.imageKeys);
           }
           if (res.cached) {
-            const page = asParseResponse(res.parse, capture.id, i);
-            uploaded.push(
-              page ? { key: res.key, cached: page, parsedAt: res.parsedAt } : { key: res.key },
-            );
-          } else {
-            uploaded.push({ key: res.key });
-            setState((s) => ({ ...s, remaining: res.remaining }));
+            const cached = asParseResponse(res.parse, capture.id, i);
+            return {
+              key: res.key,
+              imageIndex: i,
+              capture,
+              ...(cached ? { cached, parsedAt: res.parsedAt } : {}),
+            };
           }
+          setState((s) => ({ ...s, remaining: res.remaining }));
+          return { key: res.key, imageIndex: i, capture };
         } catch (err) {
-          if (uploaded.length > 0) {
-            capture = await repo.updateNoteCapture(capture.id, { imageKeys: keyList(uploaded) });
-          }
-          setState({
-            stage: "error",
-            capture: uploaded.length > 0 ? capture : undefined,
-            error: messageFor(err),
-          });
-          return;
+          stopped = true;
+          stopState = { stage: "error", error: messageFor(err) };
+          return undefined;
         }
+      };
+
+      // Build the chain: each page's upload waits for the one before it, and nothing waits for
+      // a parse. `pages[i]` is therefore usually already resolved when the parse loop reaches it.
+      const pages: Promise<PageToParse | undefined>[] = [];
+      let previous: Promise<unknown> = Promise.resolve();
+      for (let i = 0; i < sources.length; i++) {
+        const mine = previous.then(() => uploadOne(i));
+        previous = mine;
+        pages.push(mine);
       }
 
-      capture = await repo.updateNoteCapture(capture.id, { imageKeys: keyList(uploaded) });
-      // Sign the page NOW rather than at review: the parsing screen shows the photo too, and it
-      // is the one part of that ~70-second wait that is worth looking at.
-      void resolvePageImage(capture.imageKeys);
+      // The first page has to land before there is anything to read, or to show.
+      const first = await pages[0];
+      if (!first) {
+        setState({ ...stopState, capture: keys.length > 0 ? capture : undefined } as CaptureState);
+        return;
+      }
 
       // Photos are stored; that part is already durable. Parsing is a separate concern and a
       // failure here must NOT lose the upload — the student can retry the read later.
       if (!parser) {
+        await previous; // let the remaining uploads finish before claiming the capture is done
         capture = await repo.updateNoteCapture(capture.id, { status: "REVIEW" });
         setState((s) => ({ stage: "done", capture, remaining: s.remaining }));
         return;
       }
 
-      await runParses(
-        capture,
-        uploaded.map((u, i) => ({ ...u, imageIndex: i })),
-      );
+      await runParses(capture, pages);
+      // An upload that stopped mid-pipeline is reported alongside the pages that did read: the
+      // photos are stored either way, and a review of two pages beats an error about the third.
+      if (stopState) {
+        setState((s) =>
+          s.stage === "review"
+            ? {
+                ...s,
+                remaining: 0,
+                error: "One page didn't upload — its photo is safe to try again.",
+              }
+            : ({ ...s, ...stopState } as CaptureState),
+        );
+      }
     },
     [client, parser, repo, userId, runParses, resolvePageImage],
   );
@@ -630,17 +705,25 @@ export function useCapture() {
           corrections: list(blocks.find((b) => b.imageIndex === p.imageIndex)?.corrections),
         }));
 
-      const todo: { key: string; cached?: ParseResponse; parsedAt?: string; imageIndex: number }[] =
-        [];
-      for (const page of plan.pages.filter((p) => p.needsParse)) {
-        const hit = await client.cachedParseFor(page.imageKey);
-        const cached = hit ? asParseResponse(hit.parse, capture.id, page.imageIndex) : null;
-        todo.push({
-          key: page.imageKey,
-          imageIndex: page.imageIndex,
-          ...(cached ? { cached, parsedAt: hit?.parsedAt } : {}),
+      // Each page's cache lookup is chained rather than awaited here, so page two's lookup
+      // happens during page one's read — the same pipelining as a fresh capture (H10).
+      const held = capture;
+      let previous: Promise<unknown> = Promise.resolve();
+      const todo = plan.pages
+        .filter((p) => p.needsParse)
+        .map((page) => {
+          const mine = previous.then(async (): Promise<PageToParse> => {
+            const hit = await client.cachedParseFor(page.imageKey);
+            const cached = hit ? asParseResponse(hit.parse, held.id, page.imageIndex) : null;
+            return {
+              key: page.imageKey,
+              imageIndex: page.imageIndex,
+              ...(cached ? { cached, parsedAt: hit?.parsedAt } : {}),
+            };
+          });
+          previous = mine;
+          return mine;
         });
-      }
 
       await runParses(capture, todo, { alreadyRead });
       return true;
@@ -661,25 +744,34 @@ export function useCapture() {
   );
 
   /**
-   * Downscale the picked photos, then run the capture.
+   * Run the picked photos as one capture, downscaling each page as the pipeline reaches it.
    *
-   * The downscaled blobs are RETAINED for the session so "read it again from scratch" (P41)
-   * doesn't need the student to find the photo a second time — and so the re-read hashes to
-   * the same key, which is what makes it overwrite the cache rather than orphan it.
+   * Downscaling used to happen for every page up front, which meant a three-page capture did
+   * three decode-and-encode passes before a single byte was uploaded — the student watching a
+   * still screen while the phone did the most expensive local work it will do. Now each page is
+   * downscaled inside its own pipeline step (H12), so page two's encode happens while page one
+   * is being read.
+   *
+   * The downscaled blobs are RETAINED as they're produced, so "read it again from scratch" (P41)
+   * doesn't need the student to find the photo a second time — and so the re-read hashes to the
+   * same key, which is what makes it overwrite the cache rather than orphan it.
    */
   const startCapture = useCallback(
     async (files: File[], opts: { piiAcknowledged: boolean }) => {
       if (files.length === 0) return;
       setState({ stage: "uploading", progress: { current: 1, total: files.length } });
-      const pages: DownscaleResult[] = [];
-      try {
-        for (const f of files) pages.push(await downscaleForUpload(f));
-      } catch (err) {
-        setState({ stage: "error", error: messageFor(err) });
-        return;
-      }
-      lastRun.current = { pages, piiAcknowledged: opts.piiAcknowledged };
-      await runCapture(pages, opts);
+      const kept: DownscaleResult[] = [];
+      lastRun.current = { pages: kept, piiAcknowledged: opts.piiAcknowledged };
+      await runCapture(
+        files.map((file) => ({
+          get: async () => {
+            const page = await downscaleForUpload(file);
+            kept.push(page);
+            return page;
+          },
+        })),
+        opts,
+      );
     },
     [runCapture],
   );
@@ -688,7 +780,11 @@ export function useCapture() {
   const rerunFromScratch = useCallback(async () => {
     const last = lastRun.current;
     if (!last) return;
-    await runCapture(last.pages, { piiAcknowledged: last.piiAcknowledged, refresh: true });
+    await runCapture(
+      // Already downscaled — the same bytes, so the same key and the same cache entry.
+      last.pages.map((page) => ({ get: async () => page })),
+      { piiAcknowledged: last.piiAcknowledged, refresh: true },
+    );
   }, [runCapture]);
 
   /**
