@@ -6,6 +6,7 @@ import {
   PAGE_VIEW_EXPIRY_SECONDS,
   PRESIGN_EXPIRY_SECONDS,
   PresignError,
+  cachedParseForKey,
   presignCapture,
   presignPageImage,
   userPrefix,
@@ -56,6 +57,12 @@ const good = {
   bytes: 700_000,
   imageHash: HASH,
 };
+
+/**
+ * A distinct page. The cap is claimed per PAGE per day (H7), so a test that means "ten
+ * photos" has to send ten different hashes — which is what ten photos of ten pages are.
+ */
+const hashFor = (n: number) => n.toString(16).padStart(64, "0");
 
 describe("presignCapture — input validation", () => {
   const cases: Array<[string, Record<string, unknown>, string]> = [
@@ -126,11 +133,19 @@ describe("presignCapture — the daily cap gates the signing (P17)", () => {
   it(`allows ${DAILY_PHOTO_LIMIT} photos then caps, returning no URL`, async () => {
     const sub = "sub-cap";
     for (let i = 0; i < DAILY_PHOTO_LIMIT; i++) {
-      const res = await presignCapture(deps(), sub, { ...good, captureId: `cap-${i}0000000` });
+      const res = await presignCapture(deps(), sub, {
+        ...good,
+        captureId: `cap-${i}0000000`,
+        imageHash: hashFor(i),
+      });
       expect(res.ok, `photo ${i + 1} of ${DAILY_PHOTO_LIMIT} should be allowed`).toBe(true);
     }
 
-    const capped = await presignCapture(deps(), sub, { ...good, captureId: "cap-oneTooMany" });
+    const capped = await presignCapture(deps(), sub, {
+      ...good,
+      captureId: "cap-oneTooMany",
+      imageHash: hashFor(99),
+    });
     expect(capped.ok).toBe(false);
     if (capped.ok) return;
     expect(capped.reason).toBe("CAP");
@@ -142,8 +157,16 @@ describe("presignCapture — the daily cap gates the signing (P17)", () => {
 
   it("counts down remaining as photos are used", async () => {
     const sub = "sub-remaining";
-    const first = await presignCapture(deps(), sub, { ...good, captureId: "cap-first00000" });
-    const second = await presignCapture(deps(), sub, { ...good, captureId: "cap-second0000" });
+    const first = await presignCapture(deps(), sub, {
+      ...good,
+      captureId: "cap-first00000",
+      imageHash: hashFor(1),
+    });
+    const second = await presignCapture(deps(), sub, {
+      ...good,
+      captureId: "cap-second0000",
+      imageHash: hashFor(2),
+    });
     expect(first.ok && second.ok).toBe(true);
     if (!first.ok || first.cached || !second.ok || second.cached) return;
     expect(first.remaining).toBe(DAILY_PHOTO_LIMIT - 1);
@@ -152,7 +175,11 @@ describe("presignCapture — the daily cap gates the signing (P17)", () => {
 
   it("keeps each user's cap separate", async () => {
     for (let i = 0; i < DAILY_PHOTO_LIMIT; i++) {
-      await presignCapture(deps(), "sub-noisy", { ...good, captureId: `cap-n${i}000000` });
+      await presignCapture(deps(), "sub-noisy", {
+        ...good,
+        captureId: `cap-n${i}000000`,
+        imageHash: hashFor(i),
+      });
     }
     const other = await presignCapture(deps(), "sub-quiet", good);
     expect(other.ok).toBe(true);
@@ -161,7 +188,11 @@ describe("presignCapture — the daily cap gates the signing (P17)", () => {
   it("does not consume the AI question cap", async () => {
     const sub = "sub-separate";
     for (let i = 0; i < DAILY_PHOTO_LIMIT; i++) {
-      await presignCapture(deps(), sub, { ...good, captureId: `cap-s${i}000000` });
+      await presignCapture(deps(), sub, {
+        ...good,
+        captureId: `cap-s${i}000000`,
+        imageHash: hashFor(i),
+      });
     }
     // A separate SK (DAILY#PHOTO#<date> vs DAILY#<date>), so questions are untouched (P17).
     const { AiStore } = await import("../src/data/dynamo/aiStore");
@@ -169,6 +200,94 @@ describe("presignCapture — the daily cap gates the signing (P17)", () => {
     const q = await ai.countQuestion(30);
     expect(q.allowed).toBe(true);
     expect(q.remaining).toBe(29);
+  });
+});
+
+/**
+ * The cap counts PAGES, not calls (hardening H7). This is what lets the client retry a presign
+ * at all: on a ward connection the reply is often lost rather than never sent, so without it a
+ * page asked for three times would quietly spend three of the student's ten.
+ */
+describe("presignCapture — a retried presign costs one photo, not three", () => {
+  it("charges the same page once however many times it is asked for today", async () => {
+    const sub = "sub-idempotent";
+    const first = await presignCapture(deps(), sub, good);
+    const second = await presignCapture(deps(), sub, good);
+    const third = await presignCapture(deps(), sub, good);
+    if (!first.ok || first.cached || !second.ok || second.cached || !third.ok || third.cached) {
+      throw new Error("expected three signed uploads");
+    }
+    // Same answer each time: one photo spent, nine left — not seven.
+    expect([first.remaining, second.remaining, third.remaining]).toEqual([
+      DAILY_PHOTO_LIMIT - 1,
+      DAILY_PHOTO_LIMIT - 1,
+      DAILY_PHOTO_LIMIT - 1,
+    ]);
+  });
+
+  it("still signs a usable URL on the repeat, so the retry can actually upload", async () => {
+    const sub = "sub-idempotent-url";
+    await presignCapture(deps(), sub, good);
+    const again = await presignCapture(deps(), sub, good);
+    if (!again.ok || again.cached) throw new Error("expected a signed upload");
+    expect(again.url).toContain("X-Amz-Signature");
+    expect(again.key).toContain(`h/${HASH}/page.jpg`);
+  });
+
+  it("keeps counting DIFFERENT pages, so the cap still means something", async () => {
+    const sub = "sub-idempotent-distinct";
+    await presignCapture(deps(), sub, good);
+    await presignCapture(deps(), sub, good); // a retry of page one
+    const other = await presignCapture(deps(), sub, { ...good, imageHash: hashFor(7) });
+    if (!other.ok || other.cached) throw new Error("expected a signed upload");
+    expect(other.remaining).toBe(DAILY_PHOTO_LIMIT - 2);
+  });
+
+  it("does not let one student's page free another's", async () => {
+    await presignCapture(deps(), "sub-a-pages", good);
+    const b = await presignCapture(deps(), "sub-b-pages", good);
+    if (!b.ok || b.cached) throw new Error("expected a signed upload");
+    expect(b.remaining).toBe(DAILY_PHOTO_LIMIT - 1);
+  });
+});
+
+/**
+ * The fresh-read cap (hardening H8). Before this, "read it again from scratch" and any direct
+ * POST to the parse endpoint ran four model calls uncounted — the one path where spend was
+ * unbounded, because the photo cap gates presigns and a re-read presigns nothing.
+ */
+describe("countParse — the daily fresh-read cap (H8)", () => {
+  it("counts up to the limit, then refuses, with a rollover time", async () => {
+    const { AiStore } = await import("../src/data/dynamo/aiStore");
+    const ai = new AiStore({ doc: ddb.doc, tableName: ddb.tableName, sub: "sub-parse-cap" });
+    for (let i = 0; i < 3; i++) {
+      const res = await ai.countParse(3);
+      expect(res.allowed, `read ${i + 1} of 3`).toBe(true);
+      expect(res.remaining).toBe(3 - (i + 1));
+    }
+    const capped = await ai.countParse(3);
+    expect(capped.allowed).toBe(false);
+    expect(capped.remaining).toBe(0);
+    expect(capped.resetsAt).toMatch(/^\d{4}-\d{2}-\d{2}T23:59:59\.999Z$/);
+  });
+
+  it("is a SEPARATE counter from photos and questions, in both directions", async () => {
+    const { AiStore } = await import("../src/data/dynamo/aiStore");
+    const sub = "sub-parse-separate";
+    const ai = new AiStore({ doc: ddb.doc, tableName: ddb.tableName, sub });
+    // Spending every read leaves the photo allowance and the question allowance untouched:
+    // a day of re-reads must not stop the student photographing a new page or asking anything.
+    for (let i = 0; i < 30; i++) await ai.countParse(30);
+    expect((await ai.countPhoto(DAILY_PHOTO_LIMIT)).remaining).toBe(DAILY_PHOTO_LIMIT - 1);
+    expect((await ai.countQuestion(30)).remaining).toBe(29);
+  });
+
+  it("keeps each student's reads their own", async () => {
+    const { AiStore } = await import("../src/data/dynamo/aiStore");
+    const noisy = new AiStore({ doc: ddb.doc, tableName: ddb.tableName, sub: "sub-parse-noisy" });
+    for (let i = 0; i < 5; i++) await noisy.countParse(5);
+    const quiet = new AiStore({ doc: ddb.doc, tableName: ddb.tableName, sub: "sub-parse-quiet" });
+    expect((await quiet.countParse(5)).allowed).toBe(true);
   });
 });
 
@@ -278,4 +397,60 @@ describe("presignPageImage — reading a page back (P1)", () => {
       await expect(presignPageImage(view, "sub-mine", raw)).rejects.toThrow(PresignError);
     });
   }
+});
+
+/**
+ * The finished parse, by key (hardening H9). This is what makes resuming an interrupted
+ * capture free: after a reload the client no longer has the bytes to hash, so it cannot ask
+ * `presignCapture`, but the capture row still holds the key.
+ */
+describe("cachedParseForKey — resuming without paying for the read again", () => {
+  const parsedAt = new Date("2026-08-05T09:15:00.000Z");
+  const key = `${userPrefix("sub-mine")}h/${HASH}/page.jpg`;
+
+  it("hands back a signed GET for the parse beside the photo", async () => {
+    const res = await cachedParseForKey(
+      { bucket: "test-captures", headParseCache: async () => parsedAt },
+      "sub-mine",
+      { imageKey: key },
+    );
+    expect(res?.parseUrl).toContain(`h/${HASH}/parse.json`);
+    expect(res?.parseUrl).toContain("X-Amz-Signature");
+    expect(res?.parsedAt).toBe(parsedAt.toISOString());
+  });
+
+  it("says no when the page was never parsed — that page needs a real read", async () => {
+    const res = await cachedParseForKey(
+      { bucket: "test-captures", headParseCache: async () => null },
+      "sub-mine",
+      { imageKey: key },
+    );
+    expect(res).toBeNull();
+  });
+
+  it("spends nothing: no counter, no upload URL, no table access at all", async () => {
+    // Deps carry only a bucket — there is no `doc` to count with, which is the guarantee.
+    const deps = { bucket: "test-captures", headParseCache: async () => parsedAt };
+    const mine = `${userPrefix("sub-free")}h/${HASH}/page.jpg`;
+    for (let i = 0; i < DAILY_PHOTO_LIMIT * 2; i++) {
+      expect(await cachedParseForKey(deps, "sub-free", { imageKey: mine })).not.toBeNull();
+    }
+    const { AiStore } = await import("../src/data/dynamo/aiStore");
+    const ai = new AiStore({ doc: ddb.doc, tableName: ddb.tableName, sub: "sub-free" });
+    expect((await ai.countPhoto(DAILY_PHOTO_LIMIT)).remaining).toBe(DAILY_PHOTO_LIMIT - 1);
+  });
+
+  it("refuses another student's key rather than reading it", async () => {
+    await expect(
+      cachedParseForKey({ bucket: "test-captures" }, "sub-theirs", { imageKey: key }),
+    ).rejects.toThrow(PresignError);
+  });
+
+  it("rejects a key that isn't a page", async () => {
+    for (const imageKey of [`u/sub-mine/h/${HASH}/parse.json`, "u/sub-mine/../x/page.jpg", ""]) {
+      await expect(
+        cachedParseForKey({ bucket: "test-captures" }, "sub-mine", { imageKey }),
+      ).rejects.toThrow(PresignError);
+    }
+  });
 });

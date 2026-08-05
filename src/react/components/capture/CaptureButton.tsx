@@ -61,6 +61,26 @@ const WHAT_HAPPENS: { title: string; body: string }[] = [
   },
 ];
 
+/**
+ * "The connection dropped — trying again" (H7).
+ *
+ * A retry is the one thing a waiting screen must not hide: on a ward connection the honest
+ * reading of a stalled progress bar is "this has died", and a student who closes the dialog
+ * there loses nothing but believes they did. Stating the attempt turns the same wait into
+ * something that is visibly still working. Amber, not coral — this is not a failure yet.
+ */
+function RetryNote({ retrying }: { retrying?: { attempt: number; of: number; what: string } }) {
+  if (!retrying) return null;
+  return (
+    <p role="status" className="mt-4 flex items-start gap-2 text-xs text-amber-700">
+      <TriangleAlert className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+      <span>
+        The connection dropped. {retrying.what} again — attempt {retrying.attempt} of {retrying.of}.
+      </span>
+    </p>
+  );
+}
+
 export function CaptureButton() {
   const { isGuest } = useRepository();
   const [open, setOpen] = useState(false);
@@ -76,9 +96,13 @@ export function CaptureButton() {
     dismissBlock,
     createMedication,
     rerunFromScratch,
+    resumeInterrupted,
     ensurePageImage,
   } = useCapture();
   const inputRef = useRef<HTMLInputElement>(null);
+  /** Recovery is attempted once per mount, not once per open: after it has run, `state` is
+   *  either a resumed capture or idle, and re-checking would re-query on every open. */
+  const resumeChecked = useRef(false);
 
   useEffect(() => {
     if (!open) return;
@@ -96,6 +120,19 @@ export function CaptureButton() {
   useEffect(() => {
     if (open) void ensurePageImage?.();
   }, [open, ensurePageImage]);
+
+  /**
+   * Opening the dialog is also the moment to pick up a capture the last session lost (H9).
+   *
+   * Deliberately on open rather than on mount: it reads the capture list and can spend a read,
+   * so it belongs to the student asking for the camera, not to every page load. Only when
+   * there's nothing in flight — a review already on screen is not something to interrupt.
+   */
+  useEffect(() => {
+    if (!open || resumeChecked.current || state.stage !== "idle") return;
+    resumeChecked.current = true;
+    void resumeInterrupted();
+  }, [open, state.stage, resumeInterrupted]);
 
   // The Gibbs split is a classifier suggestion, not part of the block row — it only becomes
   // real content when the student files the block as a reflection. Keyed by the verbatim text,
@@ -303,6 +340,7 @@ export function CaptureButton() {
                       }}
                     />
                   </div>
+                  <RetryNote retrying={state.retrying} />
                 </div>
               )}
 
@@ -334,6 +372,7 @@ export function CaptureButton() {
                     <p className="mt-1.5 text-sm text-slate-600">
                       Your photo is already saved — you can close this and come back to it.
                     </p>
+                    <RetryNote retrying={state.retrying} />
 
                     <ol className="mt-6 space-y-1">
                       {PIPELINE.map((p, i) => {
@@ -490,29 +529,48 @@ export function CaptureButton() {
               )}
 
               {/* Calm and coral-free: a cap is a limit, not a failure. The pages already read
-                  are the useful thing on this screen, so they get the primary action. */}
+                  are the useful thing on this screen, so they get the primary action.
+                  Two limits reach here — today's photos (P17) and today's fresh reads (H8) —
+                  and the copy says which, because "you've used your photos" would be a lie
+                  on a day spent re-reading pages that were already uploaded. */}
               {state.stage === "capped" && (
                 <div className="mx-auto max-w-lg p-10 text-center sm:p-14">
                   <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-primary-50 text-primary-800">
                     <Clock className="h-5 w-5" aria-hidden="true" />
                   </span>
                   <h2 className="mt-4 text-[22px] font-semibold tracking-tight text-ink">
-                    That&apos;s today&apos;s {DAILY_PHOTO_LIMIT} pages read
+                    {state.cappedReason === "PARSE"
+                      ? "That's as many reads as we can do today"
+                      : `That's today's ${DAILY_PHOTO_LIMIT} pages read`}
                   </h2>
                   <p className="mx-auto mt-2.5 max-w-sm text-sm leading-relaxed text-slate-600">
-                    Your allowance resets tomorrow.{" "}
-                    {state.capture
-                      ? "The pages that uploaded before the limit are saved and waiting for you — nothing was lost."
-                      : "Nothing was lost — a page you've already read still opens on a day you've used up."}
+                    {state.cappedReason === "PARSE" ? (
+                      <>
+                        Reading a page again costs a read, and today&apos;s are used up. Your photos
+                        are saved either way — this resets tomorrow, and a page already read still
+                        opens.
+                      </>
+                    ) : (
+                      <>
+                        Your allowance resets tomorrow.{" "}
+                        {state.capture
+                          ? "The pages that uploaded before the limit are saved and waiting for you — nothing was lost."
+                          : "Nothing was lost — a page you've already read still opens on a day you've used up."}
+                      </>
+                    )}
                   </p>
-                  <div aria-hidden="true" className="mx-auto mt-5 flex w-fit gap-1.5">
-                    {Array.from({ length: DAILY_PHOTO_LIMIT }, (_, i) => (
-                      <span key={i} className="h-1.5 w-6 rounded-full bg-primary-300" />
-                    ))}
-                  </div>
-                  <p className="mt-2.5 text-xs text-slate-400">
-                    {DAILY_PHOTO_LIMIT} of {DAILY_PHOTO_LIMIT} used
-                  </p>
+                  {state.cappedReason !== "PARSE" && (
+                    <>
+                      <div aria-hidden="true" className="mx-auto mt-5 flex w-fit gap-1.5">
+                        {Array.from({ length: DAILY_PHOTO_LIMIT }, (_, i) => (
+                          <span key={i} className="h-1.5 w-6 rounded-full bg-primary-300" />
+                        ))}
+                      </div>
+                      <p className="mt-2.5 text-xs text-slate-400">
+                        {DAILY_PHOTO_LIMIT} of {DAILY_PHOTO_LIMIT} used
+                      </p>
+                    </>
+                  )}
                   <button
                     type="button"
                     onClick={close}

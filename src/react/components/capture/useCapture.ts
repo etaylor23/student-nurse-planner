@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { retrieveTokens } from "amazon-cognito-passwordless-auth/storage";
 import { API_BASE } from "../../../auth/passwordlessConfig";
 import { CaptureClient, CaptureUploadError } from "../../../data/api/captureClient";
-import { ParseClient, type ParseResponse } from "../../../data/api/parseClient";
+import { ParseClient, ParseError, type ParseResponse } from "../../../data/api/parseClient";
 import { useRepository } from "../../RepositoryContext";
 import { resolveShift, type ShiftResolution } from "../../../logic/captureShift";
 import {
@@ -14,7 +14,8 @@ import {
   unallocateBlock,
   type AllocateInput,
 } from "../../../logic/allocateBlock";
-import { subBlocksOf } from "./blockState";
+import { list, subBlocksOf } from "./blockState";
+import { interruptedCapture, planRecovery } from "./recover";
 import { PARSE_URL, parseAvailable } from "./config";
 import { CaptureImageError, downscaleForUpload, type DownscaleResult } from "./downscale";
 import type { BlockPatch } from "./ReviewPanel";
@@ -76,12 +77,18 @@ export interface CaptureState {
   capture?: NoteCapture;
   /** Photos left today, once known (P17). */
   remaining?: number;
+  /** Set while a hop is being retried (H7), cleared the moment one succeeds — the waiting
+   *  screen says "trying again" instead of looking like a hang on a ward connection. */
+  retrying?: { attempt: number; of: number; what: string };
   /** Signed GET for the capture's FIRST page, so review can show the photo (P1). Undefined
    *  until it resolves, and left undefined if it can't — the photo pane is an enhancement. */
   pageImageUrl?: string;
   /** Set when this parse came from the S3 cache rather than the models (P41). */
   cachedFrom?: string;
   resetsAt?: string;
+  /** Which daily limit stopped this: today's photos (P17) or today's fresh reads (H8). The
+   *  two are separate counters and the copy has to say which one, or the message is a guess. */
+  cappedReason?: "PHOTO" | "PARSE";
   error?: string;
 }
 
@@ -137,6 +144,13 @@ function messageFor(err: unknown): string {
 
 /** Re-sign the page URL a quarter of an hour before the server's hour is up. */
 const PAGE_URL_REFRESH_MS = 45 * 60 * 1000;
+
+/** What a retry is retrying, in the student's terms (H7). Never the hop's internal name. */
+const RETRY_WHAT: Record<string, string> = {
+  presign: "Getting ready to send your photo",
+  upload: "Sending your photo",
+  cache: "Fetching what we read last time",
+};
 
 export function useCapture() {
   const { repo, userId } = useRepository();
@@ -293,6 +307,167 @@ export function useCapture() {
   }, [repo, userId]);
 
   /**
+   * Read each uploaded page and persist its blocks, then land in review.
+   *
+   * Split out of `runCapture` so resuming an interrupted capture (H9) goes through exactly
+   * this code: the shift resolution, the per-page persistence and the partial-failure
+   * behaviour all have to be identical, and a second copy of them would drift.
+   *
+   * The photos are already durable when this starts, which is what every failure path here
+   * relies on: a page that can't be read is a page that can be read again later, never a lost
+   * photo. `alreadyRead` counts pages recovery is skipping, so the progress line and the page
+   * count still describe the whole capture.
+   */
+  const runParses = useCallback(
+    async (
+      start: NoteCapture,
+      pages: { key: string; cached?: ParseResponse; parsedAt?: string; imageIndex: number }[],
+      opts: { alreadyRead?: ParseResponse[] } = {},
+    ) => {
+      let capture = start;
+      const parsed: ParseResponse[] = [...(opts.alreadyRead ?? [])];
+      // Only pages needing work drive the progress line; the ones already read are done.
+      const total = pages.length;
+      /** The shift picker needs the resolution for display even when the row already has one. */
+      let shiftResolved = false;
+
+      setState((s) => ({
+        ...s,
+        stage: "parsing",
+        capture,
+        progress: { current: 1, total },
+      }));
+
+      for (let i = 0; i < pages.length; i++) {
+        const { key, imageIndex } = pages[i];
+        setState((s) => ({ ...s, stage: "parsing", progress: { current: i + 1, total } }));
+        try {
+          const { wire, known } = await localContext();
+          setState((s) => ({ ...s, known }));
+          const held: { page: ParseResponse | null; error: { message: string } | null } = {
+            page: null,
+            error: null,
+          };
+
+          // A page we've read before skips all four model calls (P41). The cached parse is
+          // what was FIRST presented — before any editing or filing, which live on the rows.
+          const fromCache = pages[i].cached;
+          if (fromCache) {
+            held.page = {
+              ...fromCache,
+              blocks: fromCache.blocks.map((b) => ({
+                ...b,
+                tags: reconcileTags(b.tags, wire.tagLabels ?? []),
+              })),
+            };
+            setState((s) => ({ ...s, cachedFrom: pages[i].parsedAt ?? "earlier" }));
+          } else if (parser)
+            await parser.parse(
+              {
+                captureId: capture.id,
+                imageKey: key,
+                imageIndex,
+                // What parseFn would otherwise need table access for (P32).
+                context: wire,
+                onRetry: (n) =>
+                  setState((s) => ({
+                    ...s,
+                    retrying: { attempt: n.attempt, of: n.of, what: "Reading your page" },
+                  })),
+              },
+              {
+                onStage: (stage, message) =>
+                  setState((s) => ({ ...s, activity: message, activityStage: stage })),
+                // The student's own words, ~30s before the filing suggestions. Showing these
+                // early is the entire reason this endpoint streams.
+                onTranscribed: (p) => setState((s) => ({ ...s, preview: p.pageText })),
+                onCorrected: (p) => setState((s) => ({ ...s, preview: p.text })),
+                onBlocks: (p) => {
+                  held.page = {
+                    ...p,
+                    blocks: p.blocks.map((b) => ({
+                      ...b,
+                      tags: reconcileTags(b.tags, wire.tagLabels ?? []),
+                    })),
+                  };
+                },
+                onDone: () => {},
+                onError: (_code, message) => {
+                  held.error = { message };
+                },
+              },
+            );
+
+          setState((s) => (s.retrying ? { ...s, retrying: undefined } : s));
+          // An error FRAME arrives after a 200, so it can't be a thrown status — surface it
+          // the same way a thrown failure would be.
+          if (held.error) throw new Error(held.error.message);
+          const page = held.page;
+          if (page) {
+            parsed.push(page);
+            // Resolve the shift from the page's own written date (P8) — the app matches, the
+            // model only reported what it read.
+            if (!shiftResolved) {
+              shiftResolved = true;
+              const shifts = await repo.listShifts(userId);
+              const resolution = resolveShift(page.pageDateRaw, shifts);
+              setState((s) => ({ ...s, shift: resolution }));
+              // Stamp it on the capture so allocation can inherit it (P6). Never over a shift
+              // the capture already has: on a resume that would silently move a page the
+              // student had already attached (or re-attached) somewhere else.
+              if (resolution.suggested && !capture.shiftId) {
+                capture = await repo.updateNoteCapture(capture.id, {
+                  shiftId: resolution.suggested.shift.id,
+                  pageDateRaw: page.pageDateRaw ?? undefined,
+                });
+              }
+            }
+            // Persist immediately, per page. Blocks are first-class rows (P3) and the review
+            // screen edits THEM, not the in-memory response — otherwise closing the dialog
+            // loses the parse, and allocation has no `sourceId` to point at (P5).
+            const saved = await persistBlocks(capture.id, page);
+            setState((s) => ({ ...s, blocks: [...(s.blocks ?? []), ...saved] }));
+          }
+        } catch (err) {
+          // The day's fresh reads are used up (H8). That is a cap, not a failure: the photos
+          // are stored and the pages already read are reviewable, so it gets the cap screen
+          // and the same friendly tone as the photo cap — with nothing lost either way.
+          const capped = err instanceof ParseError && err.code === "capped";
+          // Partial results are worth keeping — a two-page capture whose second page failed
+          // still has a first page worth reviewing. Spread, don't replace: the persisted
+          // `blocks` and the resolved `shift` are already in state and review needs both.
+          setState((s) => ({
+            ...s,
+            stage:
+              capped && parsed.length === 0 ? "capped" : parsed.length > 0 ? "review" : "error",
+            cappedReason: capped ? "PARSE" : undefined,
+            resetsAt: capped ? err.resetsAt : undefined,
+            retrying: undefined,
+            capture,
+            parsed,
+            error: capped || parsed.length > 0 ? undefined : messageFor(err),
+          }));
+          return;
+        }
+      }
+
+      capture = await repo.updateNoteCapture(capture.id, {
+        status: "REVIEW",
+        pageDateRaw: capture.pageDateRaw ?? parsed[0]?.pageDateRaw ?? undefined,
+      });
+      setState((s) => ({
+        ...s,
+        stage: "review",
+        capture,
+        parsed,
+        activity: undefined,
+        activityStage: undefined,
+      }));
+    },
+    [parser, repo, userId, localContext, reconcileTags, persistBlocks],
+  );
+
+  /**
    * Upload the picked files as one capture. `piiAcknowledged` is passed in rather than
    * assumed: the row records that the warning was shown and accepted (P2), so it must come
    * from the UI that actually showed it.
@@ -330,7 +505,13 @@ export function useCapture() {
             blob: pages[i].blob,
             contentType: pages[i].contentType,
             refresh: opts.refresh,
+            onRetry: (n) =>
+              setState((s) => ({
+                ...s,
+                retrying: { attempt: n.attempt, of: n.of, what: RETRY_WHAT[n.step] },
+              })),
           });
+          setState((s) => (s.retrying ? { ...s, retrying: undefined } : s));
           if (!res.ok) {
             // Cap hit mid-run: keep whatever landed rather than discarding it, and say so.
             if (uploaded.length > 0) {
@@ -338,6 +519,7 @@ export function useCapture() {
             }
             setState({
               stage: "capped",
+              cappedReason: "PHOTO",
               capture: uploaded.length > 0 ? capture : undefined,
               remaining: 0,
               resetsAt: res.resetsAt,
@@ -379,127 +561,97 @@ export function useCapture() {
         return;
       }
 
-      setState((s) => ({
-        ...s,
-        stage: "parsing",
+      await runParses(
         capture,
-        progress: { current: 1, total: uploaded.length },
-      }));
-      const parsed: ParseResponse[] = [];
-      for (let i = 0; i < uploaded.length; i++) {
-        setState((s) => ({
-          ...s,
-          stage: "parsing",
-          progress: { current: i + 1, total: uploaded.length },
-        }));
-        try {
-          const { wire, known } = await localContext();
-          setState((s) => ({ ...s, known }));
-          const held: { page: ParseResponse | null; error: { message: string } | null } = {
-            page: null,
-            error: null,
-          };
+        uploaded.map((u, i) => ({ ...u, imageIndex: i })),
+      );
+    },
+    [client, parser, repo, userId, runParses, resolvePageImage],
+  );
 
-          // A page we've read before skips all four model calls (P41). The cached parse is
-          // what was FIRST presented — before any editing or filing, which live on the rows.
-          const fromCache = uploaded[i].cached;
-          if (fromCache) {
-            held.page = {
-              ...fromCache,
-              blocks: fromCache.blocks.map((b) => ({
-                ...b,
-                tags: reconcileTags(b.tags, wire.tagLabels ?? []),
-              })),
-            };
-            setState((s) => ({ ...s, cachedFrom: uploaded[i].parsedAt ?? "earlier" }));
-          } else
-            await parser.parse(
-              {
-                captureId: capture.id,
-                imageKey: uploaded[i].key,
-                imageIndex: i,
-                // What parseFn would otherwise need table access for (P32).
-                context: wire,
-              },
-              {
-                onStage: (stage, message) =>
-                  setState((s) => ({ ...s, activity: message, activityStage: stage })),
-                // The student's own words, ~30s before the filing suggestions. Showing these
-                // early is the entire reason this endpoint streams.
-                onTranscribed: (p) => setState((s) => ({ ...s, preview: p.pageText })),
-                onCorrected: (p) => setState((s) => ({ ...s, preview: p.text })),
-                onBlocks: (p) => {
-                  held.page = {
-                    ...p,
-                    blocks: p.blocks.map((b) => ({
-                      ...b,
-                      tags: reconcileTags(b.tags, wire.tagLabels ?? []),
-                    })),
-                  };
-                },
-                onDone: () => {},
-                onError: (_code, message) => {
-                  held.error = { message };
-                },
-              },
-            );
+  /**
+   * Pick a capture left mid-flight back up (hardening H9).
+   *
+   * A capture is stuck in `PARSING` when the client vanished: the tab closed, the phone locked,
+   * the student walked out of WiFi. The photos were already durable — they upload before any
+   * parsing starts — so nothing is lost, but until this existed the row simply sat there and
+   * the pages were invisible: no review to open, and no way back to them.
+   *
+   * Resuming is usually FREE. The parse very often finished after the client disappeared, so
+   * the result is already beside the photo in S3 (P41) and is fetched by key rather than
+   * re-run; only a page with no cached parse costs a real read. A page whose photo is gone from
+   * the bucket is dropped from `imageKeys` rather than retried forever, and a capture with
+   * nothing left at all is deleted so the Photo button offers a clean start — the one thing a
+   * student must never meet is a capture they can neither finish nor leave.
+   *
+   * Returns true when it took over the dialog.
+   */
+  const resumeInterrupted = useCallback(async (): Promise<boolean> => {
+    let capture: NoteCapture | undefined;
+    try {
+      capture = interruptedCapture(await repo.listNoteCaptures(userId));
+      if (!capture) return false;
 
-          // An error FRAME arrives after a 200, so it can't be a thrown status — surface it
-          // the same way a thrown failure would be.
-          if (held.error) throw new Error(held.error.message);
-          const page = held.page;
-          if (page) {
-            parsed.push(page);
-            // Resolve the shift from the page's own written date (P8) — the app matches, the
-            // model only reported what it read.
-            if (parsed.length === 1) {
-              const shifts = await repo.listShifts(userId);
-              const resolution = resolveShift(page.pageDateRaw, shifts);
-              setState((s) => ({ ...s, shift: resolution }));
-              // Stamp it on the capture so allocation can inherit it (P6).
-              if (resolution.suggested) {
-                capture = await repo.updateNoteCapture(capture.id, {
-                  shiftId: resolution.suggested.shift.id,
-                  pageDateRaw: page.pageDateRaw ?? undefined,
-                });
-              }
-            }
-            // Persist immediately, per page. Blocks are first-class rows (P3) and the review
-            // screen edits THEM, not the in-memory response — otherwise closing the dialog
-            // loses the parse, and allocation has no `sourceId` to point at (P5).
-            const saved = await persistBlocks(capture.id, page);
-            setState((s) => ({ ...s, blocks: [...(s.blocks ?? []), ...saved] }));
-          }
-        } catch (err) {
-          // Partial results are worth keeping — a two-page capture whose second page failed
-          // still has a first page worth reviewing. Spread, don't replace: the persisted
-          // `blocks` and the resolved `shift` are already in state and review needs both.
-          setState((s) => ({
-            ...s,
-            stage: parsed.length > 0 ? "review" : "error",
-            capture,
-            parsed,
-            error: parsed.length > 0 ? undefined : messageFor(err),
-          }));
-          return;
-        }
+      const blocks = (await repo.listNoteBlocks(userId, capture.id)).filter(
+        (b) => b.captureId === capture!.id,
+      );
+      const plan = planRecovery(capture, blocks);
+
+      // Nothing uploaded: there is no page to read and no photo to keep, so the row is only a
+      // dead end. Drop it and let them take the photo again.
+      if (plan.startAgain) {
+        await repo.deleteNoteCapture(capture.id).catch(() => {});
+        setState({ stage: "idle" });
+        return false;
       }
 
-      capture = await repo.updateNoteCapture(capture.id, {
-        status: "REVIEW",
-        pageDateRaw: parsed[0]?.pageDateRaw ?? undefined,
-      });
-      setState((s) => ({
-        ...s,
-        stage: "review",
+      setState({
+        stage: "parsing",
         capture,
-        parsed,
-        activity: undefined,
-        activityStage: undefined,
-      }));
-    },
-    [client, parser, repo, userId, localContext, reconcileTags, persistBlocks, resolvePageImage],
-  );
+        blocks,
+        progress: { current: 1, total: plan.pages.filter((p) => p.needsParse).length || 1 },
+      });
+      void resolvePageImage(capture.imageKeys);
+
+      // The shift picker needs the candidates, whether or not any page gets re-read here.
+      const shifts = await repo.listShifts(userId);
+      setState((s) => ({ ...s, shift: resolveShift(capture?.pageDateRaw, shifts) }));
+
+      // Pages already read keep their persisted blocks and are not touched. A stub stands in
+      // for each so review's page count and corrections still describe the whole capture.
+      const alreadyRead: ParseResponse[] = plan.pages
+        .filter((p) => !p.needsParse)
+        .map((p) => ({
+          captureId: capture!.id,
+          imageIndex: p.imageIndex,
+          pageDateRaw: capture?.pageDateRaw ?? null,
+          wardHint: null,
+          blocks: [],
+          corrections: list(blocks.find((b) => b.imageIndex === p.imageIndex)?.corrections),
+        }));
+
+      const todo: { key: string; cached?: ParseResponse; parsedAt?: string; imageIndex: number }[] =
+        [];
+      for (const page of plan.pages.filter((p) => p.needsParse)) {
+        const hit = await client.cachedParseFor(page.imageKey);
+        const cached = hit ? asParseResponse(hit.parse, capture.id, page.imageIndex) : null;
+        todo.push({
+          key: page.imageKey,
+          imageIndex: page.imageIndex,
+          ...(cached ? { cached, parsedAt: hit?.parsedAt } : {}),
+        });
+      }
+
+      await runParses(capture, todo, { alreadyRead });
+      return true;
+    } catch (err) {
+      // Recovery is best-effort: a capture that can't be resumed must still leave the student
+      // able to take a photo, so this fails back to the ordinary flow rather than a dead end.
+      console.warn("could not resume capture", err);
+      setState({ stage: "idle" });
+      return false;
+    }
+  }, [client, repo, userId, runParses, resolvePageImage]);
 
   /** Make sure the page URL is current — called when the dialog opens, since the capture (and
    *  so an open review) outlives it and a signed URL does not. */
@@ -735,6 +887,7 @@ export function useCapture() {
     state,
     startCapture,
     rerunFromScratch,
+    resumeInterrupted,
     ensurePageImage,
     reset,
     selectShift,

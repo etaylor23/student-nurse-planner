@@ -69,6 +69,11 @@ export class AiStore {
     /** Photo-parse cap (spec-note-capture.md P17) — a SEPARATE counter from `daily`, so a
      *  photo-heavy day never locks the student out of asking questions, and vice versa. */
     dailyPhoto: (isoDate: string) => `DAILY#PHOTO#${isoDate}`,
+    /** One marker per page per day, so a retried presign counts once (H7). */
+    dailyPhotoPage: (isoDate: string, pageId: string) => `DAILY#PHOTO#${isoDate}#PAGE#${pageId}`,
+    /** Fresh-parse cap (hardening H8) — its own counter, so re-reads and retries never eat
+     *  the photo allowance, and a cache hit costs neither. */
+    dailyParse: (isoDate: string) => `DAILY#PARSE#${isoDate}`,
   };
 
   /**
@@ -135,14 +140,82 @@ export class AiStore {
    *
    * Call this BEFORE issuing the presigned URL. Presigning after the cap check is what
    * makes the cap real: otherwise uploads are unbounded even while parsing is capped.
+   *
+   * `pageId` makes the count **idempotent per page per day**, which is what allows the client
+   * to retry a presign at all (H7): on a ward connection the answer is often lost rather than
+   * never sent, so without this a page asked for three times would spend three of the
+   * student's ten. A marker row is claimed first, conditionally; only a claim that wins
+   * increments the counter, and a page already claimed today reads the counter instead of
+   * moving it. Called without a `pageId`, this counts every call, as it always did.
    */
-  async countPhoto(limit: number): Promise<DailyCountResult> {
+  async countPhoto(limit: number, pageId?: string): Promise<DailyCountResult> {
+    const today = nowIso().slice(0, 10);
+    const resetsAt = `${today}T23:59:59.999Z`;
+    const alreadyCounted = pageId ? !(await this.claimPhotoPage(today, pageId)) : false;
+    const res = await this.doc.send(
+      new UpdateCommand({
+        TableName: this.tableName,
+        Key: { PK: this.pk(), SK: AiStore.sk.dailyPhoto(today) },
+        // ADD 0 reads the counter without moving it — this page is already paid for.
+        UpdateExpression: "ADD #c :n SET #ttl = :ttl, #o = :owner",
+        ExpressionAttributeNames: { "#c": "count", "#ttl": "ttl", "#o": "owner" },
+        ExpressionAttributeValues: {
+          ":n": alreadyCounted ? 0 : 1,
+          ":ttl": Math.floor(Date.now() / 1000) + DAILY_TTL_SECONDS,
+          ":owner": this.sub,
+        },
+        ReturnValues: "UPDATED_NEW",
+      }),
+    );
+    const used = Number((res.Attributes as { count?: number } | undefined)?.count ?? 1);
+    return { allowed: used <= limit, remaining: Math.max(0, limit - used), resetsAt };
+  }
+
+  /**
+   * Claim today's marker for one page. True when this call claimed it (so it should count),
+   * false when it was already claimed (a retry, or the same page offered twice today).
+   *
+   * A failure other than the condition check is treated as a successful claim: an unreadable
+   * marker must charge the photo rather than hand out a free one, since the marker exists to
+   * protect the student from a flaky network, not to be a way around the cap.
+   */
+  private async claimPhotoPage(today: string, pageId: string): Promise<boolean> {
+    try {
+      await this.doc.send(
+        new PutCommand({
+          TableName: this.tableName,
+          Item: {
+            PK: this.pk(),
+            SK: AiStore.sk.dailyPhotoPage(today, pageId),
+            owner: this.sub,
+            ttl: Math.floor(Date.now() / 1000) + DAILY_TTL_SECONDS,
+          },
+          ConditionExpression: "attribute_not_exists(PK)",
+        }),
+      );
+      return true;
+    } catch (err) {
+      const name = (err as { name?: string }).name;
+      return name !== "ConditionalCheckFailedException";
+    }
+  }
+
+  /**
+   * Atomically count one FRESH parse against today's parse cap (hardening H8).
+   *
+   * Its own counter, deliberately. The photo cap gates presigns, so before this existed
+   * "read it again from scratch" and any direct POST to the parse endpoint ran four model
+   * calls uncounted — the one path where spend was unbounded. Keeping the two apart is what
+   * lets a re-read be free of the photo allowance while still being bounded, and keeps a
+   * cache hit costing nothing at all: it never reaches the parse endpoint.
+   */
+  async countParse(limit: number): Promise<DailyCountResult> {
     const today = nowIso().slice(0, 10);
     const resetsAt = `${today}T23:59:59.999Z`;
     const res = await this.doc.send(
       new UpdateCommand({
         TableName: this.tableName,
-        Key: { PK: this.pk(), SK: AiStore.sk.dailyPhoto(today) },
+        Key: { PK: this.pk(), SK: AiStore.sk.dailyParse(today) },
         UpdateExpression: "ADD #c :one SET #ttl = :ttl, #o = :owner",
         ExpressionAttributeNames: { "#c": "count", "#ttl": "ttl", "#o": "owner" },
         ExpressionAttributeValues: {

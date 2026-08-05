@@ -1,7 +1,9 @@
 /// <reference path="./runtime.d.ts" />
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { VerifiedPermissionsClient } from "@aws-sdk/client-verifiedpermissions";
+import { AiStore } from "../../../src/data/dynamo/aiStore";
 import { makeAuthorize } from "../../../src/data/dynamo/authorize";
+import { makeDocClient } from "../../../src/data/dynamo/dynamoClient";
 import { verifyCaller } from "../ai/auth";
 import { UpstreamError } from "../ai/provider";
 import { type StudentContext, classify } from "./classify";
@@ -25,9 +27,12 @@ import { readPage } from "./vision";
  * Sanitise must precede classify because matching depends on correct terms —
  * `Phenoxyethylpenicillin` matches no proficiency and no medication card.
  *
- * **No table access at all, not even read** (P32). The student's context — medication card
- * names, tag labels, placement — arrives in the request body, because the app is local-first
- * and already holds it in Dexie. That keeps this function's IAM to Bedrock and one S3 prefix.
+ * **No table READS at all** (P32). The student's context — medication card names, tag labels,
+ * placement — arrives in the request body, because the app is local-first and already holds it
+ * in Dexie. The one table touch is a write: a single atomic counter row for the daily
+ * fresh-read cap (H8), which has to live here because this is the only place that knows a read
+ * is actually about to spend four model calls. So the IAM is Bedrock, one S3 prefix, and
+ * `UpdateItem`/`PutItem` on the table — still no query, scan or get.
  *
  * **Streamed, in stages (P40).** The whole pipeline takes ~70s measured, and a blank spinner
  * for that long reads as a hang. So this streams SSE and reports each stage as it lands:
@@ -37,9 +42,21 @@ import { readPage } from "./vision";
 
 const USER_POOL_ID = process.env.USER_POOL_ID as string;
 const CAPTURE_BUCKET = process.env.CAPTURE_BUCKET as string;
+const TABLE_NAME = process.env.TABLE_NAME as string;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
+/**
+ * Fresh reads per user per day (hardening H8).
+ *
+ * Higher than the 10-photo cap on purpose: this counts a *read*, and re-reading a page from
+ * scratch is a legitimate thing to do when the models got it wrong (P41), so it must not come
+ * out of the photo allowance. 30 bounds the model spend on the one path where nothing else
+ * did — a cache hit never arrives here at all, so it costs nothing against this.
+ */
+const DAILY_PARSE_LIMIT = 30;
+
 const s3 = new S3Client({});
+const doc = makeDocClient();
 const authorize = makeAuthorize({
   client: new VerifiedPermissionsClient({}),
   policyStoreId: process.env.POLICY_STORE_ID as string,
@@ -158,6 +175,26 @@ async function run(event: FunctionUrlEvent, responseStream: ResponseStream): Pro
   } catch (err) {
     console.warn("could not read capture object", err);
     return fail(responseStream, 404, { error: "image_not_found" });
+  }
+
+  // The day's fresh reads (H8) — counted HERE, with the photo in hand and the models about to
+  // run, so a page that was never readable doesn't spend one. A cache hit never reaches this
+  // function, so re-opening a page you have already read stays free (P41).
+  //
+  // Fails OPEN: this is a courtesy bound on model spend, not a security control, and a counter
+  // that can't be written (a throttle, a permission that didn't land with a deploy) must not
+  // be the reason a student can't read their own notes. Alarms cover the spend side.
+  const ai = new AiStore({ doc, tableName: TABLE_NAME, sub: caller.sub });
+  const count = await ai.countParse(DAILY_PARSE_LIMIT).catch((err) => {
+    console.warn("could not count this parse against the daily cap", err);
+    return { allowed: true, remaining: DAILY_PARSE_LIMIT, resetsAt: "" };
+  });
+  if (!count.allowed) {
+    return fail(responseStream, 429, {
+      error: "CAP",
+      detail: "That's as many pages as we can read today — your photos are safe, back tomorrow 🌱",
+      resetsAt: count.resetsAt,
+    });
   }
 
   const startedAt = Date.now();

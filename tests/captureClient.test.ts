@@ -75,6 +75,9 @@ function client(fetchImpl: typeof fetch) {
     apiBase: "/api",
     getIdToken: async () => "test-id-token",
     fetchImpl,
+    // Retries are H7's own subject (tests/captureRetry.test.ts). Here they must simply not
+    // make the suite wait out a real ~13s backoff on the failure paths.
+    retry: { sleep: async () => {}, jitter: () => 0 },
   });
 }
 

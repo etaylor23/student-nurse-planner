@@ -1,3 +1,5 @@
+import { type RetryNotice, type RetryOptions, withRetry } from "./retry";
+
 /**
  * Client for note-capture photo uploads (spec-note-capture.md P1/P17).
  *
@@ -11,6 +13,11 @@
  * The upload URL is signed for one specific key, content type and length (P1), so this
  * client must send exactly what it asked to send — hence `contentType`/`bytes` are taken
  * from the downscaled blob rather than the original file.
+ *
+ * **Both hops retry** (hardening H7): three goes each, backing off ~1s/3s/9s on a network
+ * error, a 5xx or a 429 — never on another 4xx, which is a refusal the server means. An
+ * expired signature (403) is the one failure answered by asking again rather than repeating:
+ * the URL is re-requested and the PUT retried once with the new one.
  */
 
 export interface PresignAllowed {
@@ -69,27 +76,38 @@ export interface CaptureClientOptions {
   getIdToken: () => Promise<string>;
   /** Injectable for tests; defaults to global fetch. */
   fetchImpl?: typeof fetch;
+  /** Retry cadence (H7). Injectable so tests don't wait out a real ~13s backoff. */
+  retry?: Pick<RetryOptions, "attempts" | "sleep" | "jitter">;
 }
 
 export class CaptureUploadError extends Error {
   constructor(
     readonly code: "presign_failed" | "upload_failed",
     message: string,
+    /** The HTTP status this came from, when there was one — how `isTransient` (H7) tells a
+     *  dropped connection from a refusal. Absent means the request never got an answer. */
+    readonly status?: number,
   ) {
     super(message);
     this.name = "CaptureUploadError";
   }
 }
 
+/** Which hop is being retried, so the progress UI can say something true (H7). */
+export type UploadStep = "presign" | "upload" | "cache";
+export type UploadRetryNotice = RetryNotice & { step: UploadStep };
+
 export class CaptureClient {
   private readonly apiBase: string;
   private readonly getIdToken: () => Promise<string>;
   private readonly fetchImpl: typeof fetch;
+  private readonly retryOpts: Pick<RetryOptions, "attempts" | "sleep" | "jitter">;
 
   constructor(opts: CaptureClientOptions) {
     this.apiBase = opts.apiBase;
     this.getIdToken = opts.getIdToken;
     this.fetchImpl = opts.fetchImpl ?? ((...a) => fetch(...a));
+    this.retryOpts = opts.retry ?? {};
   }
 
   /** Ask the server for permission + a signed URL. A cap hit is a normal response, not a throw. */
@@ -116,6 +134,7 @@ export class CaptureClient {
       throw new CaptureUploadError(
         "presign_failed",
         data.detail || data.error || `presign failed (${res.status})`,
+        res.status,
       );
     }
     return data.result;
@@ -135,7 +154,7 @@ export class CaptureClient {
     if (!res.ok) {
       // A 403 here usually means the signature no longer matches: an expired URL, or a
       // content type/length that drifted from what was presigned.
-      throw new CaptureUploadError("upload_failed", `S3 upload failed (${res.status})`);
+      throw new CaptureUploadError("upload_failed", `S3 upload failed (${res.status})`, res.status);
     }
   }
 
@@ -161,16 +180,57 @@ export class CaptureClient {
     }
   }
 
+  /**
+   * The finished parse for a page already in S3, by key — for resuming an interrupted
+   * capture (H9). Returns `undefined` when there isn't one, which is a normal answer: the
+   * page then needs a real read.
+   *
+   * Never throws, for the same reason `presignPageImage` doesn't: recovery is a best-effort
+   * improvement on re-reading the page, so a failure here should cost a read, not the resume.
+   */
+  async cachedParseFor(
+    imageKey: string,
+    signal?: AbortSignal,
+  ): Promise<{ parse: unknown; parsedAt?: string } | undefined> {
+    try {
+      const token = await this.getIdToken();
+      const res = await this.fetchImpl(`${this.apiBase}/rpc`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+        body: JSON.stringify({ method: "notes/cachedParse", args: [{ imageKey }] }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        result?: { parseUrl?: string; parsedAt?: string } | null;
+      };
+      if (!res.ok || !data.result?.parseUrl) return undefined;
+      const parse = await this.fetchCachedParse(data.result.parseUrl, signal);
+      return { parse, parsedAt: data.result.parsedAt };
+    } catch {
+      return undefined;
+    }
+  }
+
   /** Fetch a cached parse. No auth header — the presigned GET is the authorisation. */
   async fetchCachedParse(parseUrl: string, signal?: AbortSignal): Promise<unknown> {
     const res = await this.fetchImpl(parseUrl, { signal });
-    if (!res.ok) throw new CaptureUploadError("upload_failed", `cache read failed (${res.status})`);
+    if (!res.ok) {
+      throw new CaptureUploadError(
+        "upload_failed",
+        `cache read failed (${res.status})`,
+        res.status,
+      );
+    }
     return res.json();
   }
 
   /**
    * presign + upload as one step. Three possible outcomes: a cache hit (nothing uploaded, the
    * previous parse returned), a fresh upload, or the daily cap.
+   *
+   * Each hop retries on its own (H7): a presign that never answered is asked again, and a PUT
+   * that failed transiently is repeated with the same signed URL, which is still valid because
+   * the retries fit well inside `PRESIGN_EXPIRY_SECONDS`. Re-asking for the URL doesn't spend
+   * a second photo from the daily cap — the server claims the count once per page per day.
    */
   async uploadPhoto(input: {
     captureId: string;
@@ -180,22 +240,61 @@ export class CaptureClient {
     signal?: AbortSignal;
     /** Skip the cache and read the page again from scratch (P41). */
     refresh?: boolean;
+    /** Told before each backoff, so the student sees "trying again" rather than a hang. */
+    onRetry?: (notice: UploadRetryNotice) => void;
   }): Promise<UploadResult> {
     const imageHash = await hashBlob(input.blob);
-    const presigned = await this.presign({
-      captureId: input.captureId,
-      imageIndex: input.imageIndex,
-      contentType: input.contentType,
-      bytes: input.blob.size,
-      imageHash,
-      refresh: input.refresh,
+    const retry = (step: UploadStep) => ({
+      ...this.retryOpts,
+      onRetry: (n: RetryNotice) => input.onRetry?.({ ...n, step }),
     });
+    const ask = () =>
+      withRetry(
+        () =>
+          this.presign({
+            captureId: input.captureId,
+            imageIndex: input.imageIndex,
+            contentType: input.contentType,
+            bytes: input.blob.size,
+            imageHash,
+            refresh: input.refresh,
+          }),
+        retry("presign"),
+      );
+
+    const presigned = await ask();
     if (!presigned.ok) return presigned;
     if (presigned.cached) {
-      const parse = await this.fetchCachedParse(presigned.parseUrl, input.signal);
+      const parse = await withRetry(
+        () => this.fetchCachedParse(presigned.parseUrl, input.signal),
+        retry("cache"),
+      );
       return { ok: true, cached: true, key: presigned.key, parse, parsedAt: presigned.parsedAt };
     }
-    await this.upload(presigned.url, input.blob, input.contentType, input.signal);
+
+    const put = (url: string) =>
+      withRetry(
+        () => this.upload(url, input.blob, input.contentType, input.signal),
+        retry("upload"),
+      );
+    try {
+      await put(presigned.url);
+    } catch (err) {
+      // A signature S3 won't accept cannot be fixed by sending it again — ask for a new URL
+      // and use that. Once: a second 403 is a real mismatch, not a stale URL.
+      if (!(err instanceof CaptureUploadError) || err.status !== 403) throw err;
+      const again = await ask();
+      if (!again.ok) return again;
+      if (again.cached) {
+        const parse = await withRetry(
+          () => this.fetchCachedParse(again.parseUrl, input.signal),
+          retry("cache"),
+        );
+        return { ok: true, cached: true, key: again.key, parse, parsedAt: again.parsedAt };
+      }
+      await put(again.url);
+      return { ok: true, key: again.key, remaining: again.remaining };
+    }
     return { ok: true, key: presigned.key, remaining: presigned.remaining };
   }
 }

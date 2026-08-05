@@ -13,6 +13,8 @@
  * it: EventSource cannot send an Authorization header or use POST.
  */
 
+import { type RetryNotice, type RetryOptions, withRetry } from "./retry";
+
 export interface ParsedBlockView {
   fromRegions: number[];
   text: string;
@@ -65,8 +67,12 @@ export interface ParseHandlers {
 
 export class ParseError extends Error {
   constructor(
-    readonly code: "unauthorised" | "not_found" | "throttled" | "failed",
+    readonly code: "unauthorised" | "not_found" | "throttled" | "capped" | "failed",
     message: string,
+    /** The status it came from, so `isTransient` (H7) can tell a 503 from a refusal. */
+    readonly status?: number,
+    /** `capped` only: UTC midnight the parse counter rolls over (H8). */
+    readonly resetsAt?: string,
   ) {
     super(message);
     this.name = "ParseError";
@@ -77,6 +83,8 @@ export interface ParseClientOptions {
   parseUrl: string;
   getIdToken: () => Promise<string>;
   fetchImpl?: typeof fetch;
+  /** Retry cadence (H7). Injectable so tests don't wait out a real ~13s backoff. */
+  retry?: Pick<RetryOptions, "attempts" | "sleep" | "jitter">;
 }
 
 /** What the client tells the server about the student, so parseFn needs no table access (P32). */
@@ -91,14 +99,44 @@ export class ParseClient {
   private readonly parseUrl: string;
   private readonly getIdToken: () => Promise<string>;
   private readonly fetchImpl: typeof fetch;
+  private readonly retryOpts: Pick<RetryOptions, "attempts" | "sleep" | "jitter">;
 
   constructor(opts: ParseClientOptions) {
     this.parseUrl = opts.parseUrl.replace(/\/$/, "");
     this.getIdToken = opts.getIdToken;
     this.fetchImpl = opts.fetchImpl ?? ((...a) => fetch(...a));
+    this.retryOpts = opts.retry ?? {};
   }
 
+  /**
+   * Run one page through the pipeline, forwarding each frame as it lands.
+   *
+   * Retries (H7) cover the request that never started: a network error, a 5xx or a Bedrock
+   * throttle relayed as a 429, three goes at ~1s/3s/9s. Once a frame has been delivered the
+   * retry stops being safe — the caller has already seen a transcription, and running the
+   * pipeline again would replay stages over its own state — so a break after that point
+   * surfaces as a failure with whatever arrived, which is what the per-page error path in
+   * `useCapture` already handles. The daily parse cap (H8) is never retried: it is a refusal.
+   */
   async parse(
+    input: {
+      captureId: string;
+      imageKey: string;
+      imageIndex: number;
+      context?: ParseContext;
+      signal?: AbortSignal;
+      /** Told before each backoff, so the waiting screen can say "trying again". */
+      onRetry?: (notice: RetryNotice) => void;
+    },
+    handlers: ParseHandlers,
+  ): Promise<void> {
+    await withRetry(() => this.attempt(input, handlers), {
+      ...this.retryOpts,
+      onRetry: input.onRetry,
+    });
+  }
+
+  private async attempt(
     input: {
       captureId: string;
       imageKey: string;
@@ -123,7 +161,21 @@ export class ParseClient {
 
     // Failures before the stream starts are still plain JSON with a real status code.
     if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string; detail?: string };
+      const body = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        detail?: string;
+        resetsAt?: string;
+      };
+      // The daily parse cap (H8) arrives as a 429 like a throttle, but it is a refusal with a
+      // rollover time — it must not be retried, so it carries no status.
+      if (res.status === 429 && body.error === "CAP") {
+        throw new ParseError(
+          "capped",
+          body.detail || "We've read as many pages as we can today.",
+          undefined,
+          body.resetsAt,
+        );
+      }
       const code =
         res.status === 401
           ? "unauthorised"
@@ -132,16 +184,30 @@ export class ParseClient {
             : res.status === 429
               ? "throttled"
               : "failed";
-      throw new ParseError(code, body.detail || body.error || `parse failed (${res.status})`);
+      throw new ParseError(
+        code,
+        body.detail || body.error || `parse failed (${res.status})`,
+        res.status,
+      );
     }
     if (!res.body) throw new ParseError("failed", "no response body");
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buf = "";
+    // Once a frame has reached the handlers, a later break is not retryable (see `parse`).
+    let delivered = false;
     for (;;) {
-      const { done, value } = await reader.read();
+      let chunk: ReadableStreamReadResult<Uint8Array>;
+      try {
+        chunk = await reader.read();
+      } catch (err) {
+        if (!delivered) throw err; // nothing was forwarded — a fresh attempt is clean
+        throw new ParseError("failed", err instanceof Error ? err.message : "stream ended early");
+      }
+      const { done, value } = chunk;
       if (done) break;
+      delivered = true;
       buf += decoder.decode(value, { stream: true });
       let sep: number;
       // Frames are separated by a blank line; a partial frame stays in the buffer.

@@ -14,6 +14,8 @@ import { AiStore, type AiStoreOptions } from "../../../src/data/dynamo/aiStore";
  * 1. **The cap gates the presign** (P17). Counting after issuing the URL would leave
  *    uploads unbounded while parsing was capped — the bucket, not the model, would be the
  *    thing being abused. So `countPhoto` runs first and a cap hit returns without signing.
+ *    The count is claimed once per PAGE per day (H7): the client retries a presign whose
+ *    reply was lost on a ward connection, and the same page must not cost two photos.
  *
  * 2. **The key is derived, never accepted.** `sub` comes from the verified JWT and the
  *    image hash is regex-checked as 64 hex characters, so a caller cannot smuggle `../` or
@@ -196,7 +198,9 @@ export async function presignCapture(
   }
 
   const ai = new AiStore({ doc: deps.doc, tableName: deps.tableName, sub });
-  const count = await ai.countPhoto(DAILY_PHOTO_LIMIT);
+  // Counted against the PAGE, not the call: the client retries a presign whose answer was
+  // lost on a bad connection (H7), and a page asked for twice must not spend two photos.
+  const count = await ai.countPhoto(DAILY_PHOTO_LIMIT, req.imageHash);
   if (!count.allowed) {
     return { ok: false, reason: "CAP", remaining: 0, resetsAt: count.resetsAt };
   }
@@ -266,6 +270,35 @@ export async function presignPageImage(
 }
 
 /**
+ * The finished parse for a page the student has already uploaded, if there is one — by KEY,
+ * with no upload and no cap (hardening H9).
+ *
+ * This exists for recovery. A capture interrupted mid-flight (the tab closed, the phone
+ * locked) has pages in S3 whose blocks were never persisted, and the parse very often
+ * completed after the client vanished — the result is sitting in `parse.json`. Resuming can
+ * therefore be free, but only if the parse can be asked for by the key the capture row
+ * already holds: `presignCapture` needs the bytes to hash, and after a reload the client no
+ * longer has them.
+ *
+ * Deliberately NOT a presign: nothing is counted and nothing can be written. The key is
+ * rebuilt from the verified `sub` exactly as `presignPageImage` does, so a request naming
+ * another student's page can only be rejected.
+ */
+export async function cachedParseForKey(
+  deps: { bucket: string; s3?: S3Client; headParseCache?: (key: string) => Promise<Date | null> },
+  sub: string,
+  raw: unknown,
+): Promise<{ parseUrl: string; parsedAt?: string } | null> {
+  const o = (raw ?? {}) as Record<string, unknown>;
+  const parts = SAFE_PAGE_KEY.exec(typeof o.imageKey === "string" ? o.imageKey : "");
+  if (!parts) throw new PresignError("bad_image_key");
+  const [, keySub, imageHash] = parts;
+  if (keySub !== sub) throw new PresignError("bad_image_key");
+  const s3 = deps.s3 ?? new S3Client({});
+  return cachedParse(deps, s3, sub, imageHash);
+}
+
+/**
  * Is there a finished parse for this page? Returns a short-lived GET URL if so.
  *
  * A missing object is the normal case, not an error — `HeadObject` 404s and we sign a PUT
@@ -273,7 +306,9 @@ export async function presignPageImage(
  * cost a re-parse, never a broken upload.
  */
 async function cachedParse(
-  deps: PresignDeps,
+  // Only the bucket and the lookup — `presignCapture` passes its whole `PresignDeps`, and
+  // `cachedParseForKey` has no table access to pass at all.
+  deps: Pick<PresignDeps, "bucket" | "headParseCache">,
   s3: S3Client,
   sub: string,
   imageHash: string,

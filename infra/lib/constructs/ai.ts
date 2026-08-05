@@ -170,6 +170,8 @@ export class Ai extends Construct {
         USER_POOL_ID: userPool.userPoolId,
         USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
         CAPTURE_BUCKET: captureBucket.bucketName,
+        // For the daily fresh-read counter only (H8) — see the write-only grant below.
+        TABLE_NAME: table.tableName,
         // Four stages, four independently tunable models (P21/P39). All UNMEASURED as
         // starting defaults — Gate 0 bakes them off over >=4 runs each before launch.
         AI_VISION_MODEL_ID: "qwen.qwen3-vl-235b-a22b-instruct",
@@ -179,11 +181,20 @@ export class Ai extends Construct {
       },
     });
 
-    // Deliberately NO table grant (P32): the student's context arrives in the request body,
-    // because the client already holds it locally. The bucket is read+write because the
+    // Deliberately NO table READ grant (P32): the student's context arrives in the request
+    // body, because the client already holds it locally. The bucket is read+write because the
     // finished parse is cached beside the photo it came from (P41) — still nothing but this
     // one bucket.
     captureBucket.grantReadWrite(this.parseFn);
+    // The single exception, added with H8: the daily fresh-read counter. Write-only and
+    // deliberately not `grantReadWriteData` — this function must not be able to query or scan
+    // a student's records, only bump one counter row and claim its marker.
+    this.parseFn.addToRolePolicy(
+      new PolicyStatement({
+        actions: ["dynamodb:UpdateItem", "dynamodb:PutItem"],
+        resources: [table.tableArn],
+      }),
+    );
     this.parseFn.addToRolePolicy(
       new PolicyStatement({
         actions: ["verifiedpermissions:IsAuthorized", "verifiedpermissions:IsAuthorizedWithToken"],

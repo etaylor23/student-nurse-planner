@@ -16,6 +16,7 @@ const startCapture = vi.fn(async (_files: File[], _opts: { piiAcknowledged: bool
 const reset = vi.fn();
 /** A signed page URL expires, and the capture outlives the dialog — so opening it re-signs. */
 const ensurePageImage = vi.fn(async () => {});
+const resumeInterrupted = vi.fn(async () => false);
 const useRepositoryMock = vi.fn(() => ({ isGuest: false }));
 /** The localhost-only beta gate (decision 12) — flipped per test. */
 const photoCaptureAvailable = vi.fn(() => true);
@@ -69,6 +70,9 @@ vi.mock("../src/react/components/capture/useCapture", () => ({
     dismissBlock: vi.fn(),
     createMedication: vi.fn(),
     rerunFromScratch: vi.fn(),
+    // Opening the dialog checks for a capture the last session lost (H9). Nothing to resume
+    // here, so it answers false and the ordinary PII-warning flow runs.
+    resumeInterrupted,
     ensurePageImage,
   }),
 }));

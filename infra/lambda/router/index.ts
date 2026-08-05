@@ -9,7 +9,7 @@ import { DynamoRepository } from "../../../src/data/dynamo/dynamoRepository";
 import { makeAuthorize, type Tier, type Verb } from "../../../src/data/dynamo/authorize";
 import { RelationshipStore } from "../../../src/data/dynamo/relationships";
 import { AiStore } from "../../../src/data/dynamo/aiStore";
-import { presignCapture, presignPageImage, PresignError } from "./captures";
+import { cachedParseForKey, presignCapture, presignPageImage, PresignError } from "./captures";
 import {
   type Caller,
   CrossUserAccess,
@@ -276,12 +276,16 @@ async function dispatchAi(method: string, args: unknown[], caller: Caller): Prom
  * Tier is SensitiveRecord, matching AI recall and reflections: a photographed page is the
  * student's own clinical notes, and P2 accepts that it may contain more than it should.
  */
-const NOTES_METHODS = new Set(["notes/presignCapture", "notes/presignPageImage"]);
+const NOTES_METHODS = new Set([
+  "notes/presignCapture",
+  "notes/presignPageImage",
+  "notes/cachedParse",
+]);
 
 async function dispatchNotes(method: string, args: unknown[], caller: Caller): Promise<unknown> {
   // Issuing an upload URL adds a page; reading one back is a Read. Both are owner-scoped and
   // both resolve through owner-all, but the audit trail should say which one happened.
-  const action: Verb = method === "notes/presignPageImage" ? "Read" : "Create";
+  const action: Verb = method === "notes/presignCapture" ? "Create" : "Read";
   const ok = await authorize({
     identityToken: caller.identityToken,
     action,
@@ -301,6 +305,10 @@ async function dispatchNotes(method: string, args: unknown[], caller: Caller): P
     // The photo of a page the student already uploaded, for the review screen (P1).
     case "notes/presignPageImage":
       return presignPageImage({ bucket: CAPTURE_BUCKET }, caller.sub, args[0]);
+    // A finished parse for a page already in S3, so an interrupted capture can resume for
+    // free instead of paying for the read a second time (H9).
+    case "notes/cachedParse":
+      return cachedParseForKey({ bucket: CAPTURE_BUCKET }, caller.sub, args[0]);
     default:
       throw new CrossUserError("bad_request");
   }
