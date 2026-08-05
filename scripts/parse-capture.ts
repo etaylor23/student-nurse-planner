@@ -2,12 +2,13 @@
  * Post a capture photo to the deployed parse endpoint and dump the result.
  *
  * This is the Gate 2 inspection tool (spec-note-capture-implementation.md): it proves the
- * whole four-call pipeline end-to-end against real AWS, with no UI in the way. It needs a
- * real Cognito ID token, so it signs the user in with a magic link — the same admin path
- * `scripts/invite-user.ts` uses.
+ * whole four-call pipeline end-to-end against real AWS, with no UI in the way.
  *
- *   AWS_PROFILE=personal npx tsx scripts/parse-capture.ts <email> [--key <s3-key>]
- *   AWS_PROFILE=personal npx tsx scripts/parse-capture.ts <email> --file tests/pages/real-medications.png
+ *   AWS_PROFILE=personal PARSE_REFRESH_TOKEN=… npx tsx scripts/parse-capture.ts <email> [--key <s3-key>]
+ *   AWS_PROFILE=personal PARSE_REFRESH_TOKEN=… npx tsx scripts/parse-capture.ts <email> --file tests/pages/real-medications.png
+ *
+ * It needs a real Cognito ID token. `PARSE_REFRESH_TOKEN` is the way to get one unattended
+ * (H6 — see `idTokenFromRefresh`); `PARSE_ID_TOKEN` takes a pasted one for a single run.
  *
  * `--file` replicates what the client does before upload — downscale to 2400px JPEG q85
  * (`src/react/components/capture/downscale.ts`) — then PUTs the bytes at the content-addressed
@@ -35,7 +36,49 @@ import {
 } from "@aws-sdk/client-cognito-identity-provider";
 
 /**
+ * Trade a refresh token for a fresh ID token (hardening H6).
+ *
+ * This is the harness's self-serve path, and it exists because the magic-link mint below
+ * CANNOT be made to work from a CLI: the passwordless construct's KMS key policy allows the
+ * account `NotAction: "kms:Sign"` — everything except signing — and grants `kms:Sign` to the
+ * CreateAuthChallenge Lambda's role alone. A resource policy that withholds an action cannot be
+ * overridden by an IAM policy, so even AdministratorAccess gets
+ * `AccessDeniedException … because no resource-based policy allows the kms:Sign action`. That
+ * is the library being deliberate: the signing key is what mints magic links for any user, so
+ * exactly one role holds it.
+ *
+ * A refresh token needs no signing key and no inbox. Sign in once in the browser, take the
+ * refresh token out of storage, and the harness runs unattended for the client's 30 days:
+ *
+ *   export PARSE_REFRESH_TOKEN=$(…)   # once a month
+ *   AWS_PROFILE=personal npx tsx scripts/parse-capture.ts <email> --file tests/pages/<page>
+ */
+async function idTokenFromRefresh(clientId: string, refreshToken: string): Promise<string> {
+  const { InitiateAuthCommand } = await import("@aws-sdk/client-cognito-identity-provider");
+  const res = await cognitoClient().send(
+    new InitiateAuthCommand({
+      ClientId: clientId,
+      AuthFlow: "REFRESH_TOKEN_AUTH",
+      AuthParameters: { REFRESH_TOKEN: refreshToken },
+    }),
+  );
+  const token = res.AuthenticationResult?.IdToken;
+  if (!token) {
+    throw new Error(
+      "PARSE_REFRESH_TOKEN was not accepted — it expires after 30 days and is revoked by " +
+        "signing out. Sign in in the browser again and re-export it.",
+    );
+  }
+  return token;
+}
+
+/**
  * Mint an ID token for a user without their inbox, by building the magic link ourselves.
+ *
+ * **This path needs `kms:Sign` and cannot get it** — see `idTokenFromRefresh` above for why,
+ * and use that instead. Kept because it is the correct shape (and works from anything holding
+ * the CreateAuthChallenge role) and because the failure it produces is the clearest possible
+ * explanation of the constraint.
  *
  * This is exactly what the CreateAuthChallenge Lambda does (`amazon-cognito-passwordless-auth`
  * `magic-link.js`), done with the same admin credentials every other script here uses: sign
@@ -223,16 +266,24 @@ async function main() {
     const listed = await s3Client().send(
       new ListObjectsV2Command({ Bucket: cfg.captureBucket, Prefix: `u/${user.sub}/` }),
     );
-    const newest = (listed.Contents ?? []).sort(
-      (a, b) => (b.LastModified?.getTime() ?? 0) - (a.LastModified?.getTime() ?? 0),
-    )[0];
+    // PAGES only. Since P41 made storage content-addressed, each page prefix also holds a
+    // `parse.json`, and that cached parse is usually the newest object of the two — so "the
+    // most recent object" used to pick the cache and hand a JSON file to the vision model.
+    const newest = (listed.Contents ?? [])
+      .filter((o) => /\/page\.(jpg|png)$/.test(o.Key ?? ""))
+      .sort((a, b) => (b.LastModified?.getTime() ?? 0) - (a.LastModified?.getTime() ?? 0))[0];
     if (!newest?.Key) throw new Error(`No captures under u/${user.sub}/ — upload one first.`);
     key = newest.Key;
   }
   console.log(`\nparsing s3://${cfg.captureBucket}/${key}\n`);
 
+  // A pasted token for a one-off; a refresh token for unattended runs (H6); the magic-link
+  // mint last, because it needs a `kms:Sign` the key policy withholds from every IAM principal.
   const token =
-    process.env.PARSE_ID_TOKEN ?? (await idTokenFor(cfg.userPoolId, cfg.clientId, user.username));
+    process.env.PARSE_ID_TOKEN ??
+    (process.env.PARSE_REFRESH_TOKEN
+      ? await idTokenFromRefresh(cfg.clientId, process.env.PARSE_REFRESH_TOKEN)
+      : await idTokenFor(cfg.userPoolId, cfg.clientId, user.username));
 
   const t0 = Date.now();
   const res = await fetch(parseUrl.replace(/\/$/, ""), {
