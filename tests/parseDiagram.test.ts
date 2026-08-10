@@ -114,6 +114,37 @@ describe("mergeNomination — the classifier's flat nomination folds into the cl
     ]);
   });
 
+  it("grows outward through a run of adjacent nominations, and fills interior holes", () => {
+    // 4 touches 3, then 5 touches 4 — the boundary extends region by region.
+    expect(mergeNomination([{ groupKey: "map", regions: [1, 2, 3] }], [3, 4, 5])).toEqual([
+      { groupKey: "map", regions: [1, 2, 3, 4, 5] },
+    ]);
+    // A hole vision skipped inside its own cluster is the nomination's original job.
+    expect(mergeNomination([{ groupKey: "map", regions: [8, 10] }], [9, 10])).toEqual([
+      { groupKey: "map", regions: [8, 9, 10] },
+    ]);
+  });
+
+  it("refuses a distant island — the real-diabetes-meds margin note", () => {
+    // The nomination overlapped the flowchart (8–17) but also reached across the page for
+    // region 5, the "always check BM + prescription chart" margin box — the one red note
+    // sharing words with a flowchart node. Contiguity is what a text-only nominator can't
+    // fake: 5 touches nothing in the cluster, so it stays out, and its block keeps its own
+    // home instead of nesting under (and being absorbed into) the drawing.
+    const flowchart = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
+    expect(mergeNomination([{ groupKey: "flow", regions: flowchart }], [5, 8, 10])).toEqual([
+      { groupKey: "flow", regions: flowchart },
+    ]);
+  });
+
+  it("an island cannot bridge to the cluster through other islands", () => {
+    // 5 and 6 are adjacent to each other but neither touches [1,2,3]; adjacency must chain
+    // from the CLUSTER outward, or two stray nominations legitimise each other.
+    expect(mergeNomination([{ groupKey: "map", regions: [1, 2, 3] }], [1, 5, 6])).toEqual([
+      { groupKey: "map", regions: [1, 2, 3] },
+    ]);
+  });
+
   it("stands alone beside a single disjoint cluster — a drawing vision missed", () => {
     expect(mergeNomination([{ groupKey: "map", regions: [1, 2, 3] }], [11, 12])).toEqual([
       { groupKey: "map", regions: [1, 2, 3] },

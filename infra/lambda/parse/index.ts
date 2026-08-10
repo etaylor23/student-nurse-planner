@@ -256,10 +256,19 @@ async function run(event: FunctionUrlEvent, responseStream: ResponseStream): Pro
     // the WHOLE page rather than the cluster, because the two models draw a drawing's
     // boundary independently and a label the cluster missed is still the student's own
     // word, not an invention.
-    const clusters = mergeNomination(
-      visionDiagramClusters(structure.parsed.blocks),
-      classified.diagramRegions,
-    );
+    const visionClusters = visionDiagramClusters(structure.parsed.blocks);
+    const clusters = mergeNomination(visionClusters, classified.diagramRegions);
+    // Cluster provenance, indices only (content-free, so CloudWatch-safe). Added after
+    // `real-diabetes-meds` (2026-08-10): a margin note's region turned up inside the
+    // flowchart's cluster and nothing recorded WHICH nominator put it there — vision's
+    // groupKey hints and the classifier's flat list were indistinguishable after the fact.
+    if (visionClusters.length > 0 || classified.diagramRegions.length > 0) {
+      console.log(
+        `diagram clusters: vision=${JSON.stringify(visionClusters.map((c) => c.regions))}` +
+          ` classifier=${JSON.stringify(classified.diagramRegions)}` +
+          ` merged=${JSON.stringify(clusters.map((c) => c.regions))}`,
+      );
+    }
     const visionDiagrams = structure.parsed.diagrams;
     const synthesised = clusters.flatMap((cluster) => {
       const meta = cluster.groupKey
@@ -358,6 +367,12 @@ async function run(event: FunctionUrlEvent, responseStream: ResponseStream): Pro
         classifier: { ms: classified.latencyMs, failed: classified.failed, droppedBlocks: classified.droppedBlocks, salvagedBlocks: classified.salvagedBlocks, droppedCodes: classified.droppedCodes },
         disputes: disputes.length,
         recoveredRegions: recovered.length,
+        // Indices only — which nominator drew each drawing's boundary (see the log above).
+        diagram: {
+          vision: visionClusters.map((c) => c.regions),
+          classifier: classified.diagramRegions,
+          merged: clusters.map((c) => c.regions),
+        },
       },
     });
     out.end();

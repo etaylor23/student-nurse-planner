@@ -66,8 +66,29 @@ export function mergeNomination(
   // Overlapping the one drawing → the same drawing, seen differently: union. Disjoint from
   // it → a second drawing vision missed: it stands alone.
   if (!overlap) return [...clusters, { regions: nominated }];
-  const merged = [...new Set([...only.regions, ...nominated])].sort((a, b) => a - b);
-  return [{ ...only, regions: merged }];
+  // Union by CONTIGUITY, not wholesale. Regions arrive in reading order and a drawing is
+  // contiguous on the page, so a nominated region only joins if it touches the cluster —
+  // growing outward, so a run of adjacent regions still extends the boundary (the union's
+  // original job). What this blocks is the distant island: on `real-diabetes-meds`
+  // (2026-08-10) the nomination reached across the page and pulled the "always check BM +
+  // prescription chart" margin box (region 5) into the flowchart's cluster (8–17) — the one
+  // red note that shares words with a flowchart node, which is exactly the mistake a
+  // text-only nominator makes and a region-set union can't see.
+  const merged = new Set(only.regions);
+  const candidates = new Set(nominated.filter((r) => !merged.has(r)));
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const r of [...candidates]) {
+      if (merged.has(r - 1) || merged.has(r + 1)) {
+        merged.add(r);
+        candidates.delete(r);
+        grew = true;
+      }
+    }
+  }
+  if (merged.size === only.regions.length) return clusters;
+  return [{ ...only, regions: [...merged].sort((a, b) => a - b) }];
 }
 
 /**
