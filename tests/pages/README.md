@@ -1,6 +1,6 @@
 # Real-page corpus
 
-Five **real handwritten pages** for the note-capture pipeline — the committed counterpart to
+Twelve **real handwritten pages** for the note-capture pipeline — the committed counterpart to
 the generated corpus (`scripts/make-note-pages.ts`, output gitignored under `evidence/`).
 These are hand-copied-and-photographed versions of the generated pages, which makes them the
 only corpus that exercises the two-model consensus: real handwriting is ambiguous, a font is
@@ -15,7 +15,19 @@ not (`scripts/README-note-pages.md`).
 | `real-haematology-meds.jpg` | — | The original Gate-2 page (Appendix 2's numbers) — Aciclovir / Phenoxymethylpenicillin |
 | `real-heart-failure.png` | — | The first TWO-drawing page (P45): a mind map AND a branching flowchart — per-drawing DIAGRAM blocks, YES/NO edge labels, and the page that exposed the degenerate-read retry |
 
-The four `.png` pages are 1086×1448 — **below** the 2400px long-edge the client targets, so
+Six more added 2026-08-10. Between them they carry **eight drawings**, which makes them the
+first real test of per-drawing synthesis (P45) at corpus scale rather than on one page:
+
+| File | Aims at |
+|---|---|
+| `real-diabetes-meds.png` | MED_LOG ×4 (Metformin / Gliclazide / insulin glargine / rapid-acting) + a hypo **flowchart** with YES/NO branches + **a dated header** (`Fri 22/8`) for shift resolution (P8), and three red margin call-outs that are notes in their own right |
+| `real-wound-dressing.png` | CLINICAL_SKILL bullets + a nine-step linear **flowchart** + a red boxed infection-signs list + a closing reflection line. Also the sanitiser's honest case: the page says **"woand dressing"**, a same-word-count fix the H5 guard permits |
+| `real-reflection-sbar.png` | A long prose REFLECTION (Gibbs split) + an SBAR **mind map** whose hub is red and whose four spokes are separate notes + What-went-well / To-improve lists |
+| `real-resp-inhalers.png` | **Two-column** numbered layout (reading order, P36) with four drug notes + an inhaler-technique **table** (three cells — not a flowchart; what vision nominates here is worth knowing) + a red boxed O₂-target caution |
+| `real-falls-handling.png` | The second TWO-drawing page: a falls-prevention **mind map** (six spokes) AND a dizziness **flowchart** with YES/NO — plus two closing TODO-ish bullets |
+| `real-discharge-ttos.png` | A five-step **flowchart** + a **tick-box checklist** in a box (does a ✓ list read as a drawing?) + bullets + a closing REFLECTION + a red one-line caution |
+
+Every `.png` page is 1086×1448 — **below** the 2400px long-edge the client targets, so
 transcription here is a harder test than a phone photo, not an easier one.
 
 ## Running the corpus
