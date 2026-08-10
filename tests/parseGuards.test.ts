@@ -151,6 +151,23 @@ describe("sanitise — a correction must appear verbatim in the input (P24)", ()
     expect(r.text).toBe(page);
   });
 
+  it("rejects a CASE-ONLY change — identical letters cannot be a spelling fix", async () => {
+    // Seen in the wild 2026-08-10: `OD → od` un-capitalised a dose abbreviation. Same word
+    // count, so an expansion guard can't catch it; this one is structural like the rest.
+    respondWith({
+      corrections: [
+        { from: "OD", to: "od", reason: "style" },
+        { from: "Filgastrim", to: "Filgrastim", reason: "spelling" },
+      ],
+      correctedText: "ignored",
+    });
+    const r = await sanitise("Prednisolone OD - steroid. Filgastrim daily.");
+    expect(r.corrections).toEqual([{ from: "Filgastrim", to: "Filgrastim", reason: "spelling" }]);
+    expect(r.rejected).toEqual([{ from: "OD", to: "od", reason: "style" }]);
+    expect(r.text).toContain("Prednisolone OD");
+    expect(r.text).toContain("Filgrastim");
+  });
+
   it("drops no-op corrections where from === to", async () => {
     respondWith({ corrections: [{ from: "chemo", to: "chemo" }], correctedText: page });
     const r = await sanitise(page);
@@ -198,6 +215,75 @@ describe("classify — a block's text must come from the page (P26/P27)", () => 
     const r = await classify(page, [page], {});
     expect(r.blocks).toHaveLength(1);
     expect(r.droppedBlocks).toBe(1);
+  });
+
+  it("SALVAGES a reworded block from its own regions — classification kept, rewording gone", async () => {
+    // The aug10 failure mode (runs/aug10-new-pages/): the model types a bullet correctly
+    // but re-emits its text loosely; the guard used to throw the whole block away, and the
+    // coverage net resurrected the region as UNKNOWN — a typed note downgraded to retyping.
+    const regions = ["Aciclovir - antiviral medication.", "• check pain first"];
+    respondWith({
+      blocks: [
+        { text: "Aciclovir - antiviral medication.", kind: "MEDICATION", fromRegions: [0] },
+        // Reworded ("check the pain first") → fails the on-page guard, carries a gibbs.
+        {
+          text: "check the pain first",
+          kind: "CLINICAL_SKILL",
+          fromRegions: [1],
+          candidateCodes: ["B2.1", "not-a-code"],
+          gibbs: { DESCRIPTION: "checked the pain" },
+        },
+      ],
+    });
+    const r = await classify(regions.join("\n"), regions, {});
+    expect(r.blocks).toHaveLength(2);
+    expect(r.droppedBlocks).toBe(0);
+    expect(r.salvagedBlocks).toBe(1);
+    const salvaged = r.blocks[1];
+    // The text is the region's own transcription — on the page by construction.
+    expect(salvaged.text).toBe("• check pain first");
+    expect(salvaged.kind).toBe("CLINICAL_SKILL");
+    expect(salvaged.candidateCodes).toEqual(["B2.1"]); // codes still validated
+    expect(salvaged.gibbs).toBeUndefined(); // the same model's re-phrasing goes with it
+  });
+
+  it("replays the sanitiser's swaps onto salvaged text, so it matches the page", async () => {
+    const regions = ["woand dressing - keep sterile"];
+    respondWith({
+      blocks: [
+        { text: "wound dressing keep it sterile", kind: "CLINICAL_SKILL", fromRegions: [0] },
+      ],
+    });
+    const r = await classify("wound dressing - keep sterile", regions, {}, [
+      { from: "woand", to: "wound", reason: "spelling" },
+    ]);
+    expect(r.salvagedBlocks).toBe(1);
+    expect(r.blocks[0].text).toBe("wound dressing - keep sterile");
+  });
+
+  it("still drops a reworded block whose regions are already covered — nothing is lost", async () => {
+    const regions = ["Aciclovir - antiviral medication."];
+    respondWith({
+      blocks: [
+        { text: "Aciclovir - antiviral medication.", kind: "MEDICATION", fromRegions: [0] },
+        // Same region, reworded. Salvage would duplicate the row; the content survives above.
+        { text: "Aciclovir is an antiviral drug.", kind: "OBSERVATION", fromRegions: [0] },
+      ],
+    });
+    const r = await classify(regions.join("\n"), regions, {});
+    expect(r.blocks).toHaveLength(1);
+    expect(r.droppedBlocks).toBe(1);
+    expect(r.salvagedBlocks).toBe(0);
+  });
+
+  it("still drops a reworded block with no usable regions — there is nothing to rebuild from", async () => {
+    respondWith({
+      blocks: [{ text: "The student should review NEWS2.", kind: "TODO", fromRegions: [99] }],
+    });
+    const r = await classify(page, [page], {});
+    expect(r.blocks).toHaveLength(0);
+    expect(r.droppedBlocks).toBe(1);
+    expect(r.salvagedBlocks).toBe(0);
   });
 
   it("drops candidate codes that aren't real NMC codes", async () => {

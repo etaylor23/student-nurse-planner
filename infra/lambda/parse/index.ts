@@ -246,7 +246,7 @@ async function run(event: FunctionUrlEvent, responseStream: ResponseStream): Pro
     const checkMissing = !check?.parsed;
 
     // ---- 4: classify ----
-    const classified = await classify(cleaned.text, regions, req.context ?? {});
+    const classified = await classify(cleaned.text, regions, req.context ?? {}, cleaned.corrections);
 
     // DIAGRAM blocks are SYNTHESISED from region nominations (P43/P45, diagram.ts) — one
     // per drawing; a page can hold several. Vision is the primary nominator (it saw the
@@ -355,7 +355,7 @@ async function run(event: FunctionUrlEvent, responseStream: ResponseStream): Pro
         structure: { model: structure.model, ms: structure.latencyMs, in: structure.inputTokens, out: structure.outputTokens, retried: structureRetried },
         check: check ? { model: check.model, ms: check.latencyMs, missing: checkMissing } : { missing: true },
         sanitiser: { ms: cleaned.latencyMs, failed: cleaned.failed, applied: cleaned.corrections.length, rejected: cleaned.rejected.length },
-        classifier: { ms: classified.latencyMs, failed: classified.failed, droppedBlocks: classified.droppedBlocks, droppedCodes: classified.droppedCodes },
+        classifier: { ms: classified.latencyMs, failed: classified.failed, droppedBlocks: classified.droppedBlocks, salvagedBlocks: classified.salvagedBlocks, droppedCodes: classified.droppedCodes },
         disputes: disputes.length,
         recoveredRegions: recovered.length,
       },

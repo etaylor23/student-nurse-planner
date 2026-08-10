@@ -115,8 +115,11 @@ export async function sanitise(pageText: string): Promise<SanitiseResult> {
     const present = new RegExp(`(^|\\W)${c.from.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=\\W|$)`).test(
       pageText,
     );
-    // A no-op "correction" is noise the models emit surprisingly often (`from` === `to`).
-    if (present && c.from !== c.to) corrections.push(c);
+    // A no-op "correction" is noise the models emit surprisingly often (`from` === `to`) —
+    // and a CASE-ONLY change is the same noise in a hat: identical letters can't be a
+    // spelling fix, and the one seen in the wild (`OD → od`, 2026-08-10) un-capitalised a
+    // dose abbreviation. Structural, like every guard here: no prompt can reintroduce it.
+    if (present && c.from.toLowerCase() !== c.to.toLowerCase()) corrections.push(c);
     else rejected.push(c);
   }
   if (rejected.length > 0) {

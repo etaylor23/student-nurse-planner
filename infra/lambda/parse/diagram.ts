@@ -33,33 +33,41 @@ export function visionDiagramClusters(blocks: VisionBlock[]): DiagramCluster[] {
 }
 
 /**
- * Fold the classifier's flat `diagramRegions` nomination into the vision clusters: union
- * into the cluster it overlaps most (the two models drew the same drawing's boundary
- * differently), or stand alone as an extra drawing when it overlaps none (the classifier
- * saw something vision didn't hint). Empty nomination changes nothing.
+ * Fold the classifier's flat `diagramRegions` nomination into the vision clusters.
+ *
+ * The nomination is ONE flat list — the classifier's contract predates multi-drawing pages
+ * (P45) and cannot say which drawing it means. So how much it can contribute depends on how
+ * ambiguous it is:
+ *
+ * - **No vision cluster** → the nomination stands alone as the only signal: the classifier
+ *   saw a drawing vision didn't hint.
+ * - **One cluster** → union: the two models drew the same drawing's boundary differently,
+ *   and the disagreement is worth keeping (this was the nomination's original job).
+ * - **Two or more clusters** → the nomination is IGNORED. On `real-falls-handling`
+ *   (2026-08-10, `runs/aug10-new-pages/`) the flat list swept up both drawings, the page
+ *   title and the closing bullets, and the old best-overlap union turned one cluster into a
+ *   superset of the other plus most of the page — "file whole" would have appended
+ *   everything. A signal that cannot name its drawing is noise once there are two, and
+ *   vision's per-region hints already define each drawing's membership.
+ *
+ * Clusters therefore stay disjoint by construction: vision assigns each region one
+ * groupKey, and the union path only exists when there is a single cluster to union into.
  */
 export function mergeNomination(
   clusters: DiagramCluster[],
   classifierRegions: number[],
 ): DiagramCluster[] {
   if (classifierRegions.length === 0) return clusters;
-  const nominated = new Set(classifierRegions);
-  let bestIdx = -1;
-  let bestOverlap = 0;
-  clusters.forEach((c, i) => {
-    const overlap = c.regions.filter((r) => nominated.has(r)).length;
-    if (overlap > bestOverlap) {
-      bestOverlap = overlap;
-      bestIdx = i;
-    }
-  });
-  if (bestIdx >= 0) {
-    const merged = [...new Set([...clusters[bestIdx].regions, ...nominated])].sort(
-      (a, b) => a - b,
-    );
-    return clusters.map((c, i) => (i === bestIdx ? { ...c, regions: merged } : c));
-  }
-  return [...clusters, { regions: [...nominated].sort((a, b) => a - b) }];
+  const nominated = [...new Set(classifierRegions)].sort((a, b) => a - b);
+  if (clusters.length === 0) return [{ regions: nominated }];
+  if (clusters.length > 1) return clusters;
+  const only = clusters[0];
+  const overlap = only.regions.some((r) => nominated.includes(r));
+  // Overlapping the one drawing → the same drawing, seen differently: union. Disjoint from
+  // it → a second drawing vision missed: it stands alone.
+  if (!overlap) return [...clusters, { regions: nominated }];
+  const merged = [...new Set([...only.regions, ...nominated])].sort((a, b) => a - b);
+  return [{ ...only, regions: merged }];
 }
 
 /**

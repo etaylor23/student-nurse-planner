@@ -103,24 +103,52 @@ describe("visionDiagramClusters — the primary nomination, one per drawing (P43
 });
 
 describe("mergeNomination — the classifier's flat nomination folds into the clusters", () => {
-  const clusters = [
+  const two = [
     { groupKey: "map", regions: [1, 2, 3] },
     { groupKey: "flow", regions: [7, 8] },
   ];
 
-  it("unions into the cluster it overlaps most", () => {
-    expect(mergeNomination(clusters, [3, 4])).toEqual([
+  it("unions with the single cluster it disagrees with — boundary disagreement is signal", () => {
+    expect(mergeNomination([{ groupKey: "map", regions: [1, 2, 3] }], [3, 4])).toEqual([
       { groupKey: "map", regions: [1, 2, 3, 4] },
-      { groupKey: "flow", regions: [7, 8] },
     ]);
   });
 
-  it("stands alone as an extra drawing when it overlaps none", () => {
-    expect(mergeNomination(clusters, [11, 12])).toEqual([...clusters, { regions: [11, 12] }]);
+  it("stands alone beside a single disjoint cluster — a drawing vision missed", () => {
+    expect(mergeNomination([{ groupKey: "map", regions: [1, 2, 3] }], [11, 12])).toEqual([
+      { groupKey: "map", regions: [1, 2, 3] },
+      { regions: [11, 12] },
+    ]);
+  });
+
+  it("stands alone when vision found no drawing at all", () => {
+    expect(mergeNomination([], [4, 5])).toEqual([{ regions: [4, 5] }]);
+  });
+
+  it("is IGNORED once there are two clusters — a flat list cannot name its drawing", () => {
+    // The real-falls-handling failure (runs/aug10-new-pages/): the classifier swept both
+    // drawings, the title and the closing bullets into one nomination, and the old
+    // best-overlap union turned a cluster into regions 0–18 — a superset of the other
+    // drawing plus most of the page. "File whole" would have appended everything.
+    const wholePage = Array.from({ length: 19 }, (_, i) => i);
+    expect(mergeNomination(two, wholePage)).toEqual(two);
+  });
+
+  it("keeps two-cluster pages disjoint whatever the nomination says", () => {
+    for (const nominated of [[3, 4], [7], [0, 1, 7, 8, 12]]) {
+      const out = mergeNomination(two, nominated);
+      const seen = new Set<number>();
+      for (const c of out) {
+        for (const r of c.regions) {
+          expect(seen.has(r), `region ${r} appears in two clusters`).toBe(false);
+          seen.add(r);
+        }
+      }
+    }
   });
 
   it("changes nothing when the classifier nominated nothing", () => {
-    expect(mergeNomination(clusters, [])).toEqual(clusters);
+    expect(mergeNomination(two, [])).toEqual(two);
   });
 });
 

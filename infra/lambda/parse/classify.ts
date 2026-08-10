@@ -1,6 +1,12 @@
 import { seedProficiencies } from "../../../src/data/seed/proficiencies";
 import { chat } from "../ai/provider";
-import { type ClassifiedBlock, classifyResponseSchema, parseModelJson } from "./schema";
+import { applyCorrections } from "./sanitise";
+import {
+  type ClassifiedBlock,
+  type Correction,
+  classifyResponseSchema,
+  parseModelJson,
+} from "./schema";
 
 /**
  * The classification pass (spec-note-capture.md P26–P37).
@@ -74,6 +80,10 @@ For each block, decide:
 
 Never merge separate notes into one block merely because they sit near each other or share a subject — a to-do line is always its own TODO block, wherever it is on the page.
 
+Account for EVERY region: each region number must appear in some block's "fromRegions". A region you leave out reaches the student as an untyped note they have to sort by hand — leaving regions out is never tidier.
+
+A short line is still a note. Bullet points under a heading are individual notes on that heading's subject — bullets under a "skills learnt" heading are CLINICAL_SKILL, procedure steps are CLINICAL_SKILL or OBSERVATION, and a boxed, underlined or red-pen caution or reminder ("never give insulin blind") is OBSERVATION or TODO. Do not use UNKNOWN for a short but meaningful clinical line. The one exception: labels INSIDE a drawing you name in "diagramRegions" may stay UNKNOWN — they travel with the drawing.
+
 If part of the page is a drawn structure — a mind map, flowchart, sketch or hand-drawn table — still classify its written labels as normal blocks like everything else, and ALSO name the drawing in two top-level fields beside "blocks": "diagramRegions" = the region numbers that form the drawing (the labels inside it only — never a margin note, header or to-do that merely sits nearby), and "diagramForm" = what it is (e.g. "mind map"). The app keeps the drawing itself with the photographed page. No drawing → "diagramRegions": [].
 
 CRITICAL: "text" must use the SAME WORDS as the page text given to you, in the same order. You may split it, regroup it, and JOIN HARD-WRAPPED LINES back into flowing sentences and paragraphs so it reads naturally — handwritten notes wrap mid-sentence and that line structure is an artefact of the paper, not the meaning. You may NOT reword it, substitute synonyms, summarise it, or add to it.
@@ -84,6 +94,9 @@ export interface ClassifyResult {
   blocks: ClassifiedBlock[];
   /** Blocks dropped because their text wasn't in the page — the invented-content guard. */
   droppedBlocks: number;
+  /** Blocks that failed the guard but were rebuilt from their own regions' transcriptions —
+   *  the classification kept, the rewording discarded (see the salvage pass below). */
+  salvagedBlocks: number;
   /** Codes dropped because they aren't real NMC codes. */
   droppedCodes: number;
   /** The drawing nomination (P43) — region numbers, for `diagram.ts` to synthesise from. */
@@ -123,6 +136,8 @@ export async function classify(
   sanitisedText: string,
   regions: string[],
   ctx: StudentContext,
+  /** The sanitiser's validated swaps — replayed onto salvaged text so it matches the page. */
+  corrections: Correction[] = [],
 ): Promise<ClassifyResult> {
   const numbered = regions.map((r, i) => `[r${i}] ${r}`).join("\n");
   const user = [
@@ -153,6 +168,7 @@ export async function classify(
     return {
       blocks: [],
       droppedBlocks: 0,
+      salvagedBlocks: 0,
       droppedCodes: 0,
       diagramRegions: [],
       latencyMs: 0,
@@ -163,6 +179,7 @@ export async function classify(
   const failure = (): ClassifyResult => ({
     blocks: [],
     droppedBlocks: 0,
+    salvagedBlocks: 0,
     droppedCodes: 0,
     diagramRegions: [],
     latencyMs: res.latencyMs,
@@ -213,8 +230,10 @@ export async function classify(
   }
 
   let droppedBlocks = 0;
+  let salvagedBlocks = 0;
   let droppedCodes = 0;
   const blocks: ClassifiedBlock[] = [];
+  const guardFailed: ClassifiedBlock[] = [];
   for (const b of validated.data.blocks) {
     // The structural guard (P26/P27): the classifier may re-split and regroup the student's
     // words, never introduce any. Same rule as the sanitiser's `from`-must-match. DIAGRAM
@@ -224,20 +243,62 @@ export async function classify(
         ? isTokensFromPage(b.text, sanitisedText)
         : isFromPage(b.text, sanitisedText);
     if (!fromPage) {
-      droppedBlocks++;
+      guardFailed.push(b);
       continue;
     }
     const codes = b.candidateCodes.filter((c) => VALID_CODES.has(c));
     droppedCodes += b.candidateCodes.length - codes.length;
     blocks.push({ ...b, candidateCodes: codes });
   }
+
+  /**
+   * The salvage pass (added after the 2026-08-10 corpus run, `runs/aug10-new-pages/`).
+   *
+   * A guard failure means the model REWORDED the student — not that it misclassified them.
+   * Dropping the block used to hand its regions to the coverage net, which resurrects them
+   * as UNKNOWN: the classification was thrown away over the rewording, and the student
+   * retyped a note the model had actually typed correctly. So instead: rebuild the text from
+   * the block's own regions — the vision transcription, which is on the page by construction
+   * — and keep the classification. The rewording is discarded, exactly like the sanitiser
+   * ignoring the model's own `correctedText`. `gibbs` goes with it: its content is the same
+   * model's re-phrasing, and a reflection prefill must not carry words the page doesn't.
+   *
+   * Only when none of the block's regions is already covered by a kept block — if they are,
+   * the content survives elsewhere and dropping this one loses nothing.
+   */
+  const covered = new Set(blocks.flatMap((b) => b.fromRegions));
+  for (const b of guardFailed) {
+    const valid = [...new Set(b.fromRegions)]
+      .filter((i) => Number.isInteger(i) && i >= 0 && i < regions.length)
+      .sort((a, z) => a - z);
+    if (valid.length === 0 || valid.some((r) => covered.has(r))) {
+      droppedBlocks++;
+      continue;
+    }
+    const text = applyCorrections(valid.map((i) => regions[i]).join("\n"), corrections).trim();
+    if (!text) {
+      droppedBlocks++;
+      continue;
+    }
+    const codes = b.candidateCodes.filter((c) => VALID_CODES.has(c));
+    droppedCodes += b.candidateCodes.length - codes.length;
+    salvagedBlocks++;
+    valid.forEach((r) => covered.add(r));
+    blocks.push({ ...b, fromRegions: valid, text, candidateCodes: codes, gibbs: undefined });
+  }
   if (droppedBlocks > 0) {
     console.warn(`classifier: dropped ${droppedBlocks} block(s) whose text was not on the page`);
+  }
+  if (salvagedBlocks > 0) {
+    console.warn(
+      `classifier: salvaged ${salvagedBlocks} reworded block(s) from their own regions`,
+    );
   }
 
   return {
     blocks,
     droppedBlocks,
+    salvagedBlocks,
     droppedCodes,
     diagramRegions: validated.data.diagramRegions,
     diagramForm: validated.data.diagramForm,
