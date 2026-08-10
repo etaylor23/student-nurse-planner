@@ -63,3 +63,23 @@ Round 1 of the two prompt-iteration rounds: **the six pages pass the UNKNOWN bar
 UNKNOWN is a drawing fragment or a heading with "any" kinds), all four MED_LOG pages route
 their drugs, both reflections type REFLECTION, the two-drawing pages are disjoint, and 8 of
 9 nominated drawings rebuilt (the ninth fail-closed). Round 2 stays in the bank.
+
+## Addendum: the margin-note intrusion (found by Ellis, fixed post-round-1)
+
+On the round-1 `real-diabetes-meds` read, the DIAGRAM's transcription led with "always check
+BM + prescription chart" — the top-right margin box (region 5, bbox x 0.75–0.92), nowhere
+near the flowchart (regions 8–17, left column). Not a swap: the note existed correctly as
+its own typed block AND its region sat inside the drawing's cluster, so it nested under the
+drawing where "file whole" would have absorbed it. Of the three red margin notes, only the
+one sharing "check BM" with a flowchart node was swept in — a text-level confusion, which
+points at the classifier's flat nomination rather than vision.
+
+Two changes (commit f02bfcc): the single-cluster union now grows by **contiguity** (a
+nominated region joins only by touching the cluster, chaining outward — boundary runs and
+interior holes still work; a distant island cannot join), and the parse logs **cluster
+provenance** (indices only) plus carries it in the done-frame diagnostics.
+
+Verified on a fresh read: `vision=[[9–17]] classifier=[8–17] merged=[[8–17]]` — vision
+nominates only the boxed pieces, the classifier is the expansive nominator, and the merged
+cluster excludes region 5, whose block came back as its own TODO, un-nested. The exact
+intrusion shape is pinned in `tests/parseDiagram.test.ts`.
