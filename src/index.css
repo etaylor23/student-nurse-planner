@@ -359,6 +359,17 @@
 .pm-mermaid g.node text {
   fill: var(--color-ink) !important;
 }
+/* A node that stands for a note is clickable (the third leg of photo ↔ list ↔ drawing);
+   hover hints at it without competing with the active outline below. */
+.pm-mermaid g.pm-mm-link {
+  cursor: pointer;
+}
+.pm-mermaid g.pm-mm-link:hover > rect,
+.pm-mermaid g.pm-mm-link:hover > path:not(.edge),
+.pm-mermaid g.pm-mm-link:hover > circle,
+.pm-mermaid g.pm-mm-link:hover > polygon {
+  stroke: #94a3b8 !important; /* slate-400 */
+}
 /* Last, so it wins the tie against the shape rules above at equal importance. */
 .pm-mermaid g.pm-mm-active > rect,
 .pm-mermaid g.pm-mm-active > path:not(.edge),

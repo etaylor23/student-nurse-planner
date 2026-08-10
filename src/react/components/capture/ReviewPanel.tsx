@@ -967,6 +967,20 @@ export function ReviewPanel({
   /** The drawing shelf exists only while the focus is IN a drawing — the drawing itself or
    *  one of its sub-blocks (Ellis's rule). Within that context the tabs still switch. */
   const shelfOpen = !!focusDiagram?.diagramSource && !!pinnedSource;
+
+  /** The pinned drawing's PENDING sub-blocks, as click targets for its rendered nodes —
+   *  the drawing joins the photo and the list as a way of reaching a note. Pending only,
+   *  matching the other two views: a filed note has no card to open, so its node (like its
+   *  row and its photo region) is not an invitation to click. */
+  const diagramTargets = useMemo(
+    () =>
+      pinnedDiagram
+        ? subBlocksOf(pinnedDiagram, blocks)
+            .filter((b) => b.status === "PENDING")
+            .map((b) => ({ id: b.id, text: b.text }))
+        : [],
+    [pinnedDiagram, blocks],
+  );
   const [drawingOpen, setDrawingOpen] = useState(false);
   const [diagramZoom, setDiagramZoom] = useState(false);
   useEffect(() => {
@@ -1347,6 +1361,8 @@ export function ReviewPanel({
                         <MermaidDiagram
                           source={pinnedSource}
                           highlight={focusedInPinned ? focusedBlock?.text : undefined}
+                          targets={diagramTargets}
+                          onSelect={focus}
                           label="The drawing, rebuilt as a diagram"
                         />
                       </div>
@@ -1497,11 +1513,13 @@ export function ReviewPanel({
               <MermaidDiagram
                 source={pinnedSource}
                 highlight={focusedInPinned ? focusedBlock?.text : undefined}
+                targets={diagramTargets}
+                onSelect={focus}
                 label="The drawing, rebuilt as a diagram"
               />
               <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
                 {focusedInPinned
-                  ? "This note is one branch of the drawing — the outlined node is the one you're on."
+                  ? "This note is one branch of the drawing — the outlined node is the one you're on. Click another node to jump to its note."
                   : "The drawing you're on — file it whole, or keep it with the page."}
               </p>
             </div>
@@ -1541,6 +1559,8 @@ export function ReviewPanel({
             <MermaidDiagram
               source={pinnedSource}
               highlight={focusedInPinned ? focusedBlock?.text : undefined}
+              targets={diagramTargets}
+              onSelect={focus}
               label="The drawing, rebuilt as a diagram"
             />
           </div>

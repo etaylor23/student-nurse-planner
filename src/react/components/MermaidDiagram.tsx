@@ -51,15 +51,65 @@ function norm(s: string): string {
     .trim();
 }
 
+/**
+ * A node's label text. Labels wrap — as tspans or as HTML-label <br>s — and `textContent`
+ * fuses the pieces without spaces ("SIXwithin"), so multi-line labels could never match.
+ * Walk the text nodes and join them with spaces instead.
+ */
+function nodeText(g: SVGGElement): string {
+  const walker = g.ownerDocument.createTreeWalker(g, NodeFilter.SHOW_TEXT);
+  const parts: string[] = [];
+  while (walker.nextNode()) parts.push(walker.currentNode.textContent ?? "");
+  return parts.join(" ");
+}
+
+/** A block a rendered node can stand for — the review passes its pending sub-blocks. */
+export interface DiagramTarget {
+  id: string;
+  text: string;
+}
+
+/**
+ * Which block does this node's label name? The same mutual-containment rule the highlight
+ * uses (labels wrap; block text may span several labels), tightened for the case highlight
+ * never has: SEVERAL blocks matching one label. An exact match wins outright; otherwise the
+ * closest length wins — "YES" must resolve to the block that says YES, not to the long
+ * branch text that happens to contain the word.
+ */
+export function pickTarget(nodeText: string, targets: DiagramTarget[]): DiagramTarget | undefined {
+  const label = norm(nodeText);
+  if (!label) return undefined;
+  let best: DiagramTarget | undefined;
+  let bestGap = Number.MAX_SAFE_INTEGER;
+  for (const t of targets) {
+    const text = norm(t.text);
+    if (!text) continue;
+    if (text === label) return t;
+    if (!label.includes(text) && !text.includes(label)) continue;
+    const gap = Math.abs(text.length - label.length);
+    if (gap < bestGap) {
+      bestGap = gap;
+      best = t;
+    }
+  }
+  return best;
+}
+
 export function MermaidDiagram({
   source,
   label,
   highlight,
+  targets,
+  onSelect,
 }: {
   source: string;
   label: string;
   /** Text of the note being worked on — the matching node gets the active treatment. */
   highlight?: string;
+  /** Blocks the drawing's nodes can stand for. With `onSelect`, a node whose label names
+   *  one becomes clickable — the third leg of the photo ↔ list ↔ drawing connection. */
+  targets?: DiagramTarget[];
+  onSelect?: (blockId: string) => void;
 }) {
   const [svg, setSvg] = useState<string>();
   const host = useRef<HTMLDivElement>(null);
@@ -90,18 +140,39 @@ export function MermaidDiagram({
     if (!root || !svg) return;
     const wanted = norm(highlight ?? "");
     for (const g of root.querySelectorAll<SVGGElement>("g.mindmap-node, g.node")) {
-      // Labels wrap — as tspans or as HTML-label <br>s — and textContent fuses the pieces
-      // without spaces ("SIXwithin"), so multi-line labels could never match. Walk the text
-      // nodes and join them with spaces instead.
-      const walker = g.ownerDocument.createTreeWalker(g, NodeFilter.SHOW_TEXT);
-      const parts: string[] = [];
-      while (walker.nextNode()) parts.push(walker.currentNode.textContent ?? "");
-      const text = norm(parts.join(" "));
+      const text = norm(nodeText(g));
       const active =
         wanted.length > 0 && text.length > 0 && (wanted.includes(text) || text.includes(wanted));
       g.classList.toggle("pm-mm-active", active);
     }
   }, [svg, highlight]);
+
+  // Clicking a node focuses its block — the drawing stops being the one read-only leg of
+  // the photo ↔ list ↔ drawing connection. Listeners are attached to the rendered SVG and
+  // removed on cleanup, same never-re-render rule as the highlight. Pointer-only on
+  // purpose: the identical action is already keyboard-reachable through the list (↑/↓),
+  // so the nodes are a shortcut, not the only route.
+  useEffect(() => {
+    const root = host.current;
+    if (!root || !svg || !onSelect || !targets?.length) return;
+    const undo: (() => void)[] = [];
+    for (const g of root.querySelectorAll<SVGGElement>("g.mindmap-node, g.node")) {
+      const match = pickTarget(nodeText(g), targets);
+      if (!match) continue;
+      const click = (e: Event) => {
+        // The Enlarge overlay closes on backdrop clicks — a node click is not one.
+        e.stopPropagation();
+        onSelect(match.id);
+      };
+      g.classList.add("pm-mm-link");
+      g.addEventListener("click", click);
+      undo.push(() => {
+        g.classList.remove("pm-mm-link");
+        g.removeEventListener("click", click);
+      });
+    }
+    return () => undo.forEach((fn) => fn());
+  }, [svg, targets, onSelect]);
 
   if (!svg) return null;
 
