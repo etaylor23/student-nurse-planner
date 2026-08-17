@@ -6,9 +6,9 @@ today, and it's the best thing we've built so far.
 
 Write them, snap them, save them, search them.
 
-Your notes, that is. Scribble on placement the way you always have.
-Then it's three steps, and two of them happen while you put the kettle
-on:
+Your notes, that is. Keep scribbling on placement the way you always
+have; from there it's three steps, and two of them happen while you
+put the kettle on:
 
   1. SNAP THE PAGE. Tap the Photo button, point it at your notes.
      That's your part done.
@@ -27,7 +27,8 @@ on:
        proficiencies they could evidence lined up ready
      - clinical spelling tidied. Drug names and terms only, never
        your wording
-     - all of it searchable from the moment you file it
+     - all of it searchable from the moment you file it. That last
+       one is my favourite; more in a second
 
 Photograph a page: https://app.placemate.uk/
 
@@ -42,7 +43,7 @@ me that sepsis mind map" and there it is, redrawn and readable, with a
 link to the shift you learned it on. Revision scribbles used to live
 and die in one notebook. Now they're a library.
 
-Two honest things, because this one matters.
+Two honest things before you start snapping.
 
 Before you snap, check nothing patient-identifiable is in frame. No
 names, NHS numbers or dates of birth, and no other paperwork behind
@@ -50,9 +51,8 @@ your page. The app reminds you every single time, on purpose. This one
 is on all of us to get right.
 
 It will still misread the odd word. Late-shift handwriting is a
-challenge for anyone. That's why you review every note before it
-files, why disputed words are flagged "worth a check", and why your
-photo stays alongside, so you can always compare against what you
+challenge for anyone. That's why nothing files without you, and why
+your photo stays alongside so you can always check against what you
 actually wrote.
 
 While it's in beta: your photos are stored so you can check them
@@ -63,10 +63,9 @@ before.
 ONE MORE THING. We'd love to actually talk to you.
 
 We're catching up with every one of our beta testers over the next
-couple of weeks: a short, friendly call to show you around what's new,
-hear how placement life actually works for you, and figure out
-together how PlaceMate could fit into it best. No preparation, no
-obligation, just a chat. If you're up for it, simply hit reply to this
+couple of weeks: a short, friendly call to show you what's new, hear
+how placement life actually works for you, and figure out how
+PlaceMate fits into it best. No prep, no obligation, just a chat. If you're up for it, simply hit reply to this
 email and we'll sort out a time that suits you.
 
 Hope it rescues a few pages from the bottom of your bag.
