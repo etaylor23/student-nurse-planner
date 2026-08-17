@@ -1,0 +1,14 @@
+# Slots filled into templates/_shell. One key=value per line; --var overrides any of them.
+#
+# Email 2 of 2 for PlaceMate Intelligence: photo capture is live. Pays off the "coming
+# next" promise at the foot of intelligence-recall. Goes to every active beta user.
+#
+# The screenshot is the same placemate.uk asset the recall email's teaser used
+# (email-intelligence-import.png) — already deployed, verified live 2026-08-17.
+#
+# The foot of this email asks every beta user to REPLY to arrange an induction
+# call / catch-up. Replies go to hello@placemate.uk (PLACEMATE_REPLY_TO default) —
+# make sure someone is watching that inbox in the days after sending.
+title=PlaceMate Intelligence: snap your notes, skip the retyping
+preheader=The one we promised: photograph a page of scribbles and PlaceMate turns it into real entries.
+footer_reason=You're receiving this because you're part of the PlaceMate beta programme.
