@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Camera, Clock, TriangleAlert, X } from "lucide-react";
 import { useRepository } from "../../RepositoryContext";
 import type { GibbsStage } from "../../../domain/types";
-import { DAILY_PHOTO_LIMIT, MAX_IMAGES_PER_CAPTURE, photoCaptureAvailable } from "./config";
+import { DAILY_PHOTO_LIMIT, MAX_IMAGES_PER_CAPTURE } from "./config";
 import { pillBase, pillNeutral } from "../ui";
 import { PagePreview } from "./PagePreview";
 import { ReviewPanel } from "./ReviewPanel";
@@ -18,10 +18,9 @@ import { useCapture } from "./useCapture";
  * — so the only honest mitigation is to say so before the camera opens, and to record that
  * it was said (`piiAcknowledged` on the capture row).
  *
- * Hidden for guests — they have no ID token, so the presign can't be authorised — and, per
- * spec-home-redesign.md decision 12, hidden entirely off localhost while capture is still a
- * beta (see `photoCaptureAvailable`). This is the only entry point, so hiding it closes the
- * feature rather than just tidying the header.
+ * Hidden for guests — they have no ID token, so the presign can't be authorised. This is
+ * the only entry point, so hiding it closes the feature rather than just tidying the
+ * header. (The localhost-only beta gate of decision 12 was removed 2026-08-17.)
  *
  * Portalled to `document.body` for the same reason the ask overlay is: the header carries
  * `backdrop-blur-md`, and a `backdrop-filter` ancestor becomes the containing block for
@@ -147,9 +146,9 @@ export function CaptureButton() {
     return out;
   }, [state.parsed]);
 
-  // Guests: no ID token means the presign can't be authorised (P17). Off localhost:
-  // capture is still a beta and its PII warning hasn't been through review (decision 12).
-  if (isGuest || !photoCaptureAvailable()) return null;
+  // Guests only: no ID token means the presign can't be authorised (P17). The
+  // localhost-only beta gate (decision 12) was removed 2026-08-17 — see config.ts.
+  if (isGuest) return null;
 
   /**
    * Close the dialog but KEEP the capture.

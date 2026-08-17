@@ -7,8 +7,8 @@ import "./helpers/setupDom";
  *
  * What's actually worth asserting here is the GATING, not the pixels: the PII warning has to
  * be unavoidable before the camera opens (P2), and the button must be absent for guests —
- * they have no ID token, so the presign could never be authorised — and off localhost, where
- * capture is still a beta (spec-home-redesign.md decision 12).
+ * they have no ID token, so the presign could never be authorised. (The localhost-only beta
+ * gate of decision 12 was removed 2026-08-17.)
  */
 
 // Typed with the real signature so `mock.calls[0][1]` is checked, not `any`.
@@ -18,15 +18,12 @@ const reset = vi.fn();
 const ensurePageImage = vi.fn(async () => {});
 const resumeInterrupted = vi.fn(async () => false);
 const useRepositoryMock = vi.fn(() => ({ isGuest: false }));
-/** The localhost-only beta gate (decision 12) — flipped per test. */
-const photoCaptureAvailable = vi.fn(() => true);
 /** Swapped per test so the dialog can be driven into its review stage. */
 let captureState: Record<string, unknown> = { stage: "idle" };
 
 vi.mock("../src/react/components/capture/config", () => ({
   MAX_IMAGES_PER_CAPTURE: 10,
   DAILY_PHOTO_LIMIT: 10,
-  photoCaptureAvailable: () => photoCaptureAvailable(),
 }));
 
 /** A capture mid-review: 70 seconds of model time and real `NoteBlock` rows already written. */
@@ -85,7 +82,6 @@ const { CaptureButton } = await import("../src/react/components/capture/CaptureB
 
 beforeEach(() => {
   useRepositoryMock.mockReturnValue({ isGuest: false });
-  photoCaptureAvailable.mockReturnValue(true);
   startCapture.mockClear();
   reset.mockClear();
   ensurePageImage.mockClear();
@@ -93,26 +89,22 @@ beforeEach(() => {
 });
 
 describe("CaptureButton — gating", () => {
+  /**
+   * This is the only entry point, so an absent button is the whole feature being off —
+   * not just a tidier header. Asserting the empty tree, rather than a hidden button,
+   * is what pins that down. (The localhost-only beta gate of decision 12 was removed
+   * 2026-08-17 — guests are the one remaining exclusion, structural rather than policy:
+   * no ID token, so no presign is possible.)
+   */
   it("renders nothing for a guest (no token, so no presign is possible)", () => {
     useRepositoryMock.mockReturnValue({ isGuest: true });
     const { container } = render(<CaptureButton />);
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("renders for a signed-in user on localhost", () => {
+  it("renders for any signed-in user — the beta gate is gone", () => {
     render(<CaptureButton />);
     expect(screen.getByLabelText("Photograph your notes")).toBeTruthy();
-  });
-
-  /**
-   * This is the only entry point, so an absent button is the whole feature being off —
-   * not just a tidier header. Asserting the empty tree, rather than a hidden button,
-   * is what pins that down.
-   */
-  it("renders nothing off localhost — capture is still a beta (decision 12)", () => {
-    photoCaptureAvailable.mockReturnValue(false);
-    const { container } = render(<CaptureButton />);
-    expect(container).toBeEmptyDOMElement();
   });
 });
 

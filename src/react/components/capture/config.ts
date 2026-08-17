@@ -26,18 +26,10 @@ export const MAX_IMAGES_PER_CAPTURE = 10;
  */
 export const DAILY_PHOTO_LIMIT = 10;
 
-/**
- * Note capture is a localhost-only beta (spec-home-redesign.md decision 12).
- *
- * The pipeline works, but a photo of a real notebook page is the one place where a
- * student can leak patient-identifiable data into our storage, and the warning copy is
- * the only thing standing between them and that. Until it has been through review with
- * real beta students, the entry point stays off the deployed app — so `CaptureButton`
- * renders nothing in production. It is deliberately a hostname/dev check rather than a
- * `VITE_` variable: an env flag is one careless deploy away from being on.
+/*
+ * The localhost-only gate (spec-home-redesign.md decision 12) was REMOVED 2026-08-17 on
+ * Ellis's instruction: the hardening spec is done end to end (H1–H12, gates met on dev),
+ * the 12-page corpus shows no regressions, and capture ships to the beta accounts. Guests
+ * still never see the button — they have no ID token, so no presign is possible — and the
+ * PII warning (P2) remains the unavoidable first screen of every capture.
  */
-export function photoCaptureAvailable(): boolean {
-  if (import.meta.env.DEV) return true;
-  if (typeof window === "undefined") return false;
-  return /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
-}
