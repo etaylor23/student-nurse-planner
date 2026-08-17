@@ -447,3 +447,31 @@ describe("classify — a block's text must come from the page (P26/P27)", () => 
     expect(sent).toContain("B2.1|");
   });
 });
+
+describe("checkResponseSchema — the check model's observed shape drifts (H4)", () => {
+  it("accepts the contract shape", async () => {
+    const { checkResponseSchema } = await import("../infra/lambda/parse/schema");
+    const r = checkResponseSchema.parse({ blocks: [{ rawText: "Aciclovir daily" }] });
+    expect(r.blocks).toEqual(["Aciclovir daily"]);
+  });
+
+  it("folds gemma's array-of-wrappers back together — the 2026-08-17 opens= shape", async () => {
+    const { checkResponseSchema } = await import("../infra/lambda/parse/schema");
+    const r = checkResponseSchema.parse([
+      { blocks: [{ rawText: "Aciclovir daily" }] },
+      { blocks: [{ rawText: "Filgrastim SC" }] },
+    ]);
+    expect(r.blocks).toEqual(["Aciclovir daily", "Filgrastim SC"]);
+  });
+
+  it("wraps a bare array of entries, and takes plain-string entries", async () => {
+    const { checkResponseSchema } = await import("../infra/lambda/parse/schema");
+    expect(checkResponseSchema.parse([{ rawText: "one" }, "two"]).blocks).toEqual(["one", "two"]);
+  });
+
+  it("salvages per entry — one malformed entry never costs the page", async () => {
+    const { checkResponseSchema } = await import("../infra/lambda/parse/schema");
+    const r = checkResponseSchema.parse({ blocks: [{ rawText: "kept" }, { rawText: null }, 42] });
+    expect(r.blocks).toEqual(["kept"]);
+  });
+});

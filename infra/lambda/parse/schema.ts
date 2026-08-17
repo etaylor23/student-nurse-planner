@@ -118,9 +118,20 @@ export type Correction = z.infer<typeof correctionSchema>;
  */
 export const checkResponseSchema = z
   .preprocess(
-    // A model given a one-field contract simplifies it: a bare array instead of
-    // {"blocks": [...]} is the commonest shape drift. Fold it back before validating.
-    (raw) => (Array.isArray(raw) ? { blocks: raw } : raw),
+    // A model given a one-field contract drifts around it, and every observed drift is an
+    // array where the object should be. Seen live (`opens=` logs, 2026-08-17): gemma
+    // emitting `[{"blocks":[...]}, ...]` — the response object wrapped in an array, one
+    // wrapper per note. Fold the wrappers' blocks together; a bare array of entries wraps
+    // as-is; a plain object passes through. Per-entry salvage below keeps all of it safe.
+    (raw) => {
+      if (!Array.isArray(raw)) return raw;
+      const wrappers = raw.filter(
+        (e): e is { blocks: unknown[] } =>
+          !!e && typeof e === "object" && Array.isArray((e as { blocks?: unknown }).blocks),
+      );
+      if (wrappers.length > 0) return { blocks: wrappers.flatMap((w) => w.blocks) };
+      return { blocks: raw };
+    },
     z
       .object({
         blocks: z
