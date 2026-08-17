@@ -1,64 +1,71 @@
 Hey {{first_name}},
 
 It's Nicola. Last time I wrote, I promised a second half to PlaceMate
-Intelligence and said I was genuinely excited about it. It's live today.
+Intelligence and said I was genuinely excited about it. It's live
+today, and it's the best thing we've built so far.
 
-Take a photo of your handwritten notes, and they become real entries.
+Write them, snap them, save them, search them.
 
-Picture the end of a long day: a page full of scribbles — a drug you
-looked up, a skill someone walked you through, half a reflection, a
-to-do in the margin. Instead of retyping any of it, tap the Photo
-button at the top of the app and snap the page. That's the whole job.
+Your notes, that is. Scribble on placement the way you always have. At
+the end of the day, tap the Photo button at the top of the app and snap
+the page. That's the whole job.
 
 While you put the kettle on, PlaceMate:
 
-  - reads the page twice — two readers, so anything they disagree on
-    gets flagged for you rather than slipping through
-  - tidies the clinical spelling — drug names and clinical terms only,
-    never your wording or your abbreviations
-  - works out where each note goes — medication log, skills,
+  - reads the page twice, so a misread doesn't get to look right.
+    Anything the readings don't agree on is flagged "worth a check"
+    before it goes anywhere near your records
+  - tidies the clinical spelling. Drug names and clinical terms only,
+    never your wording, never your abbreviations
+  - works out where each note belongs: medication log, skills,
     reflections, NMC evidence or shift notes
 
 Then it hands the page back to you, note by note. Nothing is saved
-until you say so — you file each note with one tap, fix a word with one
-tap, or bin the bits that were never meant to be records (we've all
-written a shopping list in the margin).
+until you say so. File a note in one tap, fix a word in one tap, bin
+the bits that were never meant to be records. We've all written a
+shopping list in the margin.
 
 Photograph a page: https://app.placemate.uk/
 
-My favourite part: if you've drawn something — a mind map from a
-lecture, a flowchart of what to do when a patient's blood sugar drops —
-PlaceMate redraws it as a proper diagram and keeps it with the page,
-right on the shift it belongs to. Your revision scribbles, kept whole.
+YOUR DRAWINGS SURVIVE TOO. AND THEY'RE SEARCHABLE.
+
+Sketch a mind map in a lecture, or a flowchart of what to do when a
+patient's blood sugar drops, and PlaceMate doesn't flatten it into
+text. It redraws it as a clean diagram, keeps it with your
+photographed page, and files it on the shift it came from. And because
+it's saved properly, you can ask for it back: weeks later, type "show
+me that sepsis mind map" and there it is, redrawn and readable, with a
+link to the shift you learned it on. Revision scribbles used to live
+and die in one notebook. Now they're a library.
 
 Two honest things, because this one matters.
 
-Before you snap, check nothing patient-identifiable is in frame — no
-names, NHS numbers, dates of birth, or other people's paperwork behind
-your page. The app will remind you every single time, on purpose. This
-one is on all of us to get right.
+Before you snap, check nothing patient-identifiable is in frame. No
+names, NHS numbers or dates of birth, and no other paperwork behind
+your page. The app reminds you every single time, on purpose. This one
+is on all of us to get right.
 
-It will misread a word now and then — handwriting at the end of a long
-shift is a challenge for anyone. That's why you review every note
-before it's filed, why anything the two readers disagreed on is flagged
-"worth a check", and why your photo stays alongside so you can always
-compare against what you actually wrote.
+It will still misread the odd word. Late-shift handwriting is a
+challenge for anyone. That's why you review every note before it
+files, why disputed words are flagged "worth a check", and why your
+photo stays alongside, so you can always compare against what you
+actually wrote.
 
 While it's in beta: your photos are stored so you can check them
 against what we read, and the PlaceMate team may review them to make
 the reading better. Everything you file is still yours, exactly as
 before.
 
-ONE MORE THING — we'd love to actually talk to you
+ONE MORE THING. We'd love to actually talk to you.
 
-We're trying to catch up with every one of our beta testers over the
-next couple of weeks: a short, friendly call to show you around what's
-new, hear how placement life actually works for you, and figure out
+We're catching up with every one of our beta testers over the next
+couple of weeks: a short, friendly call to show you around what's new,
+hear how placement life actually works for you, and figure out
 together how PlaceMate could fit into it best. No preparation, no
 obligation, just a chat. If you're up for it, simply hit reply to this
 email and we'll sort out a time that suits you.
 
 Hope it rescues a few pages from the bottom of your bag.
 
-Nicola
+Nicola & Ellis
 PlaceMate
