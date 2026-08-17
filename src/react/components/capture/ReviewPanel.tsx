@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, GripVertical, RotateCcw, SpellCheck, X } from "lucide-react";
+import { ChevronDown, GripVertical, RotateCcw, SpellCheck, TriangleAlert, X } from "lucide-react";
 import {
   NOTE_BLOCK_KIND_LABEL,
   NOTE_BLOCK_TARGET_LABEL,
@@ -857,7 +857,7 @@ export function ReviewPanel({
 
   const [focusId, setFocusId] = useState<string | undefined>(() => pendingBlocks(blocks)[0]?.id);
   /** Only one meta panel is open at a time — opening one closes the others. */
-  const [panel, setPanel] = useState<"cache" | "spell" | "shift">();
+  const [panel, setPanel] = useState<"cache" | "spell" | "shift" | "unchecked">();
   const [dragging, setDragging] = useState<string>();
   const [over, setOver] = useState<NoteBlockTarget>();
   /** Below `lg` the photo is a strip you tap open rather than a column — still the map, just
@@ -1035,11 +1035,17 @@ export function ReviewPanel({
     if (pending.some((b) => b.id === blockId)) setFocusId(blockId);
   }
 
-  function toggle(which: "cache" | "spell" | "shift") {
+  function toggle(which: "cache" | "spell" | "shift" | "unchecked") {
     setPanel((open) => (open === which ? undefined : which));
   }
 
-  const hasMeta = !!cachedFrom || corrections.length > 0 || !!shift || !!pageDateRaw;
+  /** At least one page of this capture had no usable check read (H4): no dispute COULD have
+   *  been raised there, so silence must not present itself as agreement. Derived from the
+   *  persisted rows (like everything review shows), so it survives closing the dialog. */
+  const checkMissing = blocks.some((b) => b.checkMissing);
+
+  const hasMeta =
+    !!cachedFrom || corrections.length > 0 || !!shift || !!pageDateRaw || checkMissing;
 
   /** Drag props for a row's <li>. Drag is never the only route — the tiles in the card and
    *  the keys `1`–`4` both do the same thing. A filed note doesn't drag: the real row
@@ -1231,6 +1237,26 @@ export function ReviewPanel({
                     Read it again from scratch
                   </button>
                 )}
+              </p>
+            </MetaChip>
+          )}
+
+          {checkMissing && (
+            /* H4: the second reader failed on this page, so no "worth a check" flag COULD
+               have been raised — amber, because unverified is a real state the student
+               should weigh, not a decoration. Never a fabricated dispute on every word:
+               that would bury the honest signal in noise and make review unusable. */
+            <MetaChip
+              open={panel === "unchecked"}
+              onToggle={() => toggle("unchecked")}
+              icon={<TriangleAlert aria-hidden="true" className="h-3 w-3 text-amber-500" />}
+              label="Not double-checked"
+            >
+              <p>
+                We couldn&apos;t double-check this page — drug spellings are unverified. We normally
+                read every page twice and flag disagreements; the second read didn&apos;t work here,
+                so nothing could be flagged. Worth glancing at drug names against your photo before
+                filing.
               </p>
             </MetaChip>
           )}

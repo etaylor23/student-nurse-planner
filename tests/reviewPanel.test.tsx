@@ -676,6 +676,26 @@ describe("ReviewPanel — the meta strip", () => {
     render(<ReviewPanel blocks={BLOCKS} pageDateRaw="22/7" handlers={handlers()} />);
     expect(screen.getByText(/22\/7/)).toBeTruthy();
   });
+
+  it("H4: says plainly when a page had no second read — unverified is not agreed", async () => {
+    const user = userEvent.setup();
+    // Page-level fact stored per block, like `corrections` — one flagged block is enough.
+    const unverified = BLOCKS.map((b, i) => (i === 0 ? { ...b, checkMissing: true } : b));
+    render(<ReviewPanel blocks={unverified} handlers={handlers()} />);
+
+    const chip = screen.getByRole("button", { name: /Not double-checked/ });
+    expect(chip.getAttribute("aria-expanded")).toBe("false");
+    await user.click(chip);
+    // The spec's copy: the fact, the reason, and what to do — never a fabricated dispute
+    // on every word, which would bury the honest signal in noise.
+    expect(screen.getByText(/couldn't double-check this page/i)).toBeTruthy();
+    expect(screen.getByText(/drug spellings are unverified/i)).toBeTruthy();
+  });
+
+  it("H4: shows no chip when the check read worked — silence means agreed, honestly", () => {
+    render(<ReviewPanel blocks={BLOCKS} handlers={handlers()} />);
+    expect(screen.queryByRole("button", { name: /Not double-checked/ })).toBeNull();
+  });
 });
 
 describe("ReviewPanel — which shift the page belongs to (P9)", () => {

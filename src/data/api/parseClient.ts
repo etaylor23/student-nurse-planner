@@ -41,6 +41,9 @@ export interface ParseResponse {
   /** Exactly as written on the page — the app resolves the year (P8). */
   pageDateRaw: string | null;
   wardHint: string | null;
+  /** This page had no usable check read (H4): drug spellings are unverified, and review
+   *  shows the honest chip rather than presenting silence as agreement. */
+  checkMissing?: boolean;
   blocks: ParsedBlockView[];
   /** `from|to` pairs the sanitiser applied (P24). */
   corrections: string[];

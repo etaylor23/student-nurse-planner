@@ -328,6 +328,7 @@ export const noteBlockSchema = entitySchema.extend(userOwnedSchema.shape).extend
     text: z.string(),
     corrections: z.string().optional(),
     disputedWords: z.string().optional(),
+    checkMissing: z.boolean().optional(),
     kind: noteBlockKindSchema,
     confidence: z.number(),
     bboxX0: z.number(),

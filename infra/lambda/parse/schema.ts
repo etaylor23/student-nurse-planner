@@ -107,6 +107,31 @@ export const sanitiseResponseSchema = z
 
 export type Correction = z.infer<typeof correctionSchema>;
 
+/**
+ * The CHECK model's contract (H4) — transcription only, nothing else.
+ *
+ * The check read exists to disagree about WORDS: only its joined page text is ever used
+ * (the consensus diff), so the structure contract's kinds, boxes, groups and diagrams were
+ * pure surface area for a 27B model to break format on — and it did, wandering out of JSON
+ * on ~7% of runs once the P45 additions landed. Entries are salvaged individually, same
+ * promise as blocks: one malformed entry costs itself, never the page.
+ */
+export const checkResponseSchema = z
+  .object({
+    blocks: z
+      .array(z.unknown())
+      .nullish()
+      .transform((entries) => {
+        const out: string[] = [];
+        for (const raw of entries ?? []) {
+          const rawText = (raw as { rawText?: unknown } | null)?.rawText;
+          if (typeof rawText === "string" && rawText.trim()) out.push(rawText);
+        }
+        return out;
+      }),
+  })
+  .strip();
+
 export const GIBBS_STAGES = [
   "DESCRIPTION",
   "FEELINGS",

@@ -151,6 +151,41 @@ describe("sanitise — a correction must appear verbatim in the input (P24)", ()
     expect(r.text).toBe(page);
   });
 
+  it("H5: the sanitiser may SWAP, never EXTEND — expansions are rejected structurally", async () => {
+    // Every `from` below is really on the page, so the P24 guard alone passes them — and
+    // every one was emitted by a real run (neb/PCP on 2026-08-04; HSV, NBM and co-trimox
+    // applied into block text on 2026-08-13, against the "never your wording" promise).
+    const input =
+      "Salbutamol neb given. PCP (pneumonia) prophylaxis. HSV risk. NBM overnight. co-trimox weekly.";
+    respondWith({
+      corrections: [
+        { from: "neb", to: "nebuliser" }, // extension: to contains from
+        { from: "PCP (pneumonia)", to: "PCP (pneumocystis pneumonia)" }, // insertion: more words
+        { from: "HSV", to: "herpes simplex virus" }, // abbreviation expansion
+        { from: "NBM", to: "nil by mouth" }, // abbreviation expansion
+        { from: "co-trimox", to: "co-trimoxazole" }, // extension: to contains from
+      ],
+      correctedText: "ignored",
+    });
+    const r = await sanitise(input);
+    expect(r.corrections).toHaveLength(0);
+    expect(r.rejected).toHaveLength(5);
+    expect(r.text).toBe(input); // the student's words, untouched
+  });
+
+  it("H5: same-word-count substitutions still pass — the swaps the pass exists for", async () => {
+    respondWith({
+      corrections: [
+        { from: "Phenoxyethylpenicillin", to: "Phenoxymethylpenicillin" },
+        { from: "Filgastrim", to: "Filgrastim" },
+      ],
+      correctedText: "ignored",
+    });
+    const r = await sanitise("Phenoxyethylpenicillin QDS. Filgastrim daily.");
+    expect(r.corrections).toHaveLength(2);
+    expect(r.text).toBe("Phenoxymethylpenicillin QDS. Filgrastim daily.");
+  });
+
   it("rejects a CASE-ONLY change — identical letters cannot be a spelling fix", async () => {
     // Seen in the wild 2026-08-10: `OD → od` un-capitalised a dose abbreviation. Same word
     // count, so an expansion guard can't catch it; this one is structural like the rest.

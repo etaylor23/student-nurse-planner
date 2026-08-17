@@ -630,6 +630,10 @@ export interface NoteBlock extends Entity, UserOwned, Created, Updated {
    *  disagreed on (P22). Absent = they agreed = safe to pre-select. This, not
    *  `confidence`, is what gates review: self-reported confidence was measured worthless. */
   disputedWords?: string;
+  /** True when this block's page had no usable check read (H4): no dispute COULD have been
+   *  raised, so empty `disputedWords` means "unverified", not "agreed". Page-level, stored
+   *  per block like `corrections`, so the review chip survives closing the dialog. */
+  checkMissing?: boolean;
   kind: NoteBlockKind;
   /** 0–1, self-reported. Stored for observability ONLY — never gates anything (P22). */
   confidence: number;

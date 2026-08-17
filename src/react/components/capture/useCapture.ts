@@ -120,6 +120,7 @@ function asParseResponse(
     imageIndex,
     pageDateRaw: o.pageDateRaw ?? null,
     wardHint: o.wardHint ?? null,
+    checkMissing: o.checkMissing === true,
     corrections: Array.isArray(o.corrections) ? o.corrections : [],
     blocks: o.blocks,
   };
@@ -264,6 +265,9 @@ export function useCapture() {
             rotationDeg: b.rotationDeg,
             disputedWords: b.disputedWords.join(","),
             corrections: page.corrections.join(","),
+            // Page-level like `corrections`, stored per block so the H4 chip survives
+            // closing the dialog. Only when true — absent is the ordinary state.
+            checkMissing: page.checkMissing || undefined,
             candidateCodes: b.candidateCodes.join(","),
             suggestedTags: b.tags.join(","),
             medicationCandidate: b.medicationCandidate,

@@ -119,7 +119,17 @@ export async function sanitise(pageText: string): Promise<SanitiseResult> {
     // and a CASE-ONLY change is the same noise in a hat: identical letters can't be a
     // spelling fix, and the one seen in the wild (`OD → od`, 2026-08-10) un-capitalised a
     // dose abbreviation. Structural, like every guard here: no prompt can reintroduce it.
-    if (present && c.from.toLowerCase() !== c.to.toLowerCase()) corrections.push(c);
+    const caseOnly = c.from.toLowerCase() === c.to.toLowerCase();
+    // The sanitiser may SWAP, never EXTEND (H5). An expansion keeps the student's word and
+    // adds to it (`neb → nebuliser`, `HSV → herpes simplex virus`, `co-trimox →
+    // co-trimoxazole` — all applied in the wild against the P24 promise printed in the UI);
+    // an insertion adds words inside (`PCP (pneumonia) → PCP (pneumocystis pneumonia)`).
+    // Same-word-count substitutions (`Phenoxyethylpenicillin → Phenoxymethylpenicillin`,
+    // `Filgastrim → Filgrastim`) still pass — those are what the pass exists for.
+    const wordCount = (s: string) => s.trim().split(/\s+/).length;
+    const extends_ = c.to.toLowerCase().includes(c.from.toLowerCase());
+    const inserts = wordCount(c.to) > wordCount(c.from);
+    if (present && !caseOnly && !extends_ && !inserts) corrections.push(c);
     else rejected.push(c);
   }
   if (rejected.length > 0) {

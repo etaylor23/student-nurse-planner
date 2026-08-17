@@ -243,7 +243,9 @@ async function run(event: FunctionUrlEvent, responseStream: ResponseStream): Pro
     // Against the SANITISED text, so a word the sanitiser already fixed isn't also raised as
     // a dispute — that would ask the student to confirm something already resolved.
     const disputes = check?.pageText ? disputedWords(cleaned.text, check.pageText) : [];
-    const checkMissing = !check?.parsed;
+    // No second opinion (H4): no dispute can be raised on this page, so the payload says so
+    // and review shows the honest chip instead of silently presenting everything as agreed.
+    const checkMissing = !check?.ok;
 
     // ---- 4: classify ----
     const classified = await classify(cleaned.text, regions, req.context ?? {}, cleaned.corrections);
@@ -318,6 +320,8 @@ async function run(event: FunctionUrlEvent, responseStream: ResponseStream): Pro
       imageIndex: req.imageIndex,
       pageDateRaw: structure.parsed.pageDateRaw ?? null,
       wardHint: structure.parsed.wardHint ?? null,
+      /** This page had no usable second read (H4) — drug spellings are unverified. */
+      checkMissing,
       blocks: blocks.map((b, i) => {
         // Geometry comes from the FIRST vision region the block drew from. A semantic block
         // may span several (P26), so this is the anchor for the review overlay, not a tight
