@@ -133,7 +133,9 @@ export async function sanitise(pageText: string): Promise<SanitiseResult> {
     else rejected.push(c);
   }
   if (rejected.length > 0) {
-    console.warn(`sanitiser: discarded ${rejected.length} correction(s) not present in the input`);
+    // Three causes share this counter: `from` not on the page, case-only, or an
+    // extension/insertion (H5). Count only — correction content never reaches the logs.
+    console.warn(`sanitiser: discarded ${rejected.length} correction(s) by the guards`);
   }
 
   return {
