@@ -34,12 +34,12 @@ fact from an email landing.
 
 | Name      | Email                        | Emails sent                                                                          | Invited    | Status  | Notes |
 | --------- | ---------------------------- | ------------------------------------------------------------------------------------ | ---------- | ------- | ----- |
-| Francesca | `frxnyi@gmail.com`           | `welcome-beta` 2026-07-22 · `magic-link` 2026-07-24 · `intelligence-recall` 2026-08-03 | 2026-07-24 | invited | Gmail |
-| Ruby      | `Rubyajames@live.co.uk`      | `welcome-beta` 2026-07-22 · `magic-link` 2026-07-24 · `intelligence-recall` 2026-08-03 | 2026-07-24 | invited | Live |
-| Nicole    | `nicolewane@hotmail.co.uk`   | `welcome-beta` 2026-07-22 · `magic-link` 2026-07-24 · `intelligence-recall` 2026-08-03 | 2026-07-24 | invited | Hotmail |
-| Darlene   | `Darlene.auguis@nhs.net`     | `welcome-beta` 2026-08-03 · `magic-link` 2026-08-03 · `intelligence-recall` 2026-08-03 | 2026-08-03 | invited | NHSmail. Three emails in one day, and Defender Safe Links rewrites URLs — if the sign-in link or the images misbehave, ask for a personal address |
-| Regine    | `reginefouda@hotmail.com`    | `magic-link` 2026-08-03 · `intelligence-recall` 2026-08-03                             | 2026-08-03 | invited | Hotmail. Warmed up outside the scripts, so no `welcome-beta` — went straight to the magic link |
-| Kyra      | `kyranicolesingh@icloud.com` | `inbound` 2026-08-03                                                                   | —          | inbound | iCloud. Got in touch asking for access, so `inbound` rather than `welcome-beta`. Awaiting reply with call times — **provision only after the call** |
+| Francesca | `frxnyi@gmail.com`           | `welcome-beta` 2026-07-22 · `magic-link` 2026-07-24 · `intelligence-recall` 2026-08-03 · `intelligence-capture` 2026-08-17 | 2026-07-24 | invited | Gmail |
+| Ruby      | `Rubyajames@live.co.uk`      | `welcome-beta` 2026-07-22 · `magic-link` 2026-07-24 · `intelligence-recall` 2026-08-03 · `intelligence-capture` 2026-08-17 | 2026-07-24 | invited | Live |
+| Nicole    | `nicolewane@hotmail.co.uk`   | `welcome-beta` 2026-07-22 · `magic-link` 2026-07-24 · `intelligence-recall` 2026-08-03 · `intelligence-capture` 2026-08-17 | 2026-07-24 | invited | Hotmail |
+| Darlene   | `Darlene.auguis@nhs.net`     | `welcome-beta` 2026-08-03 · `magic-link` 2026-08-03 · `intelligence-recall` 2026-08-03 · `intelligence-capture` 2026-08-17 | 2026-08-03 | invited | NHSmail. Three emails in one day, and Defender Safe Links rewrites URLs — if the sign-in link or the images misbehave, ask for a personal address |
+| Regine    | `reginefouda@hotmail.com`    | `magic-link` 2026-08-03 · `intelligence-recall` 2026-08-03 · `intelligence-capture` 2026-08-17 | 2026-08-03 | invited | Hotmail. Warmed up outside the scripts, so no `welcome-beta` — went straight to the magic link |
+| Kyra      | `kyranicolesingh@icloud.com` | `inbound` 2026-08-03 · `intelligence-capture` 2026-08-17 | — | inbound | iCloud. Got in touch asking for access, so `inbound` rather than `welcome-beta`. Sent the capture announcement as a reply-nudge (custom footer_reason, since she isn't in the programme yet). Awaiting reply with call times — **provision only after the call** |
 
 ## Announcements sent
 
@@ -49,6 +49,7 @@ no per-recipient record, so this is the only durable answer to "did they already
 | Date       | Template              | Sent to                                          |
 | ---------- | --------------------- | ------------------------------------------------ |
 | 2026-08-03 | `intelligence-recall` | Francesca, Ruby, Nicole, Darlene, Regine (bcc Ellis). Not Kyra, who has no account yet. |
+| 2026-08-17 | `intelligence-capture` | Francesca, Ruby, Nicole, Darlene, Regine (bcc Ellis) + Kyra as a reply-nudge (still not provisioned). Foot of the email asks everyone to REPLY to book an induction call — watch hello@placemate.uk. Dogfooded to ellis.taylor499@gmail.com first. |
 
 ## Team / test accounts
 
