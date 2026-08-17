@@ -117,20 +117,29 @@ export type Correction = z.infer<typeof correctionSchema>;
  * promise as blocks: one malformed entry costs itself, never the page.
  */
 export const checkResponseSchema = z
-  .object({
-    blocks: z
-      .array(z.unknown())
-      .nullish()
-      .transform((entries) => {
-        const out: string[] = [];
-        for (const raw of entries ?? []) {
-          const rawText = (raw as { rawText?: unknown } | null)?.rawText;
-          if (typeof rawText === "string" && rawText.trim()) out.push(rawText);
-        }
-        return out;
-      }),
-  })
-  .strip();
+  .preprocess(
+    // A model given a one-field contract simplifies it: a bare array instead of
+    // {"blocks": [...]} is the commonest shape drift. Fold it back before validating.
+    (raw) => (Array.isArray(raw) ? { blocks: raw } : raw),
+    z
+      .object({
+        blocks: z
+          .array(z.unknown())
+          .nullish()
+          .transform((entries) => {
+            const out: string[] = [];
+            for (const raw of entries ?? []) {
+              // The other simplification: entries as plain strings rather than objects.
+              const rawText =
+                typeof raw === "string" ? raw : (raw as { rawText?: unknown } | null)?.rawText;
+              if (typeof rawText === "string" && rawText.trim()) out.push(rawText);
+            }
+            return out;
+          }),
+      })
+      .strip(),
+  )
+  .transform((o) => o as { blocks: string[] });
 
 export const GIBBS_STAGES = [
   "DESCRIPTION",

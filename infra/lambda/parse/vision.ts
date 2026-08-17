@@ -172,9 +172,10 @@ async function callCheck(dataUri: string): Promise<CheckCallResult> {
   const validated = raw === null ? null : checkResponseSchema.safeParse(raw);
   const texts = validated?.success ? validated.data.blocks : [];
   if (texts.length === 0) {
-    // Same structural-only logging as the structure call: was it format, or an empty read?
+    // Structural detail only, same rule as every failure log here. `opens` is the fence or
+    // the "Here is the JSON:" preamble — the shape of the drift, never the note's content.
     console.warn(
-      `vision ${CHECK_MODEL}: check response unusable chars=${res.text.length} finish=${res.finishReason ?? "?"}`,
+      `vision ${CHECK_MODEL}: check response unusable chars=${res.text.length} finish=${res.finishReason ?? "?"} opens=${JSON.stringify(res.text.slice(0, 24))}`,
     );
   }
   return {
