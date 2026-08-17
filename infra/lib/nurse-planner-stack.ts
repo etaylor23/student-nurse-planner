@@ -86,6 +86,10 @@ export class NursePlannerStack extends Stack {
       // this project before.
       aiAskOrigin: ai.askOrigin,
       aiParseOrigin: ai.parseOrigin,
+      // Presigned URLs use the bucket's virtual-hosted REGIONAL endpoint, so that exact
+      // host is what the CSP must allow (connect-src for the PUT + cached-parse GET,
+      // img-src for the review photo pane).
+      captureBucketOrigin: `https://${captures.bucket.bucketRegionalDomainName}`,
     });
 
     if (config.customDomain && hostedZone) {

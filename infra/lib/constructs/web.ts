@@ -48,6 +48,15 @@ export interface WebProps {
   aiAskOrigin?: string;
   /** Scheme+host of the note-capture parse Function URL, for the CSP `connect-src`. */
   aiParseOrigin?: string;
+  /**
+   * Origin of the note-capture photo bucket, for `connect-src` AND `img-src`. The client
+   * PUTs the downscaled photo to a presigned URL, GETs the cached parse.json, and renders
+   * the page photo as an <img> from a presigned GET — all direct to S3, all a different
+   * origin to the SPA. Found the hard way on rollout (2026-08-17): bucket CORS and the
+   * Function-URL CORS both allowed the app origin, and the page's own CSP still blocked
+   * the PUT — capture had only ever run on localhost, which serves no CSP header at all.
+   */
+  captureBucketOrigin?: string;
 }
 
 /**
@@ -95,13 +104,15 @@ export class Web extends Construct {
       "base-uri 'self'",
       "object-src 'none'",
       "frame-ancestors 'none'",
-      "img-src 'self' data:",
+      `img-src 'self' data:${props.captureBucketOrigin ? ` ${props.captureBucketOrigin}` : ""}`,
       "font-src 'self'",
       "style-src 'self' 'unsafe-inline'",
       "script-src 'self'",
       `connect-src 'self' https://cognito-idp.${config.region}.amazonaws.com${
         props.aiAskOrigin ? ` ${props.aiAskOrigin}` : ""
-      }${props.aiParseOrigin ? ` ${props.aiParseOrigin}` : ""}`,
+      }${props.aiParseOrigin ? ` ${props.aiParseOrigin}` : ""}${
+        props.captureBucketOrigin ? ` ${props.captureBucketOrigin}` : ""
+      }`,
       "form-action 'self'",
     ].join("; ");
 
