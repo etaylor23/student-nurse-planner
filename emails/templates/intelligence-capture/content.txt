@@ -6,24 +6,28 @@ today, and it's the best thing we've built so far.
 
 Write them, snap them, save them, search them.
 
-Your notes, that is. Scribble on placement the way you always have. At
-the end of the day, tap the Photo button at the top of the app and snap
-the page. That's the whole job.
+Your notes, that is. Scribble on placement the way you always have.
+Then it's three steps, and two of them happen while you put the kettle
+on:
 
-While you put the kettle on, PlaceMate:
+  1. SNAP THE PAGE. Tap the Photo button, point it at your notes.
+     That's your part done.
 
-  - reads the page twice, so a misread doesn't get to look right.
-    Anything the readings don't agree on is flagged "worth a check"
-    before it goes anywhere near your records
-  - tidies the clinical spelling. Drug names and clinical terms only,
-    never your wording, never your abbreviations
-  - works out where each note belongs: medication log, skills,
-    reflections, NMC evidence or shift notes
+  2. PLACEMATE READS IT TWICE. A misread never gets to look right:
+     anything the readings don't agree on is flagged "worth a check"
+     before it goes anywhere near your records.
 
-Then it hands the page back to you, note by note. Nothing is saved
-until you say so. File a note in one tap, fix a word in one tap, bin
-the bits that were never meant to be records. We've all written a
-shopping list in the margin.
+  3. YOU FILE EACH NOTE WITH ONE TAP. Nothing is saved until you say
+     so. Fix a word in a tap, bin the shopping list in the margin.
+
+  4. AND FROM THAT ONE PHOTO, YOU GET ALL OF THIS:
+     - every note filed where it belongs: medication log, skills,
+       reflections, NMC evidence or shift notes
+     - clinical skills and reflections auto-tagged, with the NMC
+       proficiencies they could evidence lined up ready
+     - clinical spelling tidied. Drug names and terms only, never
+       your wording
+     - all of it searchable from the moment you file it
 
 Photograph a page: https://app.placemate.uk/
 
