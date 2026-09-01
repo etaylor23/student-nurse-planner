@@ -96,4 +96,5 @@ Use `--dry-run` for content review before a real send.
 | --------------------- | ----------------------------------------------------- |
 | `welcome-beta`        | Recruited beta students — warm intro, magic link follows in a day or two. |
 | `inbound`             | People who got in touch asking to use PlaceMate. Access is gated on an onboarding call, so it deliberately does **not** promise a magic link. |
+| `inbound-consent`     | People who got in touch asking to use PlaceMate, where we'll add them straight away — no call, just a GDPR consent reply. Welcome email + sign-in link follow once they say yes. |
 | `intelligence-recall` | Beta students — PlaceMate Intelligence email 1 of 2: ask-your-notes is live, photo import teased. |

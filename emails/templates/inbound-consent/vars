@@ -1,0 +1,11 @@
+# Slots filled into templates/_shell. One key=value per line; --var overrides any of them.
+#
+# For people who got in touch asking to use PlaceMate, where we're happy to add them
+# straight away. Unlike `inbound` (which gates access on an onboarding call), the only
+# gate here is consent: in line with our GDPR guidance we need an explicit "yes, add me"
+# reply before provisioning. Replying IS the call to action — the welcome email and
+# sign-in link follow once they've said yes, so this email must not promise either
+# unconditionally. Nothing else in the template is styled to compete with the reply box.
+title=We'd love to add you to the PlaceMate beta
+preheader=Just reply to say you're happy to be added, and your welcome email is on its way.
+footer_reason=You're receiving this because you got in touch with us about joining the PlaceMate beta.
