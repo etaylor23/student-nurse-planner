@@ -18,7 +18,8 @@ Update it whenever you run a [beta lifecycle script](./beta-invites.md):
 - **removed** (`delete-user.ts --execute`) → set status `removed` (keep the row for history).
 
 Dates are the day the email went out (Europe/London). Status: `inbound` (asked us for
-access, awaiting their onboarding call) or `pre-welcomed` → `invited` → (`removed`).
+access; awaiting their onboarding call or GDPR consent reply, depending on which inbound
+template they got) or `pre-welcomed` → `invited` → (`removed`).
 
 **Provisioned ≠ active.** A Cognito account only becomes a row in DynamoDB once the person
 signs in and the app syncs. Cross-check both (see below) before treating anyone as a live
@@ -40,6 +41,7 @@ fact from an email landing.
 | Darlene   | `Darlene.auguis@nhs.net`     | `welcome-beta` 2026-08-03 · `magic-link` 2026-08-03 · `intelligence-recall` 2026-08-03 · `intelligence-capture` 2026-08-17 | 2026-08-03 | invited | NHSmail. Three emails in one day, and Defender Safe Links rewrites URLs — if the sign-in link or the images misbehave, ask for a personal address |
 | Regine    | `reginefouda@hotmail.com`    | `magic-link` 2026-08-03 · `intelligence-recall` 2026-08-03 · `intelligence-capture` 2026-08-17 | 2026-08-03 | invited | Hotmail. Warmed up outside the scripts, so no `welcome-beta` — went straight to the magic link |
 | Kyra      | `kyranicolesingh@icloud.com` | `inbound` 2026-08-03 · `intelligence-capture` 2026-08-17 | — | inbound | iCloud. Got in touch asking for access, so `inbound` rather than `welcome-beta`. Sent the capture announcement as a reply-nudge (custom footer_reason, since she isn't in the programme yet). Awaiting reply with call times — **provision only after the call** |
+| Chelsea   | `chelseappp@hotmail.co.uk`   | `inbound-consent` 2026-09-01 | — | inbound | Hotmail. Student nurse at the University of Staffordshire; emailed hello@ on 2026-08-31 asking to join and offering to recommend us to other students. Consent-gated, no call: **provision + welcome email as soon as she replies yes** (reply or Instagram DM both count). BCC'd ellis@ + gmail on the send |
 
 ## Announcements sent
 
