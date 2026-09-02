@@ -40,7 +40,7 @@ export function deriveNudges(i: NudgeInputs): Nudge[] {
     out.push({
       id: "placement",
       tone: "primary",
-      message: "Add your first placement — your hours, shifts and evidence all hang off it.",
+      message: "Add your first placement. Your hours, shifts and evidence all hang off it.",
       cta: "Add a placement",
       href: "/placement-hours",
     });
@@ -50,7 +50,7 @@ export function deriveNudges(i: NudgeInputs): Nudge[] {
     out.push({
       id: "onshift",
       tone: "primary",
-      message: "You're on shift — capture what you see while it's fresh.",
+      message: "You're on shift. Capture what you see while it's fresh.",
       cta: "Capture now",
       href: `/planner/${i.onShiftId}`,
     });

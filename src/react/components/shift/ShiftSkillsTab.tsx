@@ -70,7 +70,7 @@ function SkillsIndexView({ shift, base }: { shift: Shift; base: string }) {
 
       {rows.length === 0 ? (
         <p className="text-sm text-slate-400">
-          None yet — sign off a skill against this shift below.
+          None yet. Sign off a skill against this shift below.
         </p>
       ) : (
         <ul className="space-y-2">
@@ -174,8 +174,7 @@ function SkillSignOffView({
 
       {signedOff ? (
         <p className="rounded-xl bg-emerald-50 px-3.5 py-3 text-sm text-emerald-800 ring-1 ring-emerald-100">
-          This skill is signed off — a permanent record. See the full skills tracker for its
-          details.
+          This skill is signed off, a permanent record. See the full skills tracker for its details.
         </p>
       ) : (
         <>
@@ -201,7 +200,7 @@ function SkillSignOffView({
           </div>
           <div className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200/60">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Sign off — permanent
+              Sign off (permanent)
             </p>
             <SkillSignOffForm
               skill={skill}

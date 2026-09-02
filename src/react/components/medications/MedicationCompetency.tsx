@@ -70,7 +70,7 @@ export function MedicationCompetency({ logs }: { logs: MedicationLog[] }) {
       <p className="text-sm leading-relaxed text-slate-600">
         Observing and administering medicines is direct experience for{" "}
         <Link to="/competencies/platform/4" className="font-medium text-emerald-700">
-          Platform 4 — medicines management
+          Platform 4: medicines management
         </Link>
         , and drug calculations speak to numeracy competence.
       </p>

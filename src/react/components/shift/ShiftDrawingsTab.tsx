@@ -24,7 +24,7 @@ export function ShiftDrawingsTab({ drawings }: { drawings: ShiftDrawing[] }) {
 
       {drawings.length === 0 ? (
         <p className="text-sm text-slate-400">
-          None yet — a drawing you keep while reviewing a photographed page shows up here.
+          None yet. A drawing you keep while reviewing a photographed page shows up here.
         </p>
       ) : (
         <>
@@ -70,7 +70,7 @@ export function ShiftDrawingsTab({ drawings }: { drawings: ShiftDrawing[] }) {
             ))}
           </ul>
           <p className="mt-4 text-xs text-slate-400">
-            Reading only — to change a note, reopen its page from the Photo button.
+            Reading only. To change a note, reopen its page from the Photo button.
           </p>
         </>
       )}

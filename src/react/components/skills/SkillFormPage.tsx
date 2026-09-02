@@ -38,7 +38,7 @@ export function SkillFormPage() {
 
       <Panel
         title="Add a custom skill"
-        hint="Adds to the Annexe B baseline — track stages and sign-off the same way"
+        hint="Adds to the Annexe B baseline. Track stages and sign-off the same way"
       >
         <form onSubmit={submit} className="space-y-4">
           <label className="block">

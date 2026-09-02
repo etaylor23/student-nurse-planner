@@ -45,7 +45,7 @@ export function ReadyToSignOffPage() {
         <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center">
           <p className="text-sm font-medium text-slate-600">
             {signedOff > 0
-              ? `Nothing waiting — you've signed off ${signedOff} in your PAD. 🎉`
+              ? `Nothing waiting. You've signed off ${signedOff} in your PAD. 🎉`
               : "Nothing here yet."}
           </p>
           <p className="mx-auto mt-1 max-w-md text-xs text-slate-400">
@@ -56,7 +56,7 @@ export function ReadyToSignOffPage() {
       ) : (
         <>
           <p className="mb-3 text-sm text-slate-500">
-            You've built evidence for these — take them to your assessor, then mark each one signed
+            You've built evidence for these. Take them to your assessor, then mark each one signed
             off in your PAD.
           </p>
           <ul className="divide-y divide-slate-100">

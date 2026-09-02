@@ -81,7 +81,7 @@ function ProfileForm({ user }: { user: User }) {
       entityId: user.id,
       entityLabel: "Profile",
       action: "PROFILE_UPDATED",
-      summary: `Updated profile — part ${current} of ${total}, ${PROGRAMME_TYPE_LABEL[programmeType]}`,
+      summary: `Updated profile: part ${current} of ${total}, ${PROGRAMME_TYPE_LABEL[programmeType]}`,
     });
     await reloadUser();
     setSaved(true);
@@ -101,7 +101,7 @@ function ProfileForm({ user }: { user: User }) {
         aside={
           <div className="flex flex-col items-end gap-1.5">
             <span className="text-xs text-slate-500">
-              {isGuest ? "Demo — this device only" : (user.email ?? "Signed in")}
+              {isGuest ? "Demo, this device only" : (user.email ?? "Signed in")}
             </span>
             <button
               type="button"
@@ -215,7 +215,7 @@ function ProfileForm({ user }: { user: User }) {
                   Saved.
                   {dueNow != null && (
                     <>
-                      {" — "}
+                      {" "}
                       <Link to="/competencies/gaps" className="font-medium hover:underline">
                         {dueNow} gap{dueNow === 1 ? "" : "s"} now due →
                       </Link>
@@ -246,7 +246,7 @@ function ProfileForm({ user }: { user: User }) {
                 >
                   hello@placemate.uk
                 </a>{" "}
-                and we&rsquo;ll take care of it — handled by hand during the beta, usually within a
+                and we&rsquo;ll take care of it. Handled by hand during the beta, usually within a
                 few days.
               </p>
             </Panel>
@@ -278,7 +278,7 @@ function ProfileForm({ user }: { user: User }) {
               Your <span className="font-medium text-slate-800">current part</span> tells the NMC
               competency tracker which proficiencies should already be evidenced. Proficiencies that
               aren't yet achieved are surfaced as gaps, and warnings escalate as you reach the part
-              a proficiency is tagged for — or your final part if it isn't tagged.
+              a proficiency is tagged for, or your final part if it isn't tagged.
             </p>
             <p className="mt-3 text-xs text-slate-400">
               Your PAD remains the official signed record. This is a personal study aid.
@@ -348,7 +348,7 @@ function AboutFooter() {
         </a>
       </p>
       <p className="mt-1.5">
-        PlaceMate — a personal study aid, not the official record. Version {version}.
+        PlaceMate is a personal study aid, not the official record. Version {version}.
       </p>
     </footer>
   );
@@ -388,7 +388,7 @@ function SignOutDialog({ onClose }: { onClose: () => void }) {
         {pending > 0 && (
           <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
             {pending} change{pending === 1 ? "" : "s"} {pending === 1 ? "hasn't" : "haven't"} synced
-            yet — removing this device&rsquo;s data now would lose {pending === 1 ? "it" : "them"}.
+            yet. Removing this device&rsquo;s data now would lose {pending === 1 ? "it" : "them"}.
             <button
               type="button"
               onClick={() => void syncNow()}
@@ -400,7 +400,7 @@ function SignOutDialog({ onClose }: { onClose: () => void }) {
         )}
 
         <p className="mt-3 text-sm text-slate-600">
-          Keep your data on this device for a faster sign-in next time, or remove it — choose Remove
+          Keep your data on this device for a faster sign-in next time, or remove it. Choose Remove
           on a shared or public computer so nothing readable is left behind.
         </p>
 
@@ -455,9 +455,9 @@ function DemoDataPanel({ userId }: { userId: string }) {
     const result = await simulateSelfCareReminder();
     setNotifyMsg(
       result === "shown"
-        ? "Sent — check your notifications (it links to your self-care check-in)."
+        ? "Sent. Check your notifications (it links to your self-care check-in)."
         : result === "denied"
-          ? "Notifications are blocked — allow them for this site to try it."
+          ? "Notifications are blocked. Allow them for this site to try it."
           : "Notifications aren't supported in this browser.",
     );
   };
@@ -481,7 +481,7 @@ function DemoDataPanel({ userId }: { userId: string }) {
   const clear = async () => {
     if (
       !window.confirm(
-        "Clear ALL local data — shifts, medications, competency progress, skills and history? This can't be undone.",
+        "Clear ALL local data (shifts, medications, competency progress, skills and history)? This can't be undone.",
       )
     )
       return;
@@ -491,11 +491,11 @@ function DemoDataPanel({ userId }: { userId: string }) {
   };
 
   return (
-    <Panel title="Demo data" hint="Explore with a sample dataset — local to this browser only">
+    <Panel title="Demo data" hint="Explore with a sample dataset, local to this browser only">
       <p className="text-sm leading-relaxed text-slate-600">
         {populated
-          ? "This browser already has data. Load is disabled so it can't be duplicated — clear everything first to load a fresh sample."
-          : "Fill every screen with a realistic part-2 student's dataset — placements, shifts, medications and logs, competency progress and evidence, clinical-skill sign-offs, custom skills and activity history — so you can explore the whole app and its cross-links."}
+          ? "This browser already has data. Load is disabled so it can't be duplicated. Clear everything first to load a fresh sample."
+          : "Fill every screen with a realistic part-2 student's dataset: placements, shifts, medications and logs, competency progress and evidence, clinical-skill sign-offs, custom skills and activity history. You can then explore the whole app and its cross-links."}
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <button
@@ -520,8 +520,8 @@ function DemoDataPanel({ userId }: { userId: string }) {
       </div>
       {notifyMsg && <p className="mt-2 text-xs text-slate-500">{notifyMsg}</p>}
       <p className="mt-3 text-xs text-slate-400">
-        Sample data only — illustrative, never real patient information. The reminder is a demo of
-        the planned web notifications (see spec/notifications.md) — a foreground notification only,
+        Sample data only, illustrative and never real patient information. The reminder is a demo of
+        the planned web notifications (see spec/notifications.md), a foreground notification only,
         no scheduling yet.
       </p>
     </Panel>

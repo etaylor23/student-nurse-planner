@@ -87,7 +87,7 @@ export function ReflectionListPage() {
         <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center">
           <p className="text-sm font-medium text-slate-600">No reflections yet</p>
           <p className="mx-auto mt-1 max-w-sm text-sm text-slate-400">
-            Reflect on something that happened on placement using the Gibbs cycle — you can also
+            Reflect on something that happened on placement using the Gibbs cycle. You can also
             start one straight from a shift's debrief.
           </p>
           <Link to="/reflection/new" className={btnPrimary + " mt-4"}>
@@ -197,7 +197,7 @@ function ReflectionRow({
           </div>
         </div>
         {reflection.isLocked ? (
-          <p className="mt-2 text-sm text-slate-400">Locked — open to unlock and read.</p>
+          <p className="mt-2 text-sm text-slate-400">Locked. Open to unlock and read.</p>
         ) : (
           snippet(sections) && (
             <p className="mt-2 line-clamp-2 text-sm text-slate-500">{snippet(sections)}</p>

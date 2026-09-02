@@ -163,7 +163,7 @@ export function TimetablePage() {
           </p>
           {slots.length === 0 ? (
             <p className="text-sm text-slate-400">
-              No free {lengthMins}-min slots in study hours this week — try a shorter length.
+              No free {lengthMins}-min slots in study hours this week. Try a shorter length.
             </p>
           ) : (
             <ul className="space-y-1.5">
@@ -191,7 +191,7 @@ export function TimetablePage() {
         hint={completedCount > 0 ? `${completedCount} completed so far` : "Sessions you've planned"}
       >
         {upcoming.length === 0 ? (
-          <p className="text-sm text-slate-400">Nothing scheduled yet — plan a slot above.</p>
+          <p className="text-sm text-slate-400">Nothing scheduled yet. Plan a slot above.</p>
         ) : (
           <ul className="divide-y divide-slate-100">
             {upcoming.map((s) => (

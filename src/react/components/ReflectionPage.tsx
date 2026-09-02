@@ -41,7 +41,7 @@ export function ReflectionPage() {
       <PageHero
         eyebrow="Practice development"
         title="Reflection on practice"
-        subtitle="Turn placement experiences into structured Gibbs reflections — private, lockable, and attachable to your proficiencies as evidence."
+        subtitle="Turn placement experiences into structured Gibbs reflections: private, lockable, and attachable to your proficiencies as evidence."
         aside={
           reflections.length > 0 ? (
             <div>

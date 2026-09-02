@@ -158,7 +158,7 @@ export function ProficiencyDetailPage() {
       {
         key: `pad-${proficiency.id}`,
         kind: "evidence",
-        text: `${proficiency.code} — an official step toward registration, ready for your assessor`,
+        text: `${proficiency.code} is an official step toward registration, ready for your assessor`,
         href: "/competencies/ready",
       },
     ]);
@@ -211,7 +211,7 @@ export function ProficiencyDetailPage() {
       {
         key: `evi-add-${evidenceId}`,
         kind: "evidence",
-        text: `${EVIDENCE_TYPE_LABEL[type]} attached — ${count} piece${count === 1 ? "" : "s"} of evidence now on ${proficiency.code}`,
+        text: `${EVIDENCE_TYPE_LABEL[type]} attached: ${count} piece${count === 1 ? "" : "s"} of evidence now on ${proficiency.code}`,
         href: sourceHref,
       },
     ]);
@@ -384,7 +384,7 @@ export function ProficiencyDetailPage() {
               </button>
               {saved && (
                 <div className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800 ring-1 ring-emerald-100">
-                  Saved — you're at <strong>{overallPct}%</strong> achieved overall.
+                  Saved. You're at <strong>{overallPct}%</strong> achieved overall.
                   {nextGap && (
                     <>
                       {" "}
@@ -404,7 +404,7 @@ export function ProficiencyDetailPage() {
           <Panel
             step="2"
             title="Official PAD sign-off"
-            hint="Your real PAD is the record — mark it here once your assessor has signed"
+            hint="Your real PAD is the record. Mark it here once your assessor has signed"
           >
             {padSignedOff ? (
               <div className="rounded-xl bg-emerald-50 p-3.5 ring-1 ring-emerald-100">
@@ -434,7 +434,7 @@ export function ProficiencyDetailPage() {
               <div className="space-y-3">
                 <p className="text-sm text-slate-500">
                   Recorded a real sign-off in your PAD? Mark it here so your progress reflects
-                  what's actually achieved — evidence gathered is separate from being signed off.
+                  what's actually achieved. Evidence gathered is separate from being signed off.
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <label className="block">
@@ -612,7 +612,7 @@ export function ProficiencyDetailPage() {
                     linked={linkedFor("SHIFT")}
                     getId={(s) => s.id}
                     getLabel={(s) => shiftLabel(s, placeName)}
-                    emptyText="No completed shifts yet — complete a shift in the planner to use it as evidence."
+                    emptyText="No completed shifts yet. Complete a shift in the planner to use it as evidence."
                     onAdd={(s) => addEvidence("SHIFT", s.id)}
                   />
                 )}
@@ -626,7 +626,7 @@ export function ProficiencyDetailPage() {
                     }
                     emptyText={
                       <>
-                        No medication logs yet —{" "}
+                        No medication logs yet, so{" "}
                         <Link
                           to="/medications/log"
                           className="font-medium text-emerald-700 hover:underline"
@@ -647,7 +647,7 @@ export function ProficiencyDetailPage() {
                     getLabel={(s) => s.name}
                     emptyText={
                       <>
-                        No skills yet — open the{" "}
+                        No skills yet. Open the{" "}
                         <Link to="/skills" className="font-medium text-emerald-700 hover:underline">
                           clinical skills tracker
                         </Link>{" "}
@@ -666,7 +666,7 @@ export function ProficiencyDetailPage() {
                     getLabel={(r) => r.title}
                     emptyText={
                       <>
-                        No reflections yet —{" "}
+                        No reflections yet, so{" "}
                         <Link
                           to="/reflection/new"
                           className="font-medium text-emerald-700 hover:underline"

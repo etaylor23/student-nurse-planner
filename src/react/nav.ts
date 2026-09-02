@@ -62,7 +62,7 @@ export const NAV_SECTIONS: NavSection[] = [
   // ---- Support: aids alongside placement, clearly secondary ----
   {
     heading: "Support",
-    note: "Alongside your placement — dip in when they help.",
+    note: "Alongside your placement. Dip in when they help.",
     tier: "support",
     items: [
       { path: "/revision", label: "Revision timetable", enabled: true },

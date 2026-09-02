@@ -56,7 +56,7 @@ export function useSkillActions() {
     showPayoff("Progress saved", [
       skillRecordItem(
         skill,
-        `${skillLabel(skill)} — ${SKILL_STAGE_LABEL[stage]}, in your skills record`,
+        `${skillLabel(skill)}: ${SKILL_STAGE_LABEL[stage]}, in your skills record`,
       ),
     ]);
     return progress;
@@ -115,7 +115,7 @@ export function useSkillActions() {
     // evidences (linked silently above so this is the only toast).
     if (linkProficiency) await linkSkillToProficiency(skill, linkProficiency, { silent: true });
     showPayoff("Signed off", [
-      skillRecordItem(skill, `${skillLabel(skill)} — a permanent record in your skills tracker`),
+      skillRecordItem(skill, `${skillLabel(skill)} is a permanent record in your skills tracker`),
       ...(linkProficiency ? [evidenceItem(linkProficiency)] : []),
     ]);
     return progress;

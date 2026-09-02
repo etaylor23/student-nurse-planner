@@ -68,7 +68,7 @@ export function ShiftChip({
         {/* Never let a recency guess read as a date match (P9). */}
         <p>
           {resolution.isFallback
-            ? "No date on the page we could match — this is just your most recent shift. Pick another if that's wrong."
+            ? "No date on the page we could match, so this is just your most recent shift. Pick another if that's wrong."
             : "Matched to the date written on the page."}
         </p>
         <div className="mt-2.5 flex flex-wrap gap-1.5">

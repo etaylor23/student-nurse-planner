@@ -38,7 +38,7 @@ export function PlacementPalette({ placements }: { placements: Placement[] }) {
       <div ref={ref}>
         {placements.length === 0 ? (
           <p className="text-sm text-slate-400">
-            No placements yet — add them on the placement hours log and they'll appear here to drag.
+            No placements yet. Add them on the placement hours log and they'll appear here to drag.
           </p>
         ) : (
           <div

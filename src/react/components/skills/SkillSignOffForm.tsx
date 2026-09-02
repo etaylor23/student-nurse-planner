@@ -128,20 +128,20 @@ export function SkillSignOffForm({
             {shiftOptions.map((s) => (
               <option key={s.id} value={s.id}>
                 {shiftLabel(s, placeName)}
-                {s.id === currentShift?.id ? " — now" : ""}
+                {s.id === currentShift?.id ? " (now)" : ""}
               </option>
             ))}
           </select>
           <span className="mt-1 block text-xs text-slate-400">
             {currentShift ? (
               <span className="text-emerald-700">
-                You're in a shift now — linked automatically. Change it here if you meant a recent
+                You're in a shift now, linked automatically. Change it here if you meant a recent
                 one.
               </span>
             ) : recent.length > 0 ? (
               "Optionally link the shift this was signed off in (last 7 days)."
             ) : (
-              "No recent shifts to link — sign-off can have no shift."
+              "No recent shifts to link. Sign-off can have no shift."
             )}
           </span>
         </label>
@@ -236,7 +236,7 @@ export function SkillSignOffForm({
           </button>
         ))}
       <p className="text-xs text-slate-400">
-        Sign-off is permanent — once signed off, a skill stays signed off.
+        Sign-off is permanent: once signed off, a skill stays signed off.
       </p>
       <button type="submit" className={btnPrimary}>
         Sign off skill

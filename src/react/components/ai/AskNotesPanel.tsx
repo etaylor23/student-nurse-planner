@@ -175,8 +175,8 @@ export function AskNotesPanel({ autoFocus = false }: { autoFocus?: boolean }) {
 
       <p className="mt-2 flex flex-wrap items-center gap-x-2 text-[11px] text-slate-400">
         <span>
-          Answers come from your own notes. Educational support, not clinical guidance — always
-          check your placement&apos;s local policy.
+          Answers come from your own notes. Educational support, not clinical guidance. Always check
+          your placement&apos;s local policy.
         </span>
         {typeof state.remaining === "number" && state.remaining <= 5 && (
           <span className="font-medium text-slate-500">
@@ -224,7 +224,7 @@ function TurnView({
 
       {turn.interrupted && (
         <p className="mt-1 text-[11px] text-amber-700">
-          That answer was cut short — ask again to get the rest.
+          That answer was cut short. Ask again to get the rest.
         </p>
       )}
 

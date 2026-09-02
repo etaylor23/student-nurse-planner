@@ -69,7 +69,7 @@ export function ProficiencyPicker({
       </ul>
       {results.total > MAX_RESULTS && (
         <p className="mt-1.5 px-2 text-xs text-slate-400">
-          Showing {MAX_RESULTS} of {results.total} — refine your search.
+          Showing {MAX_RESULTS} of {results.total}. Refine your search.
         </p>
       )}
     </div>

@@ -46,7 +46,7 @@ export function useRevisionActions() {
     await log(
       target.id,
       "REVISION_TARGET_ADDED",
-      `Added a ${REVISION_TARGET_TYPE_LABEL[target.type].toLowerCase()} target — “${target.title}”`,
+      `Added a ${REVISION_TARGET_TYPE_LABEL[target.type].toLowerCase()} target: “${target.title}”`,
       short(target.title),
     );
     return target;
@@ -67,7 +67,7 @@ export function useRevisionActions() {
     await log(
       topic.id,
       "REVISION_TOPIC_ADDED",
-      `Added a revision topic — “${topic.title}”`,
+      `Added a revision topic: “${topic.title}”`,
       short(topic.title),
     );
     return topic;
@@ -88,7 +88,7 @@ export function useRevisionActions() {
     await log(
       topic.id,
       "REVISION_REVIEWED",
-      `Reviewed “${topic.title}” — confidence ${c}/5`,
+      `Reviewed “${topic.title}”: confidence ${c}/5`,
       short(topic.title),
     );
     return updated;

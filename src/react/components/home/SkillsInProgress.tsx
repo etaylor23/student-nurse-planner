@@ -26,7 +26,7 @@ export function SkillsInProgress({ limit = 3 }: { limit?: number }) {
   const rows = (showingFallback ? signedOff : inProgress).slice(0, limit);
 
   const hint = showingFallback
-    ? `Nothing on the go — your ${rows.length === 1 ? "most recent sign-off" : `${rows.length} most recent sign-offs`}`
+    ? `Nothing on the go: your ${rows.length === 1 ? "most recent sign-off" : `${rows.length} most recent sign-offs`}`
     : `${inProgress.length} on the go`;
 
   return (

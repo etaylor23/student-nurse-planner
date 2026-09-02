@@ -12,7 +12,7 @@ export function NewReflectionPage() {
     prefillTags?: string[];
   } | null;
   return (
-    <Panel title="New reflection" hint="Gibbs reflective cycle — guided prompts">
+    <Panel title="New reflection" hint="Gibbs reflective cycle, guided prompts">
       <ReflectionEditor
         prefillShiftId={state?.prefillShiftId}
         prefillTitle={state?.prefillTitle}

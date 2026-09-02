@@ -116,7 +116,7 @@ export function SessionRunner({
               </div>
             </>
           ) : (
-            <p className="mt-1 text-sm text-slate-300">Nice work — logged to your activity.</p>
+            <p className="mt-1 text-sm text-slate-300">Nice work. Logged to your activity.</p>
           )}
           <div className="mt-4 flex justify-center gap-2">
             <button

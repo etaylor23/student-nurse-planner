@@ -44,7 +44,7 @@ export function LoginScreen({ onContinueAsGuest }: { onContinueAsGuest: () => vo
         {/* Private beta: sign-in is invite-only, so a wrong/unknown address silently gets
             no email. Say so up front (without revealing whether any given address exists). */}
         <p className="mt-2 text-sm text-slate-500">
-          PlaceMate is in a private beta — sign-in works for invited accounts.{" "}
+          PlaceMate is in a private beta, so sign-in works for invited accounts.{" "}
           <a
             className="font-medium text-secondary-700 hover:underline"
             href="mailto:hello@placemate.uk?subject=PlaceMate%20beta%20interest"
@@ -59,8 +59,8 @@ export function LoginScreen({ onContinueAsGuest }: { onContinueAsGuest: () => vo
         ) : requested ? (
           <div className="mt-4 space-y-4">
             <p className="text-sm text-slate-600">
-              If that address has an account, a link is on its way — use the same address your
-              invite was sent to. Check your email and open the link on this device.
+              If that address has an account, a link is on its way. Use the same address your invite
+              was sent to. Check your email and open the link on this device.
             </p>
             <button type="button" className={btnGhost} onClick={() => setRequested(false)}>
               Use a different email
@@ -69,7 +69,7 @@ export function LoginScreen({ onContinueAsGuest }: { onContinueAsGuest: () => vo
         ) : (
           <form className="mt-4 space-y-4" onSubmit={onSubmit}>
             <p className="text-sm text-slate-500">
-              We'll email you a secure sign-in link — no password needed.
+              We'll email you a secure sign-in link, no password needed.
             </p>
             <div>
               <label htmlFor="email" className="text-xs font-medium text-slate-600">
@@ -88,7 +88,7 @@ export function LoginScreen({ onContinueAsGuest }: { onContinueAsGuest: () => vo
             </div>
             {linkError && (
               <p className="text-sm text-amber-600">
-                That link has expired or was already used — request a new one.
+                That link has expired or was already used. Request a new one.
               </p>
             )}
             <button type="submit" className={`${btnPrimary} w-full`}>
@@ -102,7 +102,7 @@ export function LoginScreen({ onContinueAsGuest }: { onContinueAsGuest: () => vo
             Try the demo on this device
           </button>
           <p className="mt-2 text-center text-xs text-slate-400">
-            A no-account demo — everything stays on this device, and demo data doesn't transfer into
+            A no-account demo. Everything stays on this device, and demo data doesn't transfer into
             a beta account.
           </p>
         </div>

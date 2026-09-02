@@ -205,7 +205,7 @@ function clip(s: string, n = 64): string {
  * line, deep-linking to the proficiency it now feeds.
  */
 export function evidenceItem(p: { id: string; code: string; statement?: string }): PayoffItem {
-  const tail = p.statement ? ` — ${clip(sentenceCase(p.statement))}` : "";
+  const tail = p.statement ? `: ${clip(sentenceCase(p.statement))}` : "";
   return {
     key: `evi-${p.id}`,
     kind: "evidence",

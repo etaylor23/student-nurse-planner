@@ -57,7 +57,7 @@ export async function simulateSelfCareReminder(): Promise<"shown" | "denied" | "
   if (perm === "unsupported") return "unsupported";
   if (perm !== "granted") return "denied";
   showNotification("Time for a self-care check-in 🌱", {
-    body: "A quick, kind check-in — how are you doing today?",
+    body: "A quick, kind check-in. How are you doing today?",
     url: "/self-care",
   });
   return "shown";

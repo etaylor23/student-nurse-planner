@@ -191,7 +191,7 @@ export function PlacementDetailPage() {
         <Panel title="Proficiencies evidenced" hint="Shifts here attached as evidence">
           {summary.proficiencyIds.length === 0 ? (
             <p className="text-sm text-slate-400">
-              No proficiencies evidenced from here yet — attach a shift as evidence from its editor.
+              No proficiencies evidenced from here yet. Attach a shift as evidence from its editor.
             </p>
           ) : (
             <ul className="divide-y divide-slate-100">
@@ -239,7 +239,7 @@ export function PlacementDetailPage() {
         <Panel title="Reflections written" hint="Reflecting on shifts here">
           {summary.reflectionIds.length === 0 ? (
             <p className="text-sm text-slate-400">
-              No reflections on this placement yet — write one from a shift's debrief.
+              No reflections on this placement yet. Write one from a shift's debrief.
             </p>
           ) : (
             <ul className="divide-y divide-slate-100">

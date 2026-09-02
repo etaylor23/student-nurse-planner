@@ -40,8 +40,8 @@ export function ShiftContributionSummary({ shift }: { shift: Shift }) {
         <p className="text-sm font-medium text-slate-700">This shift is ready to count</p>
         <p className="mt-0.5 text-sm text-slate-500">
           {shift.status === "COMPLETED"
-            ? "Capture a skill, reflection, medication or evidence below — each one counts toward your PAD."
-            : "Mark it worked when you've done it, then capture what you did — it all counts toward your hours and PAD."}
+            ? "Capture a skill, reflection, medication or evidence below. Each one counts toward your PAD."
+            : "Mark it worked when you've done it, then capture what you did. It all counts toward your hours and PAD."}
         </p>
       </div>
     );

@@ -148,9 +148,7 @@ export function MedicationDetailPage() {
           <Link to="/medications" className="text-xs font-medium text-emerald-600">
             ← All medications
           </Link>
-          <h2 className="mt-1 text-xl font-semibold tracking-tight text-ink">
-            {medication.name}
-          </h2>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-ink">{medication.name}</h2>
           {medication.brandNames && (
             <p className="text-sm text-slate-400">{medication.brandNames}</p>
           )}
@@ -158,7 +156,7 @@ export function MedicationDetailPage() {
             {medication.highAlert && (
               <span
                 className={`${chip} bg-rose-50 text-rose-700 ring-1 ring-rose-100`}
-                title="High-alert medication — heightened risk of harm if used in error"
+                title="High-alert medication: heightened risk of harm if used in error"
               >
                 ⚠ High alert
               </span>
@@ -193,7 +191,7 @@ export function MedicationDetailPage() {
         </div>
       </div>
 
-      <Panel title="Pharmacology" hint="Study notes — never real patient dosing">
+      <Panel title="Pharmacology" hint="Study notes, never real patient dosing">
         <dl className="space-y-3 text-sm">
           <NotesRow label="Mechanism of action" value={medication.mechanismOfAction} />
           <ChipsRow label="Side effects" value={medication.sideEffects} tone="rose" />
@@ -208,13 +206,13 @@ export function MedicationDetailPage() {
             {medication.keyNotes}
           </p>
         ) : (
-          <p className="text-sm text-slate-400">No notes yet — add some via Edit.</p>
+          <p className="text-sm text-slate-400">No notes yet. Add some via Edit.</p>
         )}
       </Panel>
 
       <Panel
         title="Conditions"
-        hint="Append a condition each time you meet this drug — it builds the link"
+        hint="Append a condition each time you meet this drug, and it builds the link"
       >
         {conditions.length > 0 ? (
           <ul className="mb-4 flex flex-wrap gap-2">
@@ -269,7 +267,7 @@ export function MedicationDetailPage() {
       >
         {logs.length === 0 ? (
           <p className="text-sm text-slate-400">
-            Not logged yet — use <span className="font-medium text-slate-500">Log again</span> the
+            Not logged yet. Use <span className="font-medium text-slate-500">Log again</span> the
             next time you observe or administer it.
           </p>
         ) : (
@@ -310,7 +308,7 @@ export function MedicationDetailPage() {
 
       <Panel
         title="Numeracy"
-        hint="Illustrative numbers only — practice, not real doses"
+        hint="Illustrative numbers only: practice, not real doses"
         action={
           <button type="button" onClick={() => void newDrill()} className={btnGhostSm}>
             New drill

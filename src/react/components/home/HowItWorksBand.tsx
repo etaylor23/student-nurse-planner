@@ -76,7 +76,7 @@ const HUB = {
 const REGISTRATION = {
   label: "Registration",
   sub: "your PAD",
-  desc: "The NMC register — where it's all heading.",
+  desc: "The NMC register, where it's all heading.",
   href: "/competencies",
 };
 
@@ -219,8 +219,8 @@ export function HowItWorksBand() {
           <div className="min-w-0 lg:max-w-xs">
             <SectionHeading
               eyebrow="How PlaceMate works"
-              title="Capture once — feed everything"
-              subtitle="Log something once on a shift and it flows to everything — all heading toward registration."
+              title="Capture once, feed everything"
+              subtitle="Log something once on a shift and it flows to everything, all heading toward registration."
               align="start"
             />
             <button type="button" onClick={show} disabled={busy} className={`${btnGhostSm} mt-3`}>
@@ -238,11 +238,11 @@ export function HowItWorksBand() {
     <section className={`${BAND} p-6`} aria-label="How PlaceMate works">
       <SectionHeading
         eyebrow="How PlaceMate works"
-        title="Capture once — feed everything"
+        title="Capture once, feed everything"
         subtitle={
           allDone
-            ? "You've found your way around — that's the whole loop. Hide this whenever you're ready."
-            : "Log something once on a shift and it flows to your skills, competency evidence, hours and reflections — all heading toward registration. Try it with your first steps."
+            ? "You've found your way around, and that's the whole loop. Hide this whenever you're ready."
+            : "Log something once on a shift and it flows to your skills, competency evidence, hours and reflections, all heading toward registration. Try it with your first steps."
         }
         align="start"
         action={
@@ -269,7 +269,7 @@ export function HowItWorksBand() {
             />
           </div>
           <p className="mt-2 text-xs text-slate-400">
-            Tap a step to try it — each ticks off once you&apos;ve done it for real.
+            Tap a step to try it. Each ticks off once you&apos;ve done it for real.
           </p>
 
           <div className="mt-4 space-y-5">

@@ -53,7 +53,7 @@ function ReflectionListView({ shift, base }: { shift: Shift; base: string }) {
         }
       />
       {rows.length === 0 ? (
-        <p className="text-sm text-slate-400">None yet — reflect on something from this shift.</p>
+        <p className="text-sm text-slate-400">None yet. Reflect on something from this shift.</p>
       ) : (
         <ul className="space-y-2">
           {rows.map((r) => (

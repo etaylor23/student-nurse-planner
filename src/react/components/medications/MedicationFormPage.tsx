@@ -158,7 +158,7 @@ function MedicationForm({
             onChange={setName}
             options={GENERIC_NAMES}
             ariaLabel="Generic name"
-            placeholder="e.g. Amoxicillin — type to search"
+            placeholder="e.g. Amoxicillin (type to search)"
           />,
         )}
         {field(
@@ -178,7 +178,7 @@ function MedicationForm({
             onChange={setDrugClass}
             options={DRUG_CLASSES}
             ariaLabel="Drug class"
-            placeholder="Optional — type to search"
+            placeholder="Optional (type to search)"
           />,
         )}
         {field(
@@ -188,7 +188,7 @@ function MedicationForm({
             onChange={setBodySystem}
             options={BODY_SYSTEMS}
             ariaLabel="Body system"
-            placeholder="Optional — type to search"
+            placeholder="Optional (type to search)"
           />,
         )}
       </div>
@@ -224,7 +224,7 @@ function MedicationForm({
           onChange={(e) => setMechanismOfAction(e.target.value)}
           rows={2}
           className={inputCls}
-          placeholder="How it works — e.g. inhibits bacterial cell-wall synthesis"
+          placeholder="How it works, e.g. inhibits bacterial cell-wall synthesis"
         />,
       )}
 
@@ -235,7 +235,7 @@ function MedicationForm({
           onChange={setSideEffects}
           options={SIDE_EFFECTS}
           ariaLabel="Side effects"
-          placeholder="Type to search — e.g. Vom… → Vomiting"
+          placeholder="Type to search, e.g. Vom… → Vomiting"
         />,
         "Type-ahead suggestions from a stubbed BNF list; add your own too.",
       )}
@@ -247,7 +247,7 @@ function MedicationForm({
           onChange={setMonitoring}
           options={MONITORING}
           ariaLabel="Monitoring"
-          placeholder="Type to search — e.g. U&E, INR, blood glucose"
+          placeholder="Type to search, e.g. U&E, INR, blood glucose"
         />,
       )}
 
@@ -258,7 +258,7 @@ function MedicationForm({
           onChange={(e) => setKeyNotes(e.target.value)}
           rows={4}
           className={inputCls}
-          placeholder="Anything else worth remembering — cautions, interactions, exam tips…"
+          placeholder="Anything else worth remembering: cautions, interactions, exam tips…"
         />,
       )}
 
@@ -273,7 +273,7 @@ function MedicationForm({
           <span className="font-medium text-slate-700">High-alert medication</span>
           <span className="mt-0.5 block text-xs text-slate-400">
             Flags drugs that carry a heightened risk of harm if used in error (e.g. insulin,
-            anticoagulants, opioids) — a study-awareness marker, not clinical advice.
+            anticoagulants, opioids). A study-awareness marker, not clinical advice.
           </span>
         </span>
       </label>
@@ -286,7 +286,7 @@ function MedicationForm({
             value={firstCondition}
             onChange={(e) => setFirstCondition(e.target.value)}
             className={inputCls}
-            placeholder="What was it used for? (optional — add more later)"
+            placeholder="What was it used for? (optional, add more later)"
           />,
           "You can append more conditions over time as you meet the drug again.",
         )}
@@ -325,7 +325,7 @@ function MedicationForm({
           {BNF_SOURCE.publisher} {BNF_SOURCE.title}
         </a>{" "}
         ({BNF_SOURCE.licence}, {BNF_SOURCE.version}). Side-effect and monitoring suggestions are a
-        curated list. A study aid — not a clinical reference.
+        curated list. A study aid, not a clinical reference.
       </p>
     </form>
   );
@@ -343,7 +343,7 @@ function MedicationForm({
   return (
     <Panel
       title={editing ? "Edit medication" : "Add a medication"}
-      hint="Optional fields are still worth a thought — class, system and condition build the links."
+      hint="Optional fields are still worth a thought: class, system and condition build the links."
     >
       {formBody}
     </Panel>

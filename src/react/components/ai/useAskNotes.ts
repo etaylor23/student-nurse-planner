@@ -83,7 +83,7 @@ export function useAskNotes() {
         setState((s) => ({
           ...s,
           busy: false,
-          error: { code: "UPSTREAM", message: "Couldn't open that chat — try again." },
+          error: { code: "UPSTREAM", message: "Couldn't open that chat. Try again." },
         }));
       }
     },

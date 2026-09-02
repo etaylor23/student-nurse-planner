@@ -68,7 +68,7 @@ export function SelfCarePage() {
       <PageHero
         eyebrow="Study & wellbeing"
         title="Self-care check-in"
-        subtitle="A gentle, private space to check in with yourself. No scores, no streaks — just a moment to notice how you're doing."
+        subtitle="A gentle, private space to check in with yourself. No scores, no streaks, just a moment to notice how you're doing."
       />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
@@ -77,7 +77,7 @@ export function SelfCarePage() {
             title="How are you doing?"
             hint={
               linkedShift
-                ? `After your shift on ${shiftLabel(linkedShift)} — take a moment`
+                ? `After your shift on ${shiftLabel(linkedShift)}, take a moment`
                 : "Everything here stays private, on this device"
             }
           >
@@ -109,7 +109,7 @@ export function SelfCarePage() {
 
             {lowEnergy && (
               <div className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-amber-100">
-                It sounds like a tough day — you don't have to manage on your own. There's
+                It sounds like a tough day, and you don't have to manage on your own. There's
                 confidential support below whenever you want it.
               </div>
             )}
@@ -156,7 +156,7 @@ export function SelfCarePage() {
                 onChange={(e) => setNote(e.target.value)}
                 rows={2}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-ink shadow-sm transition placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/25"
-                placeholder="Anything you want to note for yourself — stays on this device."
+                placeholder="Anything you want to note for yourself. Stays on this device."
               />
             </label>
 
@@ -166,7 +166,7 @@ export function SelfCarePage() {
               </button>
               {saved && (
                 <span className="text-sm font-medium text-emerald-700">
-                  Logged — be kind to yourself 💚
+                  Logged. Be kind to yourself 💚
                 </span>
               )}
             </div>
@@ -175,7 +175,7 @@ export function SelfCarePage() {
           <Panel title="Recent check-ins" hint="Private to you, on this device">
             {checkins.length === 0 ? (
               <p className="text-sm text-slate-400">
-                No check-ins yet — there's no wrong way to use this. Check in whenever it helps.
+                No check-ins yet, and there's no wrong way to use this. Check in whenever it helps.
               </p>
             ) : (
               <ul className="divide-y divide-slate-100">
@@ -220,7 +220,7 @@ export function SelfCarePage() {
         </div>
 
         <div className="min-w-0 space-y-6 xl:col-span-1">
-          <Panel title="Support, any time" hint="You're not alone — reach out whenever">
+          <Panel title="Support, any time" hint="You're not alone, reach out whenever">
             <ul className="space-y-3">
               {SUPPORT_LINKS.map((link) => (
                 <li key={link.label} className="text-sm">

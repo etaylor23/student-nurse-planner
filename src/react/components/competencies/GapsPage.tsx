@@ -65,7 +65,7 @@ export function GapsPage() {
           <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center">
             <p className="text-sm font-medium text-slate-600">No gaps surfaced for this part.</p>
             <p className="mx-auto mt-1 max-w-md text-xs text-slate-400">
-              Gaps appear for any proficiency not yet achieved once you've reached its target part —
+              Gaps appear for any proficiency not yet achieved once you've reached its target part,
               or, if untagged, once you're in your final part ({user.totalParts}). Tag a
               proficiency's target part on its page, or update your{" "}
               <Link to="/profile" className="font-medium text-emerald-700">

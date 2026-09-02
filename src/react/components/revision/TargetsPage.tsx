@@ -41,7 +41,7 @@ export function TargetsPage() {
       <Panel
         step="1"
         title="Add a target"
-        hint="Exam, assignment or OSCE — any combination, all optional"
+        hint="Exam, assignment or OSCE: any combination, all optional"
       >
         <form onSubmit={submit} className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -104,7 +104,7 @@ export function TargetsPage() {
       <Panel title="Your targets" hint="Soonest first">
         {targets.length === 0 ? (
           <p className="text-sm text-slate-400">
-            No targets yet — add an exam, assignment or OSCE to revise toward.
+            No targets yet. Add an exam, assignment or OSCE to revise toward.
           </p>
         ) : (
           <ul className="divide-y divide-slate-100">

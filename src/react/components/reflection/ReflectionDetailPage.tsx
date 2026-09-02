@@ -257,7 +257,7 @@ export function ReflectionDetailPage() {
             hint="Attach this reflection as evidence for your PAD"
           >
             {linkedProficiencies.length === 0 ? (
-              <AttachEvidenceNudge message="Not linked to a proficiency yet — attach it below as evidence to feed your PAD." />
+              <AttachEvidenceNudge message="Not linked to a proficiency yet. Attach it below as evidence to feed your PAD." />
             ) : (
               <ul className="divide-y divide-slate-100">
                 {linkedProficiencies.map(({ link, prof }) => (

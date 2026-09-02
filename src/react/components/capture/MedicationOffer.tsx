@@ -38,7 +38,7 @@ export function MedicationOffer({
     const id = await onCreate(candidate);
     setBusy(false);
     if (id) onLink(id);
-    else setError("Couldn't add that card — the note will file without it.");
+    else setError("Couldn't add that card. The note will file without it.");
   }
 
   if (linked) {
@@ -59,7 +59,7 @@ export function MedicationOffer({
   if (declined) {
     return (
       <p className="mt-1 text-xs text-slate-400">
-        No card — the note files on its own.{" "}
+        No card, so the note files on its own.{" "}
         <button
           type="button"
           onClick={() => setDeclined(false)}
@@ -74,7 +74,7 @@ export function MedicationOffer({
   return (
     <div className="mt-1">
       <p className="text-xs text-slate-600">
-        You don&apos;t have a card for <span className="font-medium">{candidate}</span> yet — add
+        You don&apos;t have a card for <span className="font-medium">{candidate}</span> yet. Add
         one? Your note becomes its first set of notes.
       </p>
       <div className="mt-1 flex flex-wrap items-center gap-2">

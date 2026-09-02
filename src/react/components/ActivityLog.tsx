@@ -84,7 +84,7 @@ export function ActivityLog({
     <Panel title={title} hint={hint}>
       {items.length === 0 ? (
         <p className="text-sm text-slate-400">
-          Nothing yet — log a med, or create, complete or edit a shift, and it'll show here.
+          Nothing yet. Log a med, or create, complete or edit a shift, and it'll show here.
         </p>
       ) : (
         <>

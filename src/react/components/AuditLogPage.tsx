@@ -18,7 +18,7 @@ export function AuditLogPage() {
       <PageHero
         eyebrow="Your record"
         title="Activity log"
-        subtitle="Every change PlaceMate has recorded, newest first. Your PAD stays the official signed record — this is your own running history of what you did."
+        subtitle="Every change PlaceMate has recorded, newest first. Your PAD stays the official signed record. This is your own running history of what you did."
       />
       <ActivityLog title="All entries" hint="Filter by area" />
     </div>

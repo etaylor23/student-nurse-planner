@@ -149,7 +149,7 @@ export function ShiftForm({
       return;
     }
     if (preview.netHours > 24) {
-      setError("That's more than 24 hours — double-check the shift length.");
+      setError("That's more than 24 hours. Double-check the shift length.");
       return;
     }
     const draft: ShiftDraft = {
@@ -255,7 +255,7 @@ export function ShiftForm({
                   onChange={(e) => setStartTime(e.target.value)}
                   className={inputCls}
                 />,
-                "Optional — fills in the length for you.",
+                "Optional. Fills in the length for you.",
               )}
               {field(
                 "End time",
@@ -281,7 +281,7 @@ export function ShiftForm({
                 >
                   <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
                 </svg>
-                Overnight — finishes {formatHumanDate(isoAddDays(date, 1))}
+                Overnight, finishes {formatHumanDate(isoAddDays(date, 1))}
               </p>
             )}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

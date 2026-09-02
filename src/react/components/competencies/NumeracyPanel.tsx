@@ -27,15 +27,15 @@ export function NumeracyPanel() {
       ) : (
         <div className="space-y-3">
           <p className="text-sm text-slate-600">
-            <span className="text-2xl font-semibold tabular-nums text-ink">{pct}%</span>{" "}
-            accuracy across {summary.total.attempts} attempt
+            <span className="text-2xl font-semibold tabular-nums text-ink">{pct}%</span> accuracy
+            across {summary.total.attempts} attempt
             {summary.total.attempts === 1 ? "" : "s"}.
           </p>
           {summary.weakest && (
             <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-100">
               Weakest area:{" "}
-              <span className="font-semibold">{CALC_TYPE_LABEL[summary.weakest]}</span> — worth a
-              few more reps.
+              <span className="font-semibold">{CALC_TYPE_LABEL[summary.weakest]}</span>, worth a few
+              more reps.
             </p>
           )}
           <Link to="/medications/calc" className={btnGhostSm}>

@@ -73,14 +73,14 @@ export async function seedDemoData(repo: Repository, userId: string): Promise<vo
     entityType: "PROFILE",
     entityId: userId,
     action: "PROFILE_UPDATED",
-    summary: "Updated profile — part 2 of 3, BSc (3 years)",
+    summary: "Updated profile: part 2 of 3, BSc (3 years)",
     entityLabel: "Profile",
   });
 
   // ---- Placements ----
   const p1 = await repo.createPlacement({
     userId,
-    name: "Ward 12 — Acute Medical Unit",
+    name: "Ward 12 Acute Medical Unit",
     settingType: "Acute inpatient",
   });
   const p2 = await repo.createPlacement({
@@ -482,8 +482,8 @@ export async function seedDemoData(repo: Repository, userId: string): Promise<vo
       });
     }
   };
-  await signOffBaseline("B2.1", "Sr. Okafor", "Ward 12 — Acute Medical Unit", 30, s1.id);
-  await signOffBaseline("B2.10", "Sr. Okafor", "Ward 12 — Acute Medical Unit", 26, s1.id);
+  await signOffBaseline("B2.1", "Sr. Okafor", "Ward 12 Acute Medical Unit", 30, s1.id);
+  await signOffBaseline("B2.10", "Sr. Okafor", "Ward 12 Acute Medical Unit", 26, s1.id);
 
   // Custom skills — one linked to a proficiency as evidence (U7).
   const addCustom = async (name: string, category: string, stage?: SkillStage) => {
@@ -558,7 +558,7 @@ export async function seedDemoData(repo: Repository, userId: string): Promise<vo
       entityType: "REFLECTION",
       entityId: reflection.id,
       action: "REFLECTION_CREATED",
-      summary: `Wrote a reflection — “${reflection.title}”`,
+      summary: `Wrote a reflection: “${reflection.title}”`,
       entityLabel: reflection.title,
     });
     for (const code of r.evidenceCodes ?? []) {
@@ -596,7 +596,7 @@ export async function seedDemoData(repo: Repository, userId: string): Promise<vo
         "Escalating early meant a quick review. I hesitated for a minute, which I'd like to shorten.",
       ANALYSIS:
         "Structured tools like NEWS2 and SBAR gave me the language and confidence to escalate clearly.",
-      CONCLUSION: "Speaking up promptly is part of safe practice — my hesitation was about not wanting to seem wrong.", // prettier-ignore
+      CONCLUSION: "Speaking up promptly is part of safe practice. My hesitation was about not wanting to seem wrong.", // prettier-ignore
       ACTION_PLAN:
         "Practise SBAR handovers and remind myself that raising a concern is always appropriate.",
     },
@@ -648,7 +648,7 @@ export async function seedDemoData(repo: Repository, userId: string): Promise<vo
       entityType: "REVISION",
       entityId: target.id,
       action: "REVISION_TARGET_ADDED",
-      summary: `Added a ${type.toLowerCase()} target — “${title}”`,
+      summary: `Added a ${type.toLowerCase()} target: “${title}”`,
       entityLabel: title,
     });
   };
@@ -674,7 +674,7 @@ export async function seedDemoData(repo: Repository, userId: string): Promise<vo
       entityType: "REVISION",
       entityId: topic.id,
       action: "REVISION_TOPIC_ADDED",
-      summary: `Added a revision topic — “${title}”`,
+      summary: `Added a revision topic: “${title}”`,
       entityLabel: title,
     });
     return topic;
@@ -736,7 +736,7 @@ export async function seedDemoData(repo: Repository, userId: string): Promise<vo
       entityType: "SELF_CARE",
       entityId: checkin.id,
       action: "SELF_CARE_CHECKIN",
-      summary: `Checked in on your wellbeing${c.energy != null ? ` — energy ${c.energy}/5` : ""}`,
+      summary: `Checked in on your wellbeing${c.energy != null ? `: energy ${c.energy}/5` : ""}`,
       entityLabel: "Self-care check-in",
     });
   };
@@ -746,7 +746,7 @@ export async function seedDemoData(repo: Repository, userId: string): Promise<vo
     shiftId: s3.id,
     energy: 2,
     items: ["debrief", "move"],
-    note: "Tough shift in ED — talked it through with my mentor afterwards.",
+    note: "Tough shift in ED. Talked it through with my mentor afterwards.",
   });
   await mkCheckin({ daysAgo: 2, energy: 4, items: ["sleep", "food", "connect", "balance"] });
 

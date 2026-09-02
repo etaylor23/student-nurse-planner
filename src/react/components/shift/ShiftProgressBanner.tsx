@@ -15,7 +15,7 @@ export function ShiftProgressBanner({ shift, onDismiss }: { shift: Shift; onDism
   const navigate = useNavigate();
   const pct = Math.round(summary.progressFraction * 100);
   const toGo = projection.shiftsToGo;
-  const delta = shift.netHours > 0 ? `+${shift.netHours} h — ` : "";
+  const delta = shift.netHours > 0 ? `+${shift.netHours} h. ` : "";
 
   return (
     <div className="mb-5 rounded-xl bg-emerald-50 p-4 ring-1 ring-emerald-100">
@@ -23,9 +23,9 @@ export function ShiftProgressBanner({ shift, onDismiss }: { shift: Shift; onDism
         <div className="min-w-0">
           <p className="text-sm font-semibold text-emerald-800">Shift logged ✓</p>
           <p className="mt-0.5 text-sm text-emerald-700">
-            {delta}that's <strong className="tabular-nums">{summary.practiceHours} h</strong> of{" "}
+            {delta}That's <strong className="tabular-nums">{summary.practiceHours} h</strong> of{" "}
             {summary.targetHours.toLocaleString()} ({pct}%)
-            {toGo != null ? ` — about ${toGo} more shift${toGo === 1 ? "" : "s"} to go` : ""}.
+            {toGo != null ? `, about ${toGo} more shift${toGo === 1 ? "" : "s"} to go` : ""}.
           </p>
         </div>
         <button
@@ -52,7 +52,7 @@ export function ShiftProgressBanner({ shift, onDismiss }: { shift: Shift; onDism
         <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
       </div>
       <p className="mt-2 text-xs text-emerald-700/80">
-        While it's fresh, turn it into progress toward your PAD —{" "}
+        While it's fresh, turn it into progress toward your PAD:{" "}
         <Link
           to={`/planner/${shift.id}/competencies`}
           className="font-medium text-emerald-800 underline-offset-2 hover:underline"
@@ -69,7 +69,7 @@ export function ShiftProgressBanner({ shift, onDismiss }: { shift: Shift; onDism
           className="mt-3 flex w-full items-center gap-2 rounded-xl bg-teal-50 px-3.5 py-2.5 text-left text-sm text-teal-900 ring-1 ring-teal-100 transition hover:bg-teal-100/70"
         >
           <span aria-hidden>🌱</span>
-          That was a long one — take a moment to check in with yourself.
+          That was a long one. Take a moment to check in with yourself.
         </button>
       )}
     </div>

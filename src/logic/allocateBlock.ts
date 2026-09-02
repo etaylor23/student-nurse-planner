@@ -296,7 +296,7 @@ export async function unallocateBlock(
       // before, and inventing one would corrupt a record headed for the NMC. The block is
       // detached and the student is told to adjust the proficiency themselves.
       warning =
-        "The proficiency evidence stays on your record — open that proficiency to change its status.";
+        "The proficiency evidence stays on your record. Open that proficiency to change its status.";
       break;
     case "SHIFT_NOTES": {
       if (block.appendedTo && block.appendedText) {
@@ -310,7 +310,7 @@ export async function unallocateBlock(
           await repo.updateShift(block.appendedTo, { notes: stripped });
         } else {
           warning =
-            "That text has been edited in your shift notes, so it's been left there — remove it by hand if you want it gone.";
+            "That text has been edited in your shift notes, so it's been left there. Remove it by hand if you want it gone.";
         }
       }
       break;

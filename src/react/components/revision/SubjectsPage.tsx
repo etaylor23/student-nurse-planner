@@ -44,7 +44,7 @@ export function SubjectsPage() {
 
   return (
     <div className="space-y-4">
-      <Panel title="Add a subject" hint="Baseline subjects are provided — add your own too">
+      <Panel title="Add a subject" hint="Baseline subjects are provided. Add your own too">
         <div className="flex flex-col gap-2 sm:flex-row">
           <input
             value={newSubject}

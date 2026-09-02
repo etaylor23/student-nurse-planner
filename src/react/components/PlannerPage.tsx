@@ -240,7 +240,7 @@ export function PlannerPage() {
           ) : (
             <span
               aria-label="Locked"
-              title="Counted toward your hours — unlock to edit"
+              title="Counted toward your hours. Unlock to edit"
               className="p-0.5 opacity-70"
             >
               <svg
@@ -267,7 +267,7 @@ export function PlannerPage() {
       <PageHero
         eyebrow="Planning"
         title="Weekly shift planner"
-        subtitle="Plan shifts on the calendar, then tick them off — they're the same shifts as your hours log."
+        subtitle="Plan shifts on the calendar, then tick them off. They're the same shifts as your hours log."
         aside={
           <>
             <div className="text-2xl font-semibold tabular-nums tracking-tight text-ink">

@@ -45,14 +45,14 @@ export function useReflectionActions() {
     await log(
       reflection.id,
       "REFLECTION_CREATED",
-      `Wrote a reflection — “${reflectionNoun(reflection.title)}”`,
+      `Wrote a reflection: “${reflectionNoun(reflection.title)}”`,
       reflectionNoun(reflection.title),
     );
     showPayoff("Reflection saved", [
       {
         key: `refl-${reflection.id}`,
         kind: "reflection",
-        text: `“${reflectionNoun(reflection.title)}” — in your practice record. Link it to a proficiency to make it evidence.`,
+        text: `“${reflectionNoun(reflection.title)}” is in your practice record. Link it to a proficiency to make it evidence.`,
         href: `/reflection/${reflection.id}`,
       },
     ]);

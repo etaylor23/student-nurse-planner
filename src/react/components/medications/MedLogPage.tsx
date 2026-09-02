@@ -85,7 +85,7 @@ export function MedLogPage() {
       <Panel
         step="1"
         title="Log a med"
-        hint="Observed or administered — no patient-identifiable info"
+        hint="Observed or administered, no patient-identifiable info"
       >
         <div className="space-y-4">
           <label className="block">
@@ -99,18 +99,18 @@ export function MedLogPage() {
               {shiftOptions.map((s) => (
                 <option key={s.id} value={s.id}>
                   {shiftLabel(s, placeName)}
-                  {s.id === currentShift?.id ? " — now" : ""}
+                  {s.id === currentShift?.id ? " (now)" : ""}
                 </option>
               ))}
             </select>
             <span className="mt-1 block text-xs text-slate-400">
               {currentShift ? (
                 <span className="text-emerald-700">
-                  You're in a shift now ({shiftLabel(currentShift, placeName)}) — linked
+                  You're in a shift now ({shiftLabel(currentShift, placeName)}), linked
                   automatically. Change it here if you meant a recent one.
                 </span>
               ) : recent.length > 0 ? (
-                "Not in a shift — optionally link one from the last 7 days."
+                "Not in a shift. Optionally link one from the last 7 days."
               ) : (
                 "No shifts in the last 7 days to link to."
               )}

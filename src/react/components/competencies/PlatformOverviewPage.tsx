@@ -109,7 +109,7 @@ export function PlatformOverviewPage() {
               ))}
               {results.length > 100 && (
                 <li className="py-2 text-xs text-slate-400">
-                  Showing 100 of {results.length} — refine your search.
+                  Showing 100 of {results.length}. Refine your search.
                 </li>
               )}
             </ul>

@@ -21,8 +21,7 @@ export function AttachEvidenceNudge({ message }: { message?: string }) {
         <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3Z" />
       </svg>
       <span className="text-sm text-slate-700">
-        {message ??
-          "Not linked to a proficiency yet — attach it as evidence to feed your PAD."}
+        {message ?? "Not linked to a proficiency yet. Attach it as evidence to feed your PAD."}
       </span>
     </div>
   );

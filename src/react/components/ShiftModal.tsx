@@ -140,7 +140,7 @@ export function ShiftModal({
   const subtitle =
     mode === "edit"
       ? locked
-        ? "Counts toward your hours — unlock to make changes"
+        ? "Counts toward your hours. Unlock to make changes"
         : "The shift, and everything you captured on it"
       : "Fill in the details, then save to start capturing against it";
 
@@ -241,7 +241,7 @@ export function ShiftModal({
                 <button
                   type="button"
                   onClick={onCopy}
-                  title="Duplicate this shift — then drag the copy to another day"
+                  title="Duplicate this shift, then drag the copy to another day"
                   className="hidden text-xs font-medium text-slate-600 hover:text-slate-800 sm:inline"
                 >
                   Make a copy

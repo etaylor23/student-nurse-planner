@@ -131,7 +131,7 @@ function messageFor(err: unknown): string {
   if (err instanceof CaptureImageError) {
     switch (err.code) {
       case "not_an_image":
-        return "That file isn't a photo — pick an image of your notes.";
+        return "That file isn't a photo. Pick an image of your notes.";
       case "too_large":
         return "That photo is too big even after resizing. Try taking it again.";
       default:
@@ -639,7 +639,7 @@ export function useCapture() {
             ? {
                 ...s,
                 remaining: 0,
-                error: "One page didn't upload — its photo is safe to try again.",
+                error: "One page didn't upload. Its photo is safe to try again.",
               }
             : ({ ...s, ...stopState } as CaptureState),
         );
@@ -839,7 +839,7 @@ export function useCapture() {
         return { ok: true, label: res.created.label };
       } catch (err) {
         if (err instanceof AllocateError) return { ok: false, message: err.message };
-        return { ok: false, message: "Couldn't file that — try again." };
+        return { ok: false, message: "Couldn't file that. Try again." };
       }
     },
     [repo, userId, state.blocks, state.capture, state.shift, absorbRest],

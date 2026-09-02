@@ -536,7 +536,7 @@ function BlockCard({
             type="button"
             onClick={() => setConfirmDismiss(true)}
             aria-label={`Remove note ${index + 1}`}
-            title="Not a note — remove it (your photo is kept)"
+            title="Not a note, so remove it (your photo is kept)"
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px] text-slate-400 transition-colors hover:bg-slate-100 hover:text-ink"
           >
             <X className="h-3.5 w-3.5" aria-hidden="true" />
@@ -547,7 +547,7 @@ function BlockCard({
       <div className="min-w-0 px-4 py-4">
         {confirmDismiss && (
           <p className="mb-2.5 text-[11px] text-slate-400">
-            Removes this note only — your photo is kept, so reading the page again brings it back.
+            Removes this note only. Your photo is kept, so reading the page again brings it back.
           </p>
         )}
 
@@ -590,7 +590,7 @@ function BlockCard({
                   key={pair}
                   className="flex flex-wrap items-center gap-2.5 rounded-xl bg-accent-50 px-3 py-2.5 ring-1 ring-accent-200"
                 >
-                  <span className="text-[12.5px] text-slate-600">The two readings differ —</span>
+                  <span className="text-[12.5px] text-slate-600">The two readings differ:</span>
                   <span className="flex overflow-hidden rounded-[9px] ring-1 ring-accent-300">
                     <button
                       type="button"
@@ -633,13 +633,13 @@ function BlockCard({
                 />
                 <span>
                   Store the remaining {pendingSubCount} note{pendingSubCount === 1 ? "" : "s"}{" "}
-                  inside this drawing — they ride with it instead of filing separately. Notes
+                  inside this drawing, so they ride with it instead of filing separately. Notes
                   you&apos;ve already filed stay where you put them.
                 </span>
               </label>
             )}
             <p className="min-w-0 flex-1 text-[12.5px] leading-snug text-slate-600">
-              File the whole drawing somewhere above — its full text goes with it — or keep it with
+              File the whole drawing somewhere above (its full text goes with it), or keep it with
               the photographed page.
             </p>
             <button
@@ -695,7 +695,7 @@ function BlockCard({
                           onClick={() => pickCode(c)}
                           title={STATEMENTS.get(c) ?? c}
                           aria-pressed={on}
-                          aria-label={`Evidence ${c} — ${STATEMENTS.get(c) ?? "unknown code"}`}
+                          aria-label={`Evidence ${c}: ${STATEMENTS.get(c) ?? "unknown code"}`}
                         >
                           {c}
                         </button>
@@ -716,11 +716,11 @@ function BlockCard({
                     <>
                       <span className="font-semibold text-slate-500">
                         {GROUPING.get(codes[0]) ?? "NMC"} · {codes[0]}
-                      </span>{" "}
-                      — {STATEMENTS.get(codes[0]) ?? "Unknown code"}
+                      </span>
+                      {`: ${STATEMENTS.get(codes[0]) ?? "Unknown code"}`}
                     </>
                   ) : (
-                    "No proficiency suggested for this one — find it yourself if it evidences something."
+                    "No proficiency suggested for this one. Find it yourself if it evidences something."
                   )}
                 </p>
               </div>
@@ -1227,7 +1227,7 @@ export function ReviewPanel({
                   worse than a slower one — and P41 says the re-read is free, so say that too. */}
               <p>
                 We&apos;ve read this page before, so this is what we found {relativeDay(cachedFrom)}{" "}
-                — no waiting, and no charge against your daily photos. Your photo is unchanged.{" "}
+                with no waiting and no charge against your daily photos. Your photo is unchanged.{" "}
                 {onRerun && (
                   <button
                     type="button"
@@ -1253,10 +1253,10 @@ export function ReviewPanel({
               label="Not double-checked"
             >
               <p>
-                We couldn&apos;t double-check this page — drug spellings are unverified. We normally
-                read every page twice and flag disagreements; the second read didn&apos;t work here,
-                so nothing could be flagged. Worth glancing at drug names against your photo before
-                filing.
+                We couldn&apos;t double-check this page, so drug spellings are unverified. We
+                normally read every page twice and flag disagreements; the second read didn&apos;t
+                work here, so nothing could be flagged. Worth glancing at drug names against your
+                photo before filing.
               </p>
             </MetaChip>
           )}
@@ -1270,7 +1270,7 @@ export function ReviewPanel({
             >
               {/* The P24 boundary, stated: clinical spelling only. That's the reassuring part. */}
               <p>
-                Spell-checked against UK clinical English — your wording and abbreviations are
+                Spell-checked against UK clinical English. Your wording and abbreviations are
                 untouched.
               </p>
               <p className="mt-1.5 flex flex-wrap gap-1.5">
@@ -1446,7 +1446,7 @@ export function ReviewPanel({
                   onClick={onClose}
                   className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                 >
-                  Close — this stays here
+                  Close, this stays here
                 </button>
               )}
               {onStartAgain && (
@@ -1459,7 +1459,7 @@ export function ReviewPanel({
                 </button>
               )}
               <p className="ml-auto text-xs text-slate-400">
-                Closing keeps this page of notes — the Photo button brings it straight back.
+                Closing keeps this page of notes. The Photo button brings it straight back.
               </p>
             </div>
           )}
@@ -1545,8 +1545,8 @@ export function ReviewPanel({
               />
               <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
                 {focusedInPinned
-                  ? "This note is one branch of the drawing — the outlined node is the one you're on. Click another node to jump to its note."
-                  : "The drawing you're on — file it whole, or keep it with the page."}
+                  ? "This note is one branch of the drawing. The outlined node is the one you're on. Click another node to jump to its note."
+                  : "The drawing you're on. File it whole, or keep it with the page."}
               </p>
             </div>
           </aside>

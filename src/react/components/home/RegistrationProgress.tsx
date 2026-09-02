@@ -72,7 +72,7 @@ export function RegistrationProgress() {
         eyebrow="Your progress"
         eyebrowTone="secondary"
         title={`You're in part ${user.currentPart} of ${user.totalParts}`}
-        subtitle="Every shift you capture builds your hours, competency evidence and skills record — all heading for the NMC register."
+        subtitle="Every shift you capture builds your hours, competency evidence and skills record, all heading for the NMC register."
         action={
           readyToSignOff > 0 && (
             <Link

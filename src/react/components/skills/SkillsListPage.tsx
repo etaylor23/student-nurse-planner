@@ -64,7 +64,7 @@ export function SkillsListPage() {
     <div className="space-y-6">
       {prefillShiftId && (
         <p className="rounded-xl bg-sky-50 px-4 py-2.5 text-sm text-sky-800 ring-1 ring-sky-100">
-          Pick a skill to sign off — it'll be linked to the shift you came from.
+          Pick a skill to sign off. It'll be linked to the shift you came from.
         </p>
       )}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

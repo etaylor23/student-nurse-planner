@@ -52,7 +52,7 @@ const WHAT_HAPPENS: { title: string; body: string }[] = [
   },
   {
     title: "We tidy the clinical spelling",
-    body: "Drug names and clinical terms only — never your wording, your abbreviations or your reasoning.",
+    body: "Drug names and clinical terms only, never your wording, your abbreviations or your reasoning.",
   },
   {
     title: "You decide where each note goes",
@@ -74,7 +74,7 @@ function RetryNote({ retrying }: { retrying?: { attempt: number; of: number; wha
     <p role="status" className="mt-4 flex items-start gap-2 text-xs text-amber-700">
       <TriangleAlert className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
       <span>
-        The connection dropped. {retrying.what} again — attempt {retrying.attempt} of {retrying.of}.
+        The connection dropped. {retrying.what} again, attempt {retrying.attempt} of {retrying.of}.
       </span>
     </p>
   );
@@ -246,7 +246,7 @@ export function CaptureButton() {
                     </h2>
                     <p className="mt-2.5 max-w-md text-sm leading-relaxed text-slate-600">
                       Snap a page from your notebook. We read it, tidy the clinical spelling, and
-                      work out what each note is — you decide where each one goes.
+                      work out what each note is. You decide where each one goes.
                     </p>
 
                     {/* The warning is the whole point of this step (P2) — it is not a
@@ -259,10 +259,10 @@ export function CaptureButton() {
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-ink">Before you take the photo</p>
                         <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
-                          Make sure nothing patient-identifiable is in frame — no names, NHS
-                          numbers, dates of birth, bed numbers, or other people&apos;s paperwork
-                          behind your page. Your photo is stored so you can check it against what we
-                          read, and the PlaceMate team may review it.
+                          Make sure nothing patient-identifiable is in frame: no names, NHS numbers,
+                          dates of birth, bed numbers, or other people&apos;s paperwork behind your
+                          page. Your photo is stored so you can check it against what we read, and
+                          the PlaceMate team may review it.
                         </p>
                       </div>
                     </div>
@@ -288,7 +288,7 @@ export function CaptureButton() {
                       className="mt-5 inline-flex w-full items-center justify-center gap-2.5 rounded-2xl bg-primary-600 px-4 py-3.5 text-sm font-semibold text-white hover:bg-primary-700"
                     >
                       <Camera className="h-4 w-4" aria-hidden="true" />
-                      I&apos;ve checked — take a photo
+                      I&apos;ve checked, take a photo
                     </button>
                     <p className="mt-2.5 text-center text-xs text-slate-400">
                       Up to {MAX_IMAGES_PER_CAPTURE} pages at a time{pagesLeft}.
@@ -315,8 +315,8 @@ export function CaptureButton() {
                       ))}
                     </ol>
                     <p className="mt-7 border-t border-slate-200 pt-4 text-xs leading-relaxed text-slate-400">
-                      Takes about a minute. Nothing reaches your records until you file it yourself
-                      — and your PAD stays the official record.
+                      Takes about a minute. Nothing reaches your records until you file it yourself,
+                      and your PAD stays the official record.
                     </p>
                   </div>
                 </div>
@@ -328,7 +328,7 @@ export function CaptureButton() {
                     Saving your {(state.progress?.total ?? 1) === 1 ? "page" : "pages"}
                   </h2>
                   <p className="mt-1.5 text-sm text-slate-600">
-                    Page {state.progress?.current} of {state.progress?.total} — one at a time, so a
+                    Page {state.progress?.current} of {state.progress?.total}, one at a time, so a
                     ward connection can keep up.
                   </p>
                   <div className="mt-5 h-1 w-full overflow-hidden rounded-full bg-slate-100">
@@ -369,7 +369,7 @@ export function CaptureButton() {
                       )}
                     </div>
                     <p className="mt-1.5 text-sm text-slate-600">
-                      Your photo is already saved — you can close this and come back to it.
+                      Your photo is already saved. You can close this and come back to it.
                     </p>
                     <RetryNote retrying={state.retrying} />
 
@@ -440,7 +440,7 @@ export function CaptureButton() {
                       </div>
                     ) : (
                       <p className="mt-6 text-xs text-slate-400">
-                        Your photo is already saved — this part takes about a minute.
+                        Your photo is already saved. This part takes about a minute.
                       </p>
                     )}
                   </div>
@@ -508,9 +508,9 @@ export function CaptureButton() {
                     saved
                   </h2>
                   <p className="mt-2 max-w-lg text-sm leading-relaxed text-slate-600">
-                    We couldn&apos;t read them into notes just now. Nothing is lost — your photo is
-                    kept for the life of your account, so opening this again is all it takes to have
-                    another go.
+                    We couldn&apos;t read them into notes just now. Nothing is lost, and your photo
+                    is kept for the life of your account, so opening this again is all it takes to
+                    have another go.
                   </p>
                   {typeof state.remaining === "number" && state.remaining <= 3 && (
                     <p className="mt-2 text-xs text-slate-400">
@@ -546,15 +546,15 @@ export function CaptureButton() {
                     {state.cappedReason === "PARSE" ? (
                       <>
                         Reading a page again costs a read, and today&apos;s are used up. Your photos
-                        are saved either way — this resets tomorrow, and a page already read still
+                        are saved either way. This resets tomorrow, and a page already read still
                         opens.
                       </>
                     ) : (
                       <>
                         Your allowance resets tomorrow.{" "}
                         {state.capture
-                          ? "The pages that uploaded before the limit are saved and waiting for you — nothing was lost."
-                          : "Nothing was lost — a page you've already read still opens on a day you've used up."}
+                          ? "The pages that uploaded before the limit are saved and waiting for you. Nothing was lost."
+                          : "Nothing was lost, and a page you've already read still opens on a day you've used up."}
                       </>
                     )}
                   </p>

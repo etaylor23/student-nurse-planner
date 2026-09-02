@@ -22,7 +22,7 @@ export function useSelfCareActions() {
       entityId: checkin.id,
       entityLabel: "Self-care check-in",
       action: "SELF_CARE_CHECKIN",
-      summary: `Checked in on your wellbeing${bits.length ? ` — ${bits.join(", ")}` : ""}`,
+      summary: `Checked in on your wellbeing${bits.length ? `: ${bits.join(", ")}` : ""}`,
     });
     return checkin;
   };

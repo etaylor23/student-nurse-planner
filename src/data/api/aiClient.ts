@@ -127,7 +127,7 @@ export class AiClient {
       });
     } catch (err) {
       if ((err as Error)?.name === "AbortError") return;
-      handlers.onError("UPSTREAM", "Couldn't reach PlaceMate — check your connection.");
+      handlers.onError("UPSTREAM", "Couldn't reach PlaceMate. Check your connection.");
       return;
     }
 
@@ -135,8 +135,8 @@ export class AiClient {
       handlers.onError(
         "UPSTREAM",
         res.status === 401
-          ? "Your session expired — sign in again."
-          : "That didn't work — try again.",
+          ? "Your session expired. Sign in again."
+          : "That didn't work. Try again.",
       );
       return;
     }
@@ -160,7 +160,7 @@ export class AiClient {
     } catch (err) {
       // An aborted read is the user pressing stop — the partial answer stays on screen.
       if ((err as Error)?.name !== "AbortError") {
-        handlers.onError("UPSTREAM", "The answer was cut short — try again.");
+        handlers.onError("UPSTREAM", "The answer was cut short. Try again.");
       }
     }
   }

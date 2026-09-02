@@ -313,7 +313,7 @@ export function TimesheetExport({
                         {r.status === "COMPLETED" && (
                           <span
                             aria-label="Locked"
-                            title="Counted toward your hours — unlock in the editor to change or delete"
+                            title="Counted toward your hours. Unlock in the editor to change or delete"
                             className="p-1.5 text-slate-300"
                           >
                             <svg

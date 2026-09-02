@@ -20,11 +20,11 @@ const PROMPTS: Record<GibbsStage, { prompt: string; helper: string }> = {
   DESCRIPTION: {
     prompt: "What happened?",
     helper:
-      "Set the scene factually — where you were, who was involved and what you did. Never anything patient-identifiable.",
+      "Set the scene factually: where you were, who was involved and what you did. Never anything patient-identifiable.",
   },
   FEELINGS: {
     prompt: "What were you thinking and feeling?",
-    helper: "Your reactions before, during and after — honestly, without judging them.",
+    helper: "Your reactions before, during and after, honestly and without judging them.",
   },
   EVALUATION: {
     prompt: "What was good and bad about the experience?",
@@ -40,7 +40,7 @@ const PROMPTS: Record<GibbsStage, { prompt: string; helper: string }> = {
   },
   ACTION_PLAN: {
     prompt: "If it arose again, what would you do?",
-    helper: "Concrete next steps — skills to practise, reading to do, who to ask.",
+    helper: "Concrete next steps: skills to practise, reading to do, who to ask.",
   },
 };
 

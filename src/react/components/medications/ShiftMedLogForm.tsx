@@ -77,7 +77,7 @@ export function ShiftMedLogForm({
       {
         key: `med-${created.id}`,
         kind: "med",
-        text: `${MED_LOG_TYPE_LABEL[type]} ${loggedMed} — in your medication record`,
+        text: `${MED_LOG_TYPE_LABEL[type]} ${loggedMed} is in your medication record`,
         href: medicationId ? `/medications/${medicationId}` : "/medications/log",
       },
     ]);
@@ -143,7 +143,7 @@ export function ShiftMedLogForm({
           onChange={(e) => setNotes(e.target.value)}
           rows={2}
           className={inputCls}
-          placeholder="What you learned — no patient-identifiable information."
+          placeholder="What you learned. No patient-identifiable information."
         />
         <span className="mt-1 block text-xs text-amber-700">
           Never record anything that could identify a patient.

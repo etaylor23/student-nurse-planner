@@ -52,7 +52,7 @@ export function ProficiencyPicker({ onPick }: { onPick: (code: string) => void }
         value={q}
         autoFocus
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Search all 219 — e.g. “medicines”, “4.15”, “handover”"
+        placeholder="Search all 219, e.g. “medicines”, “4.15”, “handover”"
         aria-label="Search NMC proficiencies"
         className="block w-full min-w-0 rounded-lg border border-slate-200 px-2 py-1 text-xs text-ink-900"
       />

@@ -112,7 +112,7 @@ export function ShiftEvidence({
 
       {rows.length === 0 ? (
         <p className="text-sm text-slate-400">
-          Not linked to a proficiency yet — link this shift as evidence.
+          Not linked to a proficiency yet. Link this shift as evidence.
         </p>
       ) : (
         <ul className="space-y-2">

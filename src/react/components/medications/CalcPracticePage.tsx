@@ -56,7 +56,7 @@ export function CalcPracticePage() {
     <div className="space-y-6">
       <Panel
         title="Calc practice"
-        hint="Illustrative numbers only — never real prescribing doses"
+        hint="Illustrative numbers only, never real prescribing doses"
         action={
           <div className="flex gap-1 rounded-lg bg-slate-100 p-0.5">
             <button
@@ -96,7 +96,7 @@ export function CalcPracticePage() {
       </Panel>
 
       <p className="px-1 text-xs text-slate-400">
-        Accurate drug calculations are NMC competence —{" "}
+        Accurate drug calculations are NMC competence:{" "}
         <Link to="/competencies/proficiency/prof_4.14" className="font-medium text-emerald-700">
           proficiency 4.14
         </Link>{" "}
@@ -231,7 +231,7 @@ function CalcExam({
         </span>
         {pass && (
           <p className="mx-auto mt-4 max-w-sm text-sm text-slate-600">
-            This demonstrates drug-calculation accuracy — evidence for{" "}
+            This demonstrates drug-calculation accuracy, evidence for{" "}
             <Link to="/competencies/proficiency/prof_4.14" className="font-medium text-emerald-700">
               4.14
             </Link>{" "}
@@ -343,7 +343,7 @@ function StatsPanel({ summary }: { summary: CalcStatsSummary }) {
     >
       {summary.weakest && (
         <p className="mb-4 rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800 ring-1 ring-amber-100">
-          Weakest area: <span className="font-semibold">{CALC_TYPE_LABEL[summary.weakest]}</span> —
+          Weakest area: <span className="font-semibold">{CALC_TYPE_LABEL[summary.weakest]}</span>,
           worth a few more reps.
         </p>
       )}

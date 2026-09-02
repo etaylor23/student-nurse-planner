@@ -34,7 +34,7 @@ export function ShiftMedicationsTab({ shift }: { shift: Shift }) {
       </div>
 
       <p className="mb-4 text-xs text-amber-700">
-        Your notes, not guidance — verify against your local policy, the BNF and the actual chart,
+        Your notes, not guidance. Verify against your local policy, the BNF and the actual chart,
         and keep this free of patient-identifiable information.
       </p>
 
@@ -68,7 +68,7 @@ function MedLogView({ shift }: { shift: Shift }) {
       <TabHeading label="Medications logged" count={logs.length} />
 
       {logs.length === 0 ? (
-        <p className="text-sm text-slate-400">None yet — log one against this shift below.</p>
+        <p className="text-sm text-slate-400">None yet. Log one against this shift below.</p>
       ) : (
         <ul className="space-y-2">
           {logs.map((l) => (

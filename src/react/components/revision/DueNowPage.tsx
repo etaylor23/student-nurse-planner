@@ -47,7 +47,7 @@ export function DueNowPage() {
         >
           {topics.length === 0 ? (
             <p className="text-sm text-slate-400">
-              No topics yet — add some in{" "}
+              No topics yet. Add some in{" "}
               <Link
                 to="/revision/subjects"
                 className="font-medium text-emerald-700 hover:underline"
@@ -58,7 +58,7 @@ export function DueNowPage() {
             </p>
           ) : due.length === 0 ? (
             <p className="text-sm text-slate-400">
-              Nothing due right now — you're on top of it. Next reviews are scheduled in{" "}
+              Nothing due right now, you're on top of it. Next reviews are scheduled in{" "}
               <Link
                 to="/revision/subjects"
                 className="font-medium text-emerald-700 hover:underline"
@@ -104,7 +104,7 @@ function NumeracyCard({ calc }: { calc: ReturnType<typeof summariseCalcStats> })
   const pct = Math.round(calc.total.accuracy * 100);
   const weakestHref = calc.weakest ? `/medications/calc/${calc.weakest}` : "/medications/calc";
   return (
-    <Panel title="Numeracy" hint="Drug calculations — your practice accuracy">
+    <Panel title="Numeracy" hint="Drug calculations: your practice accuracy">
       {calc.total.attempts === 0 ? (
         <p className="text-sm text-slate-500">
           No numeracy practice logged yet.{" "}

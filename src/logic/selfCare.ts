@@ -47,12 +47,12 @@ export interface SupportLink {
 export const SUPPORT_LINKS: SupportLink[] = [
   {
     label: "Samaritans",
-    detail: "Free, any time, day or night — call 116 123",
+    detail: "Free, any time, day or night. Call 116 123",
     href: "tel:116123",
   },
   {
     label: "Shout",
-    detail: "Free 24/7 crisis text line — text SHOUT to 85258",
+    detail: "Free 24/7 crisis text line. Text SHOUT to 85258",
     href: "sms:85258",
   },
   {
@@ -62,7 +62,7 @@ export const SUPPORT_LINKS: SupportLink[] = [
   },
   {
     label: "Your university wellbeing team",
-    detail: "Most universities have a free, confidential service — find it on your student portal",
+    detail: "Most universities have a free, confidential service. Find it on your student portal",
   },
 ];
 

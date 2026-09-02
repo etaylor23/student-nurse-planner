@@ -207,7 +207,7 @@ export function ReflectionEditor({
     <form onSubmit={handleSubmit} className="space-y-5">
       {restoredDraft && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-secondary-50 px-3.5 py-2.5 text-sm text-secondary-800 ring-1 ring-secondary-100">
-          <span>Draft restored — we kept what you&rsquo;d already typed.</span>
+          <span>Draft restored. We kept what you&rsquo;d already typed.</span>
           <button
             type="button"
             onClick={discardDraft}
@@ -234,9 +234,9 @@ export function ReflectionEditor({
           <path d="M12 9v4M12 17h.01" />
         </svg>
         <span>
-          Keep this anonymous — <strong>never</strong> record anything that could identify a
-          patient, family member or colleague (names, dates of birth, NHS numbers). Your PAD remains
-          the official signed record.
+          Keep this anonymous: <strong>never</strong> record anything that could identify a patient,
+          family member or colleague (names, dates of birth, NHS numbers). Your PAD remains the
+          official signed record.
         </span>
       </div>
 
@@ -274,13 +274,13 @@ export function ReflectionEditor({
             {shiftOptions.map((s) => (
               <option key={s.id} value={s.id}>
                 {shiftLabel(s, placeName)}
-                {s.id === currentShift?.id ? " — now" : ""}
+                {s.id === currentShift?.id ? " (now)" : ""}
               </option>
             ))}
           </select>
           <span className="mt-1 block text-xs text-slate-400">
             {currentShift
-              ? "You're in a shift now — linked automatically."
+              ? "You're in a shift now, linked automatically."
               : "Link the shift this reflects on, so it shows on that placement."}
           </span>
         </label>
@@ -371,7 +371,7 @@ export function ReflectionEditor({
             Lock this reflection
             <span className="block text-xs text-slate-400">
               Hides it behind your device PIN (set one from the reflection list). A local
-              convenience gate — not encryption.
+              convenience gate, not encryption.
             </span>
           </span>
         </label>

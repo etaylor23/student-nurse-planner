@@ -67,7 +67,7 @@ export function ActivityDigest() {
     >
       {digest.length === 0 ? (
         <p className="text-sm text-slate-400">
-          Nothing yet — log a med, or create, complete or edit a shift, and it&apos;ll show here.
+          Nothing yet. Log a med, or create, complete or edit a shift, and it&apos;ll show here.
         </p>
       ) : (
         <LogList items={digest} showLabel />

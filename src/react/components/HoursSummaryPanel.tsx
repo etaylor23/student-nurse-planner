@@ -9,10 +9,10 @@ function formatMonthYear(iso: string): string {
 
 /** The one-line milestone note at each quarter of the practice-hours target (U9). */
 const MILESTONES: { at: number; note: (pct: number) => string }[] = [
-  { at: 100, note: () => "🎉 You've reached the full practice-hours target — every hour counted!" },
-  { at: 75, note: (p) => `Three-quarters there — ${p}% of your practice hours counted.` },
-  { at: 50, note: (p) => `Past the halfway mark — ${p}% counted. Keep going.` },
-  { at: 25, note: (p) => `A quarter of the way — ${p}% of your hours counted.` },
+  { at: 100, note: () => "🎉 You've reached the full practice-hours target. Every hour counted!" },
+  { at: 75, note: (p) => `Three-quarters there, with ${p}% of your practice hours counted.` },
+  { at: 50, note: (p) => `Past the halfway mark, with ${p}% counted. Keep going.` },
+  { at: 25, note: (p) => `A quarter of the way there, with ${p}% of your hours counted.` },
 ];
 
 export function HoursSummaryPanel({
@@ -99,8 +99,8 @@ export function HoursSummaryPanel({
 
       {summary.simulatedCapReached && (
         <p className="mt-4 rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800 ring-1 ring-amber-100">
-          Simulated practice has reached the {summary.simulatedCap}-hour cap — extra simulated hours
-          won't count toward {target}.
+          Simulated practice has reached the {summary.simulatedCap}-hour cap, so extra simulated
+          hours won't count toward {target}.
         </p>
       )}
     </PageHero>

@@ -145,7 +145,7 @@ export function SkillDetailPage() {
               </Link>
               {linkedProfIds.has(profId)
                 ? "."
-                : " — sign off, or link below, to attach it as evidence."}
+                : ". Sign off, or link below, to attach it as evidence."}
             </p>
           )}
           {linkedProficiencies.length > 0 ? (
@@ -165,7 +165,7 @@ export function SkillDetailPage() {
               →
             </p>
           ) : (
-            <AttachEvidenceNudge message="Not yet attached as evidence — link it below to feed your PAD." />
+            <AttachEvidenceNudge message="Not yet attached as evidence. Link it below to feed your PAD." />
           )}
           {pickerOpen ? (
             <ProficiencyPicker
@@ -202,9 +202,7 @@ export function SkillDetailPage() {
           <Panel
             step="1"
             title="Competence stage"
-            hint={
-              signedOff ? "Locked — this skill is signed off" : "Where are you with this skill?"
-            }
+            hint={signedOff ? "Locked. This skill is signed off" : "Where are you with this skill?"}
           >
             <ol className="space-y-2">
               {SKILL_STAGES.map((stage, i) => {
@@ -250,11 +248,7 @@ export function SkillDetailPage() {
 
         <div className="min-w-0 space-y-6 xl:col-span-2">
           {signedOff ? (
-            <Panel
-              step="2"
-              title="Signed off"
-              hint="Permanent — no refresh needed at student level"
-            >
+            <Panel step="2" title="Signed off" hint="Permanent, no refresh needed at student level">
               <div className="rounded-xl bg-emerald-50 p-4 ring-1 ring-emerald-100">
                 <div className="flex items-center gap-2">
                   <SignedOffBadge />
