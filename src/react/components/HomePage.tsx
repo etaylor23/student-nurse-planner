@@ -14,21 +14,27 @@ import { TopGaps } from "./competencies/TopGaps";
 import { PageHero } from "./ui";
 
 /**
- * Home / Today — the hub landing page, restructured per `spec-home-redesign.md`.
+ * The `plan-shift` nudge's message and CTA both moved onto the next-shift block, which
+ * sits directly above the nudge queue in the hero.
+ */
+const PLAN_SHIFT_NUDGE = ["plan-shift"] as const;
+
+/**
+ * Home / Today, the hub landing page, restructured per `spec-home-redesign.md`.
  *
  * The page is four chapters in a fixed order, each opened by an eyebrow + title in the
  * same voice, so it reads as one story rather than a grid of sibling cards:
  *
- *   1. TODAY               — greeting, and the one next action.
- *   2. YOUR PROGRESS       — the single progress story, then skills | top gaps.
- *   3. HOW PLACEMATE WORKS — the mindmap and the first-steps checklist, merged.
- *   4. YOUR RECORD         — an activity digest, full log one click away.
+ *   1. TODAY               greeting, the one next action, and the suggestion queue.
+ *   2. YOUR PROGRESS       the single progress story, then skills | top gaps.
+ *   3. HOW PLACEMATE WORKS the mindmap and the first-steps checklist, merged.
+ *   4. YOUR RECORD         an activity digest, full log one click away.
  *
  * The returning student is the spine (decision 1): the first thing on the page answers
  * "what should I do next?", and the teaching material sits below the progress it
  * explains. First-run mechanisms are all kept, just consolidated into chapter 3.
  *
- * No data of its own — it mounts the existing hooks and components, so cross-surfacing
+ * No data of its own. It mounts the existing hooks and components, so cross-surfacing
  * is structural.
  */
 export function HomePage() {
@@ -63,20 +69,28 @@ export function HomePage() {
     // order rather than visual order once things move.
     <div className="flex flex-col gap-6">
       {/* ---------- 1 · TODAY ---------- */}
+      {/* Greeting, next shift and the suggestion queue are one card, not three stacked
+          ones. They were always the same beat ("what should I do next?") and splitting
+          them spent most of the first screen on padding between boxes. */}
       <PageHero
         eyebrow="Today"
         title={`Hi, ${firstName}`}
-        subtitle="Your day at a glance — pick up where you left off, and capture as you go."
+        subtitle="Pick up where you left off, and capture as you go."
         asideBlock
         aside={<NextShiftCard current={current} upcoming={upcoming} placements={placements} />}
-      />
-
-      {/* One suggestion visible, the queue collapsed beneath it (decision 6). */}
-      <NudgeList
-        nudges={nudges}
-        max={4}
-        collapseAfter={1}
-        demoteIds={tourVisible ? nudgesCoveredByTour(steps) : undefined}
+        /* One suggestion visible, the queue collapsed beneath it (decision 6). */
+        footer={
+          <NudgeList
+            nudges={nudges}
+            max={4}
+            collapseAfter={1}
+            inset
+            demoteIds={tourVisible ? nudgesCoveredByTour(steps) : undefined}
+            /* The next-shift block right above already says this and carries the same
+               button, so the nudge would be its second copy. */
+            hideIds={PLAN_SHIFT_NUDGE}
+          />
+        }
       />
 
       {/* ---------- 2 · YOUR PROGRESS ---------- */}

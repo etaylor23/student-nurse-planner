@@ -130,6 +130,7 @@ export function SectionHeading({
   gap = "sm",
   leading,
   action,
+  actionFluid = false,
   className = "",
 }: {
   eyebrow?: string;
@@ -143,6 +144,12 @@ export function SectionHeading({
   gap?: keyof typeof GAP;
   leading?: ReactNode;
   action?: ReactNode;
+  /**
+   * The action is a block with wrappable text, not a button. A button must keep its
+   * shape (`shrink-0`), but a block holding a long line has to be allowed to shrink,
+   * or its max-content width pushes the whole page into horizontal overflow.
+   */
+  actionFluid?: boolean;
   className?: string;
 }) {
   const Heading = as ?? (size === "page" ? "h1" : "h2");
@@ -156,7 +163,7 @@ export function SectionHeading({
           {subtitle && <p className={SUBTITLE[size]}>{subtitle}</p>}
         </div>
       </div>
-      {action && <div className="shrink-0">{action}</div>}
+      {action && <div className={actionFluid ? "min-w-0 max-w-full" : "shrink-0"}>{action}</div>}
     </div>
   );
 }
@@ -166,8 +173,13 @@ export function SectionHeading({
  * block on the right, and optional content underneath (progress bar, stats…).
  *
  * `aside` is right-aligned text by default (a headline number). Pass `asideBlock`
- * when the aside is a card or panel of its own instead — the row then centres the
+ * when the aside is a card or panel of its own instead: the row then centres the
  * two sides and leaves the aside's own alignment alone.
+ *
+ * `children` is content of the hero's own (a progress bar, stats). `footer` is a
+ * hairline-separated strip at the bottom, for a row of things that belong *with* the
+ * hero but aren't part of its heading, and would otherwise become another card
+ * stacked under it.
  */
 export function PageHero({
   eyebrow,
@@ -177,6 +189,7 @@ export function PageHero({
   aside,
   asideBlock = false,
   children,
+  footer,
 }: {
   eyebrow?: string;
   eyebrowTone?: EyebrowTone;
@@ -185,6 +198,7 @@ export function PageHero({
   aside?: ReactNode;
   asideBlock?: boolean;
   children?: ReactNode;
+  footer?: ReactNode;
 }) {
   return (
     <section className={card} aria-label={title}>
@@ -196,9 +210,18 @@ export function PageHero({
         size="page"
         align={asideBlock ? "center" : "end"}
         gap={asideBlock ? "lg" : "md"}
+        actionFluid={asideBlock}
         action={aside && (asideBlock ? aside : <div className="text-right">{aside}</div>)}
       />
       {children && <div className="mt-5">{children}</div>}
+      {/* Full-bleed to the card's own edges and tinted, so it reads as the bottom shelf
+          OF this card. A hairline alone left it looking like a separate strip that
+          happened to land underneath. `-m*-6` matches `card`'s `p-6`. */}
+      {footer && (
+        <div className="-mx-6 -mb-6 mt-5 rounded-b-2xl border-t border-slate-200/70 bg-slate-50/70 px-6 py-2">
+          {footer}
+        </div>
+      )}
     </section>
   );
 }
