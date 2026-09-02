@@ -60,6 +60,11 @@ directly, then run steps 2 above once you've spoken.
 ./emails/send.sh inbound --to sam@example.com --name Sam --bcc nicolanightingale97@hotmail.co.uk,ellis@placemate.uk --dry-run
 ```
 
+`inbound-consent` is the lighter variant: no call — access is gated only on a GDPR
+consent reply ("yes, add me", by email or Instagram DM). Once they consent, run step 2
+directly, then send `invite-sent` as the follow-up (it replaces the pre-welcome for this
+door, so skip step 1).
+
 ## 5. Announcements (a launch, to everyone)
 
 ```bash

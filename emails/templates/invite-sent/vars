@@ -1,0 +1,11 @@
+# Slots filled into templates/_shell. One key=value per line; --var overrides any of them.
+#
+# The reply that follows `invite-user.ts` in the consent flow: they said yes to
+# `inbound-consent`, we provisioned them and the magic link is on its way. This email
+# confirms the invite (link valid up to a week), points feedback at Instagram DMs, sets
+# the optional check-in expectation, and asks how they found us. It replaces the
+# pre-welcome (`welcome-beta`) for people who arrived through the inbound-consent door,
+# so don't send both.
+title=Your PlaceMate invite is on its way
+preheader=Your sign-in link is valid for a week. Plus a couple of ways to shape what we build next.
+footer_reason=You're receiving this because you asked to join the PlaceMate beta.

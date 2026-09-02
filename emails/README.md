@@ -97,4 +97,6 @@ Use `--dry-run` for content review before a real send.
 | `welcome-beta`        | Recruited beta students — warm intro, magic link follows in a day or two. |
 | `inbound`             | People who got in touch asking to use PlaceMate. Access is gated on an onboarding call, so it deliberately does **not** promise a magic link. |
 | `inbound-consent`     | People who got in touch asking to use PlaceMate, where we'll add them straight away — no call, just a GDPR consent reply. Welcome email + sign-in link follow once they say yes. |
+| `invite-sent`         | Consent-flow follow-up, sent right after `invite-user.ts`: invite confirmed (link valid a week), feedback via Instagram DMs, optional check-ins, "how did you find us?". Replaces the pre-welcome for this door. |
 | `intelligence-recall` | Beta students — PlaceMate Intelligence email 1 of 2: ask-your-notes is live, photo import teased. |
+| `intelligence-capture` | Beta students — PlaceMate Intelligence email 2 of 2: photo note capture is live. |

@@ -13,8 +13,8 @@
   </style>
   <![endif]-->
   <style type="text/css">
-    /* Mobile: the card is fluid (width:100%, capped at 600px), so narrow screens render
-       text at its true size instead of scaling a 600px layout down. These rules just
+    /* Mobile: the card is fluid (width:100%, capped at 700px), so narrow screens render
+       text at its true size instead of scaling a fixed layout down. These rules just
        hand the text more of that width by trimming padding. Clients that strip <style>
        still get the fluid card, only with desktop padding. !important is needed to beat
        the inline styles. */
@@ -38,15 +38,15 @@
     <tr>
       <td align="center" class="pm-outer" style="padding:24px 12px;">
 
-        <!-- Card. Fluid width capped at 600px: a fixed width="600" table makes phone
+        <!-- Card. Fluid width capped at 700px: a fixed-width table makes phone
              clients zoom the whole email out to fit, which shrinks the text (~65% on an
              iPhone) — fluid means the copy wraps at screen width and renders full-size.
              Outlook on Windows ignores max-width, so a conditional ghost table pins it
-             to 600px there. -->
+             to 700px there. -->
         <!--[if mso]>
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td>
+        <table role="presentation" width="700" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td>
         <![endif]-->
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:600px; background-color:#ffffff; border-radius:16px; overflow:hidden; border:1px solid #e4eae8;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:700px; background-color:#ffffff; border-radius:16px; overflow:hidden; border:1px solid #e4eae8;">
 
           <!-- Header: the app logo lockup, full-colour pin mark (hosted PNG) + two-tone
                wordmark (place = ink, mate = emerald), on white to match the app. Degrades
