@@ -53,12 +53,12 @@ const jsonLd = [
       Drug calculation practice
     </h1>
     <p class="mt-4 text-lg leading-relaxed text-slate-600">
-      Unlimited, randomly generated nursing calculation questions — doses, oral liquids,
-      infusion rates and unit conversions — with instant feedback and a worked answer for
+      Unlimited, randomly generated nursing calculation questions (doses, oral liquids,
+      infusion rates and unit conversions) with instant feedback and a worked answer for
       every one. Keep going until the method is second nature.
     </p>
     <p class="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
-      Practice only. These are made-up numbers for study — never a substitute for calculating
+      Practice only. These are made-up numbers for study, never a substitute for calculating
       a real dose from the prescription, checking local policy, and verifying with a
       registered professional.
     </p>
@@ -274,7 +274,7 @@ const jsonLd = [
     if (isRight) correct++;
     renderScore();
 
-    qVerdict.textContent = isRight ? "✓ Correct" : `✗ Not quite — the answer is ${current.answer} ${current.unit}`;
+    qVerdict.textContent = isRight ? "✓ Correct" : `✗ Not quite. The answer is ${current.answer} ${current.unit}`;
     qVerdict.className = `text-base font-semibold ${isRight ? "text-emerald-700" : "text-rose-600"}`;
     qWorking.textContent = current.working;
     qResult.classList.remove("hidden");

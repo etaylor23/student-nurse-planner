@@ -17,7 +17,7 @@ export const FEATURES: Feature[] = [
     id: "placement-hours",
     name: "Placement hours tracker",
     tagline: "Never lose track of your 2,300 practice hours",
-    body: "Log the hours for every shift and watch them count toward the NMC's 2,300-hour practice requirement — automatically, per placement and overall.",
+    body: "Log the hours for every shift and watch them count toward the NMC's 2,300-hour practice requirement automatically, per placement and overall.",
     points: [
       "Running total against your 2,300-hour target",
       "Simulated hours flagged against the 600-hour cap",
@@ -31,7 +31,7 @@ export const FEATURES: Feature[] = [
     id: "shift-planner",
     name: "Weekly shift planner",
     tagline: "Plan placement, uni and life in one calendar",
-    body: "A calendar built for the realities of a nursing course — long days, night shifts and study weeks. Plan shifts ahead, then mark them as completed to feed your hours log.",
+    body: "A calendar built for the realities of a nursing course: long days, night shifts and study weeks. Plan shifts ahead, then mark them as completed to feed your hours log.",
     points: [
       "Plan shifts, then count them when done",
       "See placement and revision side by side",
@@ -59,7 +59,7 @@ export const FEATURES: Feature[] = [
     id: "clinical-skills",
     name: "Clinical skills passport",
     tagline: "The NMC Annexe B skills, plus your own",
-    body: "Your clinical skills list seeds from the NMC's Annexe B nursing procedures — the national baseline every skills passport builds on — and you can add the local skills your university requires.",
+    body: "Your clinical skills list seeds from the NMC's Annexe B nursing procedures, the national baseline every skills passport builds on, and you can add the local skills your university requires.",
     points: [
       "Seeded from the 11 Annexe B procedure groups",
       "Add and sign off your university's own skills",

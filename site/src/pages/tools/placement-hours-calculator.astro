@@ -54,7 +54,7 @@ const jsonLd = [
     <p class="mt-4 text-lg leading-relaxed text-slate-600">
       UK student nurses need at least <strong>{FACTS.practiceHours.toLocaleString("en-GB")} hours</strong>
       of supervised practice learning to register. Enter your hours below to see how many you
-      have left — the {FACTS.simCap}-hour simulated-learning cap is handled for you. Nothing is
+      have left. The {FACTS.simCap}-hour simulated-learning cap is handled for you. Nothing is
       saved; it all runs in your browser.
     </p>
   </section>
@@ -149,12 +149,12 @@ const jsonLd = [
       {FACTS.simCap}-hour cap. Hours remaining is simply your required total minus what's
       counted. Because at least {(FACTS.practiceHours - FACTS.simCap).toLocaleString("en-GB")}
       of the {FACTS.practiceHours.toLocaleString("en-GB")} hours must come from real
-      placements, simulated hours beyond {FACTS.simCap} don't reduce your target — the
+      placements, simulated hours beyond {FACTS.simCap} don't reduce your target, and the
       calculator flags them so there are no surprises later.
     </p>
     <p class="mt-3 leading-relaxed text-slate-600">
       Always treat your university's Practice Assessment Document as the source of truth for
-      what counts — this tool is a quick estimate, not an official record.
+      what counts. This tool is a quick estimate, not an official record.
     </p>
 
     <h2 class="mt-10 text-2xl font-bold tracking-tight text-ink">Frequently asked questions</h2>

@@ -10,7 +10,7 @@ import { FEATURES } from "../data/features";
 import { FAQS } from "../data/faqs";
 import { organization, website, webApplication, faqPage } from "../schema";
 
-const title = "PlaceMate — the planner for UK student nurses";
+const title = "PlaceMate: the planner for UK student nurses";
 const description = SITE.description;
 
 const homeFeatures = FEATURES.filter((f) => f.home);
@@ -43,7 +43,7 @@ const jsonLd = [organization(), website(), webApplication(), faqPage(homeFaqs)];
         </h1>
         <p class="mt-5 text-lg leading-relaxed text-slate-600">
           PlaceMate helps you track placement hours, log your NMC proficiencies, plan shifts and
-          revision, and practise drug calculations — all in one free app, on any device.
+          revision, and practise drug calculations, all in one free app, on any device.
         </p>
         <div class="mt-8 flex flex-col gap-3 sm:flex-row">
           {SHOW_SIGNUP_CTA && (
@@ -123,7 +123,7 @@ const jsonLd = [organization(), website(), webApplication(), faqPage(homeFaqs)];
         Everything a student nurse needs to stay on track
       </h2>
       <p class="mt-3 text-slate-600">
-        Purpose-built for the UK nursing degree — from your first placement to registration.
+        Purpose-built for the UK nursing degree, from your first placement to registration.
       </p>
     </div>
     <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -145,12 +145,12 @@ const jsonLd = [organization(), website(), webApplication(), faqPage(homeFaqs)];
           {
             icon: "proficiency",
             title: "Built on the NMC standards",
-            body: `Hours, proficiencies and skills all follow the ${FACTS.nmcStandard} — so what you track is what your programme assesses.`,
+            body: `Hours, proficiencies and skills all follow the ${FACTS.nmcStandard}, so what you track is what your programme assesses.`,
           },
           {
             icon: "planner",
             title: "One place, not five apps",
-            body: "Hours, shifts, proficiencies, skills, medications, reflections and revision — connected, so evidence flows between them.",
+            body: "Hours, shifts, proficiencies, skills, medications, reflections and revision, all connected, so evidence flows between them.",
           },
           {
             icon: "wellbeing",
