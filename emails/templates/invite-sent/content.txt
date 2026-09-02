@@ -1,22 +1,22 @@
 Hey {{first_name}},
 
-Great news: I've just sent your beta invite, and the sign-in link
-inside is valid for up to a week. If it's not in your inbox, it's
-worth a quick look in spam or promotions.
+I've just sent your beta invite, and the sign-in link inside is valid
+for up to a week. If it's not in your inbox, it's worth a quick look
+in spam or promotions.
 
   >> FOLLOW US ON INSTAGRAM AND DM US YOUR SUGGESTIONS <<
      https://www.instagram.com/placemateapp/
 
   Any issues getting to know PlaceMate, ideas, or features you'd like
   to see: send them straight to us there. They land with me and
-  Nicola directly, and they shape what we build next.
+  Nicola RN directly, and they shape what we build next.
 
 We also like to check in with our beta users from time to time to see
 how you're getting on. That's completely optional: reply if it's
 useful, ignore us if it's not, and we won't take it personally.
 
 Out of interest, how did you come across us? We're a small team, and
-knowing what's working really helps. Just hit reply.
+knowing what's working really helps.
 
 If you think you like the idea of PlaceMate, you have real control of
 where it goes next. Even better, if you could get some of your course
